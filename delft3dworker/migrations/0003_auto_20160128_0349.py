@@ -8,7 +8,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('taskmanager', '0002_modelruns'),
+        ('delft3dworker', '0002_modelruns'),
     ]
 
     operations = [

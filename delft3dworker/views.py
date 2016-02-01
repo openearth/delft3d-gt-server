@@ -10,8 +10,8 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 
-from taskmanager.models import ModelRun
-from taskmanager.tasks import rundocker
+from delft3dworker.models import Delft3DWorker
+from delft3dworker.tasks import rundocker
 
 from delft3dgtmain.celery import app
 
@@ -23,7 +23,7 @@ SUCCESS = 'success'
 
 def runs(request):
 
-    for model in ModelRun.objects.all():
+    for model in Delft3DWorker.objects.all():
         if model.status == RUNNING:
             model.progress += 1
             model.timeleft -= 4
@@ -32,7 +32,7 @@ def runs(request):
                 model.timeleft = 0
             model.save()
 
-    data = serializers.serialize('json', ModelRun.objects.all())
+    data = serializers.serialize('json', Delft3DWorker.objects.all())
 
     return HttpResponse(data, content_type = 'application/json; charset=utf8')
 
@@ -41,7 +41,7 @@ def createrun(request):
 
     msg_code = 'createresult'
 
-    model = ModelRun(
+    model = Delft3DWorker(
         name=request.GET.get(GET_NAME, 'none'),
         uuid=uuid.uuid4(),
         status=RUNNING,
@@ -67,7 +67,7 @@ def deleterun(request):
     msg_code = 'deleteresult'
 
     try:
-        model = ModelRun.objects.get(uuid=request.GET.get('uuid'))
+        model = Delft3DWorker.objects.get(uuid=request.GET.get('uuid'))
         model.delete()
 
         data = {
@@ -77,7 +77,7 @@ def deleterun(request):
                 'reason': ''
             }
         }
-    except ModelRun.DoesNotExist, Argument:
+    except Delft3DWorker.DoesNotExist, Argument:
         data = {
             'type': msg_code, 
             'status': {
@@ -93,5 +93,10 @@ def celerytest(request):
     
     result = rundocker.delay('delft3d')
     
-    return HttpResponse('')
+    print dir(result)
+    print dir(result.successful)
+
+
+    return HttpResponse(json.dumps({'result':SUCCESS}), content_type = 'application/json; charset=utf8')
+
 

@@ -1,8 +1,8 @@
 from django.conf.urls import include, url, handler404, handler500  # noqa
-from taskmanager.views import runs
-from taskmanager.views import createrun
-from taskmanager.views import deleterun
-from taskmanager.views import celerytest
+from delft3dworker.views import runs
+from delft3dworker.views import createrun
+from delft3dworker.views import deleterun
+from delft3dworker.views import celerytest
 
 urlpatterns = (
     # Examples:

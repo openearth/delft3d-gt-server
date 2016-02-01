@@ -20,6 +20,6 @@ from django.contrib import admin
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
 
-    url(r'^', include('taskmanager.urls')),
+    url(r'^', include('delft3dworker.urls')),
 
 ]
