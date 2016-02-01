@@ -11,7 +11,6 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 
 from taskmanager.models import ModelRun
-from taskmanager.tasks import add
 from taskmanager.tasks import rundocker
 
 from delft3dgtmain.celery import app
@@ -91,13 +90,8 @@ def deleterun(request):
 
 
 def celerytest(request):
-
-    # result = add.delay(4, 4)
+    
     result = rundocker.delay('delft3d')
-
-    i = app.control.inspect()
-    print i.registered()
-    print i.active()
-
+    
     return HttpResponse('')
 
