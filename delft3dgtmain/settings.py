@@ -20,7 +20,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '(;%nXLsDS/%{YlK\E*3L=45Vx0v9/G'
+SECRET_KEY = 'Zo2dU@wGgbZ.?bCMnO9,uXPULD+nh@'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'delft3dworker',
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -79,7 +81,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'djangodb',
         'USER': 'django',
-        'PASSWORD': 'lrQ:bGu6fwuJ3327.LHJ',
+        'PASSWORD': 'Nt.4P2pn979pGmokt5-P',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
@@ -124,3 +126,18 @@ USE_TZ = True
 
 STATIC_ROOT = '/opt/delft3d-gt/static/'
 STATIC_URL = '/static/'
+
+# Celery
+
+BROKER_URL = 'redis://localhost'
+CELERY_RESULT_BACKEND = 'redis://localhost'
+
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TIMEZONE = 'Europe/Amsterdam'
+CELERY_ENABLE_UTC = True
+
+# delft3dworker
+DELFT3D_IMAGE_NAME = 'delft3d'
+WORKER_FILEDIR = '/data/container/files'
