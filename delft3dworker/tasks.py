@@ -8,45 +8,54 @@ logger = get_task_logger(__name__)
 
 
 @shared_task
-def rundocker(name):
+def rundocker(name, workingdir):
+    
     """Task to run docker container"""
+    
+    logger.info('Creating docker container')
+    d = DockerRun(name, workingdir)
+
     logger.info('Running docker container')
-    d = docker_run(name)
+    d.start()
     for log in d.log():
         logger.info(log)
+    
     logger.info('Destroying docker container')
     d.remove()
+    
     return
 
 
-class docker_run():
+class DockerRun():
 
     """Class to run docker containers with specific configs"""
 
-    def __init__(self, name, base_url='unix://var/run/docker.sock'):
+    def __init__(self, name, workingdir, base_url='unix://var/run/docker.sock'):
         self.name = name
+        self.workingdir = workingdir        
         self.base_url = base_url
 
-        self.c = Client(base_url=self.base_url)
+        self.client = Client(base_url=self.base_url)
 
-        self.create_container()
-        self.start_container()
+        self._create_container()
 
-    def create_container(self):
-        config = self.c.create_host_config(binds=[
-             '/data/container/01_standard:/data',
-         ])
-
-        self.container = self.c.create_container(self.name, host_config=config)
-        self.id = self.container.get('Id')
-
-    def start_container(self):
-        self.c.start(container=self.id)
+    def start(self):
+        self.client.start(container=self.id)
 
     def log(self):
-        self.log = self.c.logs(container=self.id,
+        self.log = self.client.logs(container=self.id,
                                stream=True, stdout=True, stderr=True)
         return self.log
 
     def remove(self):
-        self.c.remove_container(container=self.id)
+        self.client.remove_container(container=self.id)
+
+    def _create_container(self):
+
+        config = self.client.create_host_config(binds=[
+             '{0}:/data'.format(self.workingdir),
+         ])
+
+        self.container = self.client.create_container(self.name, host_config=config)
+        self.id = self.container.get('Id')
+

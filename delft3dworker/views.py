@@ -4,22 +4,24 @@ import json
 import uuid
 import random
 
+from django.conf import settings
 from django.core import serializers
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 
+from delft3dgtmain.celery import app
 from delft3dworker.models import Delft3DWorker
 from delft3dworker.tasks import rundocker
 
-from delft3dgtmain.celery import app
 
 COMPLETED = 'completed'
 ERROR = 'error'
 GET_NAME = 'name'
 RUNNING = 'running'
 SUCCESS = 'success'
+UUID_NAME = 'uuid'
 
 def runs(request):
 
@@ -38,9 +40,8 @@ def runs(request):
 
 
 def createrun(request):
-
     msg_code = 'createresult'
-
+    
     model = Delft3DWorker(
         name=request.GET.get(GET_NAME, 'none'),
         uuid=uuid.uuid4(),
@@ -49,10 +50,10 @@ def createrun(request):
         timeleft=random.randint(123456, 1234567),
     )
     model.save()
-
+    
     data = {
         'type': msg_code, 
-        'id': str(model.uuid), 
+        'uuid': str(model.uuid), 
         'status': {
             'code': SUCCESS, 
             'reason': ''
@@ -63,13 +64,41 @@ def createrun(request):
 
 
 def deleterun(request):
-
     msg_code = 'deleteresult'
 
     try:
         model = Delft3DWorker.objects.get(uuid=request.GET.get('uuid'))
         model.delete()
 
+        data = {
+            'type': msg_code, 
+            'status': {
+                'code': SUCCESS, 
+                'reason': ''
+            }
+        }
+
+    except Delft3DWorker.DoesNotExist, Argument:
+        
+        data = {
+            'type': msg_code, 
+            'status': {
+                'code': ERROR, 
+                'reason': str(Argument)
+            }
+        }
+
+    return HttpResponse(json.dumps(data), content_type = 'application/json; charset=utf8')
+
+
+def dorun(request):
+    msg_code = 'doresult'
+
+    try:
+        get_uuid = request.GET.get(UUID_NAME, 'none')
+        worker = get_object_or_404(Delft3DWorker, uuid=get_uuid)
+        result = rundocker.delay(settings.DELFT3D_IMAGE_NAME, worker.workingdir)
+        
         data = {
             'type': msg_code, 
             'status': {
@@ -87,12 +116,3 @@ def deleterun(request):
         }
 
     return HttpResponse(json.dumps(data), content_type = 'application/json; charset=utf8')
-
-
-def celerytest(request):
-    
-    result = rundocker.delay('delft3d')
-    
-    return HttpResponse(json.dumps({'result':SUCCESS}), content_type = 'application/json; charset=utf8')
-
-
