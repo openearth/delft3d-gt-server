@@ -93,10 +93,6 @@ def celerytest(request):
     
     result = rundocker.delay('delft3d')
     
-    print dir(result)
-    print dir(result.successful)
-
-
     return HttpResponse(json.dumps({'result':SUCCESS}), content_type = 'application/json; charset=utf8')
 
 

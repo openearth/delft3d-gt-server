@@ -1,4 +1,5 @@
 from django.db import models  #noqa
+from jsonfield import JSONField
 
 
 class Delft3DWorker(models.Model):
@@ -7,3 +8,7 @@ class Delft3DWorker(models.Model):
 	status = models.CharField(max_length=256)
 	progress = models.IntegerField()
 	timeleft = models.IntegerField()
+	json = JSONField()
+
+	# def createModelSchema(self):
+
