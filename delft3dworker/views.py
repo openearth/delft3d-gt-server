@@ -16,12 +16,16 @@ from delft3dworker.models import Delft3DWorker
 from delft3dworker.tasks import rundocker
 
 
+# GET keys
+GET_KEY_NAME = 'name'
+GET_KEY_UUID = 'uuid'
+
+# msg codes
 COMPLETED = 'completed'
 ERROR = 'error'
-GET_NAME = 'name'
 RUNNING = 'running'
 SUCCESS = 'success'
-UUID_NAME = 'uuid'
+
 
 def runs(request):
 

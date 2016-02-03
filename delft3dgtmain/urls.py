@@ -24,7 +24,9 @@ urlpatterns = [
 
     url(r'^admin/', admin.site.urls),
 
+    # namespaced url: url(r'/runs/^', include('delft3dworker.urls')),
     url(r'^', include('delft3dworker.urls')),
+
     url(r'^', include('delft3dgtfrontend.urls')),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
