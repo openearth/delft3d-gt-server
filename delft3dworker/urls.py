@@ -16,6 +16,6 @@ urlpatterns = (
     # url(r'^list.json$', runs, name='runs'),
     # url(r'^create.json$', createrun, name='createrun'),
     # url(r'^delete.json$', deleterun, name='deleterun'),
-    # url(r'^do.json$', dorun, name='dorun'),
+    # url(r'^run.json$', dorun, name='dorun'),
 
 )

@@ -24,7 +24,7 @@ urlpatterns = [
 
     url(r'^admin/', admin.site.urls),
 
-    # namespaced url: url(r'/runs/^', include('delft3dworker.urls')),
+    # namespaced url: url(r'/delft3dworker/^', include('delft3dworker.urls')),
     url(r'^', include('delft3dworker.urls')),
 
     url(r'^', include('delft3dgtfrontend.urls')),
