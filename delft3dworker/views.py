@@ -19,6 +19,7 @@ from delft3dworker.tasks import rundocker
 # GET keys
 GET_KEY_NAME = 'name'
 GET_KEY_UUID = 'uuid'
+GET_KEY_DT = 'dt'
 
 # msg codes
 COMPLETED = 'completed'
@@ -29,15 +30,6 @@ SUCCESS = 'success'
 
 def runs(request):
 
-    for model in Delft3DWorker.objects.all():
-        if model.status == RUNNING:
-            model.progress += 1
-            model.timeleft -= 4
-            if model.progress == 100:
-                model.status = COMPLETED
-                model.timeleft = 0
-            model.save()
-
     data = serializers.serialize('json', Delft3DWorker.objects.all())
 
     return HttpResponse(data, content_type = 'application/json; charset=utf8')
@@ -47,11 +39,12 @@ def createrun(request):
     msg_code = 'createresult'
     
     model = Delft3DWorker(
-        name=request.GET.get(GET_NAME, 'none'),
+        name=request.GET.get(GET_KEY_NAME, 'none'),
         uuid=uuid.uuid4(),
         status=RUNNING,
         progress=0,
-        timeleft=random.randint(123456, 1234567),
+        timeleft=0,
+        json = '{ "dt": ' + request.GET.get(GET_KEY_DT, '1') + ' }'
     )
     model.save()
     
@@ -71,8 +64,11 @@ def deleterun(request):
     msg_code = 'deleteresult'
 
     try:
-        model = Delft3DWorker.objects.get(uuid=request.GET.get('uuid'))
-        model.delete()
+        delft3d_worker = Delft3DWorker.objects.get(uuid=request.GET.get('uuid'))
+
+        app.control.revoke(delft3d_worker.workerid)
+
+        delft3d_worker.delete()
 
         data = {
             'type': msg_code, 
@@ -99,10 +95,14 @@ def dorun(request):
     msg_code = 'doresult'
 
     try:
-        get_uuid = request.GET.get(UUID_NAME, 'none')
+        get_uuid = request.GET.get(GET_KEY_UUID, 'none')
         delft3d_worker = get_object_or_404(Delft3DWorker, uuid=get_uuid)
+        
         result = rundocker.delay(settings.DELFT3D_IMAGE_NAME, delft3d_worker.workingdir)
         
+        delft3d_worker.workerid = result.id
+        delft3d_worker.save()
+
         data = {
             'type': msg_code, 
             'status': {

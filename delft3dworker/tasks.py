@@ -1,27 +1,32 @@
 from __future__ import absolute_import
 
+import signal
+
 from celery import shared_task
+from celery.signals import task_revoked
 from celery.utils.log import get_task_logger
+
 from docker import Client
 
 logger = get_task_logger(__name__)
 
 
-@shared_task
-def rundocker(name, workingdir):
+@shared_task(bind=True)
+def rundocker(self, name, workingdir):
     
     """Task to run docker container"""
     
     logger.info('Creating docker container')
-    d = DockerRun(name, workingdir)
+    self.docker_run = DockerRun(name, workingdir)
 
     logger.info('Running docker container')
-    d.start()
-    for log in d.log():
+    self.docker_run.start()
+
+    for log in self.docker_run.log():
         logger.info(log)
     
     logger.info('Destroying docker container')
-    d.remove()
+    self.docker_run.remove()
     
     return
 
@@ -42,6 +47,9 @@ class DockerRun():
 
     def start(self):
         self.client.start(container=self.id)
+
+    def stop(self):
+        self.client.stop(container=self.id)
 
     def log(self):
         self.log = self.client.logs(container=self.id,
