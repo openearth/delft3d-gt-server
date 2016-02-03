@@ -96,8 +96,8 @@ def dorun(request):
 
     try:
         get_uuid = request.GET.get(UUID_NAME, 'none')
-        worker = get_object_or_404(Delft3DWorker, uuid=get_uuid)
-        result = rundocker.delay(settings.DELFT3D_IMAGE_NAME, worker.workingdir)
+        delft3d_worker = get_object_or_404(Delft3DWorker, uuid=get_uuid)
+        result = rundocker.delay(settings.DELFT3D_IMAGE_NAME, delft3d_worker.workingdir)
         
         data = {
             'type': msg_code, 

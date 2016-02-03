@@ -31,6 +31,7 @@ class DockerRun():
     """Class to run docker containers with specific configs"""
 
     def __init__(self, name, workingdir, base_url='unix://var/run/docker.sock'):
+
         self.name = name
         self.workingdir = workingdir        
         self.base_url = base_url

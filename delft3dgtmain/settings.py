@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'delft3dworker',
+    'delft3dgtfrontend',
 ]
 
 MIDDLEWARE_CLASSES = [
