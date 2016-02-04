@@ -4,6 +4,8 @@ import json
 import uuid
 import random
 
+from celery.result import AsyncResult
+
 from django.conf import settings
 from django.core import serializers
 from django.http import HttpResponse
@@ -30,9 +32,15 @@ SUCCESS = 'success'
 
 def runs(request):
 
-    data = serializers.serialize('json', Delft3DWorker.objects.all())
+    workers = Delft3DWorker.objects.all()
 
-    return HttpResponse(data, content_type = 'application/json; charset=utf8')
+    # update worker task info in model
+    for worker in workers:
+        worker.info = AsyncResult(worker.workerid).info
+
+    data = serializers.serialize('json', workers)
+
+    return HttpResponse(data.replace("u'", "'"), content_type = 'application/json; charset=utf8')
 
 
 def createrun(request):

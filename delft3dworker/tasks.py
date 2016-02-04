@@ -24,6 +24,14 @@ def rundocker(self, name, workingdir):
 
     for log in self.docker_run.log():
         logger.info(log)
+
+        items = log.split(',')
+        if len(items) == 3:
+            self.update_state(state='SIMULATING', meta={
+                'time_to_finish': items[0].strip(),
+                'percent_completed': items[1].strip(),
+                'timesteps_left': items[2].strip()
+            })
     
     logger.info('Destroying docker container')
     self.docker_run.remove()

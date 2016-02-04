@@ -17,19 +17,15 @@ class Delft3DWorker(models.Model):
 
     name = models.CharField(max_length=256)
     status = models.CharField(max_length=256)
+    info = models.CharField(max_length=256)
     progress = models.IntegerField()
     timeleft = models.IntegerField()
     json = JSONField()
 
-    def save(self, *args, **kwargs):
-        
-        workingdir = "{0}/{1}".format(settings.WORKER_FILEDIR, self.uuid)
-        if not os.path.exists(workingdir):
-            os.makedirs(workingdir)
+    def save(self, *args, **kwargs):        
+        workingdir = "{0}/{1}".format(settings.WORKER_FILEDIR, self.uuid)    
         self.workingdir = workingdir
-
         self._create_model_schema()
-
         super(Delft3DWorker, self).save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -45,8 +41,8 @@ class Delft3DWorker(models.Model):
 
     def _create_model_schema(self):
         
-        rmtree(self.workingdir)
-        copytree('/data/container/delft3ddefaults', self.workingdir)
+        if not os.path.exists(self.workingdir):
+            copytree('/data/container/delft3ddefaults', self.workingdir)
 
         # create input dict for template renderer
         time_format = "%Y-%m-%d %H:%M:%S"
