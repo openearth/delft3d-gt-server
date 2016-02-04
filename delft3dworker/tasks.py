@@ -39,6 +39,11 @@ def rundocker(self, name, workingdir):
     return
 
 
+@shared_task(bind=True)
+def deldocker(self, uuid):
+    pass    
+
+
 class DockerRun():
 
     """Class to run docker containers with specific configs"""
