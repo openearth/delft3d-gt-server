@@ -5,6 +5,7 @@ import uuid
 import random
 
 from celery.result import AsyncResult
+from celery.contrib.abortable import AbortableAsyncResult
 
 from django.conf import settings
 from django.core import serializers
@@ -72,8 +73,13 @@ def deleterun(request):
     try:
         delft3d_worker = Delft3DWorker.objects.get(uuid=request.GET.get('uuid'))
 
-        app.control.revoke(delft3d_worker.workerid)
+        # app.control.revoke(delft3d_worker.workerid)
+        result = AbortableAsyncResult(delft3d_worker.workerid)
 
+        result.abort()
+
+        result.get()        
+        
         delft3d_worker.delete()
 
         data = {
@@ -104,7 +110,7 @@ def dorun(request):
         get_uuid = request.GET.get(GET_KEY_UUID, 'none')
         delft3d_worker = get_object_or_404(Delft3DWorker, uuid=get_uuid)
         
-        result = rundocker.delay(settings.DELFT3D_IMAGE_NAME, delft3d_worker.workingdir)
+        result = rundocker.delay(settings.DELFT3D_IMAGE_NAME, delft3d_worker.uuid, delft3d_worker.workingdir)
         
         delft3d_worker.workerid = result.id
         delft3d_worker.save()

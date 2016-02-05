@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import signal
 
 from celery import shared_task
+from celery.contrib.abortable import AbortableTask
 from celery.signals import task_revoked
 from celery.utils.log import get_task_logger
 
@@ -11,37 +12,44 @@ from docker import Client
 logger = get_task_logger(__name__)
 
 
-@shared_task(bind=True)
-def rundocker(self, name, workingdir):
+@shared_task(bind=True, base=AbortableTask)
+def rundocker(self, name, uuid, workingdir):
     
     """Task to run docker container"""
     
     logger.info('Creating docker container')
-    self.docker_run = DockerRun(name, workingdir)
+    docker_run = DockerRun(name, workingdir)
 
     logger.info('Running docker container')
-    self.docker_run.start()
+    docker_run.start()
 
-    for log in self.docker_run.log():
+    for log in docker_run.log():
+        
         logger.info(log)
 
-        items = log.split(',')
-        if len(items) == 3:
-            self.update_state(state='SIMULATING', meta={
+        # check for abortion
+        if (self.is_aborted()):
+            logger.info('ABORTING')
+            items = log.split(',')
+            self.update_state(state='ABORTING', meta={
                 'time_to_finish': items[0].strip(),
                 'percent_completed': items[1].strip(),
                 'timesteps_left': items[2].strip()
             })
+            docker_run.stop()
+        else:
+            items = log.split(',')
+            if len(items) == 3:
+                self.update_state(state='SIMULATING', meta={
+                    'time_to_finish': items[0].strip(),
+                    'percent_completed': items[1].strip(),
+                    'timesteps_left': items[2].strip()
+                })
     
     logger.info('Destroying docker container')
-    self.docker_run.remove()
+    docker_run.remove()
     
     return
-
-
-@shared_task(bind=True)
-def deldocker(self, uuid):
-    pass    
 
 
 class DockerRun():
