@@ -33,7 +33,7 @@ def rundocker(self, name, uuid, workingdir):
             items = log.split(',')
             self.update_state(state='ABORTING', meta={
                 'time_to_finish': items[0].strip(),
-                'percent_completed': items[1].strip(),
+                'percent_completed': 'abort procedure...',
                 'timesteps_left': items[2].strip()
             })
             docker_run.stop()
