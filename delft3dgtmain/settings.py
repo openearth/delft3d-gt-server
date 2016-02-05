@@ -20,7 +20,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'Zo2dU@wGgbZ.?bCMnO9,uXPULD+nh@'
+SECRET_KEY = '#OBO-aLb&s?`sE,(XNXL/<T85=/$rU'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -58,7 +58,7 @@ ROOT_URLCONF = 'delft3dgtmain.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['delft3dgtfrontend/templates',],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -82,7 +82,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'djangodb',
         'USER': 'django',
-        'PASSWORD': 'Nt.4P2pn979pGmokt5-P',
+        'PASSWORD': 'djangodbpass',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
@@ -121,7 +121,8 @@ USE_L10N = True
 
 USE_TZ = True
 
-# login url
+
+# login
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'

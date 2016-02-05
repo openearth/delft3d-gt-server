@@ -50,8 +50,6 @@ def createrun(request):
         name=request.GET.get(GET_KEY_NAME, 'none'),
         uuid=uuid.uuid4(),
         status=RUNNING,
-        progress=0,
-        timeleft=0,
         json = '{ "dt": ' + request.GET.get(GET_KEY_DT, '1') + ' }'
     )
     model.save()
