@@ -58,7 +58,7 @@ ROOT_URLCONF = 'delft3dgtmain.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ['delft3dgtfrontend/templates',],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

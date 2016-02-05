@@ -22,8 +22,8 @@ class Delft3DWorker(models.Model):
     json = JSONField()
 
     def save(self, *args, **kwargs):
-        self.workingdir = "{0}/{1}".format(settings.WORKER_FILEDIR, self.uuid)
-        self.fileurl = "{0}/{1}".format(settings.WORKER_FILEURL, self.uuid)
+        self.workingdir = "{0}/{1}/".format(settings.WORKER_FILEDIR, self.uuid)
+        self.fileurl = "{0}/{1}/".format(settings.WORKER_FILEURL, self.uuid)
         self._create_model_schema()
         super(Delft3DWorker, self).save(*args, **kwargs)
 
