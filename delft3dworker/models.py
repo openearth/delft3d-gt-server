@@ -14,17 +14,16 @@ class Delft3DWorker(models.Model):
     uuid = models.CharField(max_length=256, editable=False)
     workerid = models.CharField(max_length=256, editable=False)
     workingdir = models.CharField(max_length=256, editable=False)
+    fileurl = models.CharField(max_length=256, editable=False)
 
     name = models.CharField(max_length=256)
     status = models.CharField(max_length=256)
     info = models.CharField(max_length=256)
-    progress = models.IntegerField()
-    timeleft = models.IntegerField()
     json = JSONField()
 
-    def save(self, *args, **kwargs):        
-        workingdir = "{0}/{1}".format(settings.WORKER_FILEDIR, self.uuid)    
-        self.workingdir = workingdir
+    def save(self, *args, **kwargs):
+        self.workingdir = "{0}/{1}".format(settings.WORKER_FILEDIR, self.uuid)
+        self.fileurl = "{0}/{1}".format(settings.WORKER_FILEURL, self.uuid)
         self._create_model_schema()
         super(Delft3DWorker, self).save(*args, **kwargs)
 

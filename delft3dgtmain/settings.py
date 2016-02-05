@@ -121,6 +121,10 @@ USE_L10N = True
 
 USE_TZ = True
 
+# login url
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
@@ -142,3 +146,4 @@ CELERY_ENABLE_UTC = True
 # delft3dworker
 DELFT3D_IMAGE_NAME = 'delft3d'
 WORKER_FILEDIR = '/data/container/files'
+WORKER_FILEURL = '/files'
