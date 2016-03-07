@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+from teamcity import is_running_under_teamcity
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -20,7 +22,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '#OBO-aLb&s?`sE,(XNXL/<T85=/$rU'
+SECRET_KEY = 'K^AXJAVqd+LnTs}b*_5k@HDM)3A:_U'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -82,7 +84,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'djangodb',
         'USER': 'django',
-        'PASSWORD': 'djangodbpass',
+        'PASSWORD': 'OjYlH.LKNos8tEmQQMUx',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
@@ -110,7 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Login
 
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/index.html'
+LOGIN_REDIRECT_URL = '/'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.9/topics/i18n/
@@ -124,6 +126,7 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
@@ -151,3 +154,19 @@ WORKER_FILEURL = '/files'
 # delft3dfrontend
 
 FRONTEND_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist'
+
+# testing
+
+if is_running_under_teamcity():
+    TEST_RUNNER = 'delft3dworker.tests.Delft3DGTRunner'
+else:
+    # TEST_RUNNER = 'djcelery.contrib.test_runner.CeleryTestSuiteRunner'
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
+    CELERY_ALWAYS_EAGER=True
+    BROKER_BACKEND='memory'
+    DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
+    }

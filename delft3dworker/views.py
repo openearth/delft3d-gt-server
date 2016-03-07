@@ -13,9 +13,10 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
+from django.views.generic import ListView, CreateView, DeleteView, View
 
 from delft3dgtmain.celery import app
-from delft3dworker.models import Delft3DWorker
+from delft3dworker.models import Delft3DWorker, SimRun
 from delft3dworker.tasks import rundocker
 
 
@@ -132,3 +133,19 @@ def dorun(request):
         }
 
     return HttpResponse(json.dumps(data), content_type = 'application/json; charset=utf8')
+
+
+class RunListView(ListView):
+    model = SimRun
+
+
+class RunCreateView(CreateView):
+    model = SimRun
+
+
+class RunDeleteView(DeleteView):
+    model = SimRun
+
+
+class RunStartView(View):
+    model = SimRun

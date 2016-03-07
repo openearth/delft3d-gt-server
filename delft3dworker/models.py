@@ -31,15 +31,15 @@ class Delft3DWorker(models.Model):
 
         if os.path.exists(self.workingdir):
             rmtree(self.workingdir)
-        
+
         super(Delft3DWorker, self).delete(*args, **kwargs)
 
     def __unicode__(self):
-        
+
         return "{0} - {1}".format(self.name, self.uuid)
 
     def _create_model_schema(self):
-        
+
         if not os.path.exists(self.workingdir):
             copytree('/data/container/delft3ddefaults', self.workingdir)
 
@@ -57,8 +57,8 @@ class Delft3DWorker(models.Model):
 
         ref_time = datetime.strptime(input_dict['reference_time'], time_format)
         start_time = datetime.strptime(input_dict['Tstart'], time_format)
-        stop_time = datetime.strptime(input_dict['Tstop'], time_format)        
-        
+        stop_time = datetime.strptime(input_dict['Tstop'], time_format)
+
         input_dict['reference_time'] = datetime.strftime(ref_time, "%Y-%m-%d")
         input_dict['Tstart'] = (start_time - ref_time).total_seconds()/60
         input_dict['Tstop'] = (stop_time - ref_time).total_seconds()/60
@@ -69,3 +69,67 @@ class Delft3DWorker(models.Model):
         rendered_schema = mdf_template.render(**input_dict).replace('\r\n','\n')
         with open(os.path.join(self.workingdir, 'a.mdf'), 'w') as output:
             output.write(rendered_schema)
+
+
+class SimRun(models.Model):
+    """
+    Simulation run model
+    """
+    workerid = models.CharField(max_length=256, editable=False)
+    workingdir = models.CharField(max_length=256, editable=False)
+    fileurl = models.CharField(max_length=256, editable=False)
+
+    name = models.CharField(max_length=256)
+    status = models.CharField(max_length=256)
+    info = models.CharField(max_length=256)
+    json = JSONField()
+
+
+class Task(models.Model):
+    """
+    Generic Task model
+    """
+    uuid = models.CharField(max_length=256, editable=False)
+    name = models.CharField(max_length=256)
+    status = models.CharField(max_length=256)
+
+    def __unicode__(self):
+
+        return "{0} - {1}".format(self.name, self.uuid)
+
+
+class TaskSim(Task):
+    """
+    Simulation task model
+    """
+    run = models.OneToOneField('SimRun')
+
+    def __unicode__(self):
+
+        return "{0} - {1} - {2}".format(self.run, self.name, self.uuid)
+
+
+class TaskProc(Task):
+    """
+    Processing task model
+    """
+    run = models.ForeignKey('SimRun')
+    script = models.CharField(max_length=256, verbose_name='File name of script to run')
+    fileurl = models.CharField(max_length=256, editable=False)
+
+    def __unicode__(self):
+
+        return "{0} - {1} - {2}".format(self.run, self.name, self.uuid)
+
+
+class TaskVis(Task):
+    """
+    Visualisation task model
+    """
+    run = models.ForeignKey('SimRun')
+    script = models.CharField(max_length=256, verbose_name='File name of script to run')
+    fileurl = models.CharField(max_length=256, editable=False)
+
+    def __unicode__(self):
+
+        return "{0} - {1} - {2}".format(self.run, self.name, self.uuid)
