@@ -107,10 +107,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Login
-
-LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/index.html'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.9/topics/i18n/
@@ -124,6 +120,11 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
+# Login
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
@@ -143,7 +144,6 @@ CELERY_TIMEZONE = 'Europe/Amsterdam'
 CELERY_ENABLE_UTC = True
 
 # delft3dworker
-
 DELFT3D_IMAGE_NAME = 'delft3d'
 WORKER_FILEDIR = '/data/container/files'
 WORKER_FILEURL = '/files'
