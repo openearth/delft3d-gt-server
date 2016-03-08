@@ -12,7 +12,8 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 from teamcity import is_running_under_teamcity
-
+import djcelery
+djcelery.setup_loader()
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'djcelery',
 
     'delft3dworker',
     'delft3dgtfrontend',
@@ -87,7 +89,7 @@ DATABASES = {
         'PASSWORD': 'OjYlH.LKNos8tEmQQMUx',
         'HOST': '127.0.0.1',
         'PORT': '5432',
-    }
+    },
 }
 
 
@@ -160,13 +162,13 @@ FRONTEND_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist'
 if is_running_under_teamcity():
     TEST_RUNNER = 'delft3dworker.tests.Delft3DGTRunner'
 else:
-    # TEST_RUNNER = 'djcelery.contrib.test_runner.CeleryTestSuiteRunner'
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
-    CELERY_ALWAYS_EAGER=True
-    BROKER_BACKEND='memory'
+    TEST_RUNNER = 'djcelery.contrib.test_runner.CeleryTestSuiteRunner'
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+    CELERY_ALWAYS_EAGER = True
+    BROKER_BACKEND = 'memory'
     DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+            }
         }
-    }
