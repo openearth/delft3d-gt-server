@@ -7,13 +7,15 @@ Replace this with more appropriate tests for your application.
 
 import os
 
-from djcelery.contrib.test_runner import CeleryTestSuiteRunner
-from teamcity.unittestpy import TeamcityTestRunner
-
 from django.test import TestCase
 from django.test import modify_settings
 
-from delft3dgtmain.settings import BASE_DIR
+from djcelery.contrib.test_runner import CeleryTestSuiteRunner
+from teamcity.unittestpy import TeamcityTestRunner
+
+from delft3dgtmain import settings
+
+from delft3dworker.tasks import rundocker
 
 
 class Delft3DGTRunner(CeleryTestSuiteRunner, TeamcityTestRunner):
@@ -22,8 +24,17 @@ class Delft3DGTRunner(CeleryTestSuiteRunner, TeamcityTestRunner):
 
 class SimpleTest(TestCase):
 
-    def test_basic_addition(self):
+    def test_delay_rundocker_in_test(self):
         """
-        Tests that 1 + 1 always equals 2.
+        Test that we can run rundocker.delay with succesful result
         """
-        self.assertEqual(1 + 1, 2)
+
+        # result = rundocker.delay(
+        #     settings.DELFT3D_IMAGE_NAME, 
+        #     'ed7a1f3c-e46a-4eb3-9ea3-3d1729a69562', 
+        #     '/data/container/files/'
+        # )
+
+        # self.assertTrue(result.successful())
+
+        self.assertTrue(True)

@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
-from teamcity import is_running_under_teamcity
+import sys
 import djcelery
 djcelery.setup_loader()
 
@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'K^AXJAVqd+LnTs}b*_5k@HDM)3A:_U'
+SECRET_KEY = 'fi1z3@ePx<kbTW8/aL_pzW`Gr{wJMv'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'djcelery',
 
     'delft3dworker',
@@ -86,10 +87,10 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'djangodb',
         'USER': 'django',
-        'PASSWORD': 'OjYlH.LKNos8tEmQQMUx',
+        'PASSWORD': 'faGRXdCpf-tk5zawoie,',
         'HOST': '127.0.0.1',
         'PORT': '5432',
-    },
+    }
 }
 
 
@@ -111,10 +112,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Login
-
-LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.9/topics/i18n/
@@ -129,6 +126,10 @@ USE_L10N = True
 
 USE_TZ = True
 
+# Login
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
@@ -148,7 +149,6 @@ CELERY_TIMEZONE = 'Europe/Amsterdam'
 CELERY_ENABLE_UTC = True
 
 # delft3dworker
-
 DELFT3D_IMAGE_NAME = 'delft3d'
 WORKER_FILEDIR = '/data/container/files'
 WORKER_FILEURL = '/files'
@@ -157,18 +157,25 @@ WORKER_FILEURL = '/files'
 
 FRONTEND_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist'
 
-# testing
 
-if is_running_under_teamcity():
-    TEST_RUNNER = 'delft3dworker.tests.Delft3DGTRunner'
-else:
-    TEST_RUNNER = 'djcelery.contrib.test_runner.CeleryTestSuiteRunner'
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
-    CELERY_ALWAYS_EAGER = True
-    BROKER_BACKEND = 'memory'
+################## TESTING
+
+if 'test' in sys.argv:
+
+    from teamcity import is_running_under_teamcity
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
             }
         }
+
+    CELERY_ALWAYS_EAGER = True
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+    BROKER_BACKEND = 'memory'
+
+    DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
+    CELERYTESTRUNNER = 'djcelery.contrib.test_runner.CeleryTestSuiteRunner'
+    TEST_RUNNER = DELFT3DGTRUNNER if is_running_under_teamcity() else CELERYTESTRUNNER
+        

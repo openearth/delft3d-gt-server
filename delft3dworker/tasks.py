@@ -83,9 +83,8 @@ class DockerRun():
     def _create_container(self):
 
         config = self.client.create_host_config(binds=[
-             '{0}:/data'.format(self.workingdir),
-         ])
+                '{0}:/data'.format(self.workingdir),
+            ])
 
         self.container = self.client.create_container(self.name, host_config=config)
         self.id = self.container.get('Id')
-

@@ -72,6 +72,7 @@ def deleterun(request):
     msg_code = 'deleteresult'
 
     try:
+
         delft3d_worker = Delft3DWorker.objects.get(uuid=request.GET.get('uuid'))
 
         # app.control.revoke(delft3d_worker.workerid)
