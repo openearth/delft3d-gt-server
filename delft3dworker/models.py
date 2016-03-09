@@ -98,14 +98,14 @@ class Scene(models.Model):
             self.simulationtask
         except SimulationTask.DoesNotExist, e:
             simulationtask = SimulationTask(uuid='none', state='none', 
-                Scene=self)
+                scene=self)
             simulationtask.run()
         
         try:
             self.processingtask
         except ProcessingTask.DoesNotExist, e:
             processingtask = ProcessingTask(uuid='none', state='none', 
-                Scene=self)
+                scene=self)
             processingtask.run()
         
         return 'ok'
