@@ -3,8 +3,10 @@ anyjson==0.3.3
 backports.ssl-match-hostname==3.5.0.1
 billiard==3.3.0.23
 celery==3.1.21
-Django==1.9.4
+coverage==3.7.1
+Django==1.8.11
 django-celery==3.1.17
+django-coverage==1.2.4
 django-generic-json-views==0.7
 django-jsonfield==0.9.19
 docker-py==1.7.2

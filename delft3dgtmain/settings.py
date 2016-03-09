@@ -84,7 +84,7 @@ WSGI_APPLICATION = 'delft3dgtmain.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'djangodb',
         'USER': 'django',
         'PASSWORD': 'faGRXdCpf-tk5zawoie,',
@@ -175,6 +175,6 @@ if 'test' in sys.argv:
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
     BROKER_BACKEND = 'memory'
 
+    TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
-    CELERYTESTRUNNER = 'djcelery.contrib.test_runner.CeleryTestSuiteRunner'
-    TEST_RUNNER = DELFT3DGTRUNNER if is_running_under_teamcity() else CELERYTESTRUNNER
+    TEST_RUNNER = TEAMCITYDELFT3DGTRUNNER if is_running_under_teamcity() else DELFT3DGTRUNNER

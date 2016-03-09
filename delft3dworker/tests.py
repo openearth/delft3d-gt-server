@@ -12,6 +12,7 @@ from django.test import TestCase
 from django.test import modify_settings
 
 # runner imports
+from django_coverage.coverage_runner import CoverageRunner
 from djcelery.contrib.test_runner import CeleryTestSuiteRunner
 from teamcity.django import TeamcityDjangoRunner
 
@@ -23,11 +24,17 @@ from delft3dgtmain import settings
 from delft3dworker.tasks import rundocker
 
 
-class Delft3DGTRunner(TeamcityDjangoRunner, CeleryTestSuiteRunner):
+# RUNNERS
+
+class Delft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner):
+    pass
+
+class TeamcityDelft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner, TeamcityDjangoRunner):
     pass
 
 
-# This works with CeleryTestSuiteRunner
+# TESTS
+
 class SimpleTest(TestCase):
     def testDelayRundockerInTest(self):
         """
