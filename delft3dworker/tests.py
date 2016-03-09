@@ -13,7 +13,7 @@ from django.test import modify_settings
 
 # runner imports
 from djcelery.contrib.test_runner import CeleryTestSuiteRunner
-from teamcity.unittestpy import TeamcityTestRunner
+from teamcity.django import TeamcityDjangoRunner
 
 # mock imports
 from mock import patch, MagicMock
@@ -23,13 +23,13 @@ from delft3dgtmain import settings
 from delft3dworker.tasks import rundocker
 
 
-class Delft3DGTRunner(TeamcityTestRunner, CeleryTestSuiteRunner):
+class Delft3DGTRunner(TeamcityDjangoRunner, CeleryTestSuiteRunner):
     pass
 
 
+# This works with CeleryTestSuiteRunner
 class SimpleTest(TestCase):
-
-    def test_delay_rundocker_in_test(self):
+    def testDelayRundockerInTest(self):
         """
         Test that we can run rundocker.delay with succesful result
         """
@@ -49,4 +49,4 @@ class SimpleTest(TestCase):
             # )
 
             # MockClient.create_client.assert_called_once_with()
-            self.assertTrue(True)
+            self.assert_(True)

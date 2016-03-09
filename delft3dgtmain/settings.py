@@ -175,6 +175,7 @@ if 'test' in sys.argv:
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
     BROKER_BACKEND = 'memory'
 
-    DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     CELERYTESTRUNNER = 'djcelery.contrib.test_runner.CeleryTestSuiteRunner'
+    TEAMCITYTESTRUNNER = 'teamcity.django.TeamcityDjangoRunner'
+    DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     TEST_RUNNER = DELFT3DGTRUNNER if is_running_under_teamcity() else CELERYTESTRUNNER
