@@ -145,7 +145,7 @@ def dorun(request):
 
 class SceneCreateView(CreateView):    
     model = Scene
-    fields = ['name', 'state', 'info', 'json']
+    fields = ['name', 'state', 'info']
     success_url = reverse_lazy('run_list')
 
 

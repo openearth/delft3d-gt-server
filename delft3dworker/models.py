@@ -7,6 +7,7 @@ from django.conf import settings  #noqa
 from django.db import models  #noqa
 from jsonfield import JSONField
 
+from celery.result import AsyncResult
 from celery.contrib.abortable import AbortableAsyncResult
 
 from mako.template import Template
@@ -90,10 +91,8 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     state = models.CharField(max_length=256)
     info = models.CharField(max_length=256)
-    json = JSONField()
 
     def simulate(self):
-        
         try:
             self.simulationtask
         except SimulationTask.DoesNotExist, e:
@@ -120,22 +119,26 @@ class CeleryTask(models.Model):
     """
     uuid = models.CharField(max_length=256)
     state = models.CharField(max_length=256)
+    state_meta = JSONField()
 
     def serialize(self):
         # update state
-        result = AbortableAsyncResult(self.uuid)
+        result = AsyncResult(self.uuid)
         self.state = result.state
+        self.state_meta = result.info or {}
         self.save()
 
         return {
             'uuid': self.uuid,
             'state': self.state,
+            'state_meta': self.state_meta,
         }
 
     def run(self):
         result = donothing.delay()
         self.uuid = result.id
         self.state = result.state
+        self.state_meta = result.info or {}
         self.save()
 
     def __unicode__(self):
@@ -148,6 +151,13 @@ class PostprocessingTask(CeleryTask):
     """
     scene = models.ForeignKey('Scene')
 
+    def run(self):
+        result = postprocess.delay()
+        self.uuid = result.id
+        self.state = result.state
+        self.state_meta = result.info or {}
+        self.save()
+
     def __unicode__(self):
         return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
 
@@ -158,6 +168,13 @@ class ProcessingTask(CeleryTask):
     """
     scene = models.OneToOneField('Scene')
 
+    def run(self):
+        result = process.delay()
+        self.uuid = result.id
+        self.state = result.state
+        self.state_meta = result.info or {}
+        self.save()
+
     def __unicode__(self):
         return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
 
@@ -167,6 +184,13 @@ class SimulationTask(CeleryTask):
     Simulation task model
     """
     scene = models.OneToOneField('Scene')
+
+    def run(self):
+        result = simulate.delay()
+        self.uuid = result.id
+        self.state = result.state
+        self.state_meta = result.info or {}
+        self.save()
 
     def __unicode__(self):
         return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)

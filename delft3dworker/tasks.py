@@ -94,19 +94,37 @@ class DockerRun():
 
 
 # ################################### Sprint 2 Architecture
+import time 
 
 @shared_task(bind=True, base=AbortableTask)
 def donothing(self):
-    return
+    state_meta = {}
+    self.update_state(state='DOINGNOTHING', meta=state_meta)
+    time.sleep(20)
+    return state_meta
 
 @shared_task(bind=True, base=AbortableTask)
 def postprocess(self):
-    return
+    state_meta = {'key': 'value',}
+    self.update_state(state='POSTPROCESSING', meta=state_meta)
+    time.sleep(20)
+    return state_meta
+
 
 @shared_task(bind=True, base=AbortableTask)
 def process(self):
-    return
+    state_meta = {
+        'channel_network_image': '/sampledata/example_channel_network.png',
+        'delta_fringe_image': '/sampledata/example_delta_fringe.png',
+        'logfile': '/sampledata/logfile.f34',
+    }
+    self.update_state(state='PROCESSING', meta=state_meta)
+    time.sleep(20)
+    return state_meta
 
 @shared_task(bind=True, base=AbortableTask)
 def simulate(self):
-    return
+    state_meta = {'key': 'value',}
+    self.update_state(state='SIMULATING', meta=state_meta)
+    time.sleep(20)
+    return state_meta
