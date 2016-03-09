@@ -178,4 +178,3 @@ if 'test' in sys.argv:
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     CELERYTESTRUNNER = 'djcelery.contrib.test_runner.CeleryTestSuiteRunner'
     TEST_RUNNER = DELFT3DGTRUNNER if is_running_under_teamcity() else CELERYTESTRUNNER
-        
