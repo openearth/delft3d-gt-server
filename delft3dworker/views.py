@@ -9,14 +9,17 @@ from celery.contrib.abortable import AbortableAsyncResult
 
 from django.conf import settings
 from django.core import serializers
+from django.core.urlresolvers import reverse_lazy
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
-from django.views.generic import ListView, CreateView, DeleteView, View
+from django.views.generic import CreateView, DeleteView, View
+
+from json_views.views import JSONDetailView, JSONListView
 
 from delft3dgtmain.celery import app
-from delft3dworker.models import Delft3DWorker, SimRun
+from delft3dworker.models import Delft3DWorker, Scene, SimulationTask
 from delft3dworker.tasks import rundocker
 
 
@@ -31,6 +34,8 @@ ERROR = 'error'
 RUNNING = 'running'
 SUCCESS = 'success'
 
+
+# ################################### Sprint 1 Architecture
 
 def runs(request):
 
@@ -136,17 +141,31 @@ def dorun(request):
     return HttpResponse(json.dumps(data), content_type = 'application/json; charset=utf8')
 
 
-class RunListView(ListView):
-    model = SimRun
+# ################################### Sprint 2 Architecture
+
+class SceneCreateView(CreateView):    
+    model = Scene
+    fields = ['name', 'state', 'info', 'json']
+    success_url = reverse_lazy('run_list')
 
 
-class RunCreateView(CreateView):
-    model = SimRun
+class SceneDeleteView(DeleteView):    
+    model = Scene
+    success_url = reverse_lazy('run_list')
 
 
-class RunDeleteView(DeleteView):
-    model = SimRun
+class SceneDetailView(JSONDetailView):    
+    model = Scene
 
 
-class RunStartView(View):
-    model = SimRun
+class SceneListView(JSONListView):    
+    model = Scene
+
+
+class SceneStartView(View):    
+    model = Scene
+
+    def get(self, request, *args, **kwargs):
+        pk = kwargs['pk']
+        scene = get_object_or_404(Scene, pk=pk)
+        return HttpResponse(scene.simulate())

@@ -7,8 +7,17 @@ from django.conf import settings  #noqa
 from django.db import models  #noqa
 from jsonfield import JSONField
 
+from celery.contrib.abortable import AbortableAsyncResult
+
 from mako.template import Template
 
+from delft3dworker.tasks import donothing
+from delft3dworker.tasks import postprocess
+from delft3dworker.tasks import process
+from delft3dworker.tasks import simulate
+
+
+# ################################### Sprint 1 Architecture
 
 class Delft3DWorker(models.Model):
     uuid = models.CharField(max_length=256, editable=False)
@@ -28,14 +37,11 @@ class Delft3DWorker(models.Model):
         super(Delft3DWorker, self).save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-
         if os.path.exists(self.workingdir):
             rmtree(self.workingdir)
-
         super(Delft3DWorker, self).delete(*args, **kwargs)
 
     def __unicode__(self):
-
         return "{0} - {1}".format(self.name, self.uuid)
 
     def _create_model_schema(self):
@@ -71,65 +77,96 @@ class Delft3DWorker(models.Model):
             output.write(rendered_schema)
 
 
-class SimRun(models.Model):
+
+# ################################### Sprint 2 Architecture
+
+class Scene(models.Model):
     """
-    Simulation run model
+    Scene model
     """
-    workerid = models.CharField(max_length=256, editable=False)
-    workingdir = models.CharField(max_length=256, editable=False)
-    fileurl = models.CharField(max_length=256, editable=False)
+    workingdir = models.CharField(max_length=256)
+    fileurl = models.CharField(max_length=256)
 
     name = models.CharField(max_length=256)
-    status = models.CharField(max_length=256)
+    state = models.CharField(max_length=256)
     info = models.CharField(max_length=256)
     json = JSONField()
 
-
-class Task(models.Model):
-    """
-    Generic Task model
-    """
-    uuid = models.CharField(max_length=256, editable=False)
-    name = models.CharField(max_length=256)
-    status = models.CharField(max_length=256)
-
-    def __unicode__(self):
-
-        return "{0} - {1}".format(self.name, self.uuid)
-
-
-class TaskSim(Task):
-    """
-    Simulation task model
-    """
-    run = models.OneToOneField('SimRun')
+    def simulate(self):
+        
+        try:
+            self.simulationtask
+        except SimulationTask.DoesNotExist, e:
+            simulationtask = SimulationTask(uuid='none', state='none', 
+                Scene=self)
+            simulationtask.run()
+        
+        try:
+            self.processingtask
+        except ProcessingTask.DoesNotExist, e:
+            processingtask = ProcessingTask(uuid='none', state='none', 
+                Scene=self)
+            processingtask.run()
+        
+        return 'ok'
 
     def __unicode__(self):
+        return self.name
 
-        return "{0} - {1} - {2}".format(self.run, self.name, self.uuid)
+
+class CeleryTask(models.Model):
+    """
+    Celery Task model
+    """
+    uuid = models.CharField(max_length=256)
+    state = models.CharField(max_length=256)
+
+    def serialize(self):
+        # update state
+        result = AbortableAsyncResult(self.uuid)
+        self.state = result.state
+        self.save()
+
+        return {
+            'uuid': self.uuid,
+            'state': self.state,
+        }
+
+    def run(self):
+        result = donothing.delay()
+        self.uuid = result.id
+        self.state = result.state
+        self.save()
+
+    def __unicode__(self):
+        return "{0} - {1}".format(self.uuid, self.state)
 
 
-class TaskProc(Task):
+class PostprocessingTask(CeleryTask):
+    """
+    Postprocessing task model
+    """
+    scene = models.ForeignKey('Scene')
+
+    def __unicode__(self):
+        return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
+
+
+class ProcessingTask(CeleryTask):
     """
     Processing task model
     """
-    run = models.ForeignKey('SimRun')
-    script = models.CharField(max_length=256, verbose_name='File name of script to run')
-    fileurl = models.CharField(max_length=256, editable=False)
+    scene = models.OneToOneField('Scene')
 
     def __unicode__(self):
+        return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
 
-        return "{0} - {1} - {2}".format(self.run, self.name, self.uuid)
 
-
-class TaskVis(Task):
+class SimulationTask(CeleryTask):
     """
-    Visualisation task model
+    Simulation task model
     """
-    run = models.ForeignKey('SimRun')
-    script = models.CharField(max_length=256, verbose_name='File name of script to run')
-    fileurl = models.CharField(max_length=256, editable=False)
+    scene = models.OneToOneField('Scene')
 
     def __unicode__(self):
-
-        return "{0} - {1} - {2}".format(self.run, self.name, self.uuid)
+        return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)

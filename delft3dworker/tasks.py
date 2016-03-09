@@ -12,6 +12,8 @@ from docker import Client
 logger = get_task_logger(__name__)
 
 
+# ################################### Sprint 1 Architecture
+
 @shared_task(bind=True, base=AbortableTask)
 def rundocker(self, name, uuid, workingdir):
     
@@ -88,3 +90,23 @@ class DockerRun():
 
         self.container = self.client.create_container(self.name, host_config=config)
         self.id = self.container.get('Id')
+
+
+
+# ################################### Sprint 2 Architecture
+
+@shared_task(bind=True, base=AbortableTask)
+def donothing(self):
+    return
+
+@shared_task(bind=True, base=AbortableTask)
+def postprocess(self):
+    return
+
+@shared_task(bind=True, base=AbortableTask)
+def process(self):
+    return
+
+@shared_task(bind=True, base=AbortableTask)
+def simulate(self):
+    return
