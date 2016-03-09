@@ -23,7 +23,7 @@ from delft3dgtmain import settings
 from delft3dworker.tasks import rundocker
 
 
-class Delft3DGTRunner(CeleryTestSuiteRunner, TeamcityTestRunner):
+class Delft3DGTRunner(TeamcityTestRunner, CeleryTestSuiteRunner):
     pass
 
 
