@@ -25,9 +25,10 @@ def donothing(self):
 @shared_task(bind=True, base=AbortableTask)
 def postprocess(self):
     logger.info('Starting task "postprocess"...')    
-    state_meta = {'key': 'value',}
-    self.update_state(state='POSTPROCESSING', meta=state_meta)
-    time.sleep(20)
+    for n in range(1, 1001):
+        state_meta = {'progress': n / 1000.0 }
+        self.update_state(state='SIMULATING', meta=state_meta)
+        time.sleep(0.1)
     logger.info('... task "postprocess" Finished')    
     return state_meta
 
@@ -35,22 +36,25 @@ def postprocess(self):
 @shared_task(bind=True, base=AbortableTask)
 def process(self):
     logger.info('Starting task "process"...')    
-    state_meta = {
-        'channel_network_image': '/sampledata/example_channel_network.png',
-        'delta_fringe_image': '/sampledata/example_delta_fringe.png',
-        'logfile': '/sampledata/logfile.f34',
-    }
-    self.update_state(state='PROCESSING', meta=state_meta)
-    time.sleep(20)
+    for n in range(1, 1001):
+        state_meta = {
+            'channel_network_image': '/sampledata/example_channel_network.png',
+            'delta_fringe_image': '/sampledata/example_delta_fringe.png',
+            'logfile': '/sampledata/logfile.f34',
+            'progress': n / 1000.0,
+        }
+        self.update_state(state='PROCESSING', meta=state_meta)
+        time.sleep(0.1)
     logger.info('... task "process" Finished')    
     return state_meta
 
 @shared_task(bind=True, base=AbortableTask)
 def simulate(self):
     logger.info('Starting task "simulate"...')    
-    state_meta = {'key': 'value',}
-    self.update_state(state='SIMULATING', meta=state_meta)
-    time.sleep(20)
+    for n in range(1, 1001):
+        state_meta = {'progress': n / 1000.0 }
+        self.update_state(state='SIMULATING', meta=state_meta)
+        time.sleep(0.1)
     logger.info('... task "simulate" Finished')    
     return state_meta
 

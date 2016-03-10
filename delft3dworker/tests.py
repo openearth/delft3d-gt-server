@@ -6,22 +6,22 @@ Replace this with more appropriate tests for your application.
 """
 
 import os
+import re
 
 # django test imports
 from django.test import TestCase
-from django.test import modify_settings
 
 # runner imports
 from django_coverage.coverage_runner import CoverageRunner
 from djcelery.contrib.test_runner import CeleryTestSuiteRunner
 from teamcity.django import TeamcityDjangoRunner
 
-# mock imports
-from mock import patch, MagicMock
-from docker import Client
+from delft3dworker.tasks import donothing
+from delft3dworker.tasks import postprocess
+from delft3dworker.tasks import process
+from delft3dworker.tasks import simulate
 
-from delft3dgtmain import settings
-from delft3dworker.tasks import rundocker
+from mock import patch
 
 
 # RUNNERS
@@ -29,31 +29,72 @@ from delft3dworker.tasks import rundocker
 class Delft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner):
     pass
 
-class TeamcityDelft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner, TeamcityDjangoRunner):
+class TeamcityDelft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner, 
+    TeamcityDjangoRunner):
     pass
 
 
 # TESTS
 
-class SimpleTest(TestCase):
-    def testDelayRundockerInTest(self):
+class TaskTest(TestCase):
+
+    def testDoNothingTask(self):
         """
-        Test that we can run rundocker.delay with succesful result
+        Test that donothing task returns empty info
         """
 
-        container = MagicMock()
-        container.get.return_value = 'id'
+        with patch('time.sleep') as mocked_sleep:
+            result = donothing.delay()
+            self.assertEqual(result.info, {})
 
-        with patch('docker.Client') as MockClient:
-            MockClient.create_client.return_value = container
 
-            # TODO: Make this delay task work with the mocked docker Client
+    def testPostprocessTask(self):
+        """
+        Test that postprocess task returns empty info
+        """
 
-            # result = rundocker.delay(
-            #     settings.DELFT3D_IMAGE_NAME, 
-            #     'ed7a1f3c-e46a-4eb3-9ea3-3d1729a69562', 
-            #     '/data/container/files/'
-            # )
+        with patch('time.sleep') as mocked_sleep:
+            result = postprocess.delay()
 
-            # MockClient.create_client.assert_called_once_with()
-            self.assert_(True)
+            self.assertTrue('progress' in result.info)
+            self.assertEqual(type(result.info['progress']), float)
+            self.assertEqual(result.info['progress'], 1.0)
+            
+
+    def testProcessTask(self):
+        """
+        Test that process task returns info with links to images and a logfile
+        """
+
+        with patch('time.sleep') as mocked_sleep:
+            result = process.delay()
+
+            self.assertTrue('progress' in result.info)
+            self.assertEqual(type(result.info['progress']), float)
+            self.assertEqual(result.info['progress'], 1.0)
+
+            self.assertTrue('channel_network_image' in result.info)
+            is_link_to_png = re.search('\.png$', result.info['channel_network_image'])
+            self.assertIsNotNone(is_link_to_png)
+            
+            self.assertTrue('delta_fringe_image' in result.info)
+            is_link_to_png = re.search('\.png$', result.info['delta_fringe_image'])
+            self.assertIsNotNone(is_link_to_png)
+
+            self.assertTrue('logfile' in result.info)
+
+
+    def testSimulateTask(self):
+        """
+        Test that simulate task returns progress in float format and when task
+        is done, progress == 1.0
+        """
+
+        with patch('time.sleep') as mocked_sleep:
+            result = simulate.delay()
+
+            self.assertTrue('progress' in result.info)
+            self.assertEqual(type(result.info['progress']), float)
+            self.assertEqual(result.info['progress'], 1.0)
+
+
