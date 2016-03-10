@@ -171,10 +171,6 @@ if 'test' in sys.argv:
             }
         }
 
-    CELERY_ALWAYS_EAGER = True
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
-    BROKER_BACKEND = 'memory'
-
     COVERAGE_REPORT_HTML_OUTPUT_DIR = 'test/coverage'
     COVERAGE_PATH_EXCLUDES = [
         r'.*migrations.*'
