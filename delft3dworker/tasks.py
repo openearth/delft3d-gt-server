@@ -18,7 +18,7 @@ def donothing(self):
     logger.info('Starting task "donothing"...')    
     state_meta = {}
     self.update_state(state='DOINGNOTHING', meta=state_meta)
-    time.sleep(20)
+    time.sleep(1)
     logger.info('... task "donothing" Finished')    
     return state_meta
 
