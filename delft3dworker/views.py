@@ -4,6 +4,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import CreateView
 from django.views.generic import DeleteView
 from django.views.generic import View
@@ -16,13 +17,15 @@ from delft3dworker.models import Scene
 
 # ################################### Sprint 2 Architecture
 
-class SceneCreateView(CreateView):    
+@csrf_exempt
+class SceneCreateView(CreateView):
     model = Scene
     fields = ['name', 'state', 'info']
     success_url = reverse_lazy('scene_list')
 
 
-class SceneDeleteView(DeleteView):    
+@csrf_exempt
+class SceneDeleteView(DeleteView):
     model = Scene
     success_url = reverse_lazy('scene_list')
 
@@ -30,7 +33,8 @@ class SceneDeleteView(DeleteView):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         return Scene.objects.get(id=scene_id)
 
-class SceneDetailView(JSONDetailView):    
+@csrf_exempt
+class SceneDetailView(JSONDetailView):
     model = Scene
 
     def get_object(self):
@@ -38,11 +42,13 @@ class SceneDetailView(JSONDetailView):
         return Scene.objects.get(id=scene_id)
 
 
-class SceneListView(JSONListView):    
+@csrf_exempt
+class SceneListView(JSONListView):
     model = Scene
 
 
-class SceneStartView(View):    
+@csrf_exempt
+class SceneStartView(View):
     model = Scene
 
     # TODO: remove get
@@ -106,7 +112,7 @@ def runs(request):
 
 def createrun(request):
     msg_code = 'createresult'
-    
+
     model = Delft3DWorker(
         name=request.GET.get(GET_KEY_NAME, 'none'),
         uuid=uuid.uuid4(),
@@ -114,12 +120,12 @@ def createrun(request):
         json = '{ "dt": ' + request.GET.get(GET_KEY_DT, '1') + ' }'
     )
     model.save()
-    
+
     data = {
-        'type': msg_code, 
-        'uuid': str(model.uuid), 
+        'type': msg_code,
+        'uuid': str(model.uuid),
         'status': {
-            'code': SUCCESS, 
+            'code': SUCCESS,
             'reason': ''
         }
     }
@@ -139,24 +145,24 @@ def deleterun(request):
 
         result.abort()
 
-        result.get()        
-        
+        result.get()
+
         delft3d_worker.delete()
 
         data = {
-            'type': msg_code, 
+            'type': msg_code,
             'status': {
-                'code': SUCCESS, 
+                'code': SUCCESS,
                 'reason': ''
             }
         }
 
     except Delft3DWorker.DoesNotExist, Argument:
-        
+
         data = {
-            'type': msg_code, 
+            'type': msg_code,
             'status': {
-                'code': ERROR, 
+                'code': ERROR,
                 'reason': str(Argument)
             }
         }
@@ -170,24 +176,24 @@ def dorun(request):
     try:
         get_uuid = request.GET.get(GET_KEY_UUID, 'none')
         delft3d_worker = get_object_or_404(Delft3DWorker, uuid=get_uuid)
-        
+
         result = rundocker.delay(settings.DELFT3D_IMAGE_NAME, delft3d_worker.uuid, delft3d_worker.workingdir)
-        
+
         delft3d_worker.workerid = result.id
         delft3d_worker.save()
 
         data = {
-            'type': msg_code, 
+            'type': msg_code,
             'status': {
-                'code': SUCCESS, 
+                'code': SUCCESS,
                 'reason': ''
             }
         }
     except Delft3DWorker.DoesNotExist, Argument:
         data = {
-            'type': msg_code, 
+            'type': msg_code,
             'status': {
-                'code': ERROR, 
+                'code': ERROR,
                 'reason': str(Argument)
             }
         }
