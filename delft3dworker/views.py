@@ -19,12 +19,12 @@ from delft3dworker.models import Scene
 class SceneCreateView(CreateView):    
     model = Scene
     fields = ['name', 'state', 'info']
-    success_url = reverse_lazy('run_list')
+    success_url = reverse_lazy('scene_list')
 
 
 class SceneDeleteView(DeleteView):    
     model = Scene
-    success_url = reverse_lazy('run_list')
+    success_url = reverse_lazy('scene_list')
 
 
 class SceneDetailView(JSONDetailView):    
