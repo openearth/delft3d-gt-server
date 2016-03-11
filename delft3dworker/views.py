@@ -26,9 +26,16 @@ class SceneDeleteView(DeleteView):
     model = Scene
     success_url = reverse_lazy('scene_list')
 
+    def get_object(self):
+        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        return Scene.objects.get(id=scene_id)
 
 class SceneDetailView(JSONDetailView):    
     model = Scene
+
+    def get_object(self):
+        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        return Scene.objects.get(id=scene_id)
 
 
 class SceneListView(JSONListView):    
@@ -40,13 +47,13 @@ class SceneStartView(View):
 
     # TODO: remove get
     def get(self, request, *args, **kwargs):
-        pk = kwargs['pk']
-        scene = get_object_or_404(Scene, pk=pk)
+        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scene = get_object_or_404(Scene, id=scene_id)
         return HttpResponse(scene.simulate())
 
     def post(self, request, *args, **kwargs):
-        pk = kwargs['pk']
-        scene = get_object_or_404(Scene, pk=pk)
+        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scene = get_object_or_404(Scene, id=scene_id)
         return HttpResponse(scene.simulate())
 
 

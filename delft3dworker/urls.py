@@ -15,9 +15,9 @@ urlpatterns = (
 
     # namespaced urls, Sprint 2 Architecture
     url(r'^scene/create$', SceneCreateView.as_view(), name='scene_create'),
-    url(r'^scene/delete/(?P<pk>\d*)$', SceneDeleteView.as_view(), name='scene_delete'),
-    url(r'^scene/detail/(?P<pk>\d*)$', SceneDetailView.as_view(), name='scene_detail'),
+    url(r'^scene/delete$', SceneDeleteView.as_view(), {'pk':1}, name='scene_delete'),
+    url(r'^scene/detail$', SceneDetailView.as_view(), name='scene_detail'),
     url(r'^scene/list$', SceneListView.as_view(), name='scene_list'),
-    url(r'^scene/start/(?P<pk>\d*)$', SceneStartView.as_view(), name='scene_start'),
+    url(r'^scene/start$', SceneStartView.as_view(), name='scene_start'),
 
 )
