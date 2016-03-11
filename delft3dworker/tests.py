@@ -37,7 +37,7 @@ from delft3dworker.models import SimulationTask
 class Delft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner):
     pass
 
-class TeamcityDelft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner, 
+class TeamcityDelft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner,
     TeamcityDjangoRunner):
     pass
 
@@ -51,45 +51,48 @@ class TaskTest(TestCase):
         Test that donothing task returns empty info
         """
 
-        with patch('time.sleep') as mocked_sleep:
-            result = donothing.delay()
-            self.assertEqual(result.info, {})
+        with patch('time.sleep') as mocked_sleep:  # mocking sleep in task (stub)
+            result = donothing.delay()  # start the task
+            self.assertEqual(result.info, {})  # check if returnvalue is as expected
 
 
     def testPostprocessTask(self):
         """
-        Test that postprocess task returns empty info
+        Test that postprocess task returns progress info as float [0.0 - 1.0]
         """
 
-        with patch('time.sleep') as mocked_sleep:
-            result = postprocess.delay()
+        with patch('time.sleep') as mocked_sleep:  # mocking sleep int task
+            result = postprocess.delay()  # start the task
 
-            self.assertTrue('progress' in result.info)
-            self.assertEqual(type(result.info['progress']), float)
-            self.assertEqual(result.info['progress'], 1.0)
-            
+            self.assertTrue('progress' in result.info)  # check if progress is in returnval
+            self.assertEqual(type(result.info['progress']), float)  # check if progress is in float format
+            self.assertEqual(result.info['progress'], 1.0)  # check that the (final) returnvalue is 1
+
 
     def testProcessTask(self):
         """
-        Test that process task returns info with links to images and a logfile
+        Test that process task returns info with
+            - progress info as float [0.0 - 1.0]
+            - links to images
+            - links to a logfile
         """
 
-        with patch('time.sleep') as mocked_sleep:
-            result = process.delay()
+        with patch('time.sleep') as mocked_sleep:  # mocking sleep in task (stub)
+            result = process.delay()  # start the task
 
-            self.assertTrue('progress' in result.info)
-            self.assertEqual(type(result.info['progress']), float)
-            self.assertEqual(result.info['progress'], 1.0)
+            self.assertTrue('progress' in result.info)  # check if progress is in returnval
+            self.assertEqual(type(result.info['progress']), float)  # check if progress is in float format
+            self.assertEqual(result.info['progress'], 1.0)  # check that the (final) returnvalue is 1
 
-            self.assertTrue('channel_network_image' in result.info)
-            is_link_to_png = re.search('\.png$', result.info['channel_network_image'])
-            self.assertIsNotNone(is_link_to_png)
-            
-            self.assertTrue('delta_fringe_image' in result.info)
-            is_link_to_png = re.search('\.png$', result.info['delta_fringe_image'])
+            self.assertTrue('channel_network_image' in result.info)  # check if channel network image is in returnval
+            is_link_to_png = re.search('\.png$', result.info['channel_network_image'])  # check if the returnval ends with '.png'
             self.assertIsNotNone(is_link_to_png)
 
-            self.assertTrue('logfile' in result.info)
+            self.assertTrue('delta_fringe_image' in result.info)  # check if delta fringe image is in returnval
+            is_link_to_png = re.search('\.png$', result.info['delta_fringe_image'])  # check if the returnval ends with '.png'
+            self.assertIsNotNone(is_link_to_png)
+
+            self.assertTrue('logfile' in result.info)  # check if the logfile in returnval
 
 
     def testSimulateTask(self):
@@ -98,12 +101,12 @@ class TaskTest(TestCase):
         is done, progress == 1.0
         """
 
-        with patch('time.sleep') as mocked_sleep:
-            result = simulate.delay()
+        with patch('time.sleep') as mocked_sleep:  # mocking sleep in task (stub)
+            result = simulate.delay()  # start the task
 
-            self.assertTrue('progress' in result.info)
-            self.assertEqual(type(result.info['progress']), float)
-            self.assertEqual(result.info['progress'], 1.0)
+            self.assertTrue('progress' in result.info)  # check if progress is in returnval
+            self.assertEqual(type(result.info['progress']), float)  # check if progress is in float format
+            self.assertEqual(result.info['progress'], 1.0)  # check that the (final) returnvalue is 1
 
 
 # TESTS
@@ -111,77 +114,78 @@ class TaskTest(TestCase):
 class CeleryTaskModelsTest(TestCase):
 
     def setUp(self):
-        Scene.objects.create(name='Test Scene')
+        Scene.objects.create(name='Test Scene')  # create test scene
 
+        # create mocked result and store
         self.result = MagicMock()
         self.result.id = '8b15e176-210b-4faf-be80-13602c7b4e89'
         self.result.state = 'PENDING'
         self.result.info = {}
 
     def tearDown(self):
-        json = self.task.serialize()            
+        json = self.task.serialize()  # serialize this task
         self.assertEqual(json, {
             'state': 'SUCCESS',
             'state_meta': {'progress': 1.0},
             'uuid': '8b15e176-210b-4faf-be80-13602c7b4e89'
-        })
-        Scene.objects.get(name='Test Scene').delete()
+        })  # check if format is as expected for front-end
+        Scene.objects.get(name='Test Scene').delete()  # delete the test Scene
 
     def testCeleryTask(self):
         """
         Test that running this model calls donothing.delay once
         """
 
-        with patch('delft3dworker.tasks.donothing.delay', autospec=True) as mocked_donothing_delay:
-            mocked_donothing_delay.return_value = self.result
+        with patch('delft3dworker.tasks.donothing.delay', autospec=True) as mocked_donothing_delay:  # mock the task delay
+            mocked_donothing_delay.return_value = self.result  # set the task return to mocked result
 
-            self.task = CeleryTask()
-            self.task.run()
-            mocked_donothing_delay.assert_called_once_with()
-            
-            
+            self.task = CeleryTask()  # create celery task
+            self.task.run()  # run celery task
+            mocked_donothing_delay.assert_called_once_with()  # verify that the donothing task was started once
+
+
 
     def testPostprocessingTask(self):
         """
         Test that running this model calls postprocess.delay once
         """
 
-        with patch('delft3dworker.tasks.postprocess.delay', autospec=True) as mocked_postprocess_delay:
-            mocked_postprocess_delay.return_value = self.result
+        with patch('delft3dworker.tasks.postprocess.delay', autospec=True) as mocked_postprocess_delay:  # mock the task delay
+            mocked_postprocess_delay.return_value = self.result  # set the task return to mocked result
 
-            self.task = PostprocessingTask()
-            self.task.scene = Scene.objects.get(name='Test Scene')
-            self.task.run()
-            mocked_postprocess_delay.assert_called_once_with()
-            
-            
+            self.task = PostprocessingTask()  # create celery task
+            self.task.scene = Scene.objects.get(name='Test Scene')  # assign test Scene so task can save
+            self.task.run()  # run celery task
+            mocked_postprocess_delay.assert_called_once_with()  # verify that the donothing task was started once
+
+
 
     def testProcessingTask(self):
         """
         Test that running this model calls process.delay once
         """
 
-        with patch('delft3dworker.tasks.process.delay', autospec=True) as mocked_process_delay:
-            mocked_process_delay.return_value = self.result
+        with patch('delft3dworker.tasks.process.delay', autospec=True) as mocked_process_delay:  # mock the task delay
+            mocked_process_delay.return_value = self.result  # set the task return to mocked result
 
-            self.task = ProcessingTask()
-            self.task.scene = Scene.objects.get(name='Test Scene')
-            self.task.run()
-            mocked_process_delay.assert_called_once_with()
-                        
+            self.task = ProcessingTask()  # create celery task
+            self.task.scene = Scene.objects.get(name='Test Scene')  # assign test Scene so task can save
+            self.task.run()  # run celery task
+            mocked_process_delay.assert_called_once_with()  # verify that the donothing task was started once
+
 
     def testSimulationTask(self):
         """
         Test that running this model calls simulate.delay once
         """
 
-        with patch('delft3dworker.tasks.simulate.delay', autospec=True) as mocked_simulate_delay:
-            mocked_simulate_delay.return_value = self.result
+        with patch('delft3dworker.tasks.simulate.delay', autospec=True) as mocked_simulate_delay:  # mock the task delay
+            mocked_simulate_delay.return_value = self.result  # set the task return to mocked result
 
-            self.task = SimulationTask()
-            self.task.scene = Scene.objects.get(name='Test Scene')
-            self.task.run()
-            mocked_simulate_delay.assert_called_once_with()
+            self.task = SimulationTask()  # create celery task
+            self.task.scene = Scene.objects.get(name='Test Scene')  # assign test Scene so task can save
+            self.task.run()  # run celery task
+            mocked_simulate_delay.assert_called_once_with()  # verify that the donothing task was started once
 
 
 class SceneTest(TestCase):
@@ -190,11 +194,13 @@ class SceneTest(TestCase):
         """
         Test that simulating a scene creates two tasks
         """
-        
-        with patch.object(SimulationTask, 'run', return_value=None) as simulation_run_mock_method:
-            with patch.object(ProcessingTask, 'run', return_value=None) as processing_run_mock_method:
-                scene = Scene.objects.create(name='My Test Scene')
-                scene.simulate()
 
-                simulation_run_mock_method.assert_called_once_with()
-                processing_run_mock_method.assert_called_once_with()  
+        with patch.object(SimulationTask, 'run', return_value=None) as simulation_run_mock_method:  # mock the simulation task run
+            with patch.object(ProcessingTask, 'run', return_value=None) as processing_run_mock_method:  # mock the processing task run
+                scene = Scene.objects.create(name='My Test Scene')  # create Scene
+                scene.simulate()  # start Scene simulation
+                scene.simulate()  # start Scene simulation again
+                scene.simulate()  # start Scene simulation again
+
+                simulation_run_mock_method.assert_called_once_with()  # verify simulation task was started only once
+                processing_run_mock_method.assert_called_once_with()  # verify processing task was started only once
