@@ -198,9 +198,9 @@ class SceneTest(TestCase):
         with patch.object(SimulationTask, 'run', return_value=None) as simulation_run_mock_method:  # mock the simulation task run
             with patch.object(ProcessingTask, 'run', return_value=None) as processing_run_mock_method:  # mock the processing task run
                 scene = Scene.objects.create(name='My Test Scene')  # create Scene
-                scene.simulate()  # start Scene simulation
-                scene.simulate()  # start Scene simulation again
-                scene.simulate()  # start Scene simulation again
+                scene.start()  # start Scene simulation
+                scene.start()  # start Scene simulation again
+                scene.start()  # start Scene simulation again
 
                 simulation_run_mock_method.assert_called_once_with()  # verify simulation task was started only once
                 processing_run_mock_method.assert_called_once_with()  # verify processing task was started only once

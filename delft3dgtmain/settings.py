@@ -171,6 +171,8 @@ if 'test' in sys.argv:
             }
         }
 
+    CELERY_ALWAYS_EAGER = True
+
     COVERAGE_REPORT_HTML_OUTPUT_DIR = 'test/coverage'
     COVERAGE_PATH_EXCLUDES = [
         r'.*migrations.*'
