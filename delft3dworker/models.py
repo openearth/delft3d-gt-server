@@ -1,7 +1,9 @@
 import os
 
 from django.conf import settings  #noqa
-from django.db import models  #noqa
+from django.core.urlresolvers import reverse_lazy
+from django.db import models
+
 from jsonfield import JSONField
 
 from celery.result import AsyncResult
@@ -26,22 +28,25 @@ class Scene(models.Model):
     state = models.CharField(max_length=256, blank=True)
     info = models.CharField(max_length=256, blank=True)
 
-    def simulate(self):
+    def start(self):
         try:
             self.simulationtask
         except SimulationTask.DoesNotExist, e:
-            simulationtask = SimulationTask(uuid='none', state='none', 
+            simulationtask = SimulationTask(uuid='none', state='none',
                 scene=self)
             simulationtask.run()
-        
+
         try:
             self.processingtask
         except ProcessingTask.DoesNotExist, e:
-            processingtask = ProcessingTask(uuid='none', state='none', 
+            processingtask = ProcessingTask(uuid='none', state='none',
                 scene=self)
             processingtask.run()
-        
-        return 'ok'
+
+        return 'started'
+
+    def get_absolute_url(self):
+        return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
 
     def __unicode__(self):
         return self.name
