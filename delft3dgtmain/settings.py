@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+import sys
+import djcelery
+djcelery.setup_loader()
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -20,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '#OBO-aLb&s?`sE,(XNXL/<T85=/$rU'
+SECRET_KEY = 'fi1z3@ePx<kbTW8/aL_pzW`Gr{wJMv'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -37,6 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'djcelery',
 
     'delft3dworker',
     'delft3dgtfrontend',
@@ -79,10 +84,10 @@ WSGI_APPLICATION = 'delft3dgtmain.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'djangodb',
         'USER': 'django',
-        'PASSWORD': 'djangodbpass',
+        'PASSWORD': 'faGRXdCpf-tk5zawoie,',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
@@ -151,3 +156,37 @@ WORKER_FILEURL = '/files'
 # delft3dfrontend
 
 FRONTEND_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist'
+
+
+################## TESTING
+
+if 'test' in sys.argv:
+
+    from teamcity import is_running_under_teamcity
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+            }
+        }
+
+    COVERAGE_REPORT_HTML_OUTPUT_DIR = 'test/coverage'
+    COVERAGE_PATH_EXCLUDES = [
+        r'.*migrations.*'
+    ]
+    COVERAGE_MODULE_EXCLUDES = [
+        '__init__',
+        'common.views.test',
+        'django',
+        'djcelery',
+        'locale$',
+        'migrations'
+        'settings$',
+        'tests$',
+        'urls$',
+    ]
+
+    DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
+    TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'
+    TEST_RUNNER = TEAMCITYDELFT3DGTRUNNER if is_running_under_teamcity() else DELFT3DGTRUNNER
