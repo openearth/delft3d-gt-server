@@ -4,7 +4,6 @@ from django.core.urlresolvers import reverse_lazy
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 
-from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import CreateView
 from django.views.generic import DeleteView
 from django.views.generic import View
@@ -17,14 +16,12 @@ from delft3dworker.models import Scene
 
 # ################################### Sprint 2 Architecture
 
-@csrf_exempt
 class SceneCreateView(CreateView):
     model = Scene
     fields = ['name', 'state', 'info']
     success_url = reverse_lazy('scene_list')
 
 
-@csrf_exempt
 class SceneDeleteView(DeleteView):
     model = Scene
     success_url = reverse_lazy('scene_list')
@@ -33,7 +30,6 @@ class SceneDeleteView(DeleteView):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         return Scene.objects.get(id=scene_id)
 
-@csrf_exempt
 class SceneDetailView(JSONDetailView):
     model = Scene
 
@@ -42,12 +38,10 @@ class SceneDetailView(JSONDetailView):
         return Scene.objects.get(id=scene_id)
 
 
-@csrf_exempt
 class SceneListView(JSONListView):
     model = Scene
 
 
-@csrf_exempt
 class SceneStartView(View):
     model = Scene
 
