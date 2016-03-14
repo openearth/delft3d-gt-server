@@ -84,12 +84,18 @@ class TaskTest(TestCase):
             self.assertEqual(type(result.info['progress']), float)  # check if progress is in float format
             self.assertEqual(result.info['progress'], 1.0)  # check that the (final) returnvalue is 1
 
-            self.assertTrue('channel_network_image' in result.info)  # check if channel network image is in returnval
-            is_link_to_png = re.search('\.png$', result.info['channel_network_image'])  # check if the returnval ends with '.png'
+            self.assertTrue('channel_network_images' in result.info)  # check if channel network image is in returnval
+            self.assertTrue('location' in result.info['channel_network_images'])  # check if the location of images is defined
+            self.assertTrue('images' in result.info['channel_network_images'])  # check if an array of network images is defined
+            self.assertTrue(type(result.info['channel_network_images']['images']) == list)  # check if an array of network images is a list
+            is_link_to_png = re.search('\.png$', result.info['channel_network_images']['images'][0])  # check if the first element is an image
             self.assertIsNotNone(is_link_to_png)
 
-            self.assertTrue('delta_fringe_image' in result.info)  # check if delta fringe image is in returnval
-            is_link_to_png = re.search('\.png$', result.info['delta_fringe_image'])  # check if the returnval ends with '.png'
+            self.assertTrue('delta_fringe_images' in result.info)  # check if delta fringe image is in returnval
+            self.assertTrue('location' in result.info['delta_fringe_images'])  # check if the location of images is defined
+            self.assertTrue('images' in result.info['delta_fringe_images'])  # check if an array of network images is defined
+            self.assertTrue(type(result.info['delta_fringe_images']['images']) == list)  # check if an array of network images is a list
+            is_link_to_png = re.search('\.png$', result.info['delta_fringe_images']['images'][0])  # check if the first element is an image
             self.assertIsNotNone(is_link_to_png)
 
             self.assertTrue('logfile' in result.info)  # check if the logfile in returnval

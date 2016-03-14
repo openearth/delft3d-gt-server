@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import time 
+import time
 
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask
@@ -15,47 +15,63 @@ logger = get_task_logger(__name__)
 
 @shared_task(bind=True, base=AbortableTask)
 def donothing(self):
-    logger.info('Starting task "donothing"...')    
+    logger.info('Starting task "donothing"...')
     state_meta = {}
     self.update_state(state='DOINGNOTHING', meta=state_meta)
     time.sleep(1)
-    logger.info('... task "donothing" Finished')    
+    logger.info('... task "donothing" Finished')
     return state_meta
 
 @shared_task(bind=True, base=AbortableTask)
 def postprocess(self):
-    logger.info('Starting task "postprocess"...')    
+    logger.info('Starting task "postprocess"...')
     for n in range(1, 1001):
         state_meta = {'progress': n / 1000.0 }
         self.update_state(state='SIMULATING', meta=state_meta)
         time.sleep(0.1)
-    logger.info('... task "postprocess" Finished')    
+    logger.info('... task "postprocess" Finished')
     return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
 def process(self):
-    logger.info('Starting task "process"...')    
+    logger.info('Starting task "process"...')
     for n in range(1, 1001):
         state_meta = {
-            'channel_network_image': '/sampledata/example_channel_network.png',
-            'delta_fringe_image': '/sampledata/example_delta_fringe.png',
+            'channel_network_images': {
+                'location': '/sampledata/',
+                'images': [
+                    'example_channel_network_1.png',
+                    'example_channel_network_2.png',
+                    'example_channel_network_3.png'
+                ]
+            },
+            'delta_fringe_images':  {
+                'location': '/sampledata/',
+                'images': [
+                    'example_delta_fringe_1.png',
+                    'example_delta_fringe_2.png',
+                    'example_delta_fringe_3.png',
+                    'example_delta_fringe_4.png',
+                    'example_delta_fringe_5.png'
+                ]
+            },
             'logfile': '/sampledata/logfile.f34',
             'progress': n / 1000.0,
         }
         self.update_state(state='PROCESSING', meta=state_meta)
         time.sleep(0.1)
-    logger.info('... task "process" Finished')    
+    logger.info('... task "process" Finished')
     return state_meta
 
 @shared_task(bind=True, base=AbortableTask)
 def simulate(self):
-    logger.info('Starting task "simulate"...')    
+    logger.info('Starting task "simulate"...')
     for n in range(1, 1001):
         state_meta = {'progress': n / 1000.0 }
         self.update_state(state='SIMULATING', meta=state_meta)
         time.sleep(0.1)
-    logger.info('... task "simulate" Finished')    
+    logger.info('... task "simulate" Finished')
     return state_meta
 
 
@@ -65,9 +81,9 @@ def simulate(self):
 
 @shared_task(bind=True, base=AbortableTask)
 def rundocker(self, name, uuid, workingdir):
-    
+
     """Task to run docker container"""
-    
+
     logger.info('Creating docker container')
     docker_run = DockerRun(name, workingdir)
 
@@ -75,7 +91,7 @@ def rundocker(self, name, uuid, workingdir):
     docker_run.start()
 
     for log in docker_run.log():
-        
+
         logger.info(log)
 
         # check for abortion
@@ -96,10 +112,10 @@ def rundocker(self, name, uuid, workingdir):
                     'percent_completed': items[1].strip(),
                     'timesteps_left': items[2].strip()
                 })
-    
+
     logger.info('Destroying docker container')
     docker_run.remove()
-    
+
     return
 
 
@@ -110,7 +126,7 @@ class DockerRun():
     def __init__(self, name, workingdir, base_url='unix://var/run/docker.sock'):
 
         self.name = name
-        self.workingdir = workingdir        
+        self.workingdir = workingdir
         self.base_url = base_url
 
         self.client = Client(base_url=self.base_url)
