@@ -160,9 +160,9 @@ FRONTEND_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist'
 
 ################## TESTING
 
-if 'test' in sys.argv:
+from teamcity import is_running_under_teamcity
 
-    from teamcity import is_running_under_teamcity
+if 'test' in sys.argv or is_running_under_teamcity():
 
     DATABASES = {
         'default': {
