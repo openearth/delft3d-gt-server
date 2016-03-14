@@ -160,9 +160,9 @@ FRONTEND_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist'
 
 ################## TESTING
 
-from teamcity import is_running_under_teamcity
+if 'test' in sys.argv:
 
-if 'test' in sys.argv or is_running_under_teamcity():
+    from teamcity import is_running_under_teamcity
 
     DATABASES = {
         'default': {
@@ -172,9 +172,6 @@ if 'test' in sys.argv or is_running_under_teamcity():
         }
 
     # BROKER_BACKEND='memory'
-    # CELERY_CACHE_BACKEND = 'memory'
-    # CELERY_ALWAYS_EAGER = True
-    # CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
     CELERY_RESULT_BACKEND = 'cache'
     CELERY_CACHE_BACKEND = 'memory'
 
@@ -197,4 +194,3 @@ if 'test' in sys.argv or is_running_under_teamcity():
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'
     TEST_RUNNER = TEAMCITYDELFT3DGTRUNNER if is_running_under_teamcity() else DELFT3DGTRUNNER
-    print 'test runner: ', TEST_RUNNER
