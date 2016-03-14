@@ -171,9 +171,12 @@ if 'test' in sys.argv or is_running_under_teamcity():
             }
         }
 
-    BROKER_BACKEND='memory'
-    CELERY_ALWAYS_EAGER = True
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
+    # BROKER_BACKEND='memory'
+    # CELERY_CACHE_BACKEND = 'memory'
+    # CELERY_ALWAYS_EAGER = True
+    # CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
+    CELERY_RESULT_BACKEND = 'cache'
+    CELERY_CACHE_BACKEND = 'memory'
 
     COVERAGE_REPORT_HTML_OUTPUT_DIR = 'test/coverage'
     COVERAGE_PATH_EXCLUDES = [
@@ -194,3 +197,4 @@ if 'test' in sys.argv or is_running_under_teamcity():
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'
     TEST_RUNNER = TEAMCITYDELFT3DGTRUNNER if is_running_under_teamcity() else DELFT3DGTRUNNER
+    print 'test runner: ', TEST_RUNNER
