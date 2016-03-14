@@ -171,7 +171,9 @@ if 'test' in sys.argv:
             }
         }
 
+    BROKER_BACKEND='memory'
     CELERY_ALWAYS_EAGER = True
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
 
     COVERAGE_REPORT_HTML_OUTPUT_DIR = 'test/coverage'
     COVERAGE_PATH_EXCLUDES = [
