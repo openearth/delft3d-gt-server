@@ -128,15 +128,8 @@ class CeleryTaskModelsTest(TestCase):
         self.result.state = 'SUCCESS'
         self.result.info = {'progress': 1.0}
 
-    # TODO: mock celery.result.AsyncResult to enable successfully the tearDown test
-    # def tearDown(self):
-    #     json = self.task.serialize()  # serialize this task
-    #     self.assertEqual(json, {
-    #         'state': 'SUCCESS',
-    #         'state_meta': {'progress': 1.0},
-    #         'uuid': '8b15e176-210b-4faf-be80-13602c7b4e89'
-    #     })  # check if format is as expected for front-end
-    #     Scene.objects.get(name='Test Scene').delete()  # delete the test Scene
+    def tearDown(self):
+        Scene.objects.get(name='Test Scene').delete()  # delete the test Scene
 
     def testCeleryTask(self):
         """
@@ -145,12 +138,10 @@ class CeleryTaskModelsTest(TestCase):
 
         with patch('delft3dworker.tasks.donothing.delay', autospec=True) as mocked_donothing_delay:  # mock the task delay
             mocked_donothing_delay.return_value = self.result  # set the task return to mocked result
-            # with patch('celery.result.AsyncResult') as mocked_asyncresult:
-            #     # mocked_asyncresult.return_value = self.result
             self.task = CeleryTask()  # create celery task
             self.task.run()  # run celery task
             mocked_donothing_delay.assert_called_once_with()  # verify that the donothing task was started once
-
+            self.assertIn(self.task.state, ['PENDING', 'SUCCESS'])  # verify the state to be either PENDING or SUCCESS
 
 
     def testPostprocessingTask(self):
@@ -165,7 +156,7 @@ class CeleryTaskModelsTest(TestCase):
             self.task.scene = Scene.objects.get(name='Test Scene')  # assign test Scene so task can save
             self.task.run()  # run celery task
             mocked_postprocess_delay.assert_called_once_with()  # verify that the donothing task was started once
-
+            self.assertIn(self.task.state, ['PENDING', 'SUCCESS'])  # verify the state to be either PENDING or SUCCESS
 
 
     def testProcessingTask(self):
@@ -180,6 +171,7 @@ class CeleryTaskModelsTest(TestCase):
             self.task.scene = Scene.objects.get(name='Test Scene')  # assign test Scene so task can save
             self.task.run()  # run celery task
             mocked_process_delay.assert_called_once_with()  # verify that the donothing task was started once
+            self.assertIn(self.task.state, ['PENDING', 'SUCCESS'])  # verify the state to be either PENDING or SUCCESS
 
 
     def testSimulationTask(self):
@@ -194,6 +186,7 @@ class CeleryTaskModelsTest(TestCase):
             self.task.scene = Scene.objects.get(name='Test Scene')  # assign test Scene so task can save
             self.task.run()  # run celery task
             mocked_simulate_delay.assert_called_once_with()  # verify that the donothing task was started once
+            self.assertIn(self.task.state, ['PENDING', 'SUCCESS'])  # verify the state to be either PENDING or SUCCESS
 
 
 class SceneTest(TestCase):

@@ -60,6 +60,9 @@ class CeleryTask(models.Model):
     state = models.CharField(max_length=256, blank=True)
     state_meta = JSONField(blank=True)
 
+    def result(self):
+        return AsyncResult(self.uuid)
+
     def serialize(self):
         # update state
         result = AsyncResult(self.uuid)
