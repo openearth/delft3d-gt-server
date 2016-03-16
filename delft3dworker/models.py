@@ -180,8 +180,8 @@ class Delft3DWorker(models.Model):
         input_dict =   {
             "discharge": 1250,
             "dt": self.json["dt"],
-            "his_interval": 1800,
-            "map_interval": 7200,
+            "his_interval": 120,
+            "map_interval": 1440,
             "reference_time": "2013-12-01 00:00:00",
             "Tstart": "2014-01-01 00:00:00",
             "Tstop": "2015-01-01 00:00:00"

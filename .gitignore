@@ -52,6 +52,8 @@ coverage.xml
 
 # Django stuff:
 *.log
+delft3dgtmain/provisionedsettings.py
+test
 
 # Sphinx documentation
 docs/_build/
