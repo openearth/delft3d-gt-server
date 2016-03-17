@@ -56,7 +56,6 @@ class Scene(models.Model):
         self.suid = str(uuid.uuid4())
         self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
         self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
-        print self.workingdir
         super(Scene, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -81,10 +80,13 @@ class CeleryTask(models.Model):
         # update state
         result = AsyncResult(self.uuid)
         self.state = result.state
+
+        # dictify info if not a dict (e.g. in case of an error)
         if type(result.info) is dict:
             self.state_meta = result.info
         else:
-            self.state_meta = {'error': str(result.info)}
+            self.state_meta = {'info': str(result.info)}
+
         self.save()
 
         return {

@@ -21,6 +21,10 @@ class SceneCreateView(CreateView):
     model = Scene
     fields = ['name', 'state', 'info']
 
+    def post(self, request, *args, **kwargs):
+        print request.POST
+        return super(SceneCreateView, self).post(request, *args, **kwargs)
+
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
         return super(SceneCreateView, self).dispatch(*args, **kwargs)
