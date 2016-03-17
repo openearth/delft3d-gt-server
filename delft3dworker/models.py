@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import os
 import uuid
 
@@ -50,7 +52,7 @@ class Scene(models.Model):
             processingtask.run()
 
         return 'started'
-    
+
     def save(self, *args, **kwargs):
         self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid)
         self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid)
