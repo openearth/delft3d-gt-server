@@ -102,7 +102,7 @@ def simulate(self, workingdir):
     docker_client.delete()
 
     logger.info('... task "simulate" Finished')
-    return state_meta
+    return output
 
 
 # ######################## Delft3DDockerClient
