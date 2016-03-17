@@ -34,22 +34,24 @@ class Scene(models.Model):
     info = JSONField()
 
     def start(self):
-        print("Workingdir {}, uuid = {}".format(self.workingdir,self.suid))
+        started = True
+
+        # print("Workingdir {}, uuid = {}".format(self.workingdir,self.suid))
         try:
             self.simulationtask
         except SimulationTask.DoesNotExist, e:
             simulationtask = SimulationTask(uuid='none', state='none',
                 scene=self)
-            simulationtask.run()
+            started = started and simulationtask.run()
 
         try:
             self.processingtask
         except ProcessingTask.DoesNotExist, e:
             processingtask = ProcessingTask(uuid='none', state='none',
                 scene=self)
-            processingtask.run()
+            started = started and processingtask.run()
 
-        return 'started'
+        return 'started' if started else 'error'
 
     def save(self, *args, **kwargs):
         self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid)
@@ -122,11 +124,13 @@ class ProcessingTask(CeleryTask):
     scene = models.OneToOneField('Scene')
 
     def run(self):
-        result = process.delay(settings.PROCESS_IMAGE_NAME, self.scene.workingdir)
+        result = process.delay(self.scene.workingdir)
         self.uuid = result.id
         self.state = result.state
         self.state_meta = result.info or {}
         self.save()
+
+        return True
 
     def __unicode__(self):
         return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
@@ -139,16 +143,22 @@ class SimulationTask(CeleryTask):
     scene = models.OneToOneField('Scene')
 
     def run(self):
-        # Prepare model input
-        self._create_model_schema()
 
-        result = simulate.delay(settings.DELFT3D_IMAGE_NAME, self.scene.workingdir)
+        # Prepare model input
+        if not self._create_model_schema():
+            return False
+
+        result = simulate.delay(self.scene.workingdir)
         self.uuid = result.id
         self.state = result.state
         self.state_meta = result.info or {}
         self.save()
+        return True
 
     def _create_model_schema(self):
+
+        if not u'dt' in self.scene.info:
+            return False
 
         # create directory for scene
         if not os.path.exists(self.scene.workingdir):
@@ -180,6 +190,8 @@ class SimulationTask(CeleryTask):
         rendered_schema = mdf_template.render(**input_dict).replace('\r\n','\n')
         with open(os.path.join(self.scene.workingdir, 'a.mdf'), 'w') as output:
             output.write(rendered_schema)
+
+        return True
 
     def __unicode__(self):
         return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
