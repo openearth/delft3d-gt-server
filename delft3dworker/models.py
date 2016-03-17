@@ -31,9 +31,7 @@ class Scene(models.Model):
 
     name = models.CharField(max_length=256)
     state = models.CharField(max_length=256, blank=True)
-    info = models.CharField(max_length=256, blank=True)
-
-    json = JSONField()  # input
+    info = JSONField()
 
     def start(self):
         print("Workingdir {}, uuid = {}".format(self.workingdir,self.suid))
@@ -160,7 +158,7 @@ class SimulationTask(CeleryTask):
         time_format = "%Y-%m-%d %H:%M:%S"
         input_dict = {
             "discharge": 1250,
-            "dt": self.scene.json['dt'],
+            "dt": self.scene.info['dt'],
             "his_interval": 120,
             "map_interval": 1440,
             "reference_time": "2013-12-01 00:00:00",

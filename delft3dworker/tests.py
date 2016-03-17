@@ -13,7 +13,7 @@ import uuid
 from django.test import TestCase
 
 # runner imports
-# from django_coverage.coverage_runner import CoverageRunner
+from django_coverage.coverage_runner import CoverageRunner
 from djcelery.contrib.test_runner import CeleryTestSuiteRunner
 from teamcity.django import TeamcityDjangoRunner
 
@@ -35,10 +35,10 @@ from delft3dworker.models import SimulationTask
 
 # RUNNERS
 
-class Delft3DGTRunner(CeleryTestSuiteRunner):
+class Delft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner):
     pass
 
-class TeamcityDelft3DGTRunner(CeleryTestSuiteRunner,
+class TeamcityDelft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner,
     TeamcityDjangoRunner):
     pass
 
