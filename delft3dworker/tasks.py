@@ -43,10 +43,10 @@ def process(self, workingdir):
     docker_client = Delft3DDockerClient(
         settings.PROCESS_IMAGE_NAME,
         [
-            '{0}:/data/input:ro'.format(os.path.join(workingdir,'delft3d')),
-            '{0}:/data/output'.format(os.path.join(workingdir,'process'))
+            '{0}:/data/input:ro'.format(os.path.join(workingdir, 'delft3d')),
+            '{0}:/data/output'.format(os.path.join(workingdir, 'process'))
         ],
-        os.path.join(workingdir,'process/output.json')
+        os.path.join(workingdir, 'process/output.json')
     )
 
     # Start
@@ -79,9 +79,9 @@ def simulate(self, workingdir):
     docker_client = Delft3DDockerClient(
         settings.DELFT3D_IMAGE_NAME,
         [
-            '{0}:/data'.format(workingdir),
+            '{0}:/data'.format(os.path.join(workingdir, 'delft3d')),
         ],
-        os.path.join(workingdir,'output.json')
+        os.path.join(workingdir,'delft3d', 'output.json')
     )
 
     # Start
