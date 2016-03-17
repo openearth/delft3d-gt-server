@@ -36,7 +36,6 @@ class Scene(models.Model):
     def start(self):
         started = True
 
-        # print("Workingdir {}, uuid = {}".format(self.workingdir,self.suid))
         try:
             self.simulationtask
         except SimulationTask.DoesNotExist, e:
@@ -54,6 +53,7 @@ class Scene(models.Model):
         return 'started' if started else 'error'
 
     def save(self, *args, **kwargs):
+        self.suid = str(uuid.uuid4())
         self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid)
         self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid)
         super(Scene, self).save(*args, **kwargs)

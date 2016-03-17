@@ -79,9 +79,9 @@ def simulate(self, workingdir):
     docker_client = Delft3DDockerClient(
         settings.DELFT3D_IMAGE_NAME,
         [
-            '{0}:/data'.format(os.path.join(workingdir, 'delft3d')),
+            '{0}:/data'.format(workingdir),
         ],
-        os.path.join(workingdir,'delft3d/output.json')
+        os.path.join(workingdir,'output.json')
     )
 
     # Start
@@ -134,10 +134,14 @@ class Delft3DDockerClient():
                                stream=True, stdout=True, stderr=True)
         return self.log
 
-    def get_output(self, filename):
-        with open(self.outputfile, 'r') as f:
-            returnval = f.read()
-            f.close()
+    def get_output(self):
+        try:
+            with open(self.outputfile, 'r') as f:
+                returnval = f.read()
+                f.close()
+        except:
+            return {'progress': None }
+
         return returnval
 
     def delete(self):
