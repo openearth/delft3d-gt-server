@@ -7,12 +7,13 @@ Replace this with more appropriate tests for your application.
 
 import os
 import re
+import uuid
 
 # django test imports
 from django.test import TestCase
 
 # runner imports
-from django_coverage.coverage_runner import CoverageRunner
+# from django_coverage.coverage_runner import CoverageRunner
 from djcelery.contrib.test_runner import CeleryTestSuiteRunner
 from teamcity.django import TeamcityDjangoRunner
 
@@ -34,15 +35,33 @@ from delft3dworker.models import SimulationTask
 
 # RUNNERS
 
-class Delft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner):
+class Delft3DGTRunner(CeleryTestSuiteRunner):
     pass
 
-class TeamcityDelft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner,
+class TeamcityDelft3DGTRunner(CeleryTestSuiteRunner,
     TeamcityDjangoRunner):
     pass
 
 
 # TESTS
+
+class DockerTest(TestCase):
+
+    def setUp(self):
+        view_parameters = {
+            'name': 'Test Scene',
+            'suid': str(uuid.uuid4()),
+            'json': '{"dt": 20 }'
+        }
+        self.scene = Scene.objects.create(**view_parameters)  # create test scene
+
+    def tearDown(self):
+        Scene.objects.get(name='Test Scene').delete()  # delete the test Scene
+
+    def testDocker(self):
+        self.scene.save()
+        self.scene.start()
+
 
 class TaskTest(TestCase):
 
@@ -78,7 +97,7 @@ class TaskTest(TestCase):
         """
 
         with patch('time.sleep') as mocked_sleep:  # mocking sleep in task (stub)
-            result = process.delay()  # start the task
+            result = process.delay(str(uuid.uuid4()),'')  # start the task
 
             self.assertTrue('progress' in result.info)  # check if progress is in returnval
             self.assertEqual(type(result.info['progress']), float)  # check if progress is in float format
@@ -108,7 +127,7 @@ class TaskTest(TestCase):
         """
 
         with patch('time.sleep') as mocked_sleep:  # mocking sleep in task (stub)
-            result = simulate.delay()  # start the task
+            result = simulate.delay(str(uuid.uuid4()),'')  # start the task
 
             self.assertTrue('progress' in result.info)  # check if progress is in returnval
             self.assertEqual(type(result.info['progress']), float)  # check if progress is in float format
@@ -120,7 +139,12 @@ class TaskTest(TestCase):
 class CeleryTaskModelsTest(TestCase):
 
     def setUp(self):
-        Scene.objects.create(name='Test Scene')  # create test scene
+        view_parameters = {
+            'name': 'Test Scene',
+            'suid': str(uuid.uuid4()),
+            'json': '{"dt": 20 }'
+        }
+        Scene.objects.create(**view_parameters)  # create test scene
 
         # create mocked result and store
         self.result = MagicMock()
@@ -195,10 +219,14 @@ class SceneTest(TestCase):
         """
         Test that simulating a scene creates two tasks
         """
-
+        view_parameters = {
+            'name': 'My Test Scene',
+            'suid': str(uuid.uuid4()),
+            'json': '{"dt": 20 }'
+        }
         with patch.object(SimulationTask, 'run', return_value=None) as simulation_run_mock_method:  # mock the simulation task run
             with patch.object(ProcessingTask, 'run', return_value=None) as processing_run_mock_method:  # mock the processing task run
-                scene = Scene.objects.create(name='My Test Scene')  # create Scene
+                scene = Scene.objects.create(**view_parameters)  # create Scene
                 scene.start()  # start Scene simulation
                 scene.start()  # start Scene simulation again
                 scene.start()  # start Scene simulation again

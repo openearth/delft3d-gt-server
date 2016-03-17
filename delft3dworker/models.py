@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from django.conf import settings  #noqa
 from django.core.urlresolvers import reverse_lazy
@@ -21,6 +22,8 @@ class Scene(models.Model):
     """
     Scene model
     """
+    suid = models.CharField(max_length=256, editable=False)
+
     workingdir = models.CharField(max_length=256)
     fileurl = models.CharField(max_length=256)
 
@@ -28,7 +31,10 @@ class Scene(models.Model):
     state = models.CharField(max_length=256, blank=True)
     info = models.CharField(max_length=256, blank=True)
 
+    json = JSONField()  # input
+
     def start(self):
+        print("Workingdir {}, uuid = {}".format(self.workingdir,self.suid))
         try:
             self.simulationtask
         except SimulationTask.DoesNotExist, e:
@@ -44,6 +50,11 @@ class Scene(models.Model):
             processingtask.run()
 
         return 'started'
+    
+    def save(self, *args, **kwargs):
+        self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid)
+        self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid)
+        super(Scene, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
@@ -111,7 +122,7 @@ class ProcessingTask(CeleryTask):
     scene = models.OneToOneField('Scene')
 
     def run(self):
-        result = process.delay()
+        result = process.delay(settings.PROCESS_IMAGE_NAME, self.scene.workingdir)
         self.uuid = result.id
         self.state = result.state
         self.state_meta = result.info or {}
@@ -128,11 +139,47 @@ class SimulationTask(CeleryTask):
     scene = models.OneToOneField('Scene')
 
     def run(self):
-        result = simulate.delay()
+        # Prepare model input
+        self._create_model_schema()
+
+        result = simulate.delay(settings.DELFT3D_IMAGE_NAME, self.scene.workingdir)
         self.uuid = result.id
         self.state = result.state
         self.state_meta = result.info or {}
         self.save()
+
+    def _create_model_schema(self):
+
+        # create directory for scene
+        if not os.path.exists(self.scene.workingdir):
+            copytree('/data/container/delft3ddefaults', self.scene.workingdir)
+
+        # create input dict for template renderer
+        time_format = "%Y-%m-%d %H:%M:%S"
+        input_dict = {
+            "discharge": 1250,
+            "dt": self.scene.json['dt'],
+            "his_interval": 120,
+            "map_interval": 1440,
+            "reference_time": "2013-12-01 00:00:00",
+            "Tstart": "2014-01-01 00:00:00",
+            "Tstop": "2015-01-01 00:00:00"
+        }
+
+        ref_time = datetime.strptime(input_dict['reference_time'], time_format)
+        start_time = datetime.strptime(input_dict['Tstart'], time_format)
+        stop_time = datetime.strptime(input_dict['Tstop'], time_format)
+
+        input_dict['reference_time'] = datetime.strftime(ref_time, "%Y-%m-%d")
+        input_dict['Tstart'] = (start_time - ref_time).total_seconds()/60
+        input_dict['Tstop'] = (stop_time - ref_time).total_seconds()/60
+
+        # render and write a.mdf
+        mdf_template_file = os.path.join('/data/container/delft3dtemplates', 'a.mdf')
+        mdf_template = Template(filename=mdf_template_file)
+        rendered_schema = mdf_template.render(**input_dict).replace('\r\n','\n')
+        with open(os.path.join(self.scene.workingdir, 'a.mdf'), 'w') as output:
+            output.write(rendered_schema)
 
     def __unicode__(self):
         return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
