@@ -80,7 +80,10 @@ class CeleryTask(models.Model):
         # update state
         result = AsyncResult(self.uuid)
         self.state = result.state
-        self.state_meta = result.info or {}
+        if type(result.info) is dict:
+            self.state_meta = result.info
+        else:
+            self.state_meta = {'error': str(result.info)}
         self.save()
 
         return {
