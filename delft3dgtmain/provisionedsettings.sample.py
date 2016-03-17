@@ -28,6 +28,6 @@ DATABASES = {
 STATIC_ROOT = '/opt/delft3d-gt/static/'
 
 # delft3dworker
-PROCESSING_IMAGE_NAME = 'python27_container'
+PROCESS_IMAGE_NAME = 'python27_container'
 DELFT3D_IMAGE_NAME = 'delft3d'
 WORKER_FILEDIR = '/files'
