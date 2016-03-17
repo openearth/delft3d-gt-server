@@ -31,7 +31,7 @@ class Scene(models.Model):
 
     name = models.CharField(max_length=256)
     state = models.CharField(max_length=256, blank=True)
-    info = JSONField()
+    info = JSONField(blank=True)
 
     def start(self):
         started = True
