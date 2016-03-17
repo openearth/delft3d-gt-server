@@ -145,4 +145,4 @@ class Delft3DDockerClient():
         return returnval
 
     def delete(self):
-        self.client.delete_container(container=self.id)
+        self.client.remove_container(container=self.id)
