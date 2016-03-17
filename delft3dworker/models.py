@@ -54,8 +54,9 @@ class Scene(models.Model):
 
     def save(self, *args, **kwargs):
         self.suid = str(uuid.uuid4())
-        self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid)
-        self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid)
+        self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
+        self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
+        print self.workingdir
         super(Scene, self).save(*args, **kwargs)
 
     def get_absolute_url(self):

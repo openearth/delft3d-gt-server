@@ -6,6 +6,8 @@ from delft3dworker.views import SceneDetailView
 from delft3dworker.views import SceneListView
 from delft3dworker.views import SceneStartView
 
+from django.contrib.auth.decorators import login_required
+from django.views.static import serve
 
 urlpatterns = (
 
@@ -16,4 +18,7 @@ urlpatterns = (
     url(r'^scene/list$', SceneListView.as_view(), name='scene_list'),
     url(r'^scene/start$', SceneStartView.as_view(), name='scene_start'),
 
+    url(r'^data(?P<path>.*)$', login_required(serve), {
+        'document_root': '/data/',
+    }),
 )
