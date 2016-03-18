@@ -46,7 +46,8 @@ def process(self, workingdir):
             '{0}:/data/input:ro'.format(os.path.join(workingdir, 'delft3d')),
             '{0}:/data/output'.format(os.path.join(workingdir, 'process'))
         ],
-        os.path.join(workingdir, 'process/output.json')
+        os.path.join(workingdir, 'process/output.json'),
+        './run.sh channel_network delta_fringe',
     )
 
     # Start
@@ -81,7 +82,8 @@ def simulate(self, workingdir):
         [
             '{0}:/data'.format(os.path.join(workingdir, 'delft3d')),
         ],
-        os.path.join(workingdir,'delft3d', 'output.json')
+        os.path.join(workingdir,'delft3d', 'output.json'),
+        '',  # empty command
     )
 
     # Start
@@ -111,14 +113,15 @@ class Delft3DDockerClient():
 
     """Class to run docker containers with specific configs"""
 
-    def __init__(self, name, volumebinds, outputfile, base_url='unix://var/run/docker.sock'):
+    def __init__(self, name, volumebinds, outputfile, command, base_url='unix://var/run/docker.sock'):
         self.name = name
         self.volumebinds = volumebinds
         self.outputfile = outputfile
         self.base_url = base_url
+        self.command = command
 
         self.client = Client(base_url=self.base_url)
-        self.config = self.client.create_host_config(binds=self.volumebinds)
+        self.config = self.client.create_host_config(binds=self.volumebinds, command= self.command)
         self.container = self.client.create_container(self.name, host_config=self.config)
 
         self.id = self.container.get('Id')
