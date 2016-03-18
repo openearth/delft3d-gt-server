@@ -60,7 +60,7 @@ ROOT_URLCONF = 'delft3dgtmain.urls'
 TEMPLATES = [
    {
        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-       'DIRS': [],
+       'DIRS': ['/opt/delft3d-gt/delft3d-gt-ui/dist/',],
        'APP_DIRS': True,
        'OPTIONS': {
            'context_processors': [
@@ -111,6 +111,7 @@ USE_TZ = True
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
+LOGIN_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist/'  # TODO: make different!
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/

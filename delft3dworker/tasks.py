@@ -20,7 +20,7 @@ def donothing(self):
     logger.info('Starting task "donothing"...')
     state_meta = {}
     self.update_state(state='DOINGNOTHING', meta=state_meta)
-    logger.info('... task "donothing" Finished')
+    logger.info('... task "donothing" finished.')
     return state_meta
 
 
@@ -30,7 +30,7 @@ def postprocess(self):
     for n in range(1, 1001):
         state_meta = {'progress': n / 1000.0 }
         self.update_state(state='SIMULATING', meta=state_meta)
-    logger.info('... task "postprocess" Finished')
+    logger.info('... task "postprocess" finished.')
     return state_meta
 
 
@@ -67,13 +67,13 @@ def process(self, workingdir):
     self.update_state(state='DELETING', meta=output)
     docker_client.delete()
 
-    logger.info('... task "process" Finished')
+    logger.info('... task "process" finished.')
     return output
 
 
 @shared_task(bind=True, base=AbortableTask)
 def simulate(self, workingdir):
-    logger.info('Starting task simulate...')
+    logger.info('Starting task "simulate"...')
 
     #  Make Delft3D Simulation Docker Client
     self.update_state(state='CREATING', meta={})
@@ -103,7 +103,7 @@ def simulate(self, workingdir):
     self.update_state(state='DELETING', meta=output)
     docker_client.delete()
 
-    logger.info('... task "simulate" Finished')
+    logger.info('... task "simulate" finished.')
     return output
 
 
