@@ -65,7 +65,7 @@ class SceneListView(JSONListView):
     model = Scene
 
     def get_queryset(self):
-        queryset = Scene.objects.all()
+        queryset = Scene.objects.all().order_by('id')
         for scene in queryset.iterator():
             scene.update_state()
         return queryset
