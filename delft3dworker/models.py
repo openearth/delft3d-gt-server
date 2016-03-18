@@ -19,6 +19,8 @@ from django.db import models
 
 from jsonfield import JSONField
 
+from mako.template import Template
+
 from shutil import copystat
 from shutil import copytree
 from shutil import rmtree
