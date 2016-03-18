@@ -46,7 +46,7 @@ def process(self, workingdir):
             '{0}:/data/input:ro'.format(os.path.join(workingdir, 'delft3d')),
             '{0}:/data/output'.format(os.path.join(workingdir, 'process'))
         ],
-        os.path.join(workingdir, 'process/output.json'),
+        os.path.join(workingdir, 'process/log_json.json'),
         './run.sh channel_network delta_fringe',
     )
 
@@ -57,8 +57,14 @@ def process(self, workingdir):
     # process container will create json log
     output = {}
     for log in docker_client.log():
+        output = json.loads(docker_client.get_output())
+
+        if 'delta_fringe_images' in output:
+            output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
+        if 'channel_network_images' in output:
+            output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
+
         self.update_state(state='PROCESSING', meta=output)
-        output = docker_client.get_output()
 
         if (self.is_aborted()):
             self.update_state(state='STOPPING', meta=output)
@@ -82,7 +88,7 @@ def simulate(self, workingdir):
         [
             '{0}:/data'.format(os.path.join(workingdir, 'delft3d')),
         ],
-        os.path.join(workingdir,'delft3d', 'output.json'),
+        os.path.join(workingdir, 'delft3d', 'output.json'),
         '',  # empty command
     )
 
@@ -91,14 +97,14 @@ def simulate(self, workingdir):
     docker_client.start()
 
     # process container will create json log
-    output = {}
     for log in docker_client.log():
-        self.update_state(state='PROCESSING', meta=output)
-        output = docker_client.get_output()
+        output = json.loads(docker_client.get_output())
 
         if (self.is_aborted()):
             self.update_state(state='STOPPING', meta=output)
             docker_client.stop()
+
+        self.update_state(state='PROCESSING', meta=output)
 
     self.update_state(state='DELETING', meta=output)
     docker_client.delete()
@@ -142,8 +148,9 @@ class Delft3DDockerClient():
             with open(self.outputfile, 'r') as f:
                 returnval = f.read()
                 f.close()
+                # print returnval
         except:
-            return {'progress': None }
+            return '{"progress": "None" }'  # output of file is also string
 
         return returnval
 
