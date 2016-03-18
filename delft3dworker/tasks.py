@@ -121,8 +121,8 @@ class Delft3DDockerClient():
         self.command = command
 
         self.client = Client(base_url=self.base_url)
-        self.config = self.client.create_host_config(binds=self.volumebinds, command= self.command)
-        self.container = self.client.create_container(self.name, host_config=self.config)
+        self.config = self.client.create_host_config(binds=self.volumebinds)
+        self.container = self.client.create_container(self.name, host_config=self.config, command=self.command)
 
         self.id = self.container.get('Id')
 
