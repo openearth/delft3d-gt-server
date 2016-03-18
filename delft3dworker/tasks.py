@@ -50,20 +50,24 @@ def process(self, workingdir):
         './run.sh channel_network delta_fringe',
     )
 
+    # output
+    output = {}
+
     # Start
-    self.update_state(state='STARTING', meta={})
+    self.update_state(state='STARTING', meta=output)
     docker_client.start()
 
     # process container will create json log
     for log in docker_client.log():
+        print log
+
+        self.update_state(state='PROCESSING', meta=output)
         output = json.loads(docker_client.get_output())
 
         if 'delta_fringe_images' in output:
             output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
         if 'channel_network_images' in output:
             output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
-
-        self.update_state(state='PROCESSING', meta=output)
 
         if (self.is_aborted()):
             logger.warning('Aborting task "process"')
@@ -89,16 +93,22 @@ def simulate(self, workingdir):
         [
             '{0}:/data'.format(os.path.join(workingdir, 'delft3d')),
         ],
-        os.path.join(workingdir, 'delft3d', 'output.json'),
+        '',
         '',  # empty command
     )
 
+    # output
+    output = {}
+
     # Start
-    self.update_state(state='STARTING', meta={})
+    self.update_state(state='STARTING', meta=output)
     docker_client.start()
 
     # process container will create json log
     for log in docker_client.log():
+        print log
+
+        self.update_state(state='PROCESSING', meta=output)
         output = json.loads(docker_client.get_output())
 
         if (self.is_aborted()):
@@ -106,7 +116,6 @@ def simulate(self, workingdir):
             self.update_state(state='STOPPING', meta=output)
             docker_client.stop()
 
-        self.update_state(state='PROCESSING', meta=output)
 
     self.update_state(state='DELETING', meta=output)
     docker_client.delete()
@@ -146,13 +155,16 @@ class Delft3DDockerClient():
         return self.log
 
     def get_output(self):
+        if self.outputfile == '':
+            return '{}'
+
         try:
             with open(self.outputfile, 'r') as f:
                 returnval = f.read()
                 f.close()
                 # print returnval
         except:
-            return '{"progress": "None" }'  # output of file is also string
+            return '{}'  # output of file is also string
 
         return returnval
 

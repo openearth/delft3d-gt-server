@@ -22,7 +22,6 @@ class SceneCreateView(CreateView):
     fields = ['name', 'state', 'info']
 
     def post(self, request, *args, **kwargs):
-        print request.POST
         return super(SceneCreateView, self).post(request, *args, **kwargs)
 
     @method_decorator(csrf_exempt)
@@ -53,7 +52,9 @@ class SceneDetailView(JSONDetailView):
 
     def get_object(self):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
-        return Scene.objects.get(id=scene_id)
+        scene = Scene.objects.get(id=scene_id)
+        scene.update_state()
+        return scene
 
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
@@ -62,6 +63,12 @@ class SceneDetailView(JSONDetailView):
 
 class SceneListView(JSONListView):
     model = Scene
+
+    def get_queryset(self):
+        queryset = Scene.objects.all()
+        for scene in queryset.iterator():
+            scene.update_state()
+        return queryset
 
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
