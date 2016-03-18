@@ -3,19 +3,25 @@ from __future__ import absolute_import
 import os
 import uuid
 
+from celery.contrib.abortable import AbortableAsyncResult
+from celery.result import AsyncResult
+
+from datetime import datetime
+
+from delft3dworker.tasks import donothing
+from delft3dworker.tasks import postprocess
+from delft3dworker.tasks import process
+from delft3dworker.tasks import simulate
+
 from django.conf import settings  #noqa
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from jsonfield import JSONField
 
-from celery.result import AsyncResult
-from celery.contrib.abortable import AbortableAsyncResult
-
-from delft3dworker.tasks import donothing
-from delft3dworker.tasks import postprocess
-from delft3dworker.tasks import process
-from delft3dworker.tasks import simulate
+from shutil import copystat
+from shutil import copytree
+from shutil import rmtree
 
 
 # ################################### SCENE
