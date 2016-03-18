@@ -47,16 +47,16 @@ class Scene(models.Model):
         try:
             self.simulationtask
         except SimulationTask.DoesNotExist, e:
-            simulationtask = SimulationTask(uuid='none', state='none',
+            self.simulationtask = SimulationTask(uuid='none', state='none',
                 scene=self)
-            started = started and simulationtask.run()
+            started = started and self.simulationtask.run()
 
         try:
             self.processingtask
         except ProcessingTask.DoesNotExist, e:
-            processingtask = ProcessingTask(uuid='none', state='none',
+            self.processingtask = ProcessingTask(uuid='none', state='none',
                 scene=self)
-            started = started and processingtask.run()
+            started = started and self.processingtask.run()
 
         return 'started' if started else 'error'
 
@@ -65,6 +65,16 @@ class Scene(models.Model):
         self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
         self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        print "Delete from Scene"
+        if self.processingtask:
+            print "Delete from Scene processing"
+            self.processingtask.delete()
+        if self.simulationtask:
+            print "Delete from Scene simulation"
+            self.simulationtask.delete()
+        super(Scene, self).delete(*args, **kwargs)
 
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
@@ -109,10 +119,21 @@ class CeleryTask(models.Model):
 
     def run(self):
         result = donothing.delay()
-        self.uuid = result.id
+
+
+        self.uuid = result.task_id
         self.state = result.state
         self.state_meta = result.info or {}
         self.save()
+
+    # def delete(self, *args, **kwargs):
+    #     result = AbortableAsyncResult(self.uuid)
+    #     print result.info
+    #     print "Deleting Celery Task {}".format(self.uuid)
+    #     result.abort()
+    #     print result.is_aborted()
+    #     # result.get()
+    #     super(CeleryTask, self).delete(*args, **kwargs)
 
     def __unicode__(self):
         return "{0} - {1}".format(self.uuid, self.state)
@@ -128,7 +149,7 @@ class PostprocessingTask(CeleryTask):
 
     def run(self):
         result = postprocess.delay()
-        self.uuid = result.id
+        self.uuid = result.task_id
         self.state = result.state
         self.state_meta = result.info or {}
         self.save()
@@ -145,12 +166,22 @@ class ProcessingTask(CeleryTask):
 
     def run(self):
         result = process.delay(self.scene.workingdir)
-        self.uuid = result.id
+        self.uuid = result.task_id
         self.state = result.state
         self.state_meta = result.info or {}
         self.save()
 
         return True
+    
+    def delete(self, *args, **kwargs):
+        result = AbortableAsyncResult(self.uuid)
+        print result.info
+        print "Deleting ProcessingTask {}".format(self.uuid)
+        result.abort()
+        print result.is_aborted()
+        print result.state
+        # result.get()  # will hang
+        super(ProcessingTask, self).delete(*args, **kwargs)
 
     def __unicode__(self):
         return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
@@ -169,11 +200,19 @@ class SimulationTask(CeleryTask):
             return False
 
         result = simulate.delay(self.scene.workingdir)
-        self.uuid = result.id
+        self.uuid = result.task_id
         self.state = result.state
         self.state_meta = result.info or {}
         self.save()
         return True
+
+    def delete(self, *args, **kwargs):
+        result = AbortableAsyncResult(self.uuid)
+        print "Deleting SimulationTask {}".format(self.uuid)
+        result.abort()
+        print result.is_aborted()
+        # result.get()  # will hang
+        super(SimulationTask, self).delete(*args, **kwargs)
 
     def _create_model_schema(self):
 

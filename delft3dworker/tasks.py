@@ -36,6 +36,7 @@ def postprocess(self):
 @shared_task(bind=True, base=AbortableTask)
 def process(self, workingdir):
     logger.info('Starting task "process"...')
+    output = {}
 
     #  Make Delft3D Processing Docker Client
     self.update_state(state='CREATING', meta={})
@@ -65,6 +66,7 @@ def process(self, workingdir):
         self.update_state(state='PROCESSING', meta=output)
 
         if (self.is_aborted()):
+            logger.warning('Aborting task "process"')
             self.update_state(state='STOPPING', meta=output)
             docker_client.stop()
 
@@ -78,6 +80,7 @@ def process(self, workingdir):
 @shared_task(bind=True, base=AbortableTask)
 def simulate(self, workingdir):
     logger.info('Starting task "simulate"...')
+    output = {}
 
     #  Make Delft3D Simulation Docker Client
     self.update_state(state='CREATING', meta={})
@@ -99,6 +102,7 @@ def simulate(self, workingdir):
         output = json.loads(docker_client.get_output())
 
         if (self.is_aborted()):
+            logger.warning('Aborting task "process"')
             self.update_state(state='STOPPING', meta=output)
             docker_client.stop()
 
@@ -126,7 +130,7 @@ class Delft3DDockerClient():
 
         self.client = Client(base_url=self.base_url)
         self.config = self.client.create_host_config(binds=self.volumebinds)
-        self.container = self.client.create_container(self.name, host_config=self.config, command=self.command)
+        self.container = self.client.create_container(self.name, cpu_shares=400, host_config=self.config, command=self.command)
 
         self.id = self.container.get('Id')
 
