@@ -75,6 +75,8 @@ class Scene(models.Model):
             self.state = "PROCESSING"
         if simstate == "SUCCESS" and procstate == "SUCCESS":
             self.state = "SUCCESS"
+        if simstate == "FAILURE" or procstate == "FAILURE":
+            self.state = "FAILURE"
         self.save()
 
     def save(self, *args, **kwargs):
