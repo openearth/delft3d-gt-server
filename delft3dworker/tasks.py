@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import os
-import time
 import json
 
 from django.conf import settings
@@ -55,7 +54,6 @@ def process(self, workingdir):
     docker_client.start()
 
     # process container will create json log
-    output = {}
     for log in docker_client.log():
         output = json.loads(docker_client.get_output())
 
