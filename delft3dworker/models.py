@@ -60,10 +60,28 @@ class Scene(models.Model):
 
         return 'started' if started else 'error'
 
+    def update_state(self):
+        try:
+            simstate = self.simulationtask.state
+        except SimulationTask.DoesNotExist, e:
+            simstate = None
+        try:
+            procstate = self.processingtask.state
+        except ProcessingTask.DoesNotExist, e:
+            procstate = None
+
+        self.state = "WAITING"
+        if simstate == "PROCESSING" or procstate == "PROCESSING":
+            self.state = "PROCESSING"
+        if simstate == "SUCCESS" and procstate == "SUCCESS":
+            self.state = "SUCCESS"
+        self.save()
+
     def save(self, *args, **kwargs):
-        self.suid = str(uuid.uuid4())
-        self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
-        self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
+        if self.suid == '':
+            self.suid = str(uuid.uuid4())
+            self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
+            self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
