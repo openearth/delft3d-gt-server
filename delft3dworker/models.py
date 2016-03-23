@@ -241,7 +241,7 @@ class SimulationTask(CeleryTask):
 
         # create directory for scene
         if not os.path.exists(self.scene.workingdir):
-            copytree('/data/container/delft3ddefaults', os.path.join(self.scene.workingdir, 'delft3d'))
+            copytree('/data/container/delft3d/delft3ddefaults', os.path.join(self.scene.workingdir, 'delft3d'))
 
         # create input dict for template renderer
         time_format = "%Y-%m-%d %H:%M:%S"
@@ -264,7 +264,7 @@ class SimulationTask(CeleryTask):
         input_dict['Tstop'] = (stop_time - ref_time).total_seconds()/60
 
         # render and write a.mdf
-        mdf_template_file = os.path.join('/data/container/delft3dtemplates', 'a.mdf')
+        mdf_template_file = os.path.join('/data/container/delft3d/delft3dtemplates', 'a.mdf')
         mdf_template = Template(filename=mdf_template_file)
         rendered_schema = mdf_template.render(**input_dict).replace('\r\n','\n')
         with open(os.path.join(self.scene.workingdir, 'delft3d', 'a.mdf'), 'w') as output:
