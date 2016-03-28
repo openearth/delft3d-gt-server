@@ -77,6 +77,8 @@ class Scene(models.Model):
             self.state = "SUCCESS"
         if simstate == "FAILURE" or procstate == "FAILURE":
             self.state = "FAILURE"
+        if simstate == "ABORTED" or procstate == "ABORTED":
+            self.state = "ABORTED"
         self.save()
 
     def save(self, *args, **kwargs):
@@ -88,10 +90,10 @@ class Scene(models.Model):
 
     def delete(self, *args, **kwargs):
         print "Delete from Scene"
-        if self.processingtask:
+        if not self.processingtask is None:
             print "Delete from Scene processing"
             self.processingtask.delete()
-        if self.simulationtask:
+        if not self.simulationtask is None:
             print "Delete from Scene simulation"
             self.simulationtask.delete()
         super(Scene, self).delete(*args, **kwargs)
@@ -192,7 +194,7 @@ class ProcessingTask(CeleryTask):
         self.save()
 
         return True
-    
+
     def delete(self, *args, **kwargs):
         result = AbortableAsyncResult(self.uuid)
         print result.info
