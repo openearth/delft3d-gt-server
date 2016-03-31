@@ -78,6 +78,7 @@ def process(self, workingdir):
         except ValueError as e:
             logger.warn('ValueError in taks "process". Trying to load json: '+ docker_client.get_output())
             output['error'] = str(e)
+            docker_client.stop()
             break
 
     self.update_state(state='DELETING', meta=output)
@@ -131,6 +132,7 @@ def simulate(self, workingdir):
         except ValueError as e:
             logger.warn('ValueError in taks "simulate". Trying to load json: '+ docker_client.get_output())
             output['error'] = str(e)
+            docker_client.stop()
             break
 
     self.update_state(state='DELETING', meta=output)
