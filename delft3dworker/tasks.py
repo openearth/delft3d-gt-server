@@ -78,7 +78,7 @@ def process(self, workingdir):
                 if 'channel_network_images' in output:
                     output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
             except ValueError as e:
-                logger.warn('ValueError in taks "process". Trying to load json: '+ docker_client.get_output())
+                logger.warn('ValueError in task "process". Trying to load json: '+ docker_client.get_output())
                 output['error'] = str(e)
                 docker_client.stop()
                 break
@@ -87,6 +87,8 @@ def process(self, workingdir):
         docker_client.delete()
 
     except Exception as e:
+        logger.warn('Exception in task "process": '+ str(e))
+        logger.warn('Finishing task gracefully...')
         output['error'] = str(e)
 
     logger.info('... task "process" finished.')
@@ -137,7 +139,7 @@ def simulate(self, workingdir):
                 if 'channel_network_images' in output:
                     output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
             except ValueError as e:
-                logger.warn('ValueError in taks "simulate". Trying to load json: '+ docker_client.get_output())
+                logger.warn('ValueError in task "simulate". Trying to load json: '+ docker_client.get_output())
                 output['error'] = str(e)
                 docker_client.stop()
                 break
@@ -146,6 +148,8 @@ def simulate(self, workingdir):
         docker_client.delete()
 
     except Exception as e:
+        logger.warn('Exception in task "simulate": '+ str(e))
+        logger.warn('Finishing task gracefully...')
         output['error'] = str(e)
 
     logger.info('... task "simulate" finished.')
