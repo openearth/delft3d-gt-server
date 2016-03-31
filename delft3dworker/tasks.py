@@ -53,36 +53,41 @@ def process(self, workingdir):
     # output
     output = {}
 
-    # Start
-    self.update_state(state='STARTING', meta=output)
-    docker_client.start()
+    try:
 
-    for log in docker_client.log():
-        logger.info(log.replace('\n', ''))
+        # Start
+        self.update_state(state='STARTING', meta=output)
+        docker_client.start()
 
-        if (self.is_aborted()):
-            logger.warning('Aborting task "process"')
-            self.update_state(state='ABORTING', meta=output)
-            docker_client.stop()
-            break
+        for log in docker_client.log():
+            logger.info(log.replace('\n', ''))
 
-        self.update_state(state='PROCESSING', meta=output)
+            if (self.is_aborted()):
+                logger.warning('Aborting task "process"')
+                self.update_state(state='ABORTING', meta=output)
+                docker_client.stop()
+                break
 
-        try:
-            output = json.loads(docker_client.get_output())
+            self.update_state(state='PROCESSING', meta=output)
 
-            if 'delta_fringe_images' in output:
-                output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
-            if 'channel_network_images' in output:
-                output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
-        except ValueError as e:
-            logger.warn('ValueError in taks "process". Trying to load json: '+ docker_client.get_output())
-            output['error'] = str(e)
-            docker_client.stop()
-            break
+            try:
+                output = json.loads(docker_client.get_output())
 
-    self.update_state(state='DELETING', meta=output)
-    docker_client.delete()
+                if 'delta_fringe_images' in output:
+                    output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
+                if 'channel_network_images' in output:
+                    output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
+            except ValueError as e:
+                logger.warn('ValueError in taks "process". Trying to load json: '+ docker_client.get_output())
+                output['error'] = str(e)
+                docker_client.stop()
+                break
+
+        self.update_state(state='DELETING', meta=output)
+        docker_client.delete()
+
+    except Exception as e:
+        output['error'] = str(e)
 
     logger.info('... task "process" finished.')
     return output
@@ -107,36 +112,41 @@ def simulate(self, workingdir):
     # output
     output = {}
 
-    # Start
-    self.update_state(state='STARTING', meta=output)
-    docker_client.start()
+    try:
 
-    for log in docker_client.log():
-        logger.info(log.replace('\n', ''))
+        # Start
+        self.update_state(state='STARTING', meta=output)
+        docker_client.start()
 
-        if (self.is_aborted()):
-            logger.warning('Aborting task "simulate"')
-            self.update_state(state='ABORTING', meta=output)
-            docker_client.stop()
-            break
+        for log in docker_client.log():
+            logger.info(log.replace('\n', ''))
 
-        self.update_state(state='PROCESSING', meta=output)
+            if (self.is_aborted()):
+                logger.warning('Aborting task "simulate"')
+                self.update_state(state='ABORTING', meta=output)
+                docker_client.stop()
+                break
 
-        try:
-            output = json.loads(docker_client.get_output())
+            self.update_state(state='PROCESSING', meta=output)
 
-            if 'delta_fringe_images' in output:
-                output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
-            if 'channel_network_images' in output:
-                output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
-        except ValueError as e:
-            logger.warn('ValueError in taks "simulate". Trying to load json: '+ docker_client.get_output())
-            output['error'] = str(e)
-            docker_client.stop()
-            break
+            try:
+                output = json.loads(docker_client.get_output())
 
-    self.update_state(state='DELETING', meta=output)
-    docker_client.delete()
+                if 'delta_fringe_images' in output:
+                    output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
+                if 'channel_network_images' in output:
+                    output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
+            except ValueError as e:
+                logger.warn('ValueError in taks "simulate". Trying to load json: '+ docker_client.get_output())
+                output['error'] = str(e)
+                docker_client.stop()
+                break
+
+        self.update_state(state='DELETING', meta=output)
+        docker_client.delete()
+
+    except Exception as e:
+        output['error'] = str(e)
 
     logger.info('... task "simulate" finished.')
     return output
