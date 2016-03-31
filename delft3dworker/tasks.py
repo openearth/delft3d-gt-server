@@ -76,7 +76,9 @@ def process(self, workingdir):
             if 'channel_network_images' in output:
                 output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
         except ValueError as e:
-            output = {'info': str(e)}
+            logger.warn('ValueError in taks "process". Trying to load json: '+ docker_client.get_output())
+            output['error'] = str(e)
+            break
 
     self.update_state(state='DELETING', meta=output)
     docker_client.delete()
@@ -127,7 +129,9 @@ def simulate(self, workingdir):
             if 'channel_network_images' in output:
                 output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
         except ValueError as e:
-            output = {'info': str(e)}
+            logger.warn('ValueError in taks "simulate". Trying to load json: '+ docker_client.get_output())
+            output['error'] = str(e)
+            break
 
     self.update_state(state='DELETING', meta=output)
     docker_client.delete()
