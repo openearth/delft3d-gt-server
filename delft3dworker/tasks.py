@@ -57,9 +57,14 @@ def process(self, workingdir):
     self.update_state(state='STARTING', meta=output)
     docker_client.start()
 
-    # process container will create json log
     for log in docker_client.log():
-        print log
+        logger.info(log.replace('\n', ''))
+
+        if (self.is_aborted()):
+            logger.warning('Aborting task "process"')
+            self.update_state(state='ABORTING', meta=output)
+            docker_client.stop()
+            break
 
         self.update_state(state='PROCESSING', meta=output)
         output = json.loads(docker_client.get_output())
@@ -69,10 +74,6 @@ def process(self, workingdir):
         if 'channel_network_images' in output:
             output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
 
-        if (self.is_aborted()):
-            logger.warning('Aborting task "process"')
-            self.update_state(state='STOPPING', meta=output)
-            docker_client.stop()
 
     self.update_state(state='DELETING', meta=output)
     docker_client.delete()
@@ -104,18 +105,17 @@ def simulate(self, workingdir):
     self.update_state(state='STARTING', meta=output)
     docker_client.start()
 
-    # process container will create json log
     for log in docker_client.log():
-        print log
+        logger.info(log.replace('\n', ''))
+
+        if (self.is_aborted()):
+            logger.warning('Aborting task "simulate"')
+            self.update_state(state='ABORTING', meta=output)
+            docker_client.stop()
+            break
 
         self.update_state(state='PROCESSING', meta=output)
         output = json.loads(docker_client.get_output())
-
-        if (self.is_aborted()):
-            logger.warning('Aborting task "process"')
-            self.update_state(state='STOPPING', meta=output)
-            docker_client.stop()
-
 
     self.update_state(state='DELETING', meta=output)
     docker_client.delete()
@@ -150,8 +150,12 @@ class Delft3DDockerClient():
         self.client.stop(container=self.id)
 
     def log(self):
-        self.log = self.client.logs(container=self.id,
-                               stream=True, stdout=True, stderr=True)
+        self.log = self.client.logs(
+            container=self.id,
+            stream=True,
+            stdout=True,
+            stderr=True
+        )
         return self.log
 
     def get_output(self):
