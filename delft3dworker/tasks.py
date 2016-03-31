@@ -67,13 +67,16 @@ def process(self, workingdir):
             break
 
         self.update_state(state='PROCESSING', meta=output)
-        output = json.loads(docker_client.get_output())
 
-        if 'delta_fringe_images' in output:
-            output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
-        if 'channel_network_images' in output:
-            output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
+        try:
+            output = json.loads(docker_client.get_output())
 
+            if 'delta_fringe_images' in output:
+                output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
+            if 'channel_network_images' in output:
+                output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
+        except ValueError as e:
+            output = {'info': str(e)}
 
     self.update_state(state='DELETING', meta=output)
     docker_client.delete()
@@ -115,7 +118,16 @@ def simulate(self, workingdir):
             break
 
         self.update_state(state='PROCESSING', meta=output)
-        output = json.loads(docker_client.get_output())
+
+        try:
+            output = json.loads(docker_client.get_output())
+
+            if 'delta_fringe_images' in output:
+                output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
+            if 'channel_network_images' in output:
+                output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
+        except ValueError as e:
+            output = {'info': str(e)}
 
     self.update_state(state='DELETING', meta=output)
     docker_client.delete()
@@ -166,9 +178,8 @@ class Delft3DDockerClient():
             with open(self.outputfile, 'r') as f:
                 returnval = f.read()
                 f.close()
-                # print returnval
         except:
-            return '{}'  # output of file is also string
+            return '{}'
 
         return returnval
 
