@@ -70,18 +70,12 @@ def process(self, workingdir):
 
             self.update_state(state='PROCESSING', meta=output)
 
-            try:
-                output = json.loads(docker_client.get_output())
+            output = json.loads(docker_client.get_output())
 
-                if 'delta_fringe_images' in output:
-                    output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
-                if 'channel_network_images' in output:
-                    output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
-            except ValueError as e:
-                logger.exception('ValueError in task "process". Trying to load json: '+ docker_client.get_output())
-                output['error'] = str(e)
-                docker_client.stop()
-                break
+            if 'delta_fringe_images' in output:
+                output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
+            if 'channel_network_images' in output:
+                output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
 
         self.update_state(state='DELETING', meta=output)
         docker_client.delete()
@@ -131,18 +125,12 @@ def simulate(self, workingdir):
 
             self.update_state(state='PROCESSING', meta=output)
 
-            try:
-                output = json.loads(docker_client.get_output())
+            output = json.loads(docker_client.get_output())
 
-                if 'delta_fringe_images' in output:
-                    output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
-                if 'channel_network_images' in output:
-                    output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
-            except ValueError as e:
-                logger.exception('ValueError in task "simulate". Trying to load json: '+ docker_client.get_output())
-                output['error'] = str(e)
-                docker_client.stop()
-                break
+            if 'delta_fringe_images' in output:
+                output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
+            if 'channel_network_images' in output:
+                output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
 
         self.update_state(state='DELETING', meta=output)
         docker_client.delete()
@@ -197,6 +185,7 @@ class Delft3DDockerClient():
         try:
             with open(self.outputfile, 'r') as f:
                 returnval = f.read()
+                json.loads(returnval)
         except Exception as e:
             return '{"info": "' + str(e) + '"}'
 
