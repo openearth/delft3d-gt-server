@@ -78,7 +78,7 @@ def process(self, workingdir):
                 if 'channel_network_images' in output:
                     output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
             except ValueError as e:
-                logger.warn('ValueError in task "process". Trying to load json: '+ docker_client.get_output())
+                logger.exception('ValueError in task "process". Trying to load json: '+ docker_client.get_output())
                 output['error'] = str(e)
                 docker_client.stop()
                 break
@@ -87,8 +87,8 @@ def process(self, workingdir):
         docker_client.delete()
 
     except Exception as e:
-        logger.warn('Exception in task "process": '+ str(e))
-        logger.warn('Finishing task gracefully...')
+        logger.exception('Exception in task "process": '+ str(e))
+        logger.info('Finishing task gracefully...')
         output['error'] = str(e)
 
     logger.info('... task "process" finished.')
@@ -139,7 +139,7 @@ def simulate(self, workingdir):
                 if 'channel_network_images' in output:
                     output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
             except ValueError as e:
-                logger.warn('ValueError in task "simulate". Trying to load json: '+ docker_client.get_output())
+                logger.exception('ValueError in task "simulate". Trying to load json: '+ docker_client.get_output())
                 output['error'] = str(e)
                 docker_client.stop()
                 break
@@ -148,8 +148,8 @@ def simulate(self, workingdir):
         docker_client.delete()
 
     except Exception as e:
-        logger.warn('Exception in task "simulate": '+ str(e))
-        logger.warn('Finishing task gracefully...')
+        logger.exception('Exception in task "simulate": '+ str(e))
+        logger.info('Finishing task gracefully...')
         output['error'] = str(e)
 
     logger.info('... task "simulate" finished.')
@@ -192,14 +192,13 @@ class Delft3DDockerClient():
 
     def get_output(self):
         if self.outputfile == '':
-            return '{}'
+            return '{"info": "get_output has no outputfile (empty string)"}'
 
         try:
             with open(self.outputfile, 'r') as f:
                 returnval = f.read()
-                f.close()
-        except:
-            return '{}'
+        except Exception as e:
+            return '{"info": "' + str(e) + '"}'
 
         return returnval
 
