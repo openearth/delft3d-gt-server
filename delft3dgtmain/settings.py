@@ -136,7 +136,10 @@ WORKER_FILEURL = '/files'
 FRONTEND_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist'
 
 # import provisioned settings
-from provisionedsettings import *
+try:
+    from provisionedsettings import *
+except ImportError:
+    SECRET_KEY = 'test'
 
 ################## TESTING
 
