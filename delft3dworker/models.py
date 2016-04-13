@@ -79,6 +79,10 @@ class Scene(models.Model):
             self.state = "FAILURE"
         if simstate == "ABORTED" or procstate == "ABORTED":
             self.state = "ABORTED"
+
+        if simstate in ["ABORTED", "FAILURE", "SUCCESS"] and procstate == "PROCESSING":
+            print("Simulation has state {}, aborting processing".format(simstate))
+            self.abort()
         self.save()
 
     def save(self, *args, **kwargs):
@@ -88,15 +92,15 @@ class Scene(models.Model):
             self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
 
-    def delete(self, *args, **kwargs):
-        print "Delete from Scene"
+    def abort(self):
         if not self.processingtask is None:
-            print "Delete from Scene processing"
-            self.processingtask.delete()
+            self.processingtask.abort()
         if not self.simulationtask is None:
-            print "Delete from Scene simulation"
-            self.simulationtask.delete()
-        super(Scene, self).delete(*args, **kwargs)
+            self.simulationtask.abort()
+
+    def abort_delete(self):
+        self.abort()
+        super(Scene, self).delete()
 
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
@@ -148,14 +152,14 @@ class CeleryTask(models.Model):
         self.state_meta = result.info or {}
         self.save()
 
-    # def delete(self, *args, **kwargs):
-    #     result = AbortableAsyncResult(self.uuid)
-    #     print result.info
-    #     print "Deleting Celery Task {}".format(self.uuid)
-    #     result.abort()
-    #     print result.is_aborted()
-    #     # result.get()
-    #     super(CeleryTask, self).delete(*args, **kwargs)
+    def delete(self, *args, **kwargs):
+        result = AbortableAsyncResult(self.uuid)
+        print result.info
+        print "Deleting Celery Task {}".format(self.uuid)
+        result.abort()
+        print result.is_aborted()
+        # result.get()
+        super(CeleryTask, self).delete(*args, **kwargs)
 
     def __unicode__(self):
         return "{0} - {1}".format(self.uuid, self.state)
@@ -195,6 +199,10 @@ class ProcessingTask(CeleryTask):
 
         return True
 
+    def abort(self):
+        result = AbortableAsyncResult(self.uuid)
+        result.abort()
+
     def delete(self, *args, **kwargs):
         result = AbortableAsyncResult(self.uuid)
         print result.info
@@ -228,6 +236,10 @@ class SimulationTask(CeleryTask):
         self.save()
         return True
 
+    def abort(self):
+        result = AbortableAsyncResult(self.uuid)
+        result.abort()
+
     def delete(self, *args, **kwargs):
         result = AbortableAsyncResult(self.uuid)
         print "Deleting SimulationTask {}".format(self.uuid)
@@ -235,6 +247,11 @@ class SimulationTask(CeleryTask):
         print result.is_aborted()
         # result.get()  # will hang
         super(SimulationTask, self).delete(*args, **kwargs)
+
+    # def after_return(self, *args, **kwargs):
+    #     if self.state_meta == "Exited":
+    #         self.update_state(state="FAILURE")
+    #     super(SimulationTask, self).after_return(*args, **kwargs)
 
     def _create_model_schema(self):
 

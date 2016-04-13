@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import os
 import json
+import time
 
 from django.conf import settings
 
@@ -36,7 +37,6 @@ def postprocess(self):
 @shared_task(bind=True, base=AbortableTask)
 def process(self, workingdir):
     logger.info('Starting task "process"...')
-    output = {}
 
     #  Make Delft3D Processing Docker Client
     self.update_state(state='CREATING', meta={})
@@ -50,40 +50,47 @@ def process(self, workingdir):
         './run.sh channel_network delta_fringe',
     )
 
-    # output
-    output = {}
+    # try:
+    # Start
+    self.update_state(state='STARTING')
+    docker_client.start()
 
-    try:
+    output = json.loads(docker_client.get_output())
 
-        # Start
-        self.update_state(state='STARTING', meta=output)
-        docker_client.start()
+    self.update_state(state='PROCESSING', meta=output)
 
-        for log in docker_client.log():
-            logger.info(log.replace('\n', ''))
+    while docker_client.running():
+        logger.info(docker_client.get_log())
 
-            if (self.is_aborted()):
-                logger.warning('Aborting task "process"')
-                self.update_state(state='ABORTING', meta=output)
-                docker_client.stop()
-                break
+        output = json.loads(docker_client.get_output())
 
+        if (self.is_aborted()):
+            logger.warning('Aborting task "process"')
+            self.update_state(state='ABORTING', meta=output)
+            docker_client.stop()
+            break
+        else:
             self.update_state(state='PROCESSING', meta=output)
-
-            output = json.loads(docker_client.get_output())
-
             if 'delta_fringe_images' in output:
                 output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
             if 'channel_network_images' in output:
                 output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
 
-        self.update_state(state='DELETING', meta=output)
-        docker_client.delete()
+        time.sleep(5)
 
-    except Exception as e:
-        logger.exception('Exception in task "process": '+ str(e))
-        logger.info('Finishing task gracefully...')
-        output['error'] = str(e)
+    if docker_client.status()['ExitCode'] != 0:
+        error = docker_client.get_stderr()
+        docker_client.delete()
+        raise ValueError(error)
+
+    self.update_state(state='DELETING', meta=output)
+    docker_client.delete()
+
+    # except Exception as e:
+    #     logger.exception('Exception in task "process": '+ str(e))
+    #     docker_client.delete()
+    #     self.update_state(state="FAILURE")
+    #     return
 
     logger.info('... task "process" finished.')
     return output
@@ -92,7 +99,6 @@ def process(self, workingdir):
 @shared_task(bind=True, base=AbortableTask)
 def simulate(self, workingdir):
     logger.info('Starting task "simulate"...')
-    output = {}
 
     #  Make Delft3D Simulation Docker Client
     self.update_state(state='CREATING', meta={})
@@ -105,40 +111,46 @@ def simulate(self, workingdir):
         '',  # empty command
     )
 
-    # output
-    output = {}
+    # try:
 
-    try:
+    # Start
+    self.update_state(state='STARTING', meta={})
+    docker_client.start()
 
-        # Start
-        self.update_state(state='STARTING', meta=output)
-        docker_client.start()
+    output = docker_client.status()
 
-        for log in docker_client.log():
-            logger.info(log.replace('\n', ''))
+    self.update_state(state='PROCESSING', meta=output)
 
-            if (self.is_aborted()):
-                logger.warning('Aborting task "simulate"')
-                self.update_state(state='ABORTING', meta=output)
-                docker_client.stop()
-                break
+    while docker_client.running():
+        # logger.info(docker_client.get_log())
 
+        output = docker_client.status()
+
+        if (self.is_aborted()):
+            logger.warning('Aborting task "simulate"')
+            self.update_state(state='ABORTING', meta=output)
+            docker_client.stop()
+            break
+        else:
             self.update_state(state='PROCESSING', meta=output)
 
-            output = json.loads(docker_client.get_output())
+        time.sleep(1)
 
-            if 'delta_fringe_images' in output:
-                output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
-            if 'channel_network_images' in output:
-                output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
+    output = docker_client.status()
 
-        self.update_state(state='DELETING', meta=output)
+    if docker_client.status()['ExitCode'] != 0:
+        error = docker_client.get_stderr()
         docker_client.delete()
+        raise ValueError(error)
 
-    except Exception as e:
-        logger.exception('Exception in task "simulate": '+ str(e))
-        logger.info('Finishing task gracefully...')
-        output['error'] = str(e)
+    self.update_state(state='DELETING', meta=output)
+    docker_client.delete()
+
+    # except Exception as e:
+    #     logger.exception('Exception in task "simulate": '+ str(e))
+    #     docker_client.delete()
+    #     self.update_state(state="FAILURE")
+    #     return
 
     logger.info('... task "simulate" finished.')
     return output
@@ -169,14 +181,32 @@ class Delft3DDockerClient():
     def stop(self):
         self.client.stop(container=self.id)
 
-    def log(self):
+    def running(self):
+        return self.client.inspect_container(self.id)['State']['Running']
+
+    def status(self):
+        return self.client.inspect_container(self.id)['State']
+
+    def get_log(self):
         self.log = self.client.logs(
             container=self.id,
-            stream=True,
+            stream=False,
             stdout=True,
-            stderr=True
+            stderr=True,
+            tail=1
         )
         return self.log
+
+    def get_stderr(self):
+        self.errlog = self.client.logs(
+            container=self.id,
+            stream=False,
+            stdout=False,
+            stderr=True,
+            tail=5
+        )
+        print(self.errlog)
+        return self.errlog
 
     def get_output(self):
         if self.outputfile == '':
