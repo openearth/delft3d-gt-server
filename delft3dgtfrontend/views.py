@@ -8,8 +8,11 @@ import zipfile
 from django.http import HttpResponse
 
 
-def export(request):
-    """export data into a zip file"""
+def export(request, scene, selection):
+    """export data into a zip file
+    - scene: model run
+    - selection: images or log
+    """
 
     # we might need to move this to worker if:
     # - we need info of the scenes
@@ -44,9 +47,10 @@ def export(request):
         # rewinds and gets bytes
         stream.getvalue(),
         # urls don't use extensions but mime types
-        mimetype="application/x-zip-compressed"
+        content_type="application/x-zip-compressed"
     )
     # ..and correct content-disposition
     resp['Content-Disposition'] = 'attachment; filename=%s' % zip_filename
 
+    # TODO create a test with a django request and test if the file can be read
     return resp

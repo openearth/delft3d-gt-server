@@ -18,7 +18,7 @@ urlpatterns = (
 
     # Logout
     url(r'^logout/$', logout),
-    url(r'^export/(?P<id>.*)/(?P<type>.*)', export),
+    url(r'^export/(?P<scene>.*)/(?P<selection>.*)', export),
 
     # Index
     url(r'^$', login_required(serve), {
