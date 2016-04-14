@@ -63,6 +63,7 @@ def process(self, workingdir):
         logger.info(docker_client.get_log())
 
         output = json.loads(docker_client.get_output())
+        print(output)
 
         if (self.is_aborted()):
             logger.warning('Aborting task "process"')
@@ -70,11 +71,11 @@ def process(self, workingdir):
             docker_client.stop()
             break
         else:
-            self.update_state(state='PROCESSING', meta=output)
             if 'delta_fringe_images' in output:
                 output['delta_fringe_images']['location'] = os.path.join('process', output['delta_fringe_images']['location'])
             if 'channel_network_images' in output:
                 output['channel_network_images']['location'] = os.path.join('process', output['channel_network_images']['location'])
+            self.update_state(state='PROCESSING', meta=output)
 
         time.sleep(5)
 
