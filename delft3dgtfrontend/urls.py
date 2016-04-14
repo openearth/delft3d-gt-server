@@ -6,8 +6,6 @@ from django.views.static import serve
 from django.contrib.auth.views import login
 from django.contrib.auth.views import logout
 
-from .views import export
-
 urlpatterns = (
 
     # Login
@@ -18,7 +16,6 @@ urlpatterns = (
 
     # Logout
     url(r'^logout/$', logout),
-    url(r'^export/(?P<scene>.*)/(?P<selection>.*)', export),
 
     # Index
     url(r'^$', login_required(serve), {

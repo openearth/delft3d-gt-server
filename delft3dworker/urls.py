@@ -5,6 +5,7 @@ from delft3dworker.views import SceneDeleteView
 from delft3dworker.views import SceneDetailView
 from delft3dworker.views import SceneListView
 from delft3dworker.views import SceneStartView
+from delft3dworker.views import SceneExportView
 
 from django.contrib.auth.decorators import login_required
 from django.views.static import serve
@@ -15,6 +16,7 @@ urlpatterns = (
     url(r'^scene/create$', SceneCreateView.as_view(), name='scene_create'),
     url(r'^scene/delete$', SceneDeleteView.as_view(), name='scene_delete'),
     url(r'^scene/detail$', SceneDetailView.as_view(), name='scene_detail'),
+    url(r'^scene/export$', SceneExportView.as_view(), name='scene_export'),
     url(r'^scene/list$', SceneListView.as_view(), name='scene_list'),
     url(r'^scene/start$', SceneStartView.as_view(), name='scene_start'),
 
