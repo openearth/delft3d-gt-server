@@ -26,6 +26,22 @@ from shutil import copytree
 from shutil import rmtree
 
 
+# ################################### SCENARIO
+
+class Scenario(models.Model):
+    """
+    Scenario model
+    """
+
+    name = models.CharField(max_length=256)
+
+    def get_absolute_url(self):
+        return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
+
+    def __unicode__(self):
+        return self.name
+
+
 # ################################### SCENE
 
 class Scene(models.Model):
@@ -293,3 +309,28 @@ class SimulationTask(CeleryTask):
 
     def __unicode__(self):
         return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
+
+
+# ################################### Template
+
+class Template(models.Model):
+    """
+    Template model
+    """
+
+    templatename = models.CharField(max_length=256)
+
+    version  = models.IntegerField(max_length=256, blank=True)
+    model = models.CharField(max_length=256, blank=True)
+    email = models.CharField(max_length=256, blank=True)
+    label = models.CharField(max_length=256, blank=True)
+    description = models.CharField(max_length=256, blank=True)
+    site = models.CharField(max_length=256, blank=True)
+    variables = JSONField(blank=True)
+
+    def get_absolute_url(self):
+        return "{0}?id={1}".format(reverse_lazy('template_detail'), self.id)
+
+    def __unicode__(self):
+        return self.templatename
+
