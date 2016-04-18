@@ -19,7 +19,7 @@ from django.db import models
 
 from jsonfield import JSONField
 
-from mako.template import Template
+from mako.template import Template as MakoTemplate
 
 from shutil import copystat
 from shutil import copytree
@@ -300,7 +300,7 @@ class SimulationTask(CeleryTask):
 
         # render and write a.mdf
         mdf_template_file = os.path.join('/data/container/delft3dtemplates', 'a.mdf')
-        mdf_template = Template(filename=mdf_template_file)
+        mdf_template = MakoTemplate(filename=mdf_template_file)
         rendered_schema = mdf_template.render(**input_dict).replace('\r\n','\n')
         with open(os.path.join(self.scene.workingdir, 'delft3d', 'a.mdf'), 'w') as output:
             output.write(rendered_schema)
