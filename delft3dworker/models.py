@@ -19,11 +19,27 @@ from django.db import models
 
 from jsonfield import JSONField
 
-from mako.template import Template
+from mako.template import Template as MakoTemplate
 
 from shutil import copystat
 from shutil import copytree
 from shutil import rmtree
+
+
+# ################################### SCENARIO
+
+class Scenario(models.Model):
+    """
+    Scenario model
+    """
+
+    name = models.CharField(max_length=256)
+
+    def get_absolute_url(self):
+        return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
+
+    def __unicode__(self):
+        return self.name
 
 
 # ################################### SCENE
@@ -284,7 +300,7 @@ class SimulationTask(CeleryTask):
 
         # render and write a.mdf
         mdf_template_file = os.path.join('/data/container/delft3dtemplates', 'a.mdf')
-        mdf_template = Template(filename=mdf_template_file)
+        mdf_template = MakoTemplate(filename=mdf_template_file)
         rendered_schema = mdf_template.render(**input_dict).replace('\r\n','\n')
         with open(os.path.join(self.scene.workingdir, 'delft3d', 'a.mdf'), 'w') as output:
             output.write(rendered_schema)
@@ -293,3 +309,28 @@ class SimulationTask(CeleryTask):
 
     def __unicode__(self):
         return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
+
+
+# ################################### Template
+
+class Template(models.Model):
+    """
+    Template model
+    """
+
+    templatename = models.CharField(max_length=256)
+
+    version  = models.IntegerField(max_length=256, blank=True)
+    model = models.CharField(max_length=256, blank=True)
+    email = models.CharField(max_length=256, blank=True)
+    label = models.CharField(max_length=256, blank=True)
+    description = models.CharField(max_length=256, blank=True)
+    site = models.CharField(max_length=256, blank=True)
+    variables = JSONField(blank=True)
+
+    def get_absolute_url(self):
+        return "{0}?id={1}".format(reverse_lazy('template_detail'), self.id)
+
+    def __unicode__(self):
+        return self.templatename
+
