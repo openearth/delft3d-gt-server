@@ -45,7 +45,7 @@ class SceneDeleteView(DeleteView):
 
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
-        self.object.abort_delete()
+        self.object.abort()
         payload = {'status': 'deleted'}
         return JsonResponse(payload)
 
