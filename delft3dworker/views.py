@@ -83,6 +83,27 @@ class ScenarioListView(JSONListView):
         return super(ScenarioListView, self).dispatch(*args, **kwargs)
 
 
+class ScenarioStartView(View):
+    model = Scenario
+
+    # TODO: remove get
+    def get(self, request, *args, **kwargs):
+        scenario_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scenario = get_object_or_404(Scenario, id=scenario_id)
+        payload = {'status': scenario.start()}
+        return JsonResponse(payload)
+
+    def post(self, request, *args, **kwargs):
+        scenario_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scenario = get_object_or_404(Scenario, id=scenario_id)
+        payload = {'status': scenario.start()}
+        return JsonResponse(payload)
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super(ScenarioStartView, self).dispatch(*args, **kwargs)
+
+
 # ################################### SCENE
 
 class SceneCreateView(CreateView):
@@ -101,7 +122,7 @@ class SceneDeleteView(DeleteView):
     model = Scene
 
     def get_object(self):
-        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scene = (self.request.GET.get('id') or self.request.POST.get('id'))
         return Scene.objects.get(id=scene_id)
 
     def delete(self, request, *args, **kwargs):
