@@ -27,6 +27,10 @@ urlpatterns = (
     url(r'^scenario/list$', ScenarioListView.as_view(), name='scenario_list'),
     url(r'^scenario/start$', ScenarioStartView.as_view(), name='scenario_start'),
 
+    # TEMPLATE
+    url(r'^/scenario/template/detail$', TemplateDetailView.as_view(), name='template_detail'),
+    url(r'^/scenario/template/list$', TemplateListView.as_view(), name='template_list'),
+
     # SCENE
     url(r'^scene/create$', SceneCreateView.as_view(), name='scene_create'),
     url(r'^scene/delete$', SceneDeleteView.as_view(), name='scene_delete'),
@@ -34,10 +38,6 @@ urlpatterns = (
     url(r'^scene/export$', SceneExportView.as_view(), name='scene_export'),
     url(r'^scene/list$', SceneListView.as_view(), name='scene_list'),
     url(r'^scene/start$', SceneStartView.as_view(), name='scene_start'),
-
-    # TEMPLATE
-    url(r'^template/detail$', TemplateDetailView.as_view(), name='template_detail'),
-    url(r'^template/list$', TemplateListView.as_view(), name='template_list'),
 
     # DATA
     url(r'^data(?P<path>.*)$', login_required(serve), {
