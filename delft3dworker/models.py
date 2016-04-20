@@ -28,6 +28,7 @@ BUSYSTATE = "PROCESSING"
 
 # ################################### SCENE
 
+
 class Scene(models.Model):
     """
     Scene model
@@ -81,11 +82,7 @@ class Scene(models.Model):
         if not result.state == BUSYSTATE:
             return {"error": "task is not busy", "task_id": self.task_id, "state": result.state, "info": self.info}
 
-        try:
-            result.abort()
-            # result.get(timeout=120)
-        except TimeoutError:
-            return {"error": "Abort failed, 120s timeout exceeded", "task_id": self.task_id, "state": result.state, "info": self.info}
+        result.abort()
 
         self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
         self.state = result.state
@@ -120,7 +117,7 @@ class Scene(models.Model):
 
 
 # ################################### TASKS
-
+# ALL TASKS ARE DEPRECATED
 # ### Superclass
 
 class CeleryTask(models.Model):
