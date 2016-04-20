@@ -47,6 +47,7 @@ class Scenario(models.Model):
 
 # ################################### SCENE
 
+
 class Scene(models.Model):
     """
     Scene model
@@ -135,7 +136,7 @@ class Scene(models.Model):
 
 
 # ################################### TASKS
-# ALL TASKS HERE ARE DEPRECTATED
+# ALL TASKS ARE DEPRECATED
 # ### Superclass
 
 class CeleryTask(models.Model):
