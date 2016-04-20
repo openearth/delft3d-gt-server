@@ -31,7 +31,7 @@ from delft3dworker.models import Template
 
 class ScenarioCreateView(CreateView):
     model = Scenario
-    fields = ['name',]
+    fields = ['name', 'parameters']
 
     def post(self, request, *args, **kwargs):
         return super(ScenarioCreateView, self).post(request, *args, **kwargs)

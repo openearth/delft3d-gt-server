@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import os
 import uuid
+import json
 
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.result import AsyncResult
@@ -32,8 +33,10 @@ class Scenario(models.Model):
     """
     Scenario model
     """
+    template = models.OneToOneField('Template')
 
     name = models.CharField(max_length=256)
+    parameters = JSONField(blank=True)
 
     def start(self):
         return "started"
@@ -52,6 +55,8 @@ class Scene(models.Model):
     """
     Scene model
     """
+    scenario = models.ForeignKey('Scenario')
+
     suid = models.CharField(max_length=256, editable=False)
 
     workingdir = models.CharField(max_length=256)
@@ -60,6 +65,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     state = models.CharField(max_length=256, blank=True)
     info = JSONField(blank=True)
+    parameters = JSONField(blank=True)  # {"dt":20}
 
     # Celery task
     task_id = models.CharField(max_length=256)
