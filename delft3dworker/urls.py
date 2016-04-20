@@ -31,10 +31,6 @@ urlpatterns = (
     url(r'^scenario/template/detail$', TemplateDetailView.as_view(), name='template_detail'),
     url(r'^scenario/template/list$', TemplateListView.as_view(), name='template_list'),
 
-    # TEMPLATE
-    url(r'^scenario/template/detail$', TemplateDetailView.as_view(), name='template_detail'),
-    url(r'^scenario/template/list$', TemplateListView.as_view(), name='template_list'),
-
     # SCENE
     url(r'^scene/create$', SceneCreateView.as_view(), name='scene_create'),
     url(r'^scene/delete$', SceneDeleteView.as_view(), name='scene_delete'),
