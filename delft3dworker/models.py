@@ -82,7 +82,7 @@ class Scene(models.Model):
 
     def update_state(self):
         result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
         self.state = result.state
         self.save()
         return {"task_id": self.task_id, "state": self.state, "info": self.info}
@@ -97,13 +97,13 @@ class Scene(models.Model):
 
     def abort(self):
         result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
         if not result.state == BUSYSTATE:
             return {"error": "task is not busy", "task_id": self.task_id, "state": result.state, "info": self.info}
 
         result.abort()
 
-        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
         self.state = result.state
         self.save()
 
@@ -112,7 +112,7 @@ class Scene(models.Model):
     # Function is not used now
     def revoke(self):
         result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
         revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
         self.state = result.state
         self.save()
@@ -127,6 +127,30 @@ class Scene(models.Model):
         # create directory for scene
         if not os.path.exists(self.workingdir):
             os.makedirs(self.workingdir)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "info": self.info,
+            "name": self.name,
+            "suid": self.suid,
+            "workingdir": self.workingdir,
+            "state": self.state,
+            "fileurl": self.fileurl,
+
+            # dummy
+            "simulationtask": {
+                "state": "PROCESSING",
+                "state_meta": {"info":"this is a dummy task"},
+                "uuid": "32a66197-6f94-49c6-be0d-afaa50d1f4ec"
+            },
+            "processingtask": {
+                "state": "PROCESSING",
+                "state_meta": {"info":"this is a dummy task"},
+                "uuid": "a9e05500-dc82-4f4b-a392-552b9b3c0997"
+            },
+            "postprocessingtask": {None}
+        }
 
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
@@ -330,7 +354,7 @@ class Template(models.Model):
 
     templatename = models.CharField(max_length=256)
 
-    version  = models.IntegerField(max_length=256, blank=True)
+    version  = models.IntegerField(blank=True)
     model = models.CharField(max_length=256, blank=True)
     email = models.CharField(max_length=256, blank=True)
     label = models.CharField(max_length=256, blank=True)
