@@ -122,7 +122,7 @@ class SceneDeleteView(DeleteView):
     model = Scene
 
     def get_object(self):
-        scene = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         return Scene.objects.get(id=scene_id)
 
     def delete(self, request, *args, **kwargs):
