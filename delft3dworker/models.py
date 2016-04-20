@@ -5,13 +5,12 @@ import uuid
 
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.result import AsyncResult
+from celery.exceptions import TimeoutError
+from celery.task.control import revoke as revoke_task
 
 from datetime import datetime
 
-from delft3dworker.tasks import donothing
-from delft3dworker.tasks import postprocess
-from delft3dworker.tasks import process
-from delft3dworker.tasks import simulate
+from delft3dworker.tasks import chainedtask
 
 from django.conf import settings  #noqa
 from django.core.urlresolvers import reverse_lazy
@@ -25,6 +24,7 @@ from shutil import copystat
 from shutil import copytree
 from shutil import rmtree
 
+BUSYSTATE = "PROCESSING"
 
 # ################################### SCENARIO
 
@@ -47,6 +47,7 @@ class Scenario(models.Model):
 
 # ################################### SCENE
 
+
 class Scene(models.Model):
     """
     Scene model
@@ -60,66 +61,72 @@ class Scene(models.Model):
     state = models.CharField(max_length=256, blank=True)
     info = JSONField(blank=True)
 
+    # Celery task
+    task_id = models.CharField(max_length=256)
+    state = models.CharField(max_length=256, blank=True)
+
     def start(self):
-        started = True
+        result = AbortableAsyncResult(self.task_id)
 
-        try:
-            self.simulationtask
-        except SimulationTask.DoesNotExist, e:
-            self.simulationtask = SimulationTask(uuid='none', state='none',
-                scene=self)
-            started = started and self.simulationtask.run()
+        if self.task_id != "" and result.state == "PENDING":
+            return {"error": "task already PENDING", "task_id": self.task_id}
+        if result.state == BUSYSTATE:
+            return {"error": "task already busy", "task_id": self.task_id}
 
-        try:
-            self.processingtask
-        except ProcessingTask.DoesNotExist, e:
-            self.processingtask = ProcessingTask(uuid='none', state='none',
-                scene=self)
-            started = started and self.processingtask.run()
+        result = chainedtask.delay(10, self.workingdir)
+        self.task_id = result.task_id
+        self.state = result.state
+        self.save()
 
-        return 'started' if started else 'error'
+        return {"task_id": self.task_id, "scene_id": self.suid}
 
     def update_state(self):
-        try:
-            simstate = self.simulationtask.state
-        except SimulationTask.DoesNotExist, e:
-            simstate = None
-        try:
-            procstate = self.processingtask.state
-        except ProcessingTask.DoesNotExist, e:
-            procstate = None
-
-        self.state = "WAITING"
-        if simstate == "PROCESSING" or procstate == "PROCESSING":
-            self.state = "PROCESSING"
-        if simstate == "SUCCESS" and procstate == "SUCCESS":
-            self.state = "SUCCESS"
-        if simstate == "FAILURE" or procstate == "FAILURE":
-            self.state = "FAILURE"
-        if simstate == "ABORTED" or procstate == "ABORTED":
-            self.state = "ABORTED"
-
-        if simstate in ["ABORTED", "FAILURE", "SUCCESS"] and procstate == "PROCESSING":
-            print("Simulation has state {}, aborting processing".format(simstate))
-            self.abort()
+        result = AbortableAsyncResult(self.task_id)
+        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        self.state = result.state
         self.save()
+        return {"task_id": self.task_id, "state": self.state, "info": self.info}
 
     def save(self, *args, **kwargs):
         if self.suid == '':
             self.suid = str(uuid.uuid4())
             self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
+            self._create_datafolder()
             self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
 
     def abort(self):
-        if not self.processingtask is None:
-            self.processingtask.abort()
-        if not self.simulationtask is None:
-            self.simulationtask.abort()
+        result = AbortableAsyncResult(self.task_id)
+        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        if not result.state == BUSYSTATE:
+            return {"error": "task is not busy", "task_id": self.task_id, "state": result.state, "info": self.info}
 
-    def abort_delete(self):
+        result.abort()
+
+        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        self.state = result.state
+        self.save()
+
+        return {"task_id": self.task_id, "state": result.state, "info": self.info}
+
+    # Function is not used now
+    def revoke(self):
+        result = AbortableAsyncResult(self.task_id)
+        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
+        self.state = result.state
+        self.save()
+
+        return {"task_id": self.task_id, "state": result.state, "info": self.info}
+
+    def delete(self, *args, **kwargs):
         self.abort()
-        super(Scene, self).delete()
+        super(Scene, self).delete(*args, **kwargs)
+
+    def _create_datafolder(self):
+        # create directory for scene
+        if not os.path.exists(self.workingdir):
+            os.makedirs(self.workingdir)
 
     def export(self):
         # Alternatives to this implementation are:
@@ -161,7 +168,7 @@ class Scene(models.Model):
 
 
 # ################################### TASKS
-
+# ALL TASKS ARE DEPRECATED
 # ### Superclass
 
 class CeleryTask(models.Model):
@@ -184,7 +191,7 @@ class CeleryTask(models.Model):
         if type(result.info) is dict:
             self.state_meta = result.info
         else:
-            self.state_meta = {'info': str(result.info)}
+            self.state_meta = {'info': {"info":result.info}}
 
         self.save()
 
