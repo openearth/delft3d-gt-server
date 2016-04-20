@@ -4,6 +4,7 @@ Views for the ui.
 from __future__ import absolute_import
 
 import io
+import os
 import zipfile
 
 from django.core.urlresolvers import reverse_lazy
@@ -174,9 +175,9 @@ class SceneExportView(View):
         - selection: images or log
         """
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
-
+        scene = get_object_or_404(Scene, id=scene_id)
+        
         # we might need to move this to worker if:
-        # - we need info of the scenes
         # - we need to do this in the background (in a task)
 
         # Alternatives to this implementation are:
@@ -199,6 +200,12 @@ class SceneExportView(View):
         # - stream
         # - zip in a subprocess shell with zip
         # - zip to temporary file
+        for root, dirs, files in os.walk(scene.workingdir):
+            for f in files:
+                if f.endswith('.png'):  # Could be dynamic or tuple of extensions
+                    abs_path = os.path.join(root, f)
+                    rel_path = os.path.relpath(abs_path, scene.workingdir)
+                    zf.write(abs_path, rel_path)
 
         # Must close zip for all contents to be written
         zf.close()
