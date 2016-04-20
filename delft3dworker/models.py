@@ -35,6 +35,9 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
+    def start(self):
+        return "started"
+
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
 
@@ -336,6 +339,7 @@ class Template(models.Model):
     label = models.CharField(max_length=256, blank=True)
     description = models.CharField(max_length=256, blank=True)
     site = models.CharField(max_length=256, blank=True)
+    groups = JSONField(blank=True)
     variables = JSONField(blank=True)
 
     def get_absolute_url(self):

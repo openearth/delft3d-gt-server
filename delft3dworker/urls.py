@@ -4,6 +4,7 @@ from delft3dworker.views import ScenarioCreateView
 from delft3dworker.views import ScenarioDeleteView
 from delft3dworker.views import ScenarioDetailView
 from delft3dworker.views import ScenarioListView
+from delft3dworker.views import ScenarioStartView
 from delft3dworker.views import SceneCreateView
 from delft3dworker.views import SceneDeleteView
 from delft3dworker.views import SceneDetailView
@@ -24,6 +25,11 @@ urlpatterns = (
     url(r'^scenario/delete$', ScenarioDeleteView.as_view(), name='scenario_delete'),
     url(r'^scenario/detail$', ScenarioDetailView.as_view(), name='scenario_detail'),
     url(r'^scenario/list$', ScenarioListView.as_view(), name='scenario_list'),
+    url(r'^scenario/start$', ScenarioStartView.as_view(), name='scenario_start'),
+
+    # TEMPLATE
+    url(r'^scenario/template/detail$', TemplateDetailView.as_view(), name='template_detail'),
+    url(r'^scenario/template/list$', TemplateListView.as_view(), name='template_list'),
 
     # TEMPLATE
     url(r'^scenario/template/detail$', TemplateDetailView.as_view(), name='template_detail'),
