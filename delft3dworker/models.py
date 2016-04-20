@@ -330,7 +330,7 @@ class Template(models.Model):
 
     templatename = models.CharField(max_length=256)
 
-    version  = models.IntegerField(max_length=256, blank=True)
+    version  = models.IntegerField(blank=True)
     model = models.CharField(max_length=256, blank=True)
     email = models.CharField(max_length=256, blank=True)
     label = models.CharField(max_length=256, blank=True)
