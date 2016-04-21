@@ -128,6 +128,30 @@ class Scene(models.Model):
         if not os.path.exists(self.workingdir):
             os.makedirs(self.workingdir)
 
+    def serialize(self):
+        return {
+            "id": self.id,
+            "info": self.info,
+            "name": self.name,
+            "suid": self.suid,
+            "workingdir": self.workingdir,
+            "state": self.state,
+            "fileurl": self.fileurl,
+
+            # dummy
+            "simulationtask": {
+                "state": "PROCESSING",
+                "state_meta": {"info":"this is a dummy task"},
+                "uuid": "32a66197-6f94-49c6-be0d-afaa50d1f4ec"
+            },
+            "processingtask": {
+                "state": "PROCESSING",
+                "state_meta": {"info":"this is a dummy task"},
+                "uuid": "a9e05500-dc82-4f4b-a392-552b9b3c0997"
+            },
+            "postprocessingtask": {None}
+        }
+
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
 
