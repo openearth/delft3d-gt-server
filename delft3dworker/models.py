@@ -33,7 +33,7 @@ class Scenario(models.Model):
     """
     Scenario model
     """
-    template = models.OneToOneField('Template')
+    template = models.OneToOneField('Template', null=True)
 
     name = models.CharField(max_length=256)
     parameters = JSONField(blank=True)
@@ -55,7 +55,7 @@ class Scene(models.Model):
     """
     Scene model
     """
-    scenario = models.ForeignKey('Scenario')
+    scenario = models.ForeignKey('Scenario', null=True)
 
     suid = models.CharField(max_length=256, editable=False)
 
