@@ -87,13 +87,16 @@ class Scene(models.Model):
         return {"task_id": self.task_id, "scene_id": self.suid}
 
     def update_state(self):
-        result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
-        self.state = result.state
-        self.save()
+        # only update state if it has a task_id (which means the task is started)
+        if self.task_id != '':
+            result = AbortableAsyncResult(self.task_id)
+            self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
+            self.state = result.state
+            self.save()
         return {"task_id": self.task_id, "state": self.state, "info": str(self.info)}
 
     def save(self, *args, **kwargs):
+        # if scene does not have a unique uuid, create it and create folder
         if self.suid == '':
             self.suid = str(uuid.uuid4())
             self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
