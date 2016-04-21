@@ -122,7 +122,12 @@ STATIC_URL = '/static/'
 
 BROKER_URL = 'redis://localhost'
 CELERY_RESULT_BACKEND = 'redis://localhost'
-
+CELERY_ROUTES = {
+'delft3dworker.tasks.chainedtask': {'queue': 'celery'},
+'delft3dworker.tasks.pre_dummy': {'queue': 'pre'},
+'delft3dworker.tasks.sim_dummy': {'queue': 'sim'},
+'delft3dworker.tasks.post_dummy': {'queue': 'post'},
+}
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
