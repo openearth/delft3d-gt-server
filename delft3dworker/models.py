@@ -91,7 +91,7 @@ class Scene(models.Model):
         self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
         self.state = result.state
         self.save()
-        return {"task_id": self.task_id, "state": self.state, "info": self.info}
+        return {"task_id": self.task_id, "state": self.state, "info": str(self.info)}
 
     def save(self, *args, **kwargs):
         if self.suid == '':
@@ -105,7 +105,7 @@ class Scene(models.Model):
         result = AbortableAsyncResult(self.task_id)
         self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
         if not result.state == BUSYSTATE:
-            return {"error": "task is not busy", "task_id": self.task_id, "state": result.state, "info": self.info}
+            return {"error": "task is not busy", "task_id": self.task_id, "state": result.state, "info": str(self.info)}
 
         result.abort()
 
@@ -113,7 +113,7 @@ class Scene(models.Model):
         self.state = result.state
         self.save()
 
-        return {"task_id": self.task_id, "state": result.state, "info": self.info}
+        return {"task_id": self.task_id, "state": result.state, "info": str(self.info)}
 
     # Function is not used now
     def revoke(self):
@@ -123,7 +123,7 @@ class Scene(models.Model):
         self.state = result.state
         self.save()
 
-        return {"task_id": self.task_id, "state": result.state, "info": self.info}
+        return {"task_id": self.task_id, "state": result.state, "info": str(self.info)}
 
     def delete(self, *args, **kwargs):
         self.abort()
@@ -189,7 +189,7 @@ class CeleryTask(models.Model):
         if type(result.info) is dict:
             self.state_meta = result.info
         else:
-            self.state_meta = {'info': {"info":result.info}}
+            self.state_meta = {'info': {"info":rstr(esult.info)}}
 
         self.save()
 
