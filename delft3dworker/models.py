@@ -5,13 +5,12 @@ import uuid
 
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.result import AsyncResult
+from celery.exceptions import TimeoutError
+from celery.task.control import revoke as revoke_task
 
 from datetime import datetime
 
-from delft3dworker.tasks import donothing
-from delft3dworker.tasks import postprocess
-from delft3dworker.tasks import process
-from delft3dworker.tasks import simulate
+from delft3dworker.tasks import chainedtask
 
 from django.conf import settings  #noqa
 from django.core.urlresolvers import reverse_lazy
@@ -19,14 +18,35 @@ from django.db import models
 
 from jsonfield import JSONField
 
-from mako.template import Template
+from mako.template import Template as MakoTemplate
 
 from shutil import copystat
 from shutil import copytree
 from shutil import rmtree
 
+BUSYSTATE = "PROCESSING"
+
+# ################################### SCENARIO
+
+class Scenario(models.Model):
+    """
+    Scenario model
+    """
+
+    name = models.CharField(max_length=256)
+
+    def start(self):
+        return "started"
+
+    def get_absolute_url(self):
+        return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
+
+    def __unicode__(self):
+        return self.name
+
 
 # ################################### SCENE
+
 
 class Scene(models.Model):
     """
@@ -41,66 +61,99 @@ class Scene(models.Model):
     state = models.CharField(max_length=256, blank=True)
     info = JSONField(blank=True)
 
+    # Celery task
+    task_id = models.CharField(max_length=256)
+    state = models.CharField(max_length=256, blank=True)
+
     def start(self):
-        started = True
+        result = AbortableAsyncResult(self.task_id)
 
-        try:
-            self.simulationtask
-        except SimulationTask.DoesNotExist, e:
-            self.simulationtask = SimulationTask(uuid='none', state='none',
-                scene=self)
-            started = started and self.simulationtask.run()
+        if self.task_id != "" and result.state == "PENDING":
+            return {"error": "task already PENDING", "task_id": self.task_id}
+        if result.state == BUSYSTATE:
+            return {"error": "task already busy", "task_id": self.task_id}
 
-        try:
-            self.processingtask
-        except ProcessingTask.DoesNotExist, e:
-            self.processingtask = ProcessingTask(uuid='none', state='none',
-                scene=self)
-            started = started and self.processingtask.run()
-
-        return 'started' if started else 'error'
-
-    def update_state(self):
-        try:
-            simstate = self.simulationtask.state
-        except SimulationTask.DoesNotExist, e:
-            simstate = None
-        try:
-            procstate = self.processingtask.state
-        except ProcessingTask.DoesNotExist, e:
-            procstate = None
-
-        self.state = "WAITING"
-        if simstate == "PROCESSING" or procstate == "PROCESSING":
-            self.state = "PROCESSING"
-        if simstate == "SUCCESS" and procstate == "SUCCESS":
-            self.state = "SUCCESS"
-        if simstate == "FAILURE" or procstate == "FAILURE":
-            self.state = "FAILURE"
-        if simstate == "ABORTED" or procstate == "ABORTED":
-            self.state = "ABORTED"
-
-        if simstate in ["ABORTED", "FAILURE", "SUCCESS"] and procstate == "PROCESSING":
-            print("Simulation has state {}, aborting processing".format(simstate))
-            self.abort()
+        result = chainedtask.delay(10, self.workingdir)
+        self.task_id = result.task_id
+        self.state = result.state
         self.save()
 
+        return {"task_id": self.task_id, "scene_id": self.suid}
+
+    def update_state(self):
+        # only update state if it has a task_id (which means the task is started)
+        if self.task_id != '':
+            result = AbortableAsyncResult(self.task_id)
+            self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
+            self.state = result.state
+            self.save()
+        return {"task_id": self.task_id, "state": self.state, "info": str(self.info)}
+
     def save(self, *args, **kwargs):
+        # if scene does not have a unique uuid, create it and create folder
         if self.suid == '':
             self.suid = str(uuid.uuid4())
             self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
+            self._create_datafolder()
             self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
 
     def abort(self):
-        if not self.processingtask is None:
-            self.processingtask.abort()
-        if not self.simulationtask is None:
-            self.simulationtask.abort()
+        result = AbortableAsyncResult(self.task_id)
+        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
+        if not result.state == BUSYSTATE:
+            return {"error": "task is not busy", "task_id": self.task_id, "state": result.state, "info": str(self.info)}
 
-    def abort_delete(self):
+        result.abort()
+
+        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
+        self.state = result.state
+        self.save()
+
+        return {"task_id": self.task_id, "state": result.state, "info": str(self.info)}
+
+    # Function is not used now
+    def revoke(self):
+        result = AbortableAsyncResult(self.task_id)
+        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
+        revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
+        self.state = result.state
+        self.save()
+
+        return {"task_id": self.task_id, "state": result.state, "info": str(self.info)}
+
+    def delete(self, *args, **kwargs):
         self.abort()
-        super(Scene, self).delete()
+        super(Scene, self).delete(*args, **kwargs)
+
+    def _create_datafolder(self):
+        # create directory for scene
+        if not os.path.exists(self.workingdir):
+            os.makedirs(self.workingdir)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "info": self.info,
+            "name": self.name,
+            "suid": self.suid,
+            "workingdir": self.workingdir,
+            "state": self.state,
+            "fileurl": self.fileurl,
+
+            # dummy
+            "simulationtask": {
+                "state": "PROCESSING",
+                "state_meta": {"info":"this is a dummy task"},
+                "uuid": "32a66197-6f94-49c6-be0d-afaa50d1f4ec"
+            },
+            "processingtask": {
+                "state": "PROCESSING",
+                "state_meta": {"info":"this is a dummy task"},
+                "uuid": "a9e05500-dc82-4f4b-a392-552b9b3c0997"
+            },
+            "postprocessingtask": {None}
+        }
 
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
@@ -110,7 +163,7 @@ class Scene(models.Model):
 
 
 # ################################### TASKS
-
+# ALL TASKS ARE DEPRECATED
 # ### Superclass
 
 class CeleryTask(models.Model):
@@ -133,7 +186,7 @@ class CeleryTask(models.Model):
         if type(result.info) is dict:
             self.state_meta = result.info
         else:
-            self.state_meta = {'info': str(result.info)}
+            self.state_meta = {'info': {"info":rstr(esult.info)}}
 
         self.save()
 
@@ -284,7 +337,7 @@ class SimulationTask(CeleryTask):
 
         # render and write a.mdf
         mdf_template_file = os.path.join('/data/container/delft3dtemplates', 'a.mdf')
-        mdf_template = Template(filename=mdf_template_file)
+        mdf_template = MakoTemplate(filename=mdf_template_file)
         rendered_schema = mdf_template.render(**input_dict).replace('\r\n','\n')
         with open(os.path.join(self.scene.workingdir, 'delft3d', 'a.mdf'), 'w') as output:
             output.write(rendered_schema)
@@ -293,3 +346,29 @@ class SimulationTask(CeleryTask):
 
     def __unicode__(self):
         return "{0} - {1} - {2}".format(self.scene, self.uuid, self.state)
+
+
+# ################################### Template
+
+class Template(models.Model):
+    """
+    Template model
+    """
+
+    templatename = models.CharField(max_length=256)
+
+    version  = models.IntegerField(blank=True)
+    model = models.CharField(max_length=256, blank=True)
+    email = models.CharField(max_length=256, blank=True)
+    label = models.CharField(max_length=256, blank=True)
+    description = models.CharField(max_length=256, blank=True)
+    site = models.CharField(max_length=256, blank=True)
+    groups = JSONField(blank=True)
+    variables = JSONField(blank=True)
+
+    def get_absolute_url(self):
+        return "{0}?id={1}".format(reverse_lazy('template_detail'), self.id)
+
+    def __unicode__(self):
+        return self.templatename
+

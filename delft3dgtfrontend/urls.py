@@ -1,7 +1,6 @@
 from django.conf import settings  # noqa
 from django.conf.urls import url  # noqa
 from django.contrib.auth.decorators import login_required
-from django.views.generic import TemplateView
 from django.views.static import serve
 
 from django.contrib.auth.views import login
