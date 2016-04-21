@@ -30,4 +30,11 @@ STATIC_ROOT = '/opt/delft3d-gt/static/'
 # delft3dworker
 PROCESS_IMAGE_NAME = 'python27_container'
 DELFT3D_IMAGE_NAME = 'delft3d'
-WORKER_FILEDIR = '/files'
+WORKER_FILEDIR = '/data/container/files'
+
+CELERY_ROUTES = {
+  'delft3dworker.tasks.chainedtask': {'queue': 'celery'},
+  'delft3dworker.tasks.pre_dummy': {'queue': 'pre'},
+  'delft3dworker.tasks.sim_dummy': {'queue': 'sim'},
+  'delft3dworker.tasks.post_dummy': {'queue': 'post'},
+}
