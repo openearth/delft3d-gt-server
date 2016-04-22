@@ -196,8 +196,6 @@ class SceneStartView(View):
         scene = get_object_or_404(Scene, id=scene_id)
         payload = {'status': scene.start()}
 
-        print '------------------------------------------------------------------------ SceneStartView {}'.format(scene_id)
-
         return JsonResponse(payload)
 
     @method_decorator(csrf_exempt)
