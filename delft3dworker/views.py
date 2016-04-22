@@ -4,7 +4,6 @@ Views for the ui.
 from __future__ import absolute_import
 
 import io
-import json
 import os
 import zipfile
 
@@ -214,48 +213,13 @@ class SceneExportView(View):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         scene = get_object_or_404(Scene, id=scene_id)
 
-        # we might need to move this to worker if:
-        # - we need to do this in the background (in a task)
+        stream, filename = scene.export()
 
-        # Alternatives to this implementation are:
-        # - django-zip-view (sets mimetype and content-disposition)
-        # - django-filebrowser (filtering and more elegant browsing)
-
-        # from: http://stackoverflow.com/questions/67454/serving-dynamically-generated-zip-archives-in-django
-
-        zip_filename = 'export.zip'
-
-        # Open BytesIO to grab in-memory ZIP contents
-        # (be explicit about bytes)
-        stream = io.BytesIO()
-
-        # The zip compressor
-        zf = zipfile.ZipFile(stream, "w")
-
-        # Add files here.
-        # If you run out of memory you have 2 options:
-        # - stream
-        # - zip in a subprocess shell with zip
-        # - zip to temporary file
-        for root, dirs, files in os.walk(scene.workingdir):
-            for f in files:
-                if f.endswith('.png'):  # Could be dynamic or tuple of extensions
-                    abs_path = os.path.join(root, f)
-                    rel_path = os.path.relpath(abs_path, scene.workingdir)
-                    zf.write(abs_path, rel_path)
-
-        # Must close zip for all contents to be written
-        zf.close()
-
-        # Grab ZIP file from in-memory, make response with correct MIME-type
         resp = HttpResponse(
-            # rewinds and gets bytes
             stream.getvalue(),
-            # urls don't use extensions but mime types
             content_type="application/x-zip-compressed"
         )
-        # ..and correct content-disposition
-        resp['Content-Disposition'] = 'attachment; filename=%s' % zip_filename
+        resp['Content-Disposition'] = 'attachment; filename={}'.format(filename)
 
         # TODO create a test with a django request and test if the file can be read
         return resp
