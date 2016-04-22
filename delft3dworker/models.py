@@ -47,7 +47,9 @@ class Scenario(models.Model):
         for key, value in settings.items():
             self._parse_setting(key, value)
 
-        print self.parameters
+        # debugging output
+        # for value in self.parameters:
+            # print [(key, value['value']) for (key, value) in value.items()]
 
         self.save()
 
@@ -66,20 +68,23 @@ class Scenario(models.Model):
                 if key not in scene:
                     scene[key] = setting
         else:
-            # TODO ALIASING OCCURS DOWN BELOW
             # Autostep! Run past all parameter scenes, iteratively
             minstep = int(setting["minstep"])
             maxstep = int(setting["maxstep"])
             step = int(setting["stepinterval"])
-            values = range(minstep, maxstep, step)  # all requested values
-            
-            # current scenes times number of new values
-            self.parameters = [copy.copy(self.parameters[-1]) for x in range(len(values))]
-            # self.parameters = len(values) * self.parameters is the same but aliases
+            values = range(minstep, maxstep, step)  # Could be maxstep +1, as to be inclusive?
+
+            # Current scenes times number of new values
+            # 3 original runs (1 2 3), this settings adds two (a b) thus we now have
+            # 6 scenes ( 1 1 2 2 3 3).
+            self.parameters = [copy.copy(p) for p in self.parameters for _ in range(len(values))]
 
             i = 0
             for scene in self.parameters:
-                s = dict(setting)
+                s = dict(setting)  # by using dict, we prevent an alias
+                # Using modulo we can assign a b in the correct
+                # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2) 
+                # modulo gives 0 which is again the first value (a)  
                 s['value'] = values[i % len(values)]
                 scene[key] = s
                 i += 1
@@ -91,7 +96,7 @@ class Scenario(models.Model):
         self.save()
 
     def start(self):
-        for scene in Scene.objects.filter(scenario=self):
+        for scene in self.scene_set.all():
             scene.start()
         return "started"
 
