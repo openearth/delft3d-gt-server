@@ -38,13 +38,32 @@ class Scenario(models.Model):
     name = models.CharField(max_length=256)
     parameters = JSONField(blank=True)
 
+    def load_settings(self, settings):
+
+        for key in settings:
+            self._parse_setting(key, settings[key])
+
+        self.save()
+
+    def _parse_setting(self, key, setting):
+
+        if not ('value' in setting or 'valid' in settings or setting['valid'] ):
+            return
+
+        if key == "scenarioname":
+            self.name = setting['value']
+            return
+
     def start(self):
+
         return "started"
 
     def get_absolute_url(self):
+
         return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
 
     def __unicode__(self):
+
         return self.name
 
 
