@@ -161,7 +161,7 @@ class Scene(models.Model):
         for root, dirs, files in os.walk(scene.workingdir):
             for f in files:
                 name, ext = os.path.splitext(f)
-                if ext in ('png', '.jpg', '.gif'):  # Could be dynamic or tuple of extensions
+                if ext in ('.png', '.jpg', '.gif'):  # Could be dynamic or tuple of extensions
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, scene.workingdir)
                     zf.write(abs_path, rel_path)
