@@ -72,20 +72,17 @@ class Scenario(models.Model):
             maxstep = int(setting["maxstep"])
             step = int(setting["stepinterval"])
             values = range(minstep, maxstep, step)  # all requested values
-            # for x in range(len(values)):
-                # self.parameters.append(self.parameters[:][-1])
-            self.parameters = len(values) * self.parameters[:]  # current scenes times number of new values 
+            
+            # current scenes times number of new values
+            self.parameters = [copy.copy(self.parameters[-1]) for x in range(len(values))]
+            # self.parameters = len(values) * self.parameters is the same but aliases
 
             i = 0
-            for x, scene in enumerate(self.parameters):
-                s = copy.deepcopy(setting)  # avoid nasty aliasing
+            for scene in self.parameters:
+                s = dict(setting)
                 s['value'] = values[i % len(values)]
                 scene[key] = s
-                self.parameters[x] = scene
                 i += 1
-
-            self.parameters[0][key][u'value'] = -10
-            # print self.parameters
 
     def createscenes(self):
         for i, sceneparameters in enumerate(self.parameters):
