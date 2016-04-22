@@ -42,7 +42,13 @@ def chainedtask(self, timestep, workingdir):
             return results
 
         # revoke handling
-        elif self.request.id in explode.from_iterable(self.app.control.inspect().revoked().values()):
+        elif (
+            not self.app.control.inspect().revoked() is None
+            and
+            self.request.id in explode.from_iterable(
+                self.app.control.inspect().revoked().values()
+            )
+        ):
 
             logger.info("Chain is revoked")
             leaf = chain_result
@@ -61,8 +67,8 @@ def chainedtask(self, timestep, workingdir):
             while leaf:
                 results[leaf.id] = leaf.state
                 leaf = leaf.parent
-            # race condition: although we check it in this if/else statement, 
-            # aborted state is sometimes lost 
+            # race condition: although we check it in this if/else statement,
+            # aborted state is sometimes lost
             if not self.is_aborted(): self.update_state(state="PROCESSING", meta=results)
 
         time.sleep(0.5)
@@ -105,8 +111,8 @@ def pre_dummy(self, time_steps, workingdir, _):
         # if no abort or revoke: update state
         else:
             state_meta["output"] = preprocess_container.get_log()
-            # race condition: although we check it in this if/else statement, 
-            # aborted state is sometimes lost 
+            # race condition: although we check it in this if/else statement,
+            # aborted state is sometimes lost
             if not self.is_aborted(): self.update_state(state='PROCESSING', meta=state_meta)
 
         running = preprocess_container.running()
@@ -158,8 +164,8 @@ def sim_dummy(self, _, workingdir):
                 processing_container.get_log()
             ]
             logger.info(state_meta["output"])
-            # race condition: although we check it in this if/else statement, 
-            # aborted state is sometimes lost 
+            # race condition: although we check it in this if/else statement,
+            # aborted state is sometimes lost
             if not self.is_aborted(): self.update_state(state="PROCESSING", meta=state_meta)
 
         time.sleep(2)
@@ -197,8 +203,8 @@ def post_dummy(self, _, workingdir):
             break
         else:
             state_meta["output"] = postprocessing_container.get_log()
-            # race condition: although we check it in this if/else statement, 
-            # aborted state is sometimes lost 
+            # race condition: although we check it in this if/else statement,
+            # aborted state is sometimes lost
             if not self.is_aborted(): self.update_state(state='PROCESSING', meta=state_meta)
 
         time.sleep(2)

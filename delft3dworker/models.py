@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import os
 import uuid
+import json
 
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.result import AsyncResult
@@ -32,8 +33,10 @@ class Scenario(models.Model):
     """
     Scenario model
     """
+    template = models.OneToOneField('Template', null=True)
 
     name = models.CharField(max_length=256)
+    parameters = JSONField(blank=True)
 
     def start(self):
         return "started"
@@ -52,6 +55,8 @@ class Scene(models.Model):
     """
     Scene model
     """
+    scenario = models.ForeignKey('Scenario', null=True)
+
     suid = models.CharField(max_length=256, editable=False)
 
     workingdir = models.CharField(max_length=256)
@@ -60,6 +65,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     state = models.CharField(max_length=256, blank=True)
     info = JSONField(blank=True)
+    parameters = JSONField(blank=True)  # {"dt":20}
 
     # Celery task
     task_id = models.CharField(max_length=256)
@@ -81,13 +87,16 @@ class Scene(models.Model):
         return {"task_id": self.task_id, "scene_id": self.suid}
 
     def update_state(self):
-        result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
-        self.state = result.state
-        self.save()
-        return {"task_id": self.task_id, "state": self.state, "info": self.info}
+        # only update state if it has a task_id (which means the task is started)
+        if self.task_id != '':
+            result = AbortableAsyncResult(self.task_id)
+            self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
+            self.state = result.state
+            self.save()
+        return {"task_id": self.task_id, "state": self.state, "info": str(self.info)}
 
     def save(self, *args, **kwargs):
+        # if scene does not have a unique uuid, create it and create folder
         if self.suid == '':
             self.suid = str(uuid.uuid4())
             self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
@@ -97,27 +106,27 @@ class Scene(models.Model):
 
     def abort(self):
         result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
         if not result.state == BUSYSTATE:
-            return {"error": "task is not busy", "task_id": self.task_id, "state": result.state, "info": self.info}
+            return {"error": "task is not busy", "task_id": self.task_id, "state": result.state, "info": str(self.info)}
 
         result.abort()
 
-        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
         self.state = result.state
         self.save()
 
-        return {"task_id": self.task_id, "state": result.state, "info": self.info}
+        return {"task_id": self.task_id, "state": result.state, "info": str(self.info)}
 
     # Function is not used now
     def revoke(self):
         result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(result.info, dict) else {"info": result.info}
+        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
         revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
         self.state = result.state
         self.save()
 
-        return {"task_id": self.task_id, "state": result.state, "info": self.info}
+        return {"task_id": self.task_id, "state": result.state, "info": str(self.info)}
 
     def delete(self, *args, **kwargs):
         self.abort()
@@ -160,6 +169,30 @@ class Scene(models.Model):
         zf.close()
         return stream, zip_filename
 
+    def serialize(self):
+        return {
+            "id": self.id,
+            "info": self.info,
+            "name": self.name,
+            "suid": self.suid,
+            "workingdir": self.workingdir,
+            "state": self.state,
+            "fileurl": self.fileurl,
+
+            # dummy
+            "simulationtask": {
+                "state": "PROCESSING",
+                "state_meta": {"info":"this is a dummy task"},
+                "uuid": "32a66197-6f94-49c6-be0d-afaa50d1f4ec"
+            },
+            "processingtask": {
+                "state": "PROCESSING",
+                "state_meta": {"info":"this is a dummy task"},
+                "uuid": "a9e05500-dc82-4f4b-a392-552b9b3c0997"
+            },
+            "postprocessingtask": {None}
+        }
+
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
 
@@ -191,7 +224,7 @@ class CeleryTask(models.Model):
         if type(result.info) is dict:
             self.state_meta = result.info
         else:
-            self.state_meta = {'info': {"info":result.info}}
+            self.state_meta = {'info': {"info":rstr(esult.info)}}
 
         self.save()
 
@@ -362,7 +395,7 @@ class Template(models.Model):
 
     templatename = models.CharField(max_length=256)
 
-    version  = models.IntegerField(max_length=256, blank=True)
+    version  = models.IntegerField(blank=True)
     model = models.CharField(max_length=256, blank=True)
     email = models.CharField(max_length=256, blank=True)
     label = models.CharField(max_length=256, blank=True)
@@ -376,4 +409,3 @@ class Template(models.Model):
 
     def __unicode__(self):
         return self.templatename
-
