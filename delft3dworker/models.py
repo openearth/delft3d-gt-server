@@ -1,8 +1,10 @@
 from __future__ import absolute_import
 
+import io
+import json
 import os
 import uuid
-import json
+import zipfile
 
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.result import AsyncResult
@@ -158,12 +160,12 @@ class Scene(models.Model):
         # - stream
         # - zip in a subprocess shell with zip
         # - zip to temporary file
-        for root, dirs, files in os.walk(scene.workingdir):
+        for root, dirs, files in os.walk(self.workingdir):
             for f in files:
                 name, ext = os.path.splitext(f)
                 if ext in ('.png', '.jpg', '.gif'):  # Could be dynamic or tuple of extensions
                     abs_path = os.path.join(root, f)
-                    rel_path = os.path.relpath(abs_path, scene.workingdir)
+                    rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
 
         # Must close zip for all contents to be written
