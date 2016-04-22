@@ -117,7 +117,7 @@ def pre_dummy(self, time_steps, workingdir, _):
 
         running = preprocess_container.running()
 
-    preprocess_container.delete()
+    # preprocess_container.delete()  # Doesn't work on NFS fs
 
     return state_meta
 
@@ -172,8 +172,8 @@ def sim_dummy(self, _, workingdir):
 
         running = simulation_container.running()
 
-    simulation_container.delete()
-    processing_container.delete()
+    # simulation_container.delete()  # Doesn't work on NFS fs
+    # processing_container.delete()  # Doesn't work on NFS fs
 
     return state_meta
 
@@ -211,7 +211,7 @@ def post_dummy(self, _, workingdir):
 
         running = postprocessing_container.running()
 
-    postprocessing_container.delete()
+    # postprocessing_container.delete()  # Doesn't work on NFS fs
 
     return state_meta
 

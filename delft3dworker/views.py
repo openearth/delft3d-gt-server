@@ -47,7 +47,7 @@ class ScenarioCreateView(View):
         except ValueError:
             return JsonResponse(
                 {
-                    'created':'false',
+                    'created': 'false',
                     'error': 'scenariosettings not in json format'
                 }
             )
@@ -55,10 +55,12 @@ class ScenarioCreateView(View):
         newscenario = Scenario(
             name="Scene {}".format(datetime.now())
         )
-        newscenario.save()
+        newscenario.save()  # Before creating children
+        
         newscenario.load_settings(scenariosettings)
+        newscenario.createscenes()
 
-        return JsonResponse({'created':'ok'})
+        return JsonResponse({'created': 'ok'})
 
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):

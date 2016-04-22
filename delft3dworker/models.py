@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import os
 import uuid
 import json
+import copy
 
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.result import AsyncResult
@@ -37,22 +38,60 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
     parameters = JSONField(blank=True)
+    # Parameters will become a list of dictionaries with
+    # the specified settings for a scene
 
     def load_settings(self, settings):
+        self.parameters = [{}]
 
-        for key in settings:
-            self._parse_setting(key, settings[key])
+        for key, value in settings.items():
+            self._parse_setting(key, value)
+
+        print self.parameters
 
         self.save()
 
     def _parse_setting(self, key, setting):
 
-        if not ('value' in setting or 'valid' in settings or setting['valid'] ):
+        if not ('value' in setting or 'valid' in settings or setting['valid']):
             return
 
         if key == "scenarioname":
             self.name = setting['value']
             return
+
+        if not setting["useautostep"]:
+            # No autostep, just add these settings
+            for scene in self.parameters:
+                if key not in scene:
+                    scene[key] = setting
+        else:
+            # TODO ALIASING OCCURS DOWN BELOW
+            # Autostep! Run past all parameter scenes, iteratively
+            minstep = int(setting["minstep"])
+            maxstep = int(setting["maxstep"])
+            step = int(setting["stepinterval"])
+            values = range(minstep, maxstep, step)  # all requested values
+            # for x in range(len(values)):
+                # self.parameters.append(self.parameters[:][-1])
+            self.parameters = len(values) * self.parameters[:]  # current scenes times number of new values 
+
+            i = 0
+            for x, scene in enumerate(self.parameters):
+                s = copy.deepcopy(setting)  # avoid nasty aliasing
+                s['value'] = values[i % len(values)]
+                scene[key] = s
+                self.parameters[x] = scene
+                i += 1
+
+            self.parameters[0][key][u'value'] = -10
+            # print self.parameters
+
+    def createscenes(self):
+        for i, sceneparameters in enumerate(self.parameters):
+            scene = Scene(name="{}: Scene {}".format(self.name, i), scenario=self, parameters=sceneparameters)
+            scene.save()
+        self.save()
 
     def start(self):
 
@@ -149,6 +188,7 @@ class Scene(models.Model):
 
     def delete(self, *args, **kwargs):
         self.abort()
+        print "Deleting"
         super(Scene, self).delete(*args, **kwargs)
 
     def _create_datafolder(self):
