@@ -91,7 +91,8 @@ class Scenario(models.Model):
         self.save()
 
     def start(self):
-
+        for scene in Scene.objects.filter(scenario=self):
+            scene.start()
         return "started"
 
     def get_absolute_url(self):
@@ -155,7 +156,7 @@ class Scene(models.Model):
         if self.suid == '':
             self.suid = str(uuid.uuid4())
             self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
-            self._create_datafolder()
+            self._create_datafolder()  # called after chainedtask call(!)
             self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
 
