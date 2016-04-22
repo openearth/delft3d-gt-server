@@ -4,8 +4,11 @@ Views for the ui.
 from __future__ import absolute_import
 
 import io
+import json
 import os
 import zipfile
+
+from datetime import datetime
 
 from django.core.urlresolvers import reverse_lazy
 from django.http import JsonResponse
@@ -29,12 +32,24 @@ from delft3dworker.models import Template
 
 # ################################### SCENARIO
 
-class ScenarioCreateView(CreateView):
+class ScenarioCreateView(View):
     model = Scenario
-    fields = ['name', 'parameters']
 
     def post(self, request, *args, **kwargs):
-        return super(ScenarioCreateView, self).post(request, *args, **kwargs)
+
+        # dummy stub code for front-end to integrate
+
+        name = datetime.now()
+
+        newscenario = Scenario(name='Scenario {}'.format(name))
+        newscenario.save()
+
+        scene1 = Scene(name="Scene {}".format(name), scenario=newscenario)
+        scene1.save()
+        scene2 = Scene(name="Scene {}".format(name), scenario=newscenario)
+        scene2.save()
+
+        return JsonResponse({'created':'ok'})
 
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
@@ -180,6 +195,9 @@ class SceneStartView(View):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         scene = get_object_or_404(Scene, id=scene_id)
         payload = {'status': scene.start()}
+
+        print '------------------------------------------------------------------------ SceneStartView {}'.format(scene_id)
+
         return JsonResponse(payload)
 
     @method_decorator(csrf_exempt)
@@ -197,7 +215,7 @@ class SceneExportView(View):
         """
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         scene = get_object_or_404(Scene, id=scene_id)
-        
+
         # we might need to move this to worker if:
         # - we need to do this in the background (in a task)
 
