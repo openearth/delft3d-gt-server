@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import ConfigParser
 import copy
 import io
+import logging
 import os
 import uuid
 import zipfile
