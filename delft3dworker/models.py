@@ -74,9 +74,9 @@ class Scenario(models.Model):
                     scene[key] = setting
         else:
             # Autostep! Run past all parameter scenes, iteratively
-            minstep = int(setting["minstep"])
-            maxstep = int(setting["maxstep"])
-            step = int(setting["stepinterval"])
+            minstep = float(setting["minstep"])
+            maxstep = float(setting["maxstep"])
+            step = float(setting["stepinterval"])
             # Could be maxstep +1, as to be inclusive?
             values = range(minstep, maxstep, step)
 
@@ -151,7 +151,7 @@ class Scene(models.Model):
         if result.state == BUSYSTATE:
             return {"error": "task already busy", "task_id": self.task_id}
 
-        result = chainedtask.delay(10, self.workingdir)
+        result = chainedtask.delay(self.workingdir)
         self.task_id = result.task_id
         self.state = result.state
         self.save()
@@ -236,7 +236,7 @@ class Scene(models.Model):
     def _create_datafolder(self):
         # create directory for scene
         if not os.path.exists(self.workingdir):
-            os.makedirs(self.workingdir)
+            os.makedirs(self.workingdir, 0777)
 
     def _delete_datafolder(self):
         # delete directory for scene
