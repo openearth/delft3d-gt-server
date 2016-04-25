@@ -15,7 +15,10 @@ urlpatterns = (
     }),
 
     # Logout
-    url(r'^logout/$', logout),
+    url(r'^logout/$', logout, {'template_name': 'login.html'}),
+    url(r'^logout/(?P<path>.*)$', serve, {
+        'document_root': settings.LOGIN_STATIC_FILES,
+    }),
 
     # Index
     url(r'^$', login_required(serve), {
