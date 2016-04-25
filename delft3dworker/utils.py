@@ -13,15 +13,19 @@ def delft3d_logparser(line):
     .*
     )
     """, re.VERBOSE)
-    match = percentage_re.search(line).groupdict()
-    if float(match['progress']) > 1:
-        match['progress'] = format(float(match['progress'])/100, '.2f')
+    match = percentage_re.search(line)
+    if match:
+        match = match.groupdict()
+        if float(match['progress']) > 1:
+            match['progress'] = format(float(match['progress'])/100, '.2f')
+        else:
+            match['progress'] = float(match['progress'])
+        # add default log level
+        match['level'] = 'INFO'
+        # add state
+        match['State'] = None
     else:
-        match['progress'] = float(match['progress'])
-    # add default log level
-    match['level'] = 'INFO'
-    # add state
-    match['State'] = None
+        match = {"message": None, "level": None, "state": None, "progress": None}
     return match
 
 
@@ -39,9 +43,13 @@ def python_logparser(line):
     (?P<progress>\d+\.\d+)?%    # capture number with . delimiter and ending with % as percentage
     .*)                         #
     """, re.VERBOSE)
-    match = python_re.search(line).groupdict()
-    if float(match['progress']) > 1:
-        match['progress'] = format(float(match['progress'])/100, '.2f')
+    match = python_re.search(line)
+    if match:
+        match = match.groupdict()
+        if float(match['progress']) > 1:
+            match['progress'] = format(float(match['progress'])/100, '.2f')
+        else:
+            match['progress'] = float(match['progress'])
     else:
-        match['progress'] = float(match['progress'])
+        match = {"message": None, "level": None, "state": None, "progress": None}
     return match
