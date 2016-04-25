@@ -17,7 +17,7 @@ from datetime import datetime
 
 from delft3dworker.tasks import chainedtask
 
-from django.conf import settings  #noqa
+from django.conf import settings  # noqa
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
@@ -29,11 +29,14 @@ from shutil import copystat
 from shutil import copytree
 from shutil import rmtree
 
+
 BUSYSTATE = "PROCESSING"
+
 
 # ################################### SCENARIO
 
 class Scenario(models.Model):
+
     """
     Scenario model
     """
@@ -52,7 +55,6 @@ class Scenario(models.Model):
 
         # debugging output
         # for value in self.parameters:
-            # print [(key, value['value']) for (key, value) in value.items()]
 
         self.save()
 
@@ -75,26 +77,31 @@ class Scenario(models.Model):
             minstep = int(setting["minstep"])
             maxstep = int(setting["maxstep"])
             step = int(setting["stepinterval"])
-            values = range(minstep, maxstep, step)  # Could be maxstep +1, as to be inclusive?
+            # Could be maxstep +1, as to be inclusive?
+            values = range(minstep, maxstep, step)
 
             # Current scenes times number of new values
-            # 3 original runs (1 2 3), this settings adds two (a b) thus we now have
-            # 6 scenes ( 1 1 2 2 3 3).
-            self.parameters = [copy.copy(p) for p in self.parameters for _ in range(len(values))]
+            # 3 original runs (1 2 3), this settings adds two (a b) thus we now
+            # have 6 scenes ( 1 1 2 2 3 3).
+            self.parameters = [
+                copy.copy(p) for p in
+                self.parameters for _ in range(len(values))
+            ]
 
             i = 0
             for scene in self.parameters:
                 s = dict(setting)  # by using dict, we prevent an alias
                 # Using modulo we can assign a b in the correct
-                # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2) 
-                # modulo gives 0 which is again the first value (a)  
+                # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
+                # modulo gives 0 which is again the first value (a)
                 s['value'] = values[i % len(values)]
                 scene[key] = s
                 i += 1
 
     def createscenes(self):
         for i, sceneparameters in enumerate(self.parameters):
-            scene = Scene(name="{}: Scene {}".format(self.name, i), scenario=self, parameters=sceneparameters)
+            scene = Scene(name="{}: Scene {}".format(
+                self.name, i), scenario=self, parameters=sceneparameters)
             scene.save()
         self.save()
 
@@ -116,6 +123,7 @@ class Scenario(models.Model):
 
 
 class Scene(models.Model):
+
     """
     Scene model
     """
@@ -151,48 +159,73 @@ class Scene(models.Model):
         return {"task_id": self.task_id, "scene_id": self.suid}
 
     def update_state(self):
-        # only update state if it has a task_id (which means the task is started)
+        # only update state if it has a task_id (which means the task is
+        # started)
         if self.task_id != '':
             result = AbortableAsyncResult(self.task_id)
-            self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
+            self.info = result.info if isinstance(
+                result.info, dict) else {"info": str(result.info)}
             self.state = result.state
             self.save()
-        return {"task_id": self.task_id, "state": self.state, "info": str(self.info)}
+        return {
+            "task_id": self.task_id,
+            "state": self.state,
+            "info": str(self.info)
+        }
 
     def save(self, *args, **kwargs):
         # if scene does not have a unique uuid, create it and create folder
         if self.suid == '':
             self.suid = str(uuid.uuid4())
-            self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
+            self.workingdir = os.path.join(
+                settings.WORKER_FILEDIR, self.suid, '')
             self._create_datafolder()
-            if self.parameters == "": self.parameters = {"delft3d": self.info}  # Hack to have the "dt:20" in the correct format
+            if self.parameters == "":
+                # Hack to have the "dt:20" in the correct format
+                self.parameters = {"delft3d": self.info}
             self._create_ini()
             self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
 
     def abort(self):
         result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
+        self.info = result.info if isinstance(
+            result.info, dict) else {"info": str(result.info)}
         if not result.state == BUSYSTATE:
-            return {"error": "task is not busy", "task_id": self.task_id, "state": result.state, "info": str(self.info)}
+            return {
+                "error": "task is not busy",
+                "task_id": self.task_id,
+                "state": result.state,
+                "info": str(self.info)
+            }
 
         result.abort()
 
-        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
+        self.info = result.info if isinstance(
+            result.info, dict) else {"info": str(result.info)}
         self.state = result.state
         self.save()
 
-        return {"task_id": self.task_id, "state": result.state, "info": str(self.info)}
+        return {
+            "task_id": self.task_id,
+            "state": result.state,
+            "info": str(self.info)
+        }
 
     # Function is not used now
     def revoke(self):
         result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(result.info, dict) else {"info": str(result.info)}
+        self.info = result.info if isinstance(
+            result.info, dict) else {"info": str(result.info)}
         revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
         self.state = result.state
         self.save()
 
-        return {"task_id": self.task_id, "state": result.state, "info": str(self.info)}
+        return {
+            "task_id": self.task_id,
+            "state": result.state,
+            "info": str(self.info)
+        }
 
     def delete(self, deletefiles=False, *args, **kwargs):
         self.abort()
@@ -234,7 +267,8 @@ class Scene(models.Model):
         # - django-zip-view (sets mimetype and content-disposition)
         # - django-filebrowser (filtering and more elegant browsing)
 
-        # from: http://stackoverflow.com/questions/67454/serving-dynamically-generated-zip-archives-in-django
+        # from:
+        # http://stackoverflow.com/questions/67454/serving-dynamically-generated-zip-archives-in-django
 
         zip_filename = 'export.zip'
 
@@ -253,7 +287,8 @@ class Scene(models.Model):
         for root, dirs, files in os.walk(self.workingdir):
             for f in files:
                 name, ext = os.path.splitext(f)
-                if ext in ('.png', '.jpg', '.gif'):  # Could be dynamic or tuple of extensions
+                # Could be dynamic or tuple of extensions
+                if ext in ('.png', '.jpg', '.gif'):
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
@@ -275,12 +310,12 @@ class Scene(models.Model):
             # dummy
             "simulationtask": {
                 "state": "PROCESSING",
-                "state_meta": {"info":"this is a dummy task"},
+                "state_meta": {"info": "this is a dummy task"},
                 "uuid": "32a66197-6f94-49c6-be0d-afaa50d1f4ec"
             },
             "processingtask": {
                 "state": "PROCESSING",
-                "state_meta": {"info":"this is a dummy task"},
+                "state_meta": {"info": "this is a dummy task"},
                 "uuid": "a9e05500-dc82-4f4b-a392-552b9b3c0997"
             },
             "postprocessingtask": {None}
@@ -298,6 +333,7 @@ class Scene(models.Model):
 # ### Superclass
 
 class CeleryTask(models.Model):
+
     """
     Celery Task model
     """
@@ -317,7 +353,7 @@ class CeleryTask(models.Model):
         if type(result.info) is dict:
             self.state_meta = result.info
         else:
-            self.state_meta = {'info': {"info":rstr(esult.info)}}
+            self.state_meta = {'info': {"info": rstr(esult.info)}}
 
         self.save()
 
@@ -330,7 +366,6 @@ class CeleryTask(models.Model):
     def run(self):
         result = donothing.delay()
 
-
         self.uuid = result.task_id
         self.state = result.state
         self.state_meta = result.info or {}
@@ -338,10 +373,7 @@ class CeleryTask(models.Model):
 
     def delete(self, *args, **kwargs):
         result = AbortableAsyncResult(self.uuid)
-        print result.info
-        print "Deleting Celery Task {}".format(self.uuid)
         result.abort()
-        print result.is_aborted()
         # result.get()
         super(CeleryTask, self).delete(*args, **kwargs)
 
@@ -352,6 +384,7 @@ class CeleryTask(models.Model):
 # ### Subclasses
 
 class PostprocessingTask(CeleryTask):
+
     """
     Postprocessing task model
     """
@@ -369,6 +402,7 @@ class PostprocessingTask(CeleryTask):
 
 
 class ProcessingTask(CeleryTask):
+
     """
     Processing task model
     """
@@ -389,11 +423,7 @@ class ProcessingTask(CeleryTask):
 
     def delete(self, *args, **kwargs):
         result = AbortableAsyncResult(self.uuid)
-        print result.info
-        print "Deleting ProcessingTask {}".format(self.uuid)
         result.abort()
-        print result.is_aborted()
-        print result.state
         # result.get()  # will hang
         super(ProcessingTask, self).delete(*args, **kwargs)
 
@@ -402,6 +432,7 @@ class ProcessingTask(CeleryTask):
 
 
 class SimulationTask(CeleryTask):
+
     """
     Simulation task model
     """
@@ -426,9 +457,7 @@ class SimulationTask(CeleryTask):
 
     def delete(self, *args, **kwargs):
         result = AbortableAsyncResult(self.uuid)
-        print "Deleting SimulationTask {}".format(self.uuid)
         result.abort()
-        print result.is_aborted()
         # result.get()  # will hang
         super(SimulationTask, self).delete(*args, **kwargs)
 
@@ -439,12 +468,13 @@ class SimulationTask(CeleryTask):
 
     def _create_model_schema(self):
 
-        if not u'dt' in self.scene.info:
+        if u'dt' not in self.scene.info:
             return False
 
         # create directory for scene
         if not os.path.exists(self.scene.workingdir):
-            copytree('/data/container/delft3ddefaults', os.path.join(self.scene.workingdir, 'delft3d'))
+            copytree('/data/container/delft3ddefaults',
+                     os.path.join(self.scene.workingdir, 'delft3d'))
 
         # create input dict for template renderer
         time_format = "%Y-%m-%d %H:%M:%S"
@@ -467,10 +497,15 @@ class SimulationTask(CeleryTask):
         input_dict['Tstop'] = (stop_time - ref_time).total_seconds()/60
 
         # render and write a.mdf
-        mdf_template_file = os.path.join('/data/container/delft3dtemplates', 'a.mdf')
+        mdf_template_file = os.path.join(
+            '/data/container/delft3dtemplates', 'a.mdf')
         mdf_template = MakoTemplate(filename=mdf_template_file)
-        rendered_schema = mdf_template.render(**input_dict).replace('\r\n','\n')
-        with open(os.path.join(self.scene.workingdir, 'delft3d', 'a.mdf'), 'w') as output:
+        rendered_schema = mdf_template.render(
+            **input_dict).replace('\r\n', '\n')
+        with open(
+            os.path.join(self.scene.workingdir, 'delft3d', 'a.mdf'),
+            'w'
+        ) as output:
             output.write(rendered_schema)
 
         return True
@@ -482,13 +517,14 @@ class SimulationTask(CeleryTask):
 # ################################### Template
 
 class Template(models.Model):
+
     """
     Template model
     """
 
     templatename = models.CharField(max_length=256)
 
-    version  = models.IntegerField(blank=True)
+    version = models.IntegerField(blank=True)
     model = models.CharField(max_length=256, blank=True)
     email = models.CharField(max_length=256, blank=True)
     label = models.CharField(max_length=256, blank=True)

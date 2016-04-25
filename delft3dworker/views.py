@@ -33,9 +33,9 @@ class ScenarioCreateView(View):
 
     def post(self, request, *args, **kwargs):
 
-        if not 'scenariosettings' in request.POST:
+        if 'scenariosettings' not in request.POST:
             return JsonResponse(
-                {'created':'false', 'error': 'no scenariosettings found'}
+                {'created': 'false', 'error': 'no scenariosettings found'}
             )
 
         try:
@@ -55,6 +55,10 @@ class ScenarioCreateView(View):
 
         newscenario.load_settings(scenariosettings)
         newscenario.createscenes()
+
+        # 25 april '16: Almar, Fedor & Tijn decided that
+        # a scenario should be started server-side after creation
+        newscenario.start()
 
         return JsonResponse({'created': 'ok'})
 
@@ -241,7 +245,8 @@ class SceneExportView(View):
             stream.getvalue(),
             content_type="application/x-zip-compressed"
         )
-        resp['Content-Disposition'] = 'attachment; filename={}'.format(filename)
+        resp[
+            'Content-Disposition'] = 'attachment; filename={}'.format(filename)
 
         # TODO create a test with a django request
         # and test if the file can be read
