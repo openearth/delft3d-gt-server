@@ -77,8 +77,12 @@ class Scenario(models.Model):
             minstep = float(setting["minstep"])
             maxstep = float(setting["maxstep"])
             step = float(setting["stepinterval"])
-            # Could be maxstep +1, as to be inclusive?
-            values = range(minstep, maxstep, step)
+            values = []
+
+            curval = minstep
+            while curval <= maxstep:  # includes maxstep
+                values.append(round(curval, 2))
+                curval = curval + step
 
             # Current scenes times number of new values
             # 3 original runs (1 2 3), this settings adds two (a b) thus we now
