@@ -2,11 +2,13 @@ from __future__ import absolute_import
 
 import json
 import os
+import ConfigParser
 import time
 from shutil import copyfile
 
 from delft3dworker.utils import delft3d_logparser
 from delft3dworker.utils import python_logparser
+from delft3dworker.utils import PersistentLogger
 
 from django.conf import settings  # noqa
 
@@ -19,12 +21,26 @@ from docker import Client
 logger = get_task_logger(__name__)
 
 @shared_task(bind=True, base=AbortableTask)
-def chainedtask(self, workingdir):
+def chainedtask(self, parameters, workingdir):
     """ Chained task which can be aborted. Contains model logic. """
 
     # create folder
     if not os.path.exists(workingdir):
         os.makedirs(workingdir, 2775)
+
+    # create ini file for containers
+    # in 2.7 ConfigParser is a bit stupid
+    # in 3.x configparser has .read_dict()
+    config = ConfigParser.SafeConfigParser()
+    for section in parameters:
+        if not config.has_section(section):
+            config.add_section(section)
+        for key, value in parameters[section].items():
+            if not config.has_option(section, key):
+                config.set(*map(str, [section, key, value]))
+
+    with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
+        config.write(f)  # Yes, the ConfigParser writes to f
 
     # define chain and results
     chain = pre_dummy.s(workingdir, "") | sim_dummy.s(workingdir) | post_dummy.s(workingdir)
@@ -119,6 +135,8 @@ def pre_dummy(self, workingdir, _):
     logger.info("Started preprocessing")
     self.update_state(state='STARTED', meta=state_meta)
 
+    log = PersistentLogger(parser="python")
+
     # loop task
     running = True
     while running:
@@ -130,7 +148,7 @@ def pre_dummy(self, workingdir, _):
 
         # if no abort or revoke: update state
         else:
-            state_meta["output"] = python_logparser(preprocess_container.get_log())
+            state_meta["output"] = log.parse(preprocess_container.get_log())
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted(): self.update_state(state='PROCESSING', meta=state_meta)
@@ -144,6 +162,11 @@ def pre_dummy(self, workingdir, _):
 
 @shared_task(bind=True, base=AbortableTask)
 def sim_dummy(self, _, workingdir):
+    """
+    TODO Check if processing is still running
+    before starting another one.
+    TODO Check how we want to log processing
+    """
     # create folders
     outputfolder = os.path.join(workingdir, 'process')
     os.makedirs(outputfolder)
@@ -165,6 +188,9 @@ def sim_dummy(self, _, workingdir):
     logger.info("Started simulation")
     self.update_state(state='STARTED', meta=state_meta)
 
+    simlog = PersistentLogger()
+    proclog = PersistentLogger(parser="python")
+
     # loop task
     running = True
     while running:
@@ -179,12 +205,13 @@ def sim_dummy(self, _, workingdir):
         else:
             # process
             logger.info("Started processing")
-            processing_container.start()
+            if simlog.changed():  # sim has progress
+                processing_container.start()
 
             # update state
             state_meta["output"] = [
-                delft3d_logparser(simulation_container.get_log()),
-                python_logparser(processing_container.get_log())
+                simlog.parse(simulation_container.get_log()),
+                proclog.parse(processing_container.get_log())
             ]
             logger.info(state_meta["output"])
             # race condition: although we check it in this if/else statement,
@@ -222,13 +249,15 @@ def post_dummy(self, _, workingdir):
     # loop task
     self.update_state(state='STARTED', meta=state_meta)
 
+    log = PersistentLogger(logger="python")
+
     running = True
     while running:
         if self.is_aborted():
             postprocessing_container.stop()
             break
         else:
-            state_meta["output"] = python_logparser(postprocessing_container.get_log())
+            state_meta["output"] = log.parse(postprocessing_container.get_log())
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted(): self.update_state(state='PROCESSING', meta=state_meta)

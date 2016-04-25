@@ -1,5 +1,94 @@
 import re
 
+class PersistentLogger():
+    """ Class to keep track of docker
+    container logging, keeping relevant
+    states and info.
+    
+    TODO stdout/stderr
+    TODO filter self.info
+
+    """
+
+    def __init__(self, parser="delft3d"):
+        if parser == "delft3d":
+            self.parser = delft3d_logparser
+        else:
+            self.parser = python_logparser
+        
+        self.maxmessages = 200  # to keep
+        self.severity = ["","DEBUG","INFO","WARNING","ERROR","CRITICAL"]
+
+        # Keep track of:
+        # all messages, latest and errormessage
+        self.info = {
+        "messages": [],
+        "message": "",
+        "latesterror": "",
+        
+        # level and highest level
+        "level": "",
+        "levelhigh": "",
+
+        # progress and highest progress
+        "progresshigh": 0,  # for double counters
+        "progressprev": 0,
+        "progress": 0,
+
+        # state and all previous states
+        "state": "START",  # if we parse, we've started
+        "states": set(),
+        }
+
+    def changed(self):
+        """Returns True if logging reported progress.
+        It's assumed that if progress has occured, there's
+        something new to process."""
+        
+        if self.info["progress"] > self.info["progressprev"]:
+            return True
+        else:
+            return False
+
+    def persistentupdate(self):
+        """Updates persistent state
+        based on latest parsed log."""
+
+        # messages
+        if self.info["message"] != "" or not None:
+            self.info["messages"].append(self.info["message"])
+        if len(self.info["messages"]) > self.maxmessages:
+            self.info["messages"].pop(0)
+
+        # levels
+        l = self.severity.index(self.info["level"])
+        lh = self.severity.index(self.info["levelhigh"])
+        if l > lh:
+            self.info["levelhigh"] = self.info["level"]
+
+        if l >= 4:  # ERROR or CRITICAL
+            self.info["latesterror"] = self.info["message"] 
+
+        # progress
+        if self.info["progress"] > self.info["progresshigh"]:
+            self.info["progresshigh"] = self.info["progress"]
+
+        # states
+        self.info["states"].add(self.info['state'])
+
+    def parse(self, logline):
+        # Set fallback values
+        self.info["progressprev"] = self.info["progress"]
+
+        log = self.parser(logline)
+        for key, value in log:
+            if value is not None:
+                self.info[key] = value
+
+        self.persistentupdate()
+
+        return self.info
+
 
 def delft3d_logparser(line):
     """
