@@ -1,5 +1,6 @@
 import re
 
+
 def delft3d_logparser(line):
     """
     read progress information from delft3d log.
@@ -14,7 +15,7 @@ def delft3d_logparser(line):
     """, re.VERBOSE)
     match = percentage_re.search(line).groupdict()
     if float(match['progress']) > 1:
-        match['progress'] = float(match['progress'])/100
+        match['progress'] = format(float(match['progress'])/100, '.2f')
     else:
         match['progress'] = float(match['progress'])
     # add default log level
@@ -40,12 +41,7 @@ def python_logparser(line):
     """, re.VERBOSE)
     match = python_re.search(line).groupdict()
     if float(match['progress']) > 1:
-        match['progress'] = float(match['progress'])/100
+        match['progress'] = format(float(match['progress'])/100, '.2f')
     else:
         match['progress'] = float(match['progress'])
     return match
-
-
-
-# print delft3d_logparser('INFO:root:Time to finish 60.0, 33.3333333333% completed, time steps  left 6.0')
-# print python_logparser('INFO:root:RUNNING Time to finish 60.0, 33.3333333333% completed, time steps  left 6.0')
