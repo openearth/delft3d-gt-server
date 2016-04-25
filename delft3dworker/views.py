@@ -164,8 +164,12 @@ class SceneDeleteView(DeleteView):
         deletefiles = (
             request.GET.get('delete_files') or request.POST.get('delete_files')
         )
-        self.object = self.get_object()
-        self.object.abort()
+        self.success_url = reverse_lazy('scene_delete')
+
+        scene = self.get_object()
+        deletefiles = True if "true" in deletefiles else False
+        scene.delete(deletefiles=deletefiles)
+
         payload = {'status': 'deleted', 'files_deleted': deletefiles}
         return JsonResponse(payload)
 
