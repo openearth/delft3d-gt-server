@@ -3,11 +3,8 @@ Views for the ui.
 """
 from __future__ import absolute_import
 
-import io
-import os
-import zipfile
-
 from datetime import datetime
+import json
 
 from django.core.urlresolvers import reverse_lazy
 from django.http import JsonResponse
@@ -36,19 +33,34 @@ class ScenarioCreateView(View):
 
     def post(self, request, *args, **kwargs):
 
-        # dummy stub code for front-end to integrate
+        if 'scenariosettings' not in request.POST:
+            return JsonResponse(
+                {'created': 'false', 'error': 'no scenariosettings found'}
+            )
 
-        name = datetime.now()
+        try:
+            scenariosettings = json.loads(request.POST['scenariosettings'])
+        except ValueError:
+            return JsonResponse(
+                {
+                    'created': 'false',
+                    'error': 'scenariosettings not in json format'
+                }
+            )
 
-        newscenario = Scenario(name='Scenario {}'.format(name))
-        newscenario.save()
+        newscenario = Scenario(
+            name="Scene {}".format(datetime.now())
+        )
+        newscenario.save()  # Before creating children
 
-        scene1 = Scene(name="Scene {}".format(name), scenario=newscenario)
-        scene1.save()
-        scene2 = Scene(name="Scene {}".format(name), scenario=newscenario)
-        scene2.save()
+        newscenario.load_settings(scenariosettings)
+        newscenario.createscenes()
 
-        return JsonResponse({'created':'ok'})
+        # 25 april '16: Almar, Fedor & Tijn decided that
+        # a scenario should be started server-side after creation
+        newscenario.start()
+
+        return JsonResponse({'created': 'ok'})
 
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
@@ -59,7 +71,9 @@ class ScenarioDeleteView(DeleteView):
     model = Scenario
 
     def get_object(self):
-        scenario_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scenario_id = (
+            self.request.GET.get('id') or self.request.POST.get('id')
+        )
         return Scenario.objects.get(id=scenario_id)
 
     def delete(self, request, *args, **kwargs):
@@ -77,7 +91,9 @@ class ScenarioDetailView(JSONDetailView):
     model = Scenario
 
     def get_object(self):
-        scenario_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scenario_id = (
+            self.request.GET.get('id') or self.request.POST.get('id')
+        )
         scenario = Scenario.objects.get(id=scenario_id)
         return scenario
 
@@ -103,13 +119,17 @@ class ScenarioStartView(View):
 
     # TODO: remove get
     def get(self, request, *args, **kwargs):
-        scenario_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scenario_id = (
+            self.request.GET.get('id') or self.request.POST.get('id')
+        )
         scenario = get_object_or_404(Scenario, id=scenario_id)
         payload = {'status': scenario.start()}
         return JsonResponse(payload)
 
     def post(self, request, *args, **kwargs):
-        scenario_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scenario_id = (
+            self.request.GET.get('id') or self.request.POST.get('id')
+        )
         scenario = get_object_or_404(Scenario, id=scenario_id)
         payload = {'status': scenario.start()}
         return JsonResponse(payload)
@@ -141,7 +161,9 @@ class SceneDeleteView(DeleteView):
         return Scene.objects.get(id=scene_id)
 
     def delete(self, request, *args, **kwargs):
-        deletefiles = (request.GET.get('delete_files') or request.POST.get('delete_files'))
+        deletefiles = (
+            request.GET.get('delete_files') or request.POST.get('delete_files')
+        )
         self.object = self.get_object()
         self.object.abort()
         payload = {'status': 'deleted', 'files_deleted': deletefiles}
@@ -219,9 +241,11 @@ class SceneExportView(View):
             stream.getvalue(),
             content_type="application/x-zip-compressed"
         )
-        resp['Content-Disposition'] = 'attachment; filename={}'.format(filename)
+        resp[
+            'Content-Disposition'] = 'attachment; filename={}'.format(filename)
 
-        # TODO create a test with a django request and test if the file can be read
+        # TODO create a test with a django request
+        # and test if the file can be read
         return resp
 
     @method_decorator(csrf_exempt)
@@ -235,7 +259,9 @@ class TemplateDetailView(JSONDetailView):
     model = Template
 
     def get_object(self):
-        template_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        template_id = (
+            self.request.GET.get('id') or self.request.POST.get('id')
+        )
         template = Template.objects.get(id=template_id)
         return template
 
