@@ -33,7 +33,7 @@ from delft3dworker.models import ProcessingTask
 from delft3dworker.models import Scene
 from delft3dworker.models import SimulationTask
 
-from delft3dworker.utils import progress_from_delft3d_log
+from delft3dworker.utils import delft3d_logparser
 
 # RUNNERS
 
@@ -259,10 +259,13 @@ class LogTests(TestCase):
         """
 
         progresses = []
+        mesagges = []
         for line in log.splitlines():
-            progress = progress_from_delft3d_log(line)
-            if progress is not None:
-                progresses.append(progress)
-        self.assertTrue(any(True for progress in progresses if progress < 0.1))
-        self.assertTrue(any(True for progress in progresses if progress > 99.9))
+            match = delft3d_logparser(line)
+            if match['progress'] is not None:
+                progresses.append(match['progress'])
+            mesagges.append(match['mesagges'])
+        self.assertTrue(any(True for progress in progresses if progress < 0.001))
+        self.assertTrue(any(True for progress in progresses if progress > 0.99))
+        self.assertTrue(any(True for mesagge in mesagges if mesagge != None))
 
