@@ -22,6 +22,10 @@ logger = get_task_logger(__name__)
 def chainedtask(self, workingdir):
     """ Chained task which can be aborted. Contains model logic. """
 
+    # create folder
+    if not os.path.exists(workingdir):
+        os.makedirs(workingdir, 2775)
+
     # define chain and results
     chain = pre_dummy.s(workingdir, "") | sim_dummy.s(workingdir) | post_dummy.s(workingdir)
     chain_result = chain()

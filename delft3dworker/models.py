@@ -239,8 +239,9 @@ class Scene(models.Model):
 
     def _create_datafolder(self):
         # create directory for scene
-        if not os.path.exists(self.workingdir):
-            os.makedirs(self.workingdir, 0777)
+        # if not os.path.exists(self.workingdir):
+            # os.makedirs(self.workingdir, 2775)
+        pass
 
     def _delete_datafolder(self):
         # delete directory for scene
