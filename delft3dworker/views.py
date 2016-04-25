@@ -4,7 +4,10 @@ Views for the ui.
 from __future__ import absolute_import
 
 import io
+import os
 import zipfile
+
+from datetime import datetime
 
 from django.core.urlresolvers import reverse_lazy
 from django.http import JsonResponse
@@ -28,12 +31,24 @@ from delft3dworker.models import Template
 
 # ################################### SCENARIO
 
-class ScenarioCreateView(CreateView):
+class ScenarioCreateView(View):
     model = Scenario
-    fields = ['name',]
 
     def post(self, request, *args, **kwargs):
-        return super(ScenarioCreateView, self).post(request, *args, **kwargs)
+
+        # dummy stub code for front-end to integrate
+
+        name = datetime.now()
+
+        newscenario = Scenario(name='Scenario {}'.format(name))
+        newscenario.save()
+
+        scene1 = Scene(name="Scene {}".format(name), scenario=newscenario)
+        scene1.save()
+        scene2 = Scene(name="Scene {}".format(name), scenario=newscenario)
+        scene2.save()
+
+        return JsonResponse({'created':'ok'})
 
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
@@ -179,6 +194,7 @@ class SceneStartView(View):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         scene = get_object_or_404(Scene, id=scene_id)
         payload = {'status': scene.start()}
+
         return JsonResponse(payload)
 
     @method_decorator(csrf_exempt)
@@ -195,44 +211,15 @@ class SceneExportView(View):
         - selection: images or log
         """
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scene = get_object_or_404(Scene, id=scene_id)
 
-        # we might need to move this to worker if:
-        # - we need info of the scenes
-        # - we need to do this in the background (in a task)
+        stream, filename = scene.export()
 
-        # Alternatives to this implementation are:
-        # - django-zip-view (sets mimetype and content-disposition)
-        # - django-filebrowser (filtering and more elegant browsing)
-
-        # from: http://stackoverflow.com/questions/67454/serving-dynamically-generated-zip-archives-in-django
-
-        zip_filename = 'export.zip'
-
-        # Open BytesIO to grab in-memory ZIP contents
-        # (be explicit about bytes)
-        stream = io.BytesIO()
-
-        # The zip compressor
-        zf = zipfile.ZipFile(stream, "w")
-
-        # Add files here.
-        # If you run out of memory you have 2 options:
-        # - stream
-        # - zip in a subprocess shell with zip
-        # - zip to temporary file
-
-        # Must close zip for all contents to be written
-        zf.close()
-
-        # Grab ZIP file from in-memory, make response with correct MIME-type
         resp = HttpResponse(
-            # rewinds and gets bytes
             stream.getvalue(),
-            # urls don't use extensions but mime types
             content_type="application/x-zip-compressed"
         )
-        # ..and correct content-disposition
-        resp['Content-Disposition'] = 'attachment; filename=%s' % zip_filename
+        resp['Content-Disposition'] = 'attachment; filename={}'.format(filename)
 
         # TODO create a test with a django request and test if the file can be read
         return resp
