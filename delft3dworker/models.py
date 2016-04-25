@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import ConfigParser
 import copy
 import io
 import os
@@ -162,7 +163,9 @@ class Scene(models.Model):
         if self.suid == '':
             self.suid = str(uuid.uuid4())
             self.workingdir = os.path.join(settings.WORKER_FILEDIR, self.suid, '')
-            self._create_datafolder()  # called after chainedtask call(!)
+            self._create_datafolder()
+            if self.parameters == "": self.parameters = {"delft3d": self.info}  # Hack to have the "dt:20" in the correct format
+            self._create_ini()
             self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
 
@@ -199,6 +202,21 @@ class Scene(models.Model):
         # create directory for scene
         if not os.path.exists(self.workingdir):
             os.makedirs(self.workingdir)
+
+    def _create_ini(self):
+        # create ini file for containers
+        # in 2.7 ConfigParser is a bit stupid
+        # in 3.x configparser has .read_dict()
+        config = ConfigParser.SafeConfigParser()
+        for section in self.parameters:
+            if not config.has_section(section):
+                config.add_section(section)
+            for key, value in self.parameters[section].items():
+                if not config.has_option(section, key):
+                    config.set(*map(str, [section, key, value]))
+
+        with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
+            config.write(f)  # Yes, the ConfigParser writes to f
 
     def export(self):
         # Alternatives to this implementation are:
