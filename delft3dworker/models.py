@@ -193,15 +193,25 @@ class Scene(models.Model):
 
         return {"task_id": self.task_id, "state": result.state, "info": str(self.info)}
 
-    def delete(self, *args, **kwargs):
+    def delete(self, deletefiles=False, *args, **kwargs):
         self.abort()
-        print "Deleting"
+        if deletefiles:
+            self._delete_datafolder()
         super(Scene, self).delete(*args, **kwargs)
 
     def _create_datafolder(self):
         # create directory for scene
         if not os.path.exists(self.workingdir):
             os.makedirs(self.workingdir)
+
+    def _delete_datafolder(self):
+        # delete directory for scene
+        if os.path.exists(self.workingdir):
+            try:
+                os.rmtree(self.workingdir)
+            except:
+                # Files written by root can't be deleted by django
+                logging.error("Failed to delete working directory")
 
     def _create_ini(self):
         # create ini file for containers
