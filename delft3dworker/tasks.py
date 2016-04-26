@@ -61,10 +61,16 @@ def chainedtask(self, parameters, workingdir):
             while leaf:
                 if leaf.status == "PENDING":
                     leaf.revoke()
-                    results[leaf.id] = leaf.state
+                    results[leaf.id] = {
+                        "state": leaf.state,
+                        "info": leaf.info
+                    }
                 else:
                     AbortableAsyncResult(leaf.id).abort()
-                    results[leaf.id] = leaf.state
+                    results[leaf.id] = {
+                        "state": leaf.state,
+                        "info": leaf.info
+                    }
                 leaf = leaf.parent
             results['result'] = "Aborted"
             self.update_state(state="ABORTED", meta=results)
@@ -82,7 +88,10 @@ def chainedtask(self, parameters, workingdir):
             leaf = chain_result
             while leaf:
                 leaf.revoke()
-                results[leaf.id] = leaf.state
+                results[leaf.id] = {
+                    "state": leaf.state,
+                    "info": leaf.info
+                }
                 leaf = leaf.parent
             results['result'] = "Revoked"
             self.update_state(state="REVOKED", meta=results)
@@ -93,7 +102,10 @@ def chainedtask(self, parameters, workingdir):
 
             leaf = chain_result
             while leaf:
-                results[leaf.id] = leaf.state
+                results[leaf.id] = {
+                    "state": leaf.state,
+                    "info": leaf.info
+                }
                 leaf = leaf.parent
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -162,6 +174,7 @@ def pre_dummy(self, workingdir, _):
 
         # if no abort or revoke: update state
         else:
+            state_meta["task"] = self.__name__
             state_meta["output"] = log.parse(preprocess_container.get_log())
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -230,6 +243,7 @@ def sim_dummy(self, _, workingdir):
             #     processing_container.start()
 
             # update state
+            state_meta["task"] = self.__name__
             state_meta["output"] = [
                 simlog.parse(simulation_container.get_log()),
                 # proclog.parse(processing_container.get_log())
@@ -284,6 +298,7 @@ def post_dummy(self, _, workingdir):
             postprocessing_container.stop()
             break
         else:
+            state_meta["task"] = self.__name__
             state_meta["output"] = log.parse(
                 postprocessing_container.get_log()
             )

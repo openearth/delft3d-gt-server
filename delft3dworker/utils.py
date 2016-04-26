@@ -133,10 +133,10 @@ def delft3d_logparser(line):
 
     except:
 
-        e = sys.exc_info()[0]  # get error msg
+        e = sys.exc_info()[1]  # get error msg
 
         return {
-            "message": str(e),
+            "message": "%s" % e.message,
             "level": "ERROR",
             "state": None,
             "progress": None
@@ -177,10 +177,10 @@ def python_logparser(line):
 
     except:
 
-        e = sys.exc_info()[0]  # get error msg
+        e = sys.exc_info()[1]  # get error msg
 
         return {
-            "message": str(e),
+            "message": "%s" % e.message,
             "level": "ERROR",
             "state": None,
             "progress": None
