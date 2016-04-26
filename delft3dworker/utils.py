@@ -64,8 +64,11 @@ class PersistentLogger():
             self.info["messages"].pop(0)
 
         # levels
-        l = self.severity.index(self.info["level"])
+        l = self.severity.index(self.info["level"]) if (
+            self.info["level"] in self.severity
+        ) else 0
         lh = self.severity.index(self.info["levelhigh"])
+
         if l > lh:
             self.info["levelhigh"] = self.info["level"]
 
@@ -155,16 +158,13 @@ def python_logparser(line):
 
         python_re = re.compile(r"""
         ^(?P<message>
-            (
-                (?P<level>
-                    [A-Z]+
-                )
-                \w*
+            (?P<level>
+                [A-Z]+\w+
             )?  # capture first capital word as log level
             .*
             (?P<state>
                 [A-Z]+\w+
-            )?        # capture second capital word as log state
+            )?  # capture second capital word as log state
             .*
             (
                 (?P<progress>

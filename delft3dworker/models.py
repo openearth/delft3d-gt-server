@@ -193,6 +193,7 @@ class Scene(models.Model):
 
         if self.task_id != "" and result.state == "PENDING":
             return {"error": "task already PENDING", "task_id": self.task_id}
+
         if result.state == BUSYSTATE:
             return {"error": "task already busy", "task_id": self.task_id}
 
@@ -206,8 +207,7 @@ class Scene(models.Model):
     def abort(self):
 
         result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(
-            result.info, dict) else {"info": str(result.info)}
+
         if not result.state == BUSYSTATE:
             return {
                 "error": "task is not busy",
@@ -220,7 +220,9 @@ class Scene(models.Model):
 
         self.info = result.info if isinstance(
             result.info, dict) else {"info": str(result.info)}
+
         self.state = result.state
+
         self.save()
 
         return {
@@ -363,7 +365,10 @@ class Scene(models.Model):
             "file": "",
             "location": "simulation"
         }
-        for root, dirs, files in os.walk(os.path.join(self.workingdir, 'simulation')):
+
+        for root, dirs, files in os.walk(
+            os.path.join(self.workingdir, 'simulation')
+        ):
             for f in sorted(files):
                 name, ext = os.path.splitext(f)
                 if ext in ('.png', '.jpg', '.gif'):
