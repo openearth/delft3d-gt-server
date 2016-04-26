@@ -118,6 +118,15 @@ class Scenario(models.Model):
 
         return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
 
+    def serialize(self):
+        return {
+            "template": self.template,
+            "name": self.name,
+            "parameters": self.parameters,
+            "scenes": self.scene_set.all(),
+            "id": self.id
+        }
+
     def __unicode__(self):
 
         return self.name
@@ -310,6 +319,7 @@ class Scene(models.Model):
             "workingdir": self.workingdir,
             "state": self.state,
             "fileurl": self.fileurl,
+            "scenario": self.scenario.id,
 
             # dummy
             "simulationtask": {
