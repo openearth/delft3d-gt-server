@@ -136,7 +136,7 @@ def delft3d_logparser(line):
         e = sys.exc_info()[1]  # get error msg
 
         return {
-            "message": "%s" % e.message,
+            "message": "error '%s' on line '%s'" % (e.message, line),
             "level": "ERROR",
             "state": None,
             "progress": None
@@ -154,22 +154,36 @@ def python_logparser(line):
     try:
 
         python_re = re.compile(r"""
-        ^(?P<message>               # capture whole string as message
-        (?P<level>[A-Z]+)           # capture first capital word as log level
-        :\w*:                       #
-        (?P<state>[A-Z]*\b)?        # capture second capital word as log state
-        .*?                         #
-        (?P<progress>\d+\.\d+)?%    # capture num with . delim & ending with %
-        .*)                         #
+        ^(?P<message>
+            (
+                (?P<level>
+                    [A-Z]+
+                )
+                \w*
+            )?  # capture first capital word as log level
+            .*
+            (?P<state>
+                [A-Z]+\w+
+            )?        # capture second capital word as log state
+            .*
+            (
+                (?P<progress>
+                    \d+\.\d+
+                )%
+            )?  # capture num with . delim & ending with %
+            .*
+        )   # capture whole string as message
         """, re.VERBOSE)
         match = python_re.search(line)
+
         if match:
             match = match.groupdict()
-            match["message"] = line
-            if float(match['progress']) > 1:
-                match['progress'] = format(float(match['progress'])/100, '.2f')
-            else:
-                match['progress'] = float(match['progress'])
+            if "progress" in match and match["progress"] is not None:
+                if float(match['progress']) > 1:
+                    match['progress'] = format(
+                        float(match['progress'])/100, '.2f')
+                else:
+                    match['progress'] = float(match['progress'])
         else:
             match = {"message": line, "level": "INFO",
                      "state": None, "progress": None}
@@ -180,7 +194,7 @@ def python_logparser(line):
         e = sys.exc_info()[1]  # get error msg
 
         return {
-            "message": "%s" % e.message,
+            "message": "error '%s' on line '%s'" % (e.message, line),
             "level": "ERROR",
             "state": None,
             "progress": None
