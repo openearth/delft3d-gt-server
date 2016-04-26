@@ -1,7 +1,16 @@
 from __future__ import absolute_import
 
 import json
+import os
+import ConfigParser
 import time
+from shutil import copyfile
+
+from delft3dworker.utils import delft3d_logparser
+from delft3dworker.utils import python_logparser
+from delft3dworker.utils import PersistentLogger
+
+from django.conf import settings  # noqa
 
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask, AbortableAsyncResult
@@ -13,12 +22,30 @@ logger = get_task_logger(__name__)
 
 
 @shared_task(bind=True, base=AbortableTask)
-def chainedtask(self, timestep, workingdir):
+def chainedtask(self, parameters, workingdir):
     """ Chained task which can be aborted. Contains model logic. """
 
+    # create folder
+    if not os.path.exists(workingdir):
+        os.makedirs(workingdir, 2775)
+        print("Made workingdir")
+
+    # create ini file for containers
+    # in 2.7 ConfigParser is a bit stupid
+    # in 3.x configparser has .read_dict()
+    config = ConfigParser.SafeConfigParser()
+    for section in parameters:
+        if not config.has_section(section):
+            config.add_section(section)
+        for key, value in parameters[section].items():
+            if not config.has_option(section, key):
+                config.set(*map(str, [section, key, value]))
+
+    with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
+        config.write(f)  # Yes, the ConfigParser writes to f
+
     # define chain and results
-    chain = pre_dummy.s(timestep, workingdir, "") | sim_dummy.s(
-        workingdir) | post_dummy.s(workingdir)
+    chain = pre_dummy.s(workingdir, "") | sim_dummy.s(workingdir)
     chain_result = chain()
     results = {}
 
@@ -34,10 +61,16 @@ def chainedtask(self, timestep, workingdir):
             while leaf:
                 if leaf.status == "PENDING":
                     leaf.revoke()
-                    results[leaf.id] = leaf.state
+                    results[leaf.id] = {
+                        "state": leaf.state,
+                        "info": leaf.info
+                    }
                 else:
                     AbortableAsyncResult(leaf.id).abort()
-                    results[leaf.id] = leaf.state
+                    results[leaf.id] = {
+                        "state": leaf.state,
+                        "info": leaf.info
+                    }
                 leaf = leaf.parent
             results['result'] = "Aborted"
             self.update_state(state="ABORTED", meta=results)
@@ -55,7 +88,10 @@ def chainedtask(self, timestep, workingdir):
             leaf = chain_result
             while leaf:
                 leaf.revoke()
-                results[leaf.id] = leaf.state
+                results[leaf.id] = {
+                    "state": leaf.state,
+                    "info": leaf.info
+                }
                 leaf = leaf.parent
             results['result'] = "Revoked"
             self.update_state(state="REVOKED", meta=results)
@@ -66,7 +102,10 @@ def chainedtask(self, timestep, workingdir):
 
             leaf = chain_result
             while leaf:
-                results[leaf.id] = leaf.state
+                results[leaf.id] = {
+                    "state": leaf.state,
+                    "info": leaf.info
+                }
                 leaf = leaf.parent
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -86,14 +125,34 @@ def chainedtask(self, timestep, workingdir):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def pre_dummy(self, time_steps, workingdir, _):
+def pre_dummy(self, workingdir, _):
     """ Chained task which can be aborted. Contains model logic. """
 
+    # create folders
+    inputfolder = os.path.join(workingdir, 'preprocess')
+    outputfolder = os.path.join(workingdir, 'simulation')
+    os.makedirs(inputfolder)
+    os.makedirs(outputfolder)
+
+    # copy input.ini
+    copyfile(
+        os.path.join(workingdir, 'input.ini'),
+        os.path.join(inputfolder, 'input.ini')
+    )
+
     # create Preprocess container
-    volumes = ['{0}:/data/output'.format(workingdir)]
-    command = "python dummy_create_config.py {}".format(time_steps)
+    volumes = ['{0}:/data/output'.format(outputfolder),
+               '{0}:/data/input'.format(inputfolder)]
+
+    # command = "python dummy_create_config.py {}".format(10)  # old dummy
+    command = "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"
+
     preprocess_container = DockerClient(
-        'dummy_preprocessing', volumes, '', command)
+        settings.PREPROCESS_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
 
     # start preprocess
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -101,6 +160,8 @@ def pre_dummy(self, time_steps, workingdir, _):
     preprocess_container.start()
     logger.info("Started preprocessing")
     self.update_state(state='STARTED', meta=state_meta)
+
+    log = PersistentLogger(parser="python")
 
     # loop task
     running = True
@@ -113,13 +174,15 @@ def pre_dummy(self, time_steps, workingdir, _):
 
         # if no abort or revoke: update state
         else:
-            state_meta["output"] = preprocess_container.get_log()
+            state_meta["task"] = self.__name__
+            state_meta["output"] = log.parse(preprocess_container.get_log())
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
                 self.update_state(state='PROCESSING', meta=state_meta)
 
         running = preprocess_container.running()
+        time.sleep(2)
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
@@ -128,19 +191,30 @@ def pre_dummy(self, time_steps, workingdir, _):
 
 @shared_task(bind=True, base=AbortableTask)
 def sim_dummy(self, _, workingdir):
+    """
+    TODO Check if processing is still running
+    before starting another one.
+    TODO Check how we want to log processing
+    """
+    # create folders
+    inputfolder = os.path.join(workingdir, 'simulation')
 
     # create Sim container
-    volumes = ['{0}:/data/input'.format(workingdir)]
+    volumes = ['{0}:/data'.format(inputfolder)]
     command = ""
-    simulation_container = DockerClient(
-        'dummy_simulation', volumes, '', command)
 
-    # create Process container
-    volumes = ['{0}:/data/input:ro'.format(workingdir),
-               '{0}:/data/output'.format(workingdir)]
-    command = ""
-    processing_container = DockerClient(
-        'dummy_processing', volumes, '', command)
+    simulation_container = DockerClient(
+        settings.DELFT3D_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
+
+    # # create Process container
+    # volumes = ['{0}:/data/input:ro'.format(workingdir),
+    #            '{0}:/data/output'.format(outputfolder)]
+    # command = "/bin/sh -c run.sh /data/input/svn/scripts/preprocessing/preprocessing.py"
+    # processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -148,13 +222,16 @@ def sim_dummy(self, _, workingdir):
     logger.info("Started simulation")
     self.update_state(state='STARTED', meta=state_meta)
 
+    simlog = PersistentLogger()
+    proclog = PersistentLogger(parser="delft3d")
+
     # loop task
     running = True
     while running:
 
         # abort handling
         if self.is_aborted():
-            processing_container.stop()
+            # processing_container.stop()
             simulation_container.stop()
             break
 
@@ -162,12 +239,14 @@ def sim_dummy(self, _, workingdir):
         else:
             # process
             logger.info("Started processing")
-            processing_container.start()
+            # if simlog.changed():  # sim has progress
+            #     processing_container.start()
 
             # update state
+            state_meta["task"] = self.__name__
             state_meta["output"] = [
-                simulation_container.get_log(),
-                processing_container.get_log()
+                simlog.parse(simulation_container.get_log()),
+                # proclog.parse(processing_container.get_log())
             ]
             logger.info(state_meta["output"])
             # race condition: although we check it in this if/else statement,
@@ -187,13 +266,20 @@ def sim_dummy(self, _, workingdir):
 
 @shared_task(bind=True, base=AbortableTask)
 def post_dummy(self, _, workingdir):
+    # create folders
+    outputfolder = os.path.join(workingdir, 'postprocess')
+    os.makedirs(outputfolder)
 
     # create Postprocess container
     volumes = ['{0}:/data/input:ro'.format(workingdir),
-               '{0}:/data/output'.format(workingdir)]
+               '{0}:/data/output'.format(outputfolder)]
     command = ""
     postprocessing_container = DockerClient(
-        'dummy_postprocessing', volumes, '', command)
+        settings.PROCESS_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
 
     # start Postprocess
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -204,13 +290,18 @@ def post_dummy(self, _, workingdir):
     # loop task
     self.update_state(state='STARTED', meta=state_meta)
 
+    log = PersistentLogger(parser="python")
+
     running = True
     while running:
         if self.is_aborted():
             postprocessing_container.stop()
             break
         else:
-            state_meta["output"] = postprocessing_container.get_log()
+            state_meta["task"] = self.__name__
+            state_meta["output"] = log.parse(
+                postprocessing_container.get_log()
+            )
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
