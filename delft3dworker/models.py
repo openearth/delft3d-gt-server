@@ -352,12 +352,15 @@ class Scene(models.Model):
             "images": [],
             "location": ""
         }
+        self.info["logfile"] = ""
         for root, dirs, files in os.walk(self.workingdir):
             for f in sorted(files):
                 name, ext = os.path.splitext(f)
                 if ext in ('.png', '.jpg', '.gif'):
                     self.info["delta_fringe_images"]["images"].append(f)
                     self.info["channel_network_images"]["images"].append(f)
+                if ext == '.log':
+                    self.info["logfile"] = f
 
         self.save()
 
