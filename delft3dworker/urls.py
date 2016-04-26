@@ -27,23 +27,34 @@ urlpatterns = (
         name='scenario_delete'),
     url(r'^scenario/detail$', ScenarioDetailView.as_view(),
         name='scenario_detail'),
-    url(r'^scenario/list$', ScenarioListView.as_view(), name='scenario_list'),
+    url(r'^scenario/list$', ScenarioListView.as_view(),
+        name='scenario_list'),
     url(r'^scenario/start$', ScenarioStartView.as_view(),
         name='scenario_start'),
-
-    # TEMPLATE
-    url(r'^scenario/template/detail$',
-        TemplateDetailView.as_view(), name='template_detail'),
-    url(r'^scenario/template/list$',
-        TemplateListView.as_view(), name='template_list'),
+    url(r'^scenario/stop$', ScenarioStopView.as_view(),
+        name='scenario_stop'),
 
     # SCENE
-    url(r'^scene/create$', SceneCreateView.as_view(), name='scene_create'),
-    url(r'^scene/delete$', SceneDeleteView.as_view(), name='scene_delete'),
-    url(r'^scene/detail$', SceneDetailView.as_view(), name='scene_detail'),
-    url(r'^scene/export$', SceneExportView.as_view(), name='scene_export'),
-    url(r'^scene/list$', SceneListView.as_view(), name='scene_list'),
-    url(r'^scene/start$', SceneStartView.as_view(), name='scene_start'),
+    url(r'^scene/create$', SceneCreateView.as_view(),
+        name='scene_create'),
+    url(r'^scene/delete$', SceneDeleteView.as_view(),
+        name='scene_delete'),
+    url(r'^scene/detail$', SceneDetailView.as_view(),
+        name='scene_detail'),
+    url(r'^scene/export$', SceneExportView.as_view(),
+        name='scene_export'),
+    url(r'^scene/list$', SceneListView.as_view(),
+        name='scene_list'),
+    url(r'^scene/start$', SceneStartView.as_view(),
+        name='scene_start'),
+    url(r'^scene/stop$', SceneStopView.as_view(),
+        name='scene_stop'),
+
+    # TEMPLATE
+    url(r'^scenario/template/detail$', TemplateDetailView.as_view(),
+        name='template_detail'),
+    url(r'^scenario/template/list$', TemplateListView.as_view(),
+        name='template_list'),
 
     # DATA
     url(r'^data(?P<path>.*)$', login_required(serve), {

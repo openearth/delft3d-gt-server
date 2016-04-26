@@ -139,6 +139,31 @@ class ScenarioStartView(View):
         return super(ScenarioStartView, self).dispatch(*args, **kwargs)
 
 
+class ScenarioStopView(View):
+    model = Scenario
+
+    # TODO: remove get
+    def get(self, request, *args, **kwargs):
+        scenario_id = (
+            self.request.GET.get('id') or self.request.POST.get('id')
+        )
+        scenario = get_object_or_404(Scenario, id=scenario_id)
+        payload = {'status': scenario.stop()}
+        return JsonResponse(payload)
+
+    def post(self, request, *args, **kwargs):
+        scenario_id = (
+            self.request.GET.get('id') or self.request.POST.get('id')
+        )
+        scenario = get_object_or_404(Scenario, id=scenario_id)
+        payload = {'status': scenario.stop()}
+        return JsonResponse(payload)
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super(ScenarioStartView, self).dispatch(*args, **kwargs)
+
+
 # ################################### SCENE
 
 class SceneCreateView(CreateView):
@@ -220,6 +245,28 @@ class SceneStartView(View):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         scene = get_object_or_404(Scene, id=scene_id)
         payload = {'status': scene.start()}
+
+        return JsonResponse(payload)
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super(SceneStartView, self).dispatch(*args, **kwargs)
+
+
+class SceneStopView(View):
+    model = Scene
+
+    # TODO: remove get
+    def get(self, request, *args, **kwargs):
+        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scene = get_object_or_404(Scene, id=scene_id)
+        payload = {'status': scene.abort()}
+        return JsonResponse(payload)
+
+    def post(self, request, *args, **kwargs):
+        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scene = get_object_or_404(Scene, id=scene_id)
+        payload = {'status': scene.abort()}
 
         return JsonResponse(payload)
 
