@@ -167,7 +167,7 @@ class SceneDeleteView(DeleteView):
         self.success_url = reverse_lazy('scene_delete')
 
         scene = self.get_object()
-        deletefiles = True if "true" in deletefiles else False
+        deletefiles = (deletefiles is not None) and ("true" in deletefiles)
         scene.delete(deletefiles=deletefiles)
 
         payload = {'status': 'deleted', 'files_deleted': deletefiles}
