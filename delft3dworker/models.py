@@ -114,6 +114,11 @@ class Scenario(models.Model):
             scene.start()
         return "started"
 
+    def stop(self):
+        for scene in self.scene_set.all():
+            scene.abort()
+        return "stopped"
+
     def get_absolute_url(self):
 
         return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
