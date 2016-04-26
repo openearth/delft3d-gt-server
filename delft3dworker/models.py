@@ -355,6 +355,10 @@ class Scene(models.Model):
             "images": [],
             "location": "processing"
         }
+        self.info["sediment_fraction_images"] = {
+            "images": [],
+            "location": "processing"
+        }
         self.info["logfile"] = {
             "file": "",
             "location": "simulation"
@@ -367,6 +371,9 @@ class Scene(models.Model):
                         self.info["delta_fringe_images"]["images"].append(f)
                     elif "channel_network" in name:
                         self.info["channel_network_images"]["images"].append(f)
+                    elif "sediment_fraction" in name:
+                        self.info["sediment_fraction_images"]["images"].append(f)
+
                     else:
                         # Other images ?
                         pass
