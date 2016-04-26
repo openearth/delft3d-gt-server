@@ -20,6 +20,7 @@ from docker import Client
 
 logger = get_task_logger(__name__)
 
+
 @shared_task(bind=True, base=AbortableTask)
 def chainedtask(self, parameters, workingdir):
     """ Chained task which can be aborted. Contains model logic. """
@@ -44,7 +45,11 @@ def chainedtask(self, parameters, workingdir):
         config.write(f)  # Yes, the ConfigParser writes to f
 
     # define chain and results
-    chain = pre_dummy.s(workingdir, "") | sim_dummy.s(workingdir) | post_dummy.s(workingdir)
+    chain = (
+        pre_dummy.s(workingdir, "") |
+        sim_dummy.s(workingdir) |
+        post_dummy.s(workingdir)
+    )
     chain_result = chain()
     results = {}
 
@@ -71,8 +76,7 @@ def chainedtask(self, parameters, workingdir):
 
         # revoke handling
         elif (
-            not self.app.control.inspect().revoked() is None
-            and
+            (self.app.control.inspect().revoked() is not None) and
             self.request.id in explode.from_iterable(
                 self.app.control.inspect().revoked().values()
             )
@@ -97,7 +101,8 @@ def chainedtask(self, parameters, workingdir):
                 leaf = leaf.parent
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
-            if not self.is_aborted(): self.update_state(state="PROCESSING", meta=results)
+            if not self.is_aborted():
+                self.update_state(state="PROCESSING", meta=results)
 
         time.sleep(0.5)
 
@@ -120,16 +125,24 @@ def pre_dummy(self, workingdir, _):
     os.makedirs(inputfolder)
 
     # copy input.ini
-    copyfile(os.path.join(workingdir, 'input.ini'), os.path.join(inputfolder, 'input.ini'))
+    copyfile(
+        os.path.join(workingdir, 'input.ini'),
+        os.path.join(inputfolder, 'input.ini')
+    )
 
     # create Preprocess container
     volumes = ['{0}:/data/output'.format(workingdir),
                '{0}:/data/input'.format(inputfolder)]
 
     # command = "python dummy_create_config.py {}".format(10)  # old dummy
-    command = "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"  # new hotness
-    print(command)
-    preprocess_container = DockerClient(settings.PREPROCESS_IMAGE_NAME, volumes, '', command)
+    command = "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"
+
+    preprocess_container = DockerClient(
+        settings.PREPROCESS_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
 
     # start preprocess
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -154,7 +167,8 @@ def pre_dummy(self, workingdir, _):
             state_meta["output"] = log.parse(preprocess_container.get_log())
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
-            if not self.is_aborted(): self.update_state(state='PROCESSING', meta=state_meta)
+            if not self.is_aborted():
+                self.update_state(state='PROCESSING', meta=state_meta)
 
         running = preprocess_container.running()
         time.sleep(2)
@@ -178,13 +192,25 @@ def sim_dummy(self, _, workingdir):
     # create Sim container
     volumes = ['{0}:/data'.format(workingdir)]
     command = ""
-    simulation_container = DockerClient(settings.DELFT3D_IMAGE_NAME, volumes, '', command)
+
+    simulation_container = DockerClient(
+        settings.DELFT3D_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
 
     # create Process container
     volumes = ['{0}:/data/input:ro'.format(workingdir),
                '{0}:/data/output'.format(outputfolder)]
-    command = "/bin/sh -c run.sh /data/input/svn/scripts/preprocessing/preprocessing.py"
-    processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
+    command = '/bin/sh -c run.sh /data/input/svn/'
+    'scripts/preprocessing/preprocessing.py'
+    processing_container = DockerClient(
+        settings.PROCESS_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -220,7 +246,8 @@ def sim_dummy(self, _, workingdir):
             logger.info(state_meta["output"])
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
-            if not self.is_aborted(): self.update_state(state="PROCESSING", meta=state_meta)
+            if not self.is_aborted():
+                self.update_state(state="PROCESSING", meta=state_meta)
 
         time.sleep(2)
 
@@ -242,7 +269,12 @@ def post_dummy(self, _, workingdir):
     volumes = ['{0}:/data/input:ro'.format(workingdir),
                '{0}:/data/output'.format(outputfolder)]
     command = ""
-    postprocessing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
+    postprocessing_container = DockerClient(
+        settings.PROCESS_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
 
     # start Postprocess
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -261,10 +293,13 @@ def post_dummy(self, _, workingdir):
             postprocessing_container.stop()
             break
         else:
-            state_meta["output"] = log.parse(postprocessing_container.get_log())
+            state_meta["output"] = log.parse(
+                postprocessing_container.get_log()
+            )
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
-            if not self.is_aborted(): self.update_state(state='PROCESSING', meta=state_meta)
+            if not self.is_aborted():
+                self.update_state(state='PROCESSING', meta=state_meta)
 
         time.sleep(2)
 
@@ -275,7 +310,7 @@ def post_dummy(self, _, workingdir):
     return state_meta
 
 
-######################### DockerClient
+# DockerClient
 
 class DockerClient():
 
@@ -283,7 +318,8 @@ class DockerClient():
     TODO kwargs input, integration with wrapper.
     """
 
-    def __init__(self, name, volumebinds, outputfile, command, base_url='unix://var/run/docker.sock'):
+    def __init__(self, name, volumebinds, outputfile, command,
+                 base_url='unix://var/run/docker.sock'):
         self.name = name
         self.volumebinds = volumebinds
         self.outputfile = outputfile
@@ -292,7 +328,8 @@ class DockerClient():
 
         self.client = Client(base_url=self.base_url)
         self.config = self.client.create_host_config(binds=self.volumebinds)
-        self.container = self.client.create_container(self.name, host_config=self.config, command=self.command)
+        self.container = self.client.create_container(
+            self.name, host_config=self.config, command=self.command)
 
         self.id = self.container.get('Id')
 
