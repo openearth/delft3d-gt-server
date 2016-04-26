@@ -21,15 +21,21 @@ from django.views.static import serve
 urlpatterns = (
 
     # SCENARIO
-    url(r'^scenario/create$', ScenarioCreateView.as_view(), name='scenario_create'),
-    url(r'^scenario/delete$', ScenarioDeleteView.as_view(), name='scenario_delete'),
-    url(r'^scenario/detail$', ScenarioDetailView.as_view(), name='scenario_detail'),
+    url(r'^scenario/create$', ScenarioCreateView.as_view(),
+        name='scenario_create'),
+    url(r'^scenario/delete$', ScenarioDeleteView.as_view(),
+        name='scenario_delete'),
+    url(r'^scenario/detail$', ScenarioDetailView.as_view(),
+        name='scenario_detail'),
     url(r'^scenario/list$', ScenarioListView.as_view(), name='scenario_list'),
-    url(r'^scenario/start$', ScenarioStartView.as_view(), name='scenario_start'),
+    url(r'^scenario/start$', ScenarioStartView.as_view(),
+        name='scenario_start'),
 
     # TEMPLATE
-    url(r'^scenario/template/detail$', TemplateDetailView.as_view(), name='template_detail'),
-    url(r'^scenario/template/list$', TemplateListView.as_view(), name='template_list'),
+    url(r'^scenario/template/detail$',
+        TemplateDetailView.as_view(), name='template_detail'),
+    url(r'^scenario/template/list$',
+        TemplateListView.as_view(), name='template_list'),
 
     # SCENE
     url(r'^scene/create$', SceneCreateView.as_view(), name='scene_create'),

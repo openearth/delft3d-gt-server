@@ -11,12 +11,14 @@ from docker import Client
 
 logger = get_task_logger(__name__)
 
+
 @shared_task(bind=True, base=AbortableTask)
 def chainedtask(self, timestep, workingdir):
     """ Chained task which can be aborted. Contains model logic. """
 
     # define chain and results
-    chain = pre_dummy.s(timestep, workingdir, "") | sim_dummy.s(workingdir) | post_dummy.s(workingdir)
+    chain = pre_dummy.s(timestep, workingdir, "") | sim_dummy.s(
+        workingdir) | post_dummy.s(workingdir)
     chain_result = chain()
     results = {}
 
@@ -43,8 +45,7 @@ def chainedtask(self, timestep, workingdir):
 
         # revoke handling
         elif (
-            not self.app.control.inspect().revoked() is None
-            and
+            (self.app.control.inspect().revoked() is not None) and
             self.request.id in explode.from_iterable(
                 self.app.control.inspect().revoked().values()
             )
@@ -69,7 +70,8 @@ def chainedtask(self, timestep, workingdir):
                 leaf = leaf.parent
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
-            if not self.is_aborted(): self.update_state(state="PROCESSING", meta=results)
+            if not self.is_aborted():
+                self.update_state(state="PROCESSING", meta=results)
 
         time.sleep(0.5)
 
@@ -90,7 +92,8 @@ def pre_dummy(self, time_steps, workingdir, _):
     # create Preprocess container
     volumes = ['{0}:/data/output'.format(workingdir)]
     command = "python dummy_create_config.py {}".format(time_steps)
-    preprocess_container = DockerClient('dummy_preprocessing', volumes, '', command)
+    preprocess_container = DockerClient(
+        'dummy_preprocessing', volumes, '', command)
 
     # start preprocess
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -113,7 +116,8 @@ def pre_dummy(self, time_steps, workingdir, _):
             state_meta["output"] = preprocess_container.get_log()
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
-            if not self.is_aborted(): self.update_state(state='PROCESSING', meta=state_meta)
+            if not self.is_aborted():
+                self.update_state(state='PROCESSING', meta=state_meta)
 
         running = preprocess_container.running()
 
@@ -128,13 +132,15 @@ def sim_dummy(self, _, workingdir):
     # create Sim container
     volumes = ['{0}:/data/input'.format(workingdir)]
     command = ""
-    simulation_container = DockerClient('dummy_simulation', volumes, '', command)
+    simulation_container = DockerClient(
+        'dummy_simulation', volumes, '', command)
 
     # create Process container
     volumes = ['{0}:/data/input:ro'.format(workingdir),
                '{0}:/data/output'.format(workingdir)]
     command = ""
-    processing_container = DockerClient('dummy_processing', volumes, '', command)
+    processing_container = DockerClient(
+        'dummy_processing', volumes, '', command)
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -166,7 +172,8 @@ def sim_dummy(self, _, workingdir):
             logger.info(state_meta["output"])
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
-            if not self.is_aborted(): self.update_state(state="PROCESSING", meta=state_meta)
+            if not self.is_aborted():
+                self.update_state(state="PROCESSING", meta=state_meta)
 
         time.sleep(2)
 
@@ -185,7 +192,8 @@ def post_dummy(self, _, workingdir):
     volumes = ['{0}:/data/input:ro'.format(workingdir),
                '{0}:/data/output'.format(workingdir)]
     command = ""
-    postprocessing_container = DockerClient('dummy_postprocessing', volumes, '', command)
+    postprocessing_container = DockerClient(
+        'dummy_postprocessing', volumes, '', command)
 
     # start Postprocess
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -205,7 +213,8 @@ def post_dummy(self, _, workingdir):
             state_meta["output"] = postprocessing_container.get_log()
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
-            if not self.is_aborted(): self.update_state(state='PROCESSING', meta=state_meta)
+            if not self.is_aborted():
+                self.update_state(state='PROCESSING', meta=state_meta)
 
         time.sleep(2)
 
@@ -216,7 +225,7 @@ def post_dummy(self, _, workingdir):
     return state_meta
 
 
-######################### DockerClient
+# DockerClient
 
 class DockerClient():
 
@@ -224,7 +233,8 @@ class DockerClient():
     TODO kwargs input, integration with wrapper.
     """
 
-    def __init__(self, name, volumebinds, outputfile, command, base_url='unix://var/run/docker.sock'):
+    def __init__(self, name, volumebinds, outputfile, command,
+                 base_url='unix://var/run/docker.sock'):
         self.name = name
         self.volumebinds = volumebinds
         self.outputfile = outputfile
@@ -233,7 +243,8 @@ class DockerClient():
 
         self.client = Client(base_url=self.base_url)
         self.config = self.client.create_host_config(binds=self.volumebinds)
-        self.container = self.client.create_container(self.name, host_config=self.config, command=self.command)
+        self.container = self.client.create_container(
+            self.name, host_config=self.config, command=self.command)
 
         self.id = self.container.get('Id')
 
