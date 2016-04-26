@@ -44,7 +44,7 @@ def chainedtask(self, parameters, workingdir):
         config.write(f)  # Yes, the ConfigParser writes to f
 
     # define chain and results
-    chain = pre_dummy.s(workingdir, "") | sim_dummy.s(workingdir) | post_dummy.s(workingdir)
+    chain = pre_dummy.s(workingdir, "") | sim_dummy.s(workingdir)  # | post_dummy.s(workingdir)
     chain_result = chain()
     results = {}
 
@@ -117,13 +117,15 @@ def pre_dummy(self, workingdir, _):
 
     # create folders
     inputfolder = os.path.join(workingdir, 'preprocess')
+    outputfolder = os.path.join(workingdir, 'simulation')
     os.makedirs(inputfolder)
+    os.makedirs(outputfolder)
 
     # copy input.ini
     copyfile(os.path.join(workingdir, 'input.ini'), os.path.join(inputfolder, 'input.ini'))
 
     # create Preprocess container
-    volumes = ['{0}:/data/output'.format(workingdir),
+    volumes = ['{0}:/data/output'.format(outputfolder),
                '{0}:/data/input'.format(inputfolder)]
 
     # command = "python dummy_create_config.py {}".format(10)  # old dummy
@@ -172,19 +174,18 @@ def sim_dummy(self, _, workingdir):
     TODO Check how we want to log processing
     """
     # create folders
-    outputfolder = os.path.join(workingdir, 'process')
-    os.makedirs(outputfolder)
+    inputfolder = os.path.join(workingdir, 'simulation')
 
     # create Sim container
-    volumes = ['{0}:/data'.format(workingdir)]
+    volumes = ['{0}:/data'.format(inputfolder)]
     command = ""
     simulation_container = DockerClient(settings.DELFT3D_IMAGE_NAME, volumes, '', command)
 
-    # create Process container
-    volumes = ['{0}:/data/input:ro'.format(workingdir),
-               '{0}:/data/output'.format(outputfolder)]
-    command = "/bin/sh -c run.sh /data/input/svn/scripts/preprocessing/preprocessing.py"
-    processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
+    # # create Process container
+    # volumes = ['{0}:/data/input:ro'.format(workingdir),
+    #            '{0}:/data/output'.format(outputfolder)]
+    # command = "/bin/sh -c run.sh /data/input/svn/scripts/preprocessing/preprocessing.py"
+    # processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -193,7 +194,7 @@ def sim_dummy(self, _, workingdir):
     self.update_state(state='STARTED', meta=state_meta)
 
     simlog = PersistentLogger()
-    proclog = PersistentLogger(parser="python")
+    proclog = PersistentLogger(parser="delft3d")
 
     # loop task
     running = True
@@ -201,7 +202,7 @@ def sim_dummy(self, _, workingdir):
 
         # abort handling
         if self.is_aborted():
-            processing_container.stop()
+            # processing_container.stop()
             simulation_container.stop()
             break
 
@@ -209,13 +210,13 @@ def sim_dummy(self, _, workingdir):
         else:
             # process
             logger.info("Started processing")
-            if simlog.changed():  # sim has progress
-                processing_container.start()
+            # if simlog.changed():  # sim has progress
+            #     processing_container.start()
 
             # update state
             state_meta["output"] = [
                 simlog.parse(simulation_container.get_log()),
-                proclog.parse(processing_container.get_log())
+                # proclog.parse(processing_container.get_log())
             ]
             logger.info(state_meta["output"])
             # race condition: although we check it in this if/else statement,
