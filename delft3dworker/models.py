@@ -117,7 +117,7 @@ class Scenario(models.Model):
     def stop(self):
         for scene in self.scene_set.all():
             scene.abort()
-        return "started"
+        return "stopped"
 
     def get_absolute_url(self):
 

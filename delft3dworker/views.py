@@ -148,7 +148,10 @@ class ScenarioStopView(View):
             self.request.GET.get('id') or self.request.POST.get('id')
         )
         scenario = get_object_or_404(Scenario, id=scenario_id)
-        payload = {'status': scenario.stop()}
+        payload = {
+            'id': scenario_id,
+            'status': scenario.stop()
+        }
         return JsonResponse(payload)
 
     def post(self, request, *args, **kwargs):
@@ -156,12 +159,15 @@ class ScenarioStopView(View):
             self.request.GET.get('id') or self.request.POST.get('id')
         )
         scenario = get_object_or_404(Scenario, id=scenario_id)
-        payload = {'status': scenario.stop()}
+        payload = {
+            'id': scenario_id,
+            'status': scenario.stop()
+        }
         return JsonResponse(payload)
 
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
-        return super(ScenarioStartView, self).dispatch(*args, **kwargs)
+        return super(ScenarioStopView, self).dispatch(*args, **kwargs)
 
 
 # ################################### SCENE
@@ -272,7 +278,7 @@ class SceneStopView(View):
 
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
-        return super(SceneStartView, self).dispatch(*args, **kwargs)
+        return super(SceneStopView, self).dispatch(*args, **kwargs)
 
 
 class SceneExportView(View):
