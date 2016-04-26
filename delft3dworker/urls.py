@@ -5,12 +5,14 @@ from delft3dworker.views import ScenarioDeleteView
 from delft3dworker.views import ScenarioDetailView
 from delft3dworker.views import ScenarioListView
 from delft3dworker.views import ScenarioStartView
+from delft3dworker.views import ScenarioStopView
 from delft3dworker.views import SceneCreateView
 from delft3dworker.views import SceneDeleteView
 from delft3dworker.views import SceneDetailView
 from delft3dworker.views import SceneExportView
 from delft3dworker.views import SceneListView
 from delft3dworker.views import SceneStartView
+from delft3dworker.views import SceneStopView
 from delft3dworker.views import TemplateDetailView
 from delft3dworker.views import TemplateListView
 
