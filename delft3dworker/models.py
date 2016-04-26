@@ -203,36 +203,6 @@ class Scene(models.Model):
 
         return {"task_id": self.task_id, "scene_id": self.suid}
 
-    def update_state(self):
-        # only update state if it has a task_id (which means the task is
-        # started)
-        if self.task_id != '':
-            result = AbortableAsyncResult(self.task_id)
-            self.info = result.info if isinstance(
-                result.info, dict) else {"info": str(result.info)}
-            self.state = result.state
-            self.save()
-        return {
-            "task_id": self.task_id,
-            "state": self.state,
-            "info": str(self.info)
-        }
-
-    def save(self, *args, **kwargs):
-        # if scene does not have a unique uuid, create it and create folder
-        if self.suid == '':
-            self.suid = str(uuid.uuid4())
-            self.workingdir = os.path.join(
-                settings.WORKER_FILEDIR, self.suid, '')
-            # self._create_datafolder()
-            if self.parameters == "":
-                # Hack to have the "dt:20" in the correct format
-                # when a scene has been created manually
-                self.parameters = {"delft3d": self.info}
-            # self._create_ini()
-            self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
-        super(Scene, self).save(*args, **kwargs)
-
     def abort(self):
 
         result = AbortableAsyncResult(self.task_id)
@@ -273,43 +243,6 @@ class Scene(models.Model):
             "state": result.state,
             "info": str(self.info)
         }
-
-    def delete(self, deletefiles=False, *args, **kwargs):
-        self.abort()
-        if deletefiles:
-            self._delete_datafolder()
-        super(Scene, self).delete(*args, **kwargs)
-
-    def _create_datafolder(self):
-        # create directory for scene
-        # if not os.path.exists(self.workingdir):
-            # os.makedirs(self.workingdir, 2775)
-        pass
-
-    def _delete_datafolder(self):
-        # delete directory for scene
-        if os.path.exists(self.workingdir):
-            try:
-                os.rmtree(self.workingdir)
-            except:
-                # Files written by root can't be deleted by django
-                logging.error("Failed to delete working directory")
-
-    def _create_ini(self):
-        # create ini file for containers
-        # in 2.7 ConfigParser is a bit stupid
-        # in 3.x configparser has .read_dict()
-        # config = ConfigParser.SafeConfigParser()
-        # for section in self.parameters:
-        #     if not config.has_section(section):
-        #         config.add_section(section)
-        #     for key, value in self.parameters[section].items():
-        #         if not config.has_option(section, key):
-        #             config.set(*map(str, [section, key, value]))
-
-        # with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
-        #     config.write(f)  # Yes, the ConfigParser writes to f
-        pass
 
     def export(self):
 
@@ -374,32 +307,35 @@ class Scene(models.Model):
     # INTERNALS
 
     def _create_datafolder(self):
-
         # create directory for scene
-        if not os.path.exists(self.workingdir):
-            os.makedirs(self.workingdir)
+        # if not os.path.exists(self.workingdir):
+            # os.makedirs(self.workingdir, 2775)
+        pass
 
     def _delete_datafolder(self):
-
         # delete directory for scene
         if os.path.exists(self.workingdir):
-            rmtree(self.workingdir)
+            try:
+                os.rmtree(self.workingdir)
+            except:
+                # Files written by root can't be deleted by django
+                logging.error("Failed to delete working directory")
 
     def _create_ini(self):
-
         # create ini file for containers
         # in 2.7 ConfigParser is a bit stupid
         # in 3.x configparser has .read_dict()
-        config = ConfigParser.SafeConfigParser()
-        for section in self.parameters:
-            if not config.has_section(section):
-                config.add_section(section)
-            for key, value in self.parameters[section].items():
-                if not config.has_option(section, key):
-                    config.set(*map(str, [section, key, value]))
+        # config = ConfigParser.SafeConfigParser()
+        # for section in self.parameters:
+        #     if not config.has_section(section):
+        #         config.add_section(section)
+        #     for key, value in self.parameters[section].items():
+        #         if not config.has_option(section, key):
+        #             config.set(*map(str, [section, key, value]))
 
-        with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
-            config.write(f)  # Yes, the ConfigParser writes to f
+        # with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
+        #     config.write(f)  # Yes, the ConfigParser writes to f
+        pass
 
     def _update_state(self):
 
@@ -419,7 +355,10 @@ class Scene(models.Model):
             "images": [],
             "location": ""
         }
-        self.info["logfile"] = ""
+        self.info["logfile"] = {
+            "file": "",
+            "location": ""
+        }
         for root, dirs, files in os.walk(self.workingdir):
             for f in sorted(files):
                 name, ext = os.path.splitext(f)
@@ -427,7 +366,7 @@ class Scene(models.Model):
                     self.info["delta_fringe_images"]["images"].append(f)
                     self.info["channel_network_images"]["images"].append(f)
                 if ext == '.log':
-                    self.info["logfile"] = f
+                    self.info["logfile"]["file"] = f
 
         self.save()
 

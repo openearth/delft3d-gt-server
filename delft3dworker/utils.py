@@ -1,4 +1,5 @@
 import re
+import sys
 
 
 class PersistentLogger():
@@ -79,11 +80,16 @@ class PersistentLogger():
         self.info["states"].append(self.info['state'])
 
     def parse(self, logline):
+        """
+        parses logline with the proper parser
+        :param logline: a log line (str)
+        :return: all info
+        """
+
         # Set fallback values
         self.info["progressprev"] = self.info["progress"]
-        print(logline)
         log = self.parser(logline)
-        print log
+
         for key, value in log.items():
             if value is not None:
                 self.info[key] = value
@@ -99,7 +105,9 @@ def delft3d_logparser(line):
     :param line: parse log message
     :return: progress [0-1]
     """
+
     try:
+
         percentage_re = re.compile(r"""
         ^(?P<message>.*?        # capture whole string as message
         (?P<progress>[\d\.]+)%  # capture num with . delim & ending with %
@@ -109,6 +117,7 @@ def delft3d_logparser(line):
         match = percentage_re.search(line)
         if match:
             match = match.groupdict()
+            match["message"] = line
             if float(match['progress']) > 1:
                 match['progress'] = format(float(match['progress'])/100, '.2f')
             else:
@@ -116,15 +125,19 @@ def delft3d_logparser(line):
             # add default log level
             match['level'] = 'INFO'
             # add state
-            match['State'] = None
+            match['state'] = None
         else:
-            match = {"message": None, "level": None,
+            match = {"message": None, "level":  "INFO",
                      "state": None, "progress": None}
         return match
+
     except:
+
+        e = sys.exc_info()[0]  # get error msg
+
         return {
-            "message": None,
-            "level": None,
+            "message": str(e),
+            "level": "ERROR",
             "state": None,
             "progress": None
         }
@@ -137,7 +150,9 @@ def python_logparser(line):
              progress [0-1] (float)(optional),
              state, (string)(optional)
     """
+
     try:
+
         python_re = re.compile(r"""
         ^(?P<message>               # capture whole string as message
         (?P<level>[A-Z]+)           # capture first capital word as log level
@@ -150,18 +165,23 @@ def python_logparser(line):
         match = python_re.search(line)
         if match:
             match = match.groupdict()
+            match["message"] = line
             if float(match['progress']) > 1:
                 match['progress'] = format(float(match['progress'])/100, '.2f')
             else:
                 match['progress'] = float(match['progress'])
         else:
-            match = {"message": None, "level": None,
+            match = {"message": line, "level": "INFO",
                      "state": None, "progress": None}
         return match
+
     except:
+
+        e = sys.exc_info()[0]  # get error msg
+
         return {
-            "message": None,
-            "level": None,
+            "message": str(e),
+            "level": "ERROR",
             "state": None,
             "progress": None
         }
