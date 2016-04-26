@@ -349,23 +349,30 @@ class Scene(models.Model):
 
         self.info["delta_fringe_images"] = {
             "images": [],
-            "location": ""
+            "location": "processing"
         }
         self.info["channel_network_images"] = {
             "images": [],
-            "location": ""
+            "location": "processing"
         }
         self.info["logfile"] = {
             "file": "",
-            "location": ""
+            "location": "simulation"
         }
-        for root, dirs, files in os.walk(self.workingdir):
+        for root, dirs, files in os.walk(os.path.join(self.workingdir, 'simulation')):
             for f in sorted(files):
                 name, ext = os.path.splitext(f)
                 if ext in ('.png', '.jpg', '.gif'):
-                    self.info["delta_fringe_images"]["images"].append(f)
-                    self.info["channel_network_images"]["images"].append(f)
+                    if "delta_fringe" in name:
+                        self.info["delta_fringe_images"]["images"].append(f)
+                    elif "channel_network" in name:
+                        self.info["channel_network_images"]["images"].append(f)
+                    else:
+                        # Other images ?
+                        pass
+
                 if ext == '.log':
+                    # No log is generated at the moment
                     self.info["logfile"]["file"] = f
 
         self.save()
