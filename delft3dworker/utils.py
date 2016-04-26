@@ -81,7 +81,8 @@ class PersistentLogger():
         self.info["progressprev"] = self.info["progress"]
 
         log = self.parser(logline)
-        for key, value in log:
+        print log
+        for key, value in log.items():
             if value is not None:
                 self.info[key] = value
 
@@ -147,4 +148,13 @@ def python_logparser(line):
         return match
     except:
         return {"message": None, "level": None, "state": None, "progress": None}
+
+
+if __name__ == '__main__':
+    line = 'INFO:root:Time to finish 70.0, 22.2222222222% completed, time steps  left 7.0'
+    log = PersistentLogger()
+    info = PersistentLogger.parse(log, line)
+    print info
+
+
 
