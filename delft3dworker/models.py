@@ -40,12 +40,27 @@ class Scenario(models.Model):
     """
     Scenario model
     """
-    template = models.OneToOneField('Template', null=True)
 
     name = models.CharField(max_length=256)
+
+    template = models.OneToOneField('Template', null=True)
+
     parameters = JSONField(blank=True)
-    # Parameters will become a list of dictionaries with
-    # the specified settings for a scene
+
+    # PROPERTY METHODS
+
+    def get_absolute_url(self):
+
+        return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
+
+    def serialize(self):
+        return {
+            "template": self.template,
+            "name": self.name,
+            "parameters": self.parameters,
+            "scenes": self.scene_set.all(),
+            "id": self.id
+        }
 
     def load_settings(self, settings):
         self.parameters = [{}]
@@ -57,6 +72,27 @@ class Scenario(models.Model):
         # for value in self.parameters:
 
         self.save()
+
+    def createscenes(self):
+        for i, sceneparameters in enumerate(self.parameters):
+            scene = Scene(name="{}: Scene {}".format(
+                self.name, i), scenario=self, parameters=sceneparameters)
+            scene.save()
+        self.save()
+
+    # CONTROL METHODS
+
+    def start(self):
+        for scene in self.scene_set.all():
+            scene.start()
+        return "started"
+
+    def stop(self):
+        for scene in self.scene_set.all():
+            scene.abort()
+        return "stopped"
+
+    # INTERNALS
 
     def _parse_setting(self, key, setting):
 
@@ -102,36 +138,6 @@ class Scenario(models.Model):
                 scene[key] = s
                 i += 1
 
-    def createscenes(self):
-        for i, sceneparameters in enumerate(self.parameters):
-            scene = Scene(name="{}: Scene {}".format(
-                self.name, i), scenario=self, parameters=sceneparameters)
-            scene.save()
-        self.save()
-
-    def start(self):
-        for scene in self.scene_set.all():
-            scene.start()
-        return "started"
-
-    def stop(self):
-        for scene in self.scene_set.all():
-            scene.abort()
-        return "stopped"
-
-    def get_absolute_url(self):
-
-        return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
-
-    def serialize(self):
-        return {
-            "template": self.template,
-            "name": self.name,
-            "parameters": self.parameters,
-            "scenes": self.scene_set.all(),
-            "id": self.id
-        }
-
     def __unicode__(self):
 
         return self.name
@@ -145,23 +151,44 @@ class Scene(models.Model):
     """
     Scene model
     """
-    scenario = models.ForeignKey('Scenario', null=True)
-
-    suid = models.CharField(max_length=256, editable=False)
-
-    workingdir = models.CharField(max_length=256)
-    fileurl = models.CharField(max_length=256)
 
     name = models.CharField(max_length=256)
-    state = models.CharField(max_length=256, blank=True)
+    suid = models.CharField(max_length=256, editable=False)
+
+    scenario = models.ForeignKey('Scenario', null=True)
+
+    fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
     parameters = JSONField(blank=True)  # {"dt":20}
-
-    # Celery task
-    task_id = models.CharField(max_length=256)
     state = models.CharField(max_length=256, blank=True)
+    task_id = models.CharField(max_length=256)
+    workingdir = models.CharField(max_length=256)
+
+    # PROPERTY METHODS
+
+    def get_absolute_url(self):
+
+        return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
+
+    def serialize(self):
+
+        self._update_state()
+
+        return {
+            "id": self.id,
+            "info": self.info,
+            "name": self.name,
+            "suid": self.suid,
+            "workingdir": self.workingdir,
+            "state": self.state,
+            "fileurl": self.fileurl,
+            "scenario": self.scenario.id if self.scenario else None
+        }
+
+    # CONTROL METHODS
 
     def start(self):
+
         result = AbortableAsyncResult(self.task_id)
 
         if self.task_id != "" and result.state == "PENDING":
@@ -176,36 +203,8 @@ class Scene(models.Model):
 
         return {"task_id": self.task_id, "scene_id": self.suid}
 
-    def update_state(self):
-        # only update state if it has a task_id (which means the task is
-        # started)
-        if self.task_id != '':
-            result = AbortableAsyncResult(self.task_id)
-            self.info = result.info if isinstance(
-                result.info, dict) else {"info": str(result.info)}
-            self.state = result.state
-            self.save()
-        return {
-            "task_id": self.task_id,
-            "state": self.state,
-            "info": str(self.info)
-        }
-
-    def save(self, *args, **kwargs):
-        # if scene does not have a unique uuid, create it and create folder
-        if self.suid == '':
-            self.suid = str(uuid.uuid4())
-            self.workingdir = os.path.join(
-                settings.WORKER_FILEDIR, self.suid, '')
-            self._create_datafolder()
-            if self.parameters == "":
-                # Hack to have the "dt:20" in the correct format
-                self.parameters = {"delft3d": self.info}
-            self._create_ini()
-            self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
-        super(Scene, self).save(*args, **kwargs)
-
     def abort(self):
+
         result = AbortableAsyncResult(self.task_id)
         self.info = result.info if isinstance(
             result.info, dict) else {"info": str(result.info)}
@@ -230,8 +229,8 @@ class Scene(models.Model):
             "info": str(self.info)
         }
 
-    # Function is not used now
     def revoke(self):
+
         result = AbortableAsyncResult(self.task_id)
         self.info = result.info if isinstance(
             result.info, dict) else {"info": str(result.info)}
@@ -245,39 +244,8 @@ class Scene(models.Model):
             "info": str(self.info)
         }
 
-    def delete(self, deletefiles=False, *args, **kwargs):
-        self.abort()
-        if deletefiles:
-            self._delete_datafolder()
-        super(Scene, self).delete(*args, **kwargs)
-
-    def _create_datafolder(self):
-        # create directory for scene
-        if not os.path.exists(self.workingdir):
-            os.makedirs(self.workingdir)
-
-    def _delete_datafolder(self):
-        print "--------------------------------------------------------- mooo"
-        # delete directory for scene
-        if os.path.exists(self.workingdir):
-            rmtree(self.workingdir)
-
-    def _create_ini(self):
-        # create ini file for containers
-        # in 2.7 ConfigParser is a bit stupid
-        # in 3.x configparser has .read_dict()
-        config = ConfigParser.SafeConfigParser()
-        for section in self.parameters:
-            if not config.has_section(section):
-                config.add_section(section)
-            for key, value in self.parameters[section].items():
-                if not config.has_option(section, key):
-                    config.set(*map(str, [section, key, value]))
-
-        with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
-            config.write(f)  # Yes, the ConfigParser writes to f
-
     def export(self):
+
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
         # - django-filebrowser (filtering and more elegant browsing)
@@ -312,33 +280,86 @@ class Scene(models.Model):
         zf.close()
         return stream, zip_filename
 
-    def serialize(self):
-        return {
-            "id": self.id,
-            "info": self.info,
-            "name": self.name,
-            "suid": self.suid,
-            "workingdir": self.workingdir,
-            "state": self.state,
-            "fileurl": self.fileurl,
-            "scenario": self.scenario.id if self.scenario else None,
+    # CRUD METHODS
 
-            # dummy
-            "simulationtask": {
-                "state": "PROCESSING",
-                "state_meta": {"info": "this is a dummy task"},
-                "uuid": "32a66197-6f94-49c6-be0d-afaa50d1f4ec"
-            },
-            "processingtask": {
-                "state": "PROCESSING",
-                "state_meta": {"info": "this is a dummy task"},
-                "uuid": "a9e05500-dc82-4f4b-a392-552b9b3c0997"
-            },
-            "postprocessingtask": {None}
+    def save(self, *args, **kwargs):
+
+        # if scene does not have a unique uuid, create it and create folder
+        if self.suid == '':
+            self.suid = str(uuid.uuid4())
+            self.workingdir = os.path.join(
+                settings.WORKER_FILEDIR, self.suid, '')
+            self._create_datafolder()
+            if self.parameters == "":
+                # Hack to have the "dt:20" in the correct format
+                self.parameters = {"delft3d": self.info}
+            self._create_ini()
+            self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
+        super(Scene, self).save(*args, **kwargs)
+
+    def delete(self, deletefiles=False, *args, **kwargs):
+
+        self.abort()
+        if deletefiles:
+            self._delete_datafolder()
+        super(Scene, self).delete(*args, **kwargs)
+
+    # INTERNALS
+
+    def _create_datafolder(self):
+
+        # create directory for scene
+        if not os.path.exists(self.workingdir):
+            os.makedirs(self.workingdir)
+
+    def _delete_datafolder(self):
+
+        # delete directory for scene
+        if os.path.exists(self.workingdir):
+            rmtree(self.workingdir)
+
+    def _create_ini(self):
+
+        # create ini file for containers
+        # in 2.7 ConfigParser is a bit stupid
+        # in 3.x configparser has .read_dict()
+        config = ConfigParser.SafeConfigParser()
+        for section in self.parameters:
+            if not config.has_section(section):
+                config.add_section(section)
+            for key, value in self.parameters[section].items():
+                if not config.has_option(section, key):
+                    config.set(*map(str, [section, key, value]))
+
+        with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
+            config.write(f)  # Yes, the ConfigParser writes to f
+
+    def _update_state(self):
+
+        # only update state if it has a task_id (which means the task is
+        # started)
+        if self.task_id != '':
+            result = AbortableAsyncResult(self.task_id)
+            self.info = result.info if isinstance(
+                result.info, dict) else {"info": str(result.info)}
+            self.state = result.state
+
+        self.info["delta_fringe_images"] = {
+            "images": [],
+            "location": ""
         }
+        self.info["channel_network_images"] = {
+            "images": [],
+            "location": ""
+        }
+        for root, dirs, files in os.walk(self.workingdir):
+            for f in sorted(files):
+                name, ext = os.path.splitext(f)
+                if ext in ('.png', '.jpg', '.gif'):
+                    self.info["delta_fringe_images"]["images"].append(f)
+                    self.info["channel_network_images"]["images"].append(f)
 
-    def get_absolute_url(self):
-        return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
+        self.save()
 
     def __unicode__(self):
         return self.name
@@ -540,14 +561,14 @@ class Template(models.Model):
 
     templatename = models.CharField(max_length=256)
 
-    version = models.IntegerField(blank=True)
-    model = models.CharField(max_length=256, blank=True)
-    email = models.CharField(max_length=256, blank=True)
-    label = models.CharField(max_length=256, blank=True)
     description = models.CharField(max_length=256, blank=True)
-    site = models.CharField(max_length=256, blank=True)
+    email = models.CharField(max_length=256, blank=True)
     groups = JSONField(blank=True)
+    label = models.CharField(max_length=256, blank=True)
+    model = models.CharField(max_length=256, blank=True)
+    site = models.CharField(max_length=256, blank=True)
     variables = JSONField(blank=True)
+    version = models.IntegerField(blank=True)
 
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('template_detail'), self.id)
