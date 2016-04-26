@@ -183,12 +183,12 @@ class Scene(models.Model):
             self.suid = str(uuid.uuid4())
             self.workingdir = os.path.join(
                 settings.WORKER_FILEDIR, self.suid, '')
-            self._create_datafolder()
+            # self._create_datafolder()
             if self.parameters == "":
                 # Hack to have the "dt:20" in the correct format
                 # when a scene has been created manually
                 self.parameters = {"delft3d": self.info}
-            self._create_ini()
+            # self._create_ini()
             self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
 

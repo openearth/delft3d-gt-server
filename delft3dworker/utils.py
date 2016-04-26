@@ -37,7 +37,7 @@ class PersistentLogger():
 
         # state and all previous states
         "state": "START",  # if we parse, we've started
-        "states": set(),
+        "states": [],
         }
 
     def changed(self):
@@ -74,14 +74,14 @@ class PersistentLogger():
             self.info["progresshigh"] = self.info["progress"]
 
         # states
-        self.info["states"].add(self.info['state'])
+        self.info["states"].append(self.info['state'])
 
     def parse(self, logline):
         # Set fallback values
         self.info["progressprev"] = self.info["progress"]
-
+        print(logline)
         log = self.parser(logline)
-        for key, value in log:
+        for key, value in log.items():
             if value is not None:
                 self.info[key] = value
 

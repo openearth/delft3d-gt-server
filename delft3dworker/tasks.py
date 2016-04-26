@@ -27,6 +27,7 @@ def chainedtask(self, parameters, workingdir):
     # create folder
     if not os.path.exists(workingdir):
         os.makedirs(workingdir, 2775)
+        print("Made workingdir")
 
     # create ini file for containers
     # in 2.7 ConfigParser is a bit stupid
@@ -125,7 +126,7 @@ def pre_dummy(self, workingdir, _):
     volumes = ['{0}:/data/output'.format(workingdir),
                '{0}:/data/input'.format(inputfolder)]
     # command = "python dummy_create_config.py {}".format(10)  # old dummy
-    command = "python /data/input/svn/scripts/preprocessing/preprocessing.py"  # new hotness
+    command = "/bin/sh -c run.sh /data/input/svn/scripts/preprocessing/preprocessing.py"  # new hotness
     preprocess_container = DockerClient(settings.PREPROCESS_IMAGE_NAME, volumes, '', command)
 
     # start preprocess
@@ -179,7 +180,7 @@ def sim_dummy(self, _, workingdir):
     # create Process container
     volumes = ['{0}:/data/input:ro'.format(workingdir),
                '{0}:/data/output'.format(outputfolder)]
-    command = ""
+    command = "/bin/sh -c run.sh /data/input/svn/scripts/preprocessing/preprocessing.py"
     processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
 
     # start simulation
@@ -249,7 +250,7 @@ def post_dummy(self, _, workingdir):
     # loop task
     self.update_state(state='STARTED', meta=state_meta)
 
-    log = PersistentLogger(logger="python")
+    log = PersistentLogger(parser="python")
 
     running = True
     while running:
