@@ -252,13 +252,10 @@ class Scene(models.Model):
             os.makedirs(self.workingdir)
 
     def _delete_datafolder(self):
+        print "--------------------------------------------------------- mooo"
         # delete directory for scene
         if os.path.exists(self.workingdir):
-            try:
-                os.rmtree(self.workingdir)
-            except:
-                # Files written by root can't be deleted by django
-                logging.error("Failed to delete working directory")
+            rmtree(self.workingdir)
 
     def _create_ini(self):
         # create ini file for containers
@@ -319,7 +316,7 @@ class Scene(models.Model):
             "workingdir": self.workingdir,
             "state": self.state,
             "fileurl": self.fileurl,
-            "scenario": self.scenario.id,
+            "scenario": self.scenario.id if self.scenario else None,
 
             # dummy
             "simulationtask": {

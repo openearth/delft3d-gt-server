@@ -162,7 +162,7 @@ class SceneDeleteView(DeleteView):
 
     def delete(self, request, *args, **kwargs):
         deletefiles = (
-            request.GET.get('delete_files') or request.POST.get('delete_files')
+            request.GET.get('deletefiles') or request.POST.get('deletefiles')
         )
         self.success_url = reverse_lazy('scene_delete')
 
