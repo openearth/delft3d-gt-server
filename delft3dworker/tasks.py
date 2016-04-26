@@ -125,8 +125,10 @@ def pre_dummy(self, workingdir, _):
     # create Preprocess container
     volumes = ['{0}:/data/output'.format(workingdir),
                '{0}:/data/input'.format(inputfolder)]
+
     # command = "python dummy_create_config.py {}".format(10)  # old dummy
-    command = "/bin/sh -c run.sh /data/input/svn/scripts/preprocessing/preprocessing.py"  # new hotness
+    command = "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"  # new hotness
+    print(command)
     preprocess_container = DockerClient(settings.PREPROCESS_IMAGE_NAME, volumes, '', command)
 
     # start preprocess
@@ -155,6 +157,7 @@ def pre_dummy(self, workingdir, _):
             if not self.is_aborted(): self.update_state(state='PROCESSING', meta=state_meta)
 
         running = preprocess_container.running()
+        time.sleep(2)
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
