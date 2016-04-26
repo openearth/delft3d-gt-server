@@ -215,7 +215,6 @@ class SceneDetailView(JSONDetailView):
     def get_object(self):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         scene = Scene.objects.get(id=scene_id)
-        scene.update_state()
         return scene
 
     @method_decorator(csrf_exempt)
@@ -228,8 +227,6 @@ class SceneListView(JSONListView):
 
     def get_queryset(self):
         queryset = Scene.objects.all().order_by('id')
-        for scene in queryset.iterator():
-            scene.update_state()
         return queryset
 
     @method_decorator(csrf_exempt)
