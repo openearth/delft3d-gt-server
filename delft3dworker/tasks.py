@@ -198,6 +198,7 @@ def sim_dummy(self, _, workingdir):
     """
     # create folders
     inputfolder = os.path.join(workingdir, 'simulation')
+    outputfolder = os.path.join(workingdir, 'processing')
 
     # create Sim container
     volumes = ['{0}:/data'.format(inputfolder)]
@@ -211,10 +212,10 @@ def sim_dummy(self, _, workingdir):
     )
 
     # # create Process container
-    # volumes = ['{0}:/data/input:ro'.format(workingdir),
-    #            '{0}:/data/output'.format(outputfolder)]
-    # command = "/bin/sh -c run.sh /data/input/svn/scripts/preprocessing/preprocessing.py"
-    # processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
+    volumes = ['{0}:/data/input:ro'.format(workingdir),
+               '{0}:/data/output'.format(outputfolder)]
+    command = "/bin/sh -c run.sh /data/input/svn/scripts/preprocessing/preprocessing.py"
+    processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -239,8 +240,8 @@ def sim_dummy(self, _, workingdir):
         else:
             # process
             logger.info("Started processing")
-            # if simlog.changed():  # sim has progress
-            #     processing_container.start()
+            if simlog.changed():  # sim has progress
+                processing_container.start()
 
             # update state
             state_meta["task"] = self.__name__
