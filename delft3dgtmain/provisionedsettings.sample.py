@@ -36,8 +36,9 @@ PROCESS_IMAGE_NAME = 'python27_container'
 WORKER_FILEDIR = '/data/container/files'
 
 CELERY_ROUTES = {
-    'delft3dworker.tasks.chainedtask': {'queue': 'celery'},
-    'delft3dworker.tasks.pre_dummy': {'queue': 'pre'},
-    'delft3dworker.tasks.sim_dummy': {'queue': 'sim'},
-    'delft3dworker.tasks.post_dummy': {'queue': 'post'},
+  'delft3dworker.tasks.chainedtask': {'queue': 'celery'},
+  'delft3dworker.tasks.preprocess': {'queue': 'pre'},
+  'delft3dworker.tasks.simulation': {'queue': 'sim'},
+  'delft3dworker.tasks.postprocess': {'queue': 'post'},
 }
+

@@ -5,6 +5,9 @@ import os
 import ConfigParser
 import time
 from shutil import copyfile
+import pwd
+import grp
+
 
 from delft3dworker.utils import delft3d_logparser
 from delft3dworker.utils import python_logparser
@@ -26,26 +29,29 @@ def chainedtask(self, parameters, workingdir):
     """ Chained task which can be aborted. Contains model logic. """
 
     # create folder
-    if not os.path.exists(workingdir):
-        os.makedirs(workingdir, 2775)
-        print("Made workingdir")
+    # uid = pwd.getpwnam('django')[2]
+    # gid = grp.getgrnam('docker')[2]
+    # if not os.path.exists(workingdir):
+        # os.makedirs(workingdir, 2775)
+        # os.chown(workingdir, uid, gid)
+        # print("Made workingdir")
 
     # create ini file for containers
     # in 2.7 ConfigParser is a bit stupid
     # in 3.x configparser has .read_dict()
-    config = ConfigParser.SafeConfigParser()
-    for section in parameters:
-        if not config.has_section(section):
-            config.add_section(section)
-        for key, value in parameters[section].items():
-            if not config.has_option(section, key):
-                config.set(*map(str, [section, key, value]))
+    # config = ConfigParser.SafeConfigParser()
+    # for section in parameters:
+    #     if not config.has_section(section):
+    #         config.add_section(section)
+    #     for key, value in parameters[section].items():
+    #         if not config.has_option(section, key):
+    #             config.set(*map(str, [section, key, value]))
 
-    with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
-        config.write(f)  # Yes, the ConfigParser writes to f
+    # with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
+    #     config.write(f)  # Yes, the ConfigParser writes to f
 
     # define chain and results
-    chain = pre_dummy.s(workingdir, "") | sim_dummy.s(workingdir)
+    chain = preprocess.s(workingdir, "") | simulation.s(workingdir)
     chain_result = chain()
     results = {}
 
@@ -125,23 +131,31 @@ def chainedtask(self, parameters, workingdir):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def pre_dummy(self, workingdir, _):
+def preprocess(self, workingdir, _):
     """ Chained task which can be aborted. Contains model logic. """
 
-    # create folders
+    # # create folders
     inputfolder = os.path.join(workingdir, 'preprocess')
     outputfolder = os.path.join(workingdir, 'simulation')
-    os.makedirs(inputfolder)
-    os.makedirs(outputfolder)
+    # os.makedirs(inputfolder)
+    # os.makedirs(outputfolder)
+
+    # uid = grp.getgrnam('docker')[2]
+    # gid = grp.getgrnam('django')[2]
+    # os.chown(inputfolder, uid, gid)
+    # os.chown(outputfolder, uid, gid)
+
+    # os.chmod(inputfolder, 02775)
+    # os.chmod(outputfolder, 02775)
 
     # copy input.ini
-    copyfile(
-        os.path.join(workingdir, 'input.ini'),
-        os.path.join(inputfolder, 'input.ini')
-    )
+    # copyfile(
+    #     os.path.join(workingdir, 'input.ini'),
+    #     os.path.join(inputfolder, 'input.ini')
+    # )
 
     # create Preprocess container
-    volumes = ['{0}:/data/output'.format(outputfolder),
+    volumes = ['{0}:/data/output:z'.format(outputfolder),
                '{0}:/data/input:ro'.format(inputfolder)]
 
     # command = "python dummy_create_config.py {}".format(10)  # old dummy
@@ -190,7 +204,7 @@ def pre_dummy(self, workingdir, _):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def sim_dummy(self, _, workingdir):
+def simulation(self, _, workingdir):
     """
     TODO Check if processing is still running
     before starting another one.
@@ -199,8 +213,13 @@ def sim_dummy(self, _, workingdir):
     # create folders
     inputfolder = os.path.join(workingdir, 'simulation')
     outputfolder = os.path.join(workingdir, 'processing')
+    # os.makedirs(outputfolder)
 
-    os.makedirs(outputfolder)
+    # uid = grp.getgrnam('docker')[2]
+    # gid = grp.getgrnam('django')[2]
+    # os.chown(outputfolder, uid, gid)
+
+    # os.chmod(outputfolder, 02775)
 
     # create Sim container
     volumes = ['{0}:/data'.format(inputfolder)]
@@ -215,7 +234,7 @@ def sim_dummy(self, _, workingdir):
 
     # create Process container
     volumes = ['{0}:/data/input:ro'.format(inputfolder),
-               '{0}:/data/output'.format(outputfolder)]
+               '{0}:/data/output:z'.format(outputfolder)]
     command = ' '.join(["/data/run.sh ",
               "/data/svn/scripts/postprocessing/channel_network_proc.py",
               "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
@@ -231,8 +250,8 @@ def sim_dummy(self, _, workingdir):
     logger.info("Started simulation")
     self.update_state(state='STARTED', meta=state_meta)
 
-    simlog = PersistentLogger()
-    proclog = PersistentLogger(parser="delft3d")
+    simlog = PersistentLogger(parser="delft3d")
+    proclog = PersistentLogger(parser="python")
 
     # loop task
     running = True
@@ -274,10 +293,16 @@ def sim_dummy(self, _, workingdir):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def post_dummy(self, _, workingdir):
+def postprocess(self, _, workingdir):
     # create folders
     outputfolder = os.path.join(workingdir, 'postprocess')
-    os.makedirs(outputfolder)
+    # os.makedirs(outputfolder)
+
+    # uid = grp.getgrnam('docker')[2]
+    # gid = grp.getgrnam('django')[2]
+    # os.chown(outputfolder, uid, gid)
+
+    # os.chmod(outputfolder, 02775)
 
     # create Postprocess container
     volumes = ['{0}:/data/input:ro'.format(workingdir),

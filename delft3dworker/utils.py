@@ -19,7 +19,7 @@ class PersistentLogger():
         else:
             self.parser = python_logparser
 
-        self.maxmessages = 200  # to keep
+        self.maxmessages = 5  # to keep
         self.severity = ["", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
         # Keep track of:
@@ -80,7 +80,8 @@ class PersistentLogger():
             self.info["progresshigh"] = self.info["progress"]
 
         # states
-        self.info["states"].append(self.info['state'])
+        if self.info['state'] not in self.info['states']:
+            self.info["states"].append(self.info['state'])
 
     def parse(self, logline):
         """
