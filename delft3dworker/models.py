@@ -176,13 +176,14 @@ class Scene(models.Model):
 
         return {
             "id": self.id,
-            "info": self.info,
             "name": self.name,
             "suid": self.suid,
-            "workingdir": self.workingdir,
-            "state": self.state,
+            "scenario": self.scenario.id if self.scenario else None,
             "fileurl": self.fileurl,
-            "scenario": self.scenario.id if self.scenario else None
+            "info": self.info,
+            "parameters": self.parameters,
+            "state": self.state,
+            "task_id": self.task_id,
         }
 
     # CONTROL METHODS
@@ -377,7 +378,8 @@ class Scene(models.Model):
                     elif "channel_network" in name:
                         self.info["channel_network_images"]["images"].append(f)
                     elif "sediment_fraction" in name:
-                        self.info["sediment_fraction_images"]["images"].append(f)
+                        self.info["sediment_fraction_images"][
+                            "images"].append(f)
 
                     else:
                         # Other images ?
