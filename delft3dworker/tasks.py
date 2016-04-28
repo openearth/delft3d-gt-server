@@ -29,26 +29,26 @@ def chainedtask(self, parameters, workingdir):
     """ Chained task which can be aborted. Contains model logic. """
 
     # create folder
-    uid = pwd.getpwnam('django')
-    gid = grp.getgrnam('docker')
-    if not os.path.exists(workingdir):
-        os.makedirs(workingdir, 2775)
-        os.chown(workingdir, uid, gid)
-        print("Made workingdir")
+    # uid = pwd.getpwnam('django')[2]
+    # gid = grp.getgrnam('docker')[2]
+    # if not os.path.exists(workingdir):
+        # os.makedirs(workingdir, 2775)
+        # os.chown(workingdir, uid, gid)
+        # print("Made workingdir")
 
     # create ini file for containers
     # in 2.7 ConfigParser is a bit stupid
     # in 3.x configparser has .read_dict()
-    config = ConfigParser.SafeConfigParser()
-    for section in parameters:
-        if not config.has_section(section):
-            config.add_section(section)
-        for key, value in parameters[section].items():
-            if not config.has_option(section, key):
-                config.set(*map(str, [section, key, value]))
+    # config = ConfigParser.SafeConfigParser()
+    # for section in parameters:
+    #     if not config.has_section(section):
+    #         config.add_section(section)
+    #     for key, value in parameters[section].items():
+    #         if not config.has_option(section, key):
+    #             config.set(*map(str, [section, key, value]))
 
-    with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
-        config.write(f)  # Yes, the ConfigParser writes to f
+    # with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
+    #     config.write(f)  # Yes, the ConfigParser writes to f
 
     # define chain and results
     chain = pre_dummy.s(workingdir, "") | sim_dummy.s(workingdir)
@@ -134,20 +134,28 @@ def chainedtask(self, parameters, workingdir):
 def pre_dummy(self, workingdir, _):
     """ Chained task which can be aborted. Contains model logic. """
 
-    # create folders
+    # # create folders
     inputfolder = os.path.join(workingdir, 'preprocess')
     outputfolder = os.path.join(workingdir, 'simulation')
-    os.makedirs(inputfolder)
-    os.makedirs(outputfolder)
+    # os.makedirs(inputfolder)
+    # os.makedirs(outputfolder)
+
+    # uid = grp.getgrnam('docker')[2]
+    # gid = grp.getgrnam('django')[2]
+    # os.chown(inputfolder, uid, gid)
+    # os.chown(outputfolder, uid, gid)
+
+    # os.chmod(inputfolder, 02775)
+    # os.chmod(outputfolder, 02775)
 
     # copy input.ini
-    copyfile(
-        os.path.join(workingdir, 'input.ini'),
-        os.path.join(inputfolder, 'input.ini')
-    )
+    # copyfile(
+    #     os.path.join(workingdir, 'input.ini'),
+    #     os.path.join(inputfolder, 'input.ini')
+    # )
 
     # create Preprocess container
-    volumes = ['{0}:/data/output'.format(outputfolder),
+    volumes = ['{0}:/data/output:z'.format(outputfolder),
                '{0}:/data/input:ro'.format(inputfolder)]
 
     # command = "python dummy_create_config.py {}".format(10)  # old dummy
@@ -205,7 +213,13 @@ def sim_dummy(self, _, workingdir):
     # create folders
     inputfolder = os.path.join(workingdir, 'simulation')
     outputfolder = os.path.join(workingdir, 'processing')
-    os.makedirs(outputfolder)
+    # os.makedirs(outputfolder)
+
+    # uid = grp.getgrnam('docker')[2]
+    # gid = grp.getgrnam('django')[2]
+    # os.chown(outputfolder, uid, gid)
+
+    # os.chmod(outputfolder, 02775)
 
     # create Sim container
     volumes = ['{0}:/data'.format(inputfolder)]
@@ -220,7 +234,7 @@ def sim_dummy(self, _, workingdir):
 
     # create Process container
     volumes = ['{0}:/data/input:ro'.format(inputfolder),
-               '{0}:/data/output'.format(outputfolder)]
+               '{0}:/data/output:z'.format(outputfolder)]
     command = ' '.join(["/data/run.sh ",
               "/data/svn/scripts/postprocessing/channel_network_proc.py",
               "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
@@ -282,7 +296,13 @@ def sim_dummy(self, _, workingdir):
 def post_dummy(self, _, workingdir):
     # create folders
     outputfolder = os.path.join(workingdir, 'postprocess')
-    os.makedirs(outputfolder)
+    # os.makedirs(outputfolder)
+    
+    # uid = grp.getgrnam('docker')[2]
+    # gid = grp.getgrnam('django')[2]
+    # os.chown(outputfolder, uid, gid)
+
+    # os.chmod(outputfolder, 02775)
 
     # create Postprocess container
     volumes = ['{0}:/data/input:ro'.format(workingdir),

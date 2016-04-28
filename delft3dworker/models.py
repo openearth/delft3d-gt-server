@@ -7,6 +7,7 @@ import logging
 import os
 import uuid
 import zipfile
+from shutil import copyfile
 
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.result import AsyncResult
@@ -310,9 +311,19 @@ class Scene(models.Model):
 
     def _create_datafolder(self):
         # create directory for scene
-        # if not os.path.exists(self.workingdir):
-            # os.makedirs(self.workingdir, 2775)
-        pass
+        if not os.path.exists(self.workingdir):
+            os.makedirs(self.workingdir, 02775)
+
+            outputfolder = os.path.join(self.workingdir, 'postprocess')
+            os.makedirs(outputfolder)
+
+            outputfolder = os.path.join(self.workingdir, 'processing')
+            os.makedirs(outputfolder)
+
+            inputfolder = os.path.join(self.workingdir, 'preprocess')
+            outputfolder = os.path.join(self.workingdir, 'simulation')
+            os.makedirs(inputfolder)
+            os.makedirs(outputfolder)
 
     def _delete_datafolder(self):
         # delete directory for scene
@@ -327,17 +338,29 @@ class Scene(models.Model):
         # create ini file for containers
         # in 2.7 ConfigParser is a bit stupid
         # in 3.x configparser has .read_dict()
-        # config = ConfigParser.SafeConfigParser()
-        # for section in self.parameters:
-        #     if not config.has_section(section):
-        #         config.add_section(section)
-        #     for key, value in self.parameters[section].items():
-        #         if not config.has_option(section, key):
-        #             config.set(*map(str, [section, key, value]))
+        config = ConfigParser.SafeConfigParser()
+        for section in self.parameters:
+            if not config.has_section(section):
+                config.add_section(section)
+            for key, value in self.parameters[section].items():
+                if not config.has_option(section, key):
+                    config.set(*map(str, [section, key, value]))
 
-        # with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
-        #     config.write(f)  # Yes, the ConfigParser writes to f
-        pass
+        with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
+            config.write(f)  # Yes, the ConfigParser writes to f
+
+        copyfile(
+            os.path.join(self.workingdir, 'input.ini'),
+            os.path.join(os.path.join(self.workingdir, 'preprocess/' 'input.ini'))
+            )
+        copyfile(
+            os.path.join(self.workingdir, 'input.ini'),
+            os.path.join(os.path.join(self.workingdir, 'simulation/' 'input.ini'))
+            )
+        copyfile(
+            os.path.join(self.workingdir, 'input.ini'),
+            os.path.join(os.path.join(self.workingdir, 'processing/' 'input.ini'))
+            )
 
     def _update_state(self):
 
