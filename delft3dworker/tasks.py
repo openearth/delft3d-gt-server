@@ -266,8 +266,8 @@ def simulation(self, _, workingdir):
         # if no abort or revoke: update state
         else:
             # process
-            logger.info("Started processing")
             if simlog.changed():  # sim has progress
+                logger.info("Started processing, sim progress changed.")
                 processing_container.start()
 
             # update state
