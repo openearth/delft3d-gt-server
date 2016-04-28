@@ -51,7 +51,7 @@ def chainedtask(self, parameters, workingdir):
     #     config.write(f)  # Yes, the ConfigParser writes to f
 
     # define chain and results
-    chain = pre_dummy.s(workingdir, "") | sim_dummy.s(workingdir)
+    chain = preprocess.s(workingdir, "") | simulation.s(workingdir)
     chain_result = chain()
     results = {}
 
@@ -131,7 +131,7 @@ def chainedtask(self, parameters, workingdir):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def pre_dummy(self, workingdir, _):
+def preprocess(self, workingdir, _):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -204,7 +204,7 @@ def pre_dummy(self, workingdir, _):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def sim_dummy(self, _, workingdir):
+def simulation(self, _, workingdir):
     """
     TODO Check if processing is still running
     before starting another one.
@@ -250,7 +250,7 @@ def sim_dummy(self, _, workingdir):
     logger.info("Started simulation")
     self.update_state(state='STARTED', meta=state_meta)
 
-    simlog = PersistentLogger()
+    simlog = PersistentLogger(parser="delft3d")
     proclog = PersistentLogger(parser="python")
 
     # loop task
@@ -293,11 +293,11 @@ def sim_dummy(self, _, workingdir):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def post_dummy(self, _, workingdir):
+def postprocess(self, _, workingdir):
     # create folders
     outputfolder = os.path.join(workingdir, 'postprocess')
     # os.makedirs(outputfolder)
-    
+
     # uid = grp.getgrnam('docker')[2]
     # gid = grp.getgrnam('django')[2]
     # os.chown(outputfolder, uid, gid)

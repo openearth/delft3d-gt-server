@@ -374,15 +374,15 @@ class Scene(models.Model):
 
         self.info["delta_fringe_images"] = {
             "images": [],
-            "location": "processing"
+            "location": "process"
         }
         self.info["channel_network_images"] = {
             "images": [],
-            "location": "processing"
+            "location": "process"
         }
         self.info["sediment_fraction_images"] = {
             "images": [],
-            "location": "processing"
+            "location": "process"
         }
         self.info["logfile"] = {
             "file": "",
@@ -390,7 +390,7 @@ class Scene(models.Model):
         }
 
         for root, dirs, files in os.walk(
-            os.path.join(self.workingdir, 'simulation')
+            os.path.join(self.workingdir, 'process')
         ):
             for f in sorted(files):
                 name, ext = os.path.splitext(f)
