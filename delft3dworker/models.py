@@ -315,8 +315,8 @@ class Scene(models.Model):
         if not os.path.exists(self.workingdir):
             os.makedirs(self.workingdir, 02775)
 
-            outputfolder = os.path.join(self.workingdir, 'postprocess')
-            os.makedirs(outputfolder)
+            # outputfolder = os.path.join(self.workingdir, 'postprocess')
+            # os.makedirs(outputfolder)
 
             outputfolder = os.path.join(self.workingdir, 'process')
             os.makedirs(outputfolder)

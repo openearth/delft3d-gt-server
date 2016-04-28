@@ -212,7 +212,7 @@ def simulation(self, _, workingdir):
     """
     # create folders
     inputfolder = os.path.join(workingdir, 'simulation')
-    outputfolder = os.path.join(workingdir, 'processing')
+    outputfolder = os.path.join(workingdir, 'process')
     # os.makedirs(outputfolder)
 
     # uid = grp.getgrnam('docker')[2]
