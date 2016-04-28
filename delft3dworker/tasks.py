@@ -142,7 +142,7 @@ def pre_dummy(self, workingdir, _):
 
     # create Preprocess container
     volumes = ['{0}:/data/output'.format(outputfolder),
-               '{0}:/data/input'.format(inputfolder)]
+               '{0}:/data/input:ro'.format(inputfolder)]
 
     # command = "python dummy_create_config.py {}".format(10)  # old dummy
     command = "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"
@@ -198,6 +198,9 @@ def sim_dummy(self, _, workingdir):
     """
     # create folders
     inputfolder = os.path.join(workingdir, 'simulation')
+    outputfolder = os.path.join(workingdir, 'processing')
+
+    os.makedirs(outputfolder)
 
     # create Sim container
     volumes = ['{0}:/data'.format(inputfolder)]
@@ -210,11 +213,17 @@ def sim_dummy(self, _, workingdir):
         command
     )
 
-    # # create Process container
-    # volumes = ['{0}:/data/input:ro'.format(workingdir),
-    #            '{0}:/data/output'.format(outputfolder)]
-    # command = "/bin/sh -c run.sh /data/input/svn/scripts/preprocessing/preprocessing.py"
-    # processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
+    # create Process container
+    volumes = ['{0}:/data/input:ro'.format(inputfolder),
+               '{0}:/data/output'.format(outputfolder)]
+    command = ' '.join(["/data/run.sh ",
+              "/data/svn/scripts/postprocessing/channel_network_proc.py",
+              "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
+              "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
+              "/data/svn/scripts/visualisation/channel_network_viz.py",
+              "/data/svn/scripts/visualisation/delta_fringe_viz.py",
+              "/data/svn/scripts/visualisation/sediment_fraction_viz.py"])
+    processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -231,7 +240,7 @@ def sim_dummy(self, _, workingdir):
 
         # abort handling
         if self.is_aborted():
-            # processing_container.stop()
+            processing_container.stop()
             simulation_container.stop()
             break
 
@@ -239,14 +248,14 @@ def sim_dummy(self, _, workingdir):
         else:
             # process
             logger.info("Started processing")
-            # if simlog.changed():  # sim has progress
-            #     processing_container.start()
+            if simlog.changed():  # sim has progress
+                processing_container.start()
 
             # update state
             state_meta["task"] = self.__name__
             state_meta["output"] = [
                 simlog.parse(simulation_container.get_log()),
-                # proclog.parse(processing_container.get_log())
+                proclog.parse(processing_container.get_log())
             ]
             logger.info(state_meta["output"])
             # race condition: although we check it in this if/else statement,
