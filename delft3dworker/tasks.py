@@ -5,6 +5,9 @@ import os
 import ConfigParser
 import time
 from shutil import copyfile
+import pwd
+import grp
+
 
 from delft3dworker.utils import delft3d_logparser
 from delft3dworker.utils import python_logparser
@@ -26,8 +29,11 @@ def chainedtask(self, parameters, workingdir):
     """ Chained task which can be aborted. Contains model logic. """
 
     # create folder
+    uid = pwd.getpwnam('django')
+    gid = grp.getgrnam('docker')
     if not os.path.exists(workingdir):
         os.makedirs(workingdir, 2775)
+        os.chown(workingdir, uid, gid)
         print("Made workingdir")
 
     # create ini file for containers
@@ -224,7 +230,7 @@ def sim_dummy(self, _, workingdir):
     self.update_state(state='STARTED', meta=state_meta)
 
     simlog = PersistentLogger()
-    proclog = PersistentLogger(parser="delft3d")
+    proclog = PersistentLogger(parser="python")
 
     # loop task
     running = True
