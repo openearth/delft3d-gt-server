@@ -412,7 +412,7 @@ class Scene(models.Model):
             os.path.join(self.workingdir, 'simulation')
         ):
             for f in files:
-                if ext == '.log':
+                if f == 'delft3d.log':
                     # No log is generated at the moment
                     self.info["logfile"]["file"] = f
                     break
