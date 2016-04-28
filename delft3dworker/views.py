@@ -139,6 +139,37 @@ class ScenarioStartView(View):
         return super(ScenarioStartView, self).dispatch(*args, **kwargs)
 
 
+class ScenarioStopView(View):
+    model = Scenario
+
+    # TODO: remove get
+    def get(self, request, *args, **kwargs):
+        scenario_id = (
+            self.request.GET.get('id') or self.request.POST.get('id')
+        )
+        scenario = get_object_or_404(Scenario, id=scenario_id)
+        payload = {
+            'id': scenario_id,
+            'status': scenario.stop()
+        }
+        return JsonResponse(payload)
+
+    def post(self, request, *args, **kwargs):
+        scenario_id = (
+            self.request.GET.get('id') or self.request.POST.get('id')
+        )
+        scenario = get_object_or_404(Scenario, id=scenario_id)
+        payload = {
+            'id': scenario_id,
+            'status': scenario.stop()
+        }
+        return JsonResponse(payload)
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super(ScenarioStopView, self).dispatch(*args, **kwargs)
+
+
 # ################################### SCENE
 
 class SceneCreateView(CreateView):
@@ -162,12 +193,12 @@ class SceneDeleteView(DeleteView):
 
     def delete(self, request, *args, **kwargs):
         deletefiles = (
-            request.GET.get('delete_files') or request.POST.get('delete_files')
+            request.GET.get('deletefiles') or request.POST.get('deletefiles')
         )
         self.success_url = reverse_lazy('scene_delete')
 
         scene = self.get_object()
-        deletefiles = True if "true" in deletefiles else False
+        deletefiles = (deletefiles is not None) and ("true" in deletefiles)
         scene.delete(deletefiles=deletefiles)
 
         payload = {'status': 'deleted', 'files_deleted': deletefiles}
@@ -184,7 +215,6 @@ class SceneDetailView(JSONDetailView):
     def get_object(self):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         scene = Scene.objects.get(id=scene_id)
-        scene.update_state()
         return scene
 
     @method_decorator(csrf_exempt)
@@ -197,8 +227,6 @@ class SceneListView(JSONListView):
 
     def get_queryset(self):
         queryset = Scene.objects.all().order_by('id')
-        for scene in queryset.iterator():
-            scene.update_state()
         return queryset
 
     @method_decorator(csrf_exempt)
@@ -226,6 +254,28 @@ class SceneStartView(View):
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
         return super(SceneStartView, self).dispatch(*args, **kwargs)
+
+
+class SceneStopView(View):
+    model = Scene
+
+    # TODO: remove get
+    def get(self, request, *args, **kwargs):
+        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scene = get_object_or_404(Scene, id=scene_id)
+        payload = {'status': scene.abort()}
+        return JsonResponse(payload)
+
+    def post(self, request, *args, **kwargs):
+        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
+        scene = get_object_or_404(Scene, id=scene_id)
+        payload = {'status': scene.abort()}
+
+        return JsonResponse(payload)
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super(SceneStopView, self).dispatch(*args, **kwargs)
 
 
 class SceneExportView(View):
