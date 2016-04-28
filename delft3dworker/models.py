@@ -318,7 +318,7 @@ class Scene(models.Model):
             outputfolder = os.path.join(self.workingdir, 'postprocess')
             os.makedirs(outputfolder)
 
-            outputfolder = os.path.join(self.workingdir, 'processing')
+            outputfolder = os.path.join(self.workingdir, 'process')
             os.makedirs(outputfolder)
 
             inputfolder = os.path.join(self.workingdir, 'preprocess')
@@ -360,7 +360,7 @@ class Scene(models.Model):
             )
         copyfile(
             os.path.join(self.workingdir, 'input.ini'),
-            os.path.join(os.path.join(self.workingdir, 'processing/' 'input.ini'))
+            os.path.join(os.path.join(self.workingdir, 'process/' 'input.ini'))
             )
 
     def _update_state(self):
@@ -375,19 +375,19 @@ class Scene(models.Model):
 
         self.info["delta_fringe_images"] = {
             "images": [],
-            "location": "process"
+            "location": "process/"
         }
         self.info["channel_network_images"] = {
             "images": [],
-            "location": "process"
+            "location": "process/"
         }
         self.info["sediment_fraction_images"] = {
             "images": [],
-            "location": "process"
+            "location": "process/"
         }
         self.info["logfile"] = {
             "file": "",
-            "location": "simulation"
+            "location": "simulation/"
         }
 
         for root, dirs, files in os.walk(
@@ -407,10 +407,15 @@ class Scene(models.Model):
                     else:
                         # Other images ?
                         pass
-
+        
+        for root, dirs, files in os.walk(
+            os.path.join(self.workingdir, 'simulation')
+        ):
+            for f in files:
                 if ext == '.log':
                     # No log is generated at the moment
                     self.info["logfile"]["file"] = f
+                    break
 
         self.save()
 
