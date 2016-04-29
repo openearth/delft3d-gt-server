@@ -344,11 +344,11 @@ class Scene(models.Model):
             if not config.has_section(section):
                 config.add_section(section)
             for key, value in self.parameters[section].items():
-                # TODO: find more elegant solution for this
-                if '%' in value:
-                    value = value.replace('%', 'percent')
-                if not config.has_option(section, key):
-                    config.set(*map(str, [section, key, value]))
+
+                # TODO: find more elegant solution for this! ugh!
+                if not key == 'units':
+                    if not config.has_option(section, key):
+                        config.set(*map(str, [section, key, value]))
 
         with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
             config.write(f)  # Yes, the ConfigParser writes to f
