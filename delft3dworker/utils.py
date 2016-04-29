@@ -122,10 +122,12 @@ def delft3d_logparser(line):
         if match:
             match = match.groupdict()
             match["message"] = line
-            if float(match['progress']) > 1:
+            if (
+                "progress" in match and
+                match["progress"] is not None and
+                match["progress"] != ""
+            ):
                 match['progress'] = format(float(match['progress'])/100, '.2f')
-            else:
-                match['progress'] = float(match['progress'])
             # add default log level
             match['level'] = 'INFO'
             # add state
@@ -179,12 +181,12 @@ def python_logparser(line):
 
         if match:
             match = match.groupdict()
-            if "progress" in match and match["progress"] is not None:
-                if float(match['progress']) > 1:
-                    match['progress'] = format(
-                        float(match['progress'])/100, '.2f')
-                else:
-                    match['progress'] = float(match['progress'])
+            if (
+                "progress" in match and
+                match["progress"] is not None and
+                match["progress"] != ""
+            ):
+                match['progress'] = format(float(match['progress'])/100, '.2f')
         else:
             match = {"message": line, "level": "INFO",
                      "state": None, "progress": None}
