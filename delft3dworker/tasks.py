@@ -192,6 +192,7 @@ def preprocess(self, workingdir, _):
         else:
             state_meta["task"] = self.__name__
             state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["container_id"] = preprocess_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
@@ -283,6 +284,11 @@ def simulation(self, _, workingdir):
                 simlog.parse(simulation_container.get_log()),
                 proclog.parse(processing_container.get_log())
             ]
+            state_meta["container_id"] = {
+                "simulation": simulation_container.id,
+                "processing": processing_container.id
+            }
+
             # logger.info(state_meta["output"])
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -343,6 +349,7 @@ def postprocess(self, _, workingdir):
             state_meta["output"] = log.parse(
                 postprocessing_container.get_log()
             )
+            state_meta["container_id"] = postprocessing_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():

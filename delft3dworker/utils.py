@@ -39,7 +39,7 @@ class PersistentLogger():
             "progress": 0,
 
             # state and all previous states
-            "state": "START",  # if we parse, we've started
+            "state": "STARTED",  # if we parse, we've started
             "states": [],
         }
 
