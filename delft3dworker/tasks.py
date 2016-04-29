@@ -32,9 +32,9 @@ def chainedtask(self, parameters, workingdir):
     # uid = pwd.getpwnam('django')[2]
     # gid = grp.getgrnam('docker')[2]
     # if not os.path.exists(workingdir):
-        # os.makedirs(workingdir, 2775)
-        # os.chown(workingdir, uid, gid)
-        # print("Made workingdir")
+    #     os.makedirs(workingdir, 2775)
+    #     os.chown(workingdir, uid, gid)
+    #     print("Made workingdir")
 
     # create ini file for containers
     # in 2.7 ConfigParser is a bit stupid
@@ -59,8 +59,31 @@ def chainedtask(self, parameters, workingdir):
     running = True
     while running:
 
+        # revoke handling
+        revoked = self.app.control.inspect().revoked()
+        if (
+            revoked is not None and
+            hasattr(revoked, 'values') and
+            self.request.id in explode.from_iterable(
+                revoked.values()
+            )
+        ):
+
+            logger.info("Chain is revoked")
+            leaf = chain_result
+            while leaf:
+                leaf.revoke()
+                results[leaf.id] = {
+                    "state": leaf.state,
+                    "info": leaf.info
+                }
+                leaf = leaf.parent
+            results['result'] = "Revoked"
+            self.update_state(state="REVOKED", meta=results)
+            return results
+
         # abort handling
-        if self.is_aborted():
+        elif self.is_aborted():
 
             logger.info("Chain is aborted")
             leaf = chain_result
@@ -80,27 +103,6 @@ def chainedtask(self, parameters, workingdir):
                 leaf = leaf.parent
             results['result'] = "Aborted"
             self.update_state(state="ABORTED", meta=results)
-            return results
-
-        # revoke handling
-        elif (
-            (self.app.control.inspect().revoked() is not None) and
-            self.request.id in explode.from_iterable(
-                self.app.control.inspect().revoked().values()
-            )
-        ):
-
-            logger.info("Chain is revoked")
-            leaf = chain_result
-            while leaf:
-                leaf.revoke()
-                results[leaf.id] = {
-                    "state": leaf.state,
-                    "info": leaf.info
-                }
-                leaf = leaf.parent
-            results['result'] = "Revoked"
-            self.update_state(state="REVOKED", meta=results)
             return results
 
         # if no abort or revoke: update state
@@ -235,14 +237,17 @@ def simulation(self, _, workingdir):
     # create Process container
     volumes = ['{0}:/data/input:ro'.format(inputfolder),
                '{0}:/data/output:z'.format(outputfolder)]
-    command = ' '.join(["/data/run.sh ",
-              "/data/svn/scripts/postprocessing/channel_network_proc.py",
-              "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
-              "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
-              "/data/svn/scripts/visualisation/channel_network_viz.py",
-              "/data/svn/scripts/visualisation/delta_fringe_viz.py",
-              "/data/svn/scripts/visualisation/sediment_fraction_viz.py"])
-    processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
+    command = ' '.join(
+        ["/data/run.sh ",
+         "/data/svn/scripts/postprocessing/channel_network_proc.py",
+         "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
+         "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
+         "/data/svn/scripts/visualisation/channel_network_viz.py",
+         "/data/svn/scripts/visualisation/delta_fringe_viz.py",
+         "/data/svn/scripts/visualisation/sediment_fraction_viz.py"]
+    )
+    processing_container = DockerClient(
+        settings.PROCESS_IMAGE_NAME, volumes, '', command)
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -266,7 +271,8 @@ def simulation(self, _, workingdir):
         # if no abort or revoke: update state
         else:
             # process
-            if simlog.changed() and not processing_container.running():  # sim has progress
+            # sim has progress
+            if simlog.changed() and not processing_container.running():
                 logger.info("Started processing, sim progress changed.")
                 processing_container.start()
                 logger.info(state_meta["output"])

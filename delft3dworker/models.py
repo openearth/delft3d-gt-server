@@ -344,24 +344,30 @@ class Scene(models.Model):
             if not config.has_section(section):
                 config.add_section(section)
             for key, value in self.parameters[section].items():
-                if not config.has_option(section, key):
-                    config.set(*map(str, [section, key, value]))
+
+                # TODO: find more elegant solution for this! ugh!
+                if not key == 'units':
+                    if not config.has_option(section, key):
+                        config.set(*map(str, [section, key, value]))
 
         with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
             config.write(f)  # Yes, the ConfigParser writes to f
 
         copyfile(
             os.path.join(self.workingdir, 'input.ini'),
-            os.path.join(os.path.join(self.workingdir, 'preprocess/' 'input.ini'))
-            )
+            os.path.join(os.path.join(
+                self.workingdir, 'preprocess/' 'input.ini'))
+        )
         copyfile(
             os.path.join(self.workingdir, 'input.ini'),
-            os.path.join(os.path.join(self.workingdir, 'simulation/' 'input.ini'))
-            )
+            os.path.join(os.path.join(
+                self.workingdir, 'simulation/' 'input.ini'))
+        )
         copyfile(
             os.path.join(self.workingdir, 'input.ini'),
-            os.path.join(os.path.join(self.workingdir, 'process/' 'input.ini'))
-            )
+            os.path.join(os.path.join(
+                self.workingdir, 'process/' 'input.ini'))
+        )
 
     def _update_state(self):
 
@@ -407,7 +413,7 @@ class Scene(models.Model):
                     else:
                         # Other images ?
                         pass
-        
+
         for root, dirs, files in os.walk(
             os.path.join(self.workingdir, 'simulation')
         ):
