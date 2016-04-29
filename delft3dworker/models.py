@@ -76,8 +76,11 @@ class Scenario(models.Model):
 
     def createscenes(self):
         for i, sceneparameters in enumerate(self.parameters):
-            scene = Scene(name="{}: Scene {}".format(
-                self.name, i), scenario=self, parameters=sceneparameters)
+            scene = Scene(
+                name="{}: Run {}".format(self.name, i + 1),
+                scenario=self,
+                parameters=sceneparameters
+            )
             scene.save()
         self.save()
 
