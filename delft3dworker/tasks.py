@@ -32,9 +32,9 @@ def chainedtask(self, parameters, workingdir):
     # uid = pwd.getpwnam('django')[2]
     # gid = grp.getgrnam('docker')[2]
     # if not os.path.exists(workingdir):
-        # os.makedirs(workingdir, 2775)
-        # os.chown(workingdir, uid, gid)
-        # print("Made workingdir")
+    #     os.makedirs(workingdir, 2775)
+    #     os.chown(workingdir, uid, gid)
+    #     print("Made workingdir")
 
     # create ini file for containers
     # in 2.7 ConfigParser is a bit stupid
@@ -235,14 +235,17 @@ def simulation(self, _, workingdir):
     # create Process container
     volumes = ['{0}:/data/input:ro'.format(inputfolder),
                '{0}:/data/output:z'.format(outputfolder)]
-    command = ' '.join(["/data/run.sh ",
-              "/data/svn/scripts/postprocessing/channel_network_proc.py",
-              "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
-              "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
-              "/data/svn/scripts/visualisation/channel_network_viz.py",
-              "/data/svn/scripts/visualisation/delta_fringe_viz.py",
-              "/data/svn/scripts/visualisation/sediment_fraction_viz.py"])
-    processing_container = DockerClient(settings.PROCESS_IMAGE_NAME, volumes, '', command)
+    command = ' '.join(
+        ["/data/run.sh ",
+         "/data/svn/scripts/postprocessing/channel_network_proc.py",
+         "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
+         "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
+         "/data/svn/scripts/visualisation/channel_network_viz.py",
+         "/data/svn/scripts/visualisation/delta_fringe_viz.py",
+         "/data/svn/scripts/visualisation/sediment_fraction_viz.py"]
+    )
+    processing_container = DockerClient(
+        settings.PROCESS_IMAGE_NAME, volumes, '', command)
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
