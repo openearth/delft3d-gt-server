@@ -59,8 +59,31 @@ def chainedtask(self, parameters, workingdir):
     running = True
     while running:
 
+        # revoke handling
+        revoked = self.app.control.inspect().revoked()
+        if (
+            revoked is not None and
+            hasattr(revoked, 'values') and
+            self.request.id in explode.from_iterable(
+                revoked.values()
+            )
+        ):
+
+            logger.info("Chain is revoked")
+            leaf = chain_result
+            while leaf:
+                leaf.revoke()
+                results[leaf.id] = {
+                    "state": leaf.state,
+                    "info": leaf.info
+                }
+                leaf = leaf.parent
+            results['result'] = "Revoked"
+            self.update_state(state="REVOKED", meta=results)
+            return results
+
         # abort handling
-        if self.is_aborted():
+        elif self.is_aborted():
 
             logger.info("Chain is aborted")
             leaf = chain_result
@@ -80,27 +103,6 @@ def chainedtask(self, parameters, workingdir):
                 leaf = leaf.parent
             results['result'] = "Aborted"
             self.update_state(state="ABORTED", meta=results)
-            return results
-
-        # revoke handling
-        elif (
-            (self.app.control.inspect().revoked() is not None) and
-            self.request.id in explode.from_iterable(
-                self.app.control.inspect().revoked().values()
-            )
-        ):
-
-            logger.info("Chain is revoked")
-            leaf = chain_result
-            while leaf:
-                leaf.revoke()
-                results[leaf.id] = {
-                    "state": leaf.state,
-                    "info": leaf.info
-                }
-                leaf = leaf.parent
-            results['result'] = "Revoked"
-            self.update_state(state="REVOKED", meta=results)
             return results
 
         # if no abort or revoke: update state
@@ -269,7 +271,8 @@ def simulation(self, _, workingdir):
         # if no abort or revoke: update state
         else:
             # process
-            if simlog.changed() and not processing_container.running():  # sim has progress
+            # sim has progress
+            if simlog.changed() and not processing_container.running():
                 logger.info("Started processing, sim progress changed.")
                 processing_container.start()
                 logger.info(state_meta["output"])
