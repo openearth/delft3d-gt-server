@@ -269,9 +269,10 @@ def simulation(self, _, workingdir):
         # if no abort or revoke: update state
         else:
             # process
-            if simlog.changed():  # sim has progress
+            if simlog.changed() and not processing_container.running():  # sim has progress
                 logger.info("Started processing, sim progress changed.")
                 processing_container.start()
+                logger.info(state_meta["output"])
 
             # update state
             state_meta["task"] = self.__name__
@@ -279,7 +280,7 @@ def simulation(self, _, workingdir):
                 simlog.parse(simulation_container.get_log()),
                 proclog.parse(processing_container.get_log())
             ]
-            logger.info(state_meta["output"])
+            # logger.info(state_meta["output"])
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
