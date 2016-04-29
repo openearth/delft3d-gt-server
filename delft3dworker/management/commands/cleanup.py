@@ -29,7 +29,7 @@ class Command(BaseCommand):
 
             for directory in unlinked:
                 try:
-                    # rmtree(directory)
+                    rmtree(directory)
                     self.stdout.write('Successfully deleted unlinked folder {}'.format(directory))
                 except:
                     self.stdout.write("Couldn't delete folder {}".format(directory))
