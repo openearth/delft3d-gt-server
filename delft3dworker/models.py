@@ -7,7 +7,6 @@ import logging
 import os
 import uuid
 import zipfile
-from shutil import copyfile
 
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.result import AsyncResult
@@ -28,6 +27,7 @@ from mako.template import Template as MakoTemplate
 
 from shutil import copystat
 from shutil import copytree
+from shutil import copyfile
 from shutil import rmtree
 
 
@@ -301,7 +301,7 @@ class Scene(models.Model):
             self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
 
-    def delete(self, deletefiles=False, *args, **kwargs):
+    def delete(self, deletefiles=True, *args, **kwargs):
 
         self.abort()
         if deletefiles:
@@ -330,7 +330,7 @@ class Scene(models.Model):
         # delete directory for scene
         if os.path.exists(self.workingdir):
             try:
-                os.rmtree(self.workingdir)
+                rmtree(self.workingdir)
             except:
                 # Files written by root can't be deleted by django
                 logging.error("Failed to delete working directory")

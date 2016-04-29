@@ -17,7 +17,6 @@ from django.views.generic import CreateView
 from django.views.generic import DeleteView
 from django.views.generic import View
 
-
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
