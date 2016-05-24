@@ -363,6 +363,64 @@ def postprocess(self, _, workingdir):
 
     return state_meta
 
+@shared_task(bind=True, base=AbortableTask)
+def export_dummy(self, workingdir, _):
+    """ Chained task which can be aborted. Contains model logic. """
+
+    # # create folders
+    inputfolder = os.path.join(workingdir, 'simulation')
+    outputfolder = os.path.join(workingdir, 'export')
+    os.makedirs(outputfolder)
+
+    # create export container with mount for input data and mount for result data.
+    volumes = ['{0}:/data/output:z'.format(outputfolder),
+               '{0}:/data/input:ro'.format(inputfolder)]
+
+    # This command starts the export dummy container
+    command = "" # "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"
+
+    export_container = DockerClient(
+        settings.PREPROCESS_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
+
+    # start preprocess
+    state_meta = {"model_id": self.request.id, "output": ""}
+
+    export_container.start()
+    logger.info("Started export")
+    self.update_state(state='STARTED', meta=state_meta)
+
+    log = PersistentLogger(parser="python")
+
+    # loop task
+    running = True
+    while running:
+
+        # abort handling
+        if self.is_aborted():
+            export_container.stop()
+            break
+
+        # if no abort or revoke: update state
+        else:
+            state_meta["task"] = self.__name__
+            state_meta["output"] = log.parse(export_container.get_log())
+            state_meta["container_id"] = export_container.id
+            # race condition: although we check it in this if/else statement,
+            # aborted state is sometimes lost
+            if not self.is_aborted():
+                self.update_state(state='PROCESSING', meta=state_meta)
+
+        running = export_container.running()
+        time.sleep(2)
+
+    # preprocess_container.delete()  # Doesn't work on NFS fs
+
+    return state_meta
+
 
 # DockerClient
 
