@@ -11,22 +11,22 @@ urlpatterns = (
     # Login
     url(r'^login/$', login, {'template_name': 'login.html'}),
     url(r'^login/(?P<path>.*)$', serve, {
-        'document_root': settings.LOGIN_STATIC_FILES,
+        'document_root': settings.STATIC_ROOT,
     }),
 
     # Logout
     url(r'^logout/$', logout, {'template_name': 'login.html'}),
     url(r'^logout/(?P<path>.*)$', serve, {
-        'document_root': settings.LOGIN_STATIC_FILES,
+        'document_root': settings.STATIC_ROOT,
     }),
 
     # Index
     url(r'^$', login_required(serve), {
-        'document_root': settings.FRONTEND_STATIC_FILES,
+        'document_root': settings.STATIC_ROOT,
         'path': 'index.html'
     }),
     url(r'^(?P<path>.*)$', login_required(serve), {
-        'document_root': settings.FRONTEND_STATIC_FILES,
+        'document_root': settings.STATIC_ROOT,
     }),
 
 )
