@@ -8,7 +8,10 @@ from delft3dworker.models import Template
 class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
     """
     A default REST Framework HyperlinkedModelSerializer for the Scenario model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
     """
+
+    # here we will write custom serialization and validation methods
 
     class Meta:
         model = Scenario
@@ -23,7 +26,10 @@ class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
 class SceneSerializer(serializers.HyperlinkedModelSerializer):
     """
     A default REST Framework HyperlinkedModelSerializer for the Scene model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
     """
+
+    # here we will write custom serialization and validation methods
 
     class Meta:
         model = Scene
@@ -44,7 +50,10 @@ class SceneSerializer(serializers.HyperlinkedModelSerializer):
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     """
     A default REST Framework HyperlinkedModelSerializer for the Template model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
     """
+
+    # here we will write custom serialization and validation methods
 
     class Meta:
         model = Template
