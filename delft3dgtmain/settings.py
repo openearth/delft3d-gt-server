@@ -39,38 +39,39 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'djcelery',
+    'rest_framework',
 
     'delft3dworker',
     'delft3dgtfrontend',
 ]
 
 MIDDLEWARE_CLASSES = [
-   'django.middleware.security.SecurityMiddleware',
-   'django.contrib.sessions.middleware.SessionMiddleware',
-   'django.middleware.common.CommonMiddleware',
-   'django.middleware.csrf.CsrfViewMiddleware',
-   'django.contrib.auth.middleware.AuthenticationMiddleware',
-   'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
-   'django.contrib.messages.middleware.MessageMiddleware',
-   'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'delft3dgtmain.urls'
 
 TEMPLATES = [
-   {
-       'BACKEND': 'django.template.backends.django.DjangoTemplates',
-       'DIRS': ['/opt/delft3d-gt/delft3d-gt-ui/dist/',],
-       'APP_DIRS': True,
-       'OPTIONS': {
-           'context_processors': [
-               'django.template.context_processors.debug',
-               'django.template.context_processors.request',
-               'django.contrib.auth.context_processors.auth',
-               'django.contrib.messages.context_processors.messages',
-           ],
-       },
-   },
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': ['/opt/delft3d-gt/delft3d-gt-ui/dist/', ],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
 ]
 
 WSGI_APPLICATION = 'delft3dgtmain.wsgi.application'
@@ -79,18 +80,18 @@ WSGI_APPLICATION = 'delft3dgtmain.wsgi.application'
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-   {
-       'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-   },
-   {
-       'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-   },
-   {
-       'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-   },
-   {
-       'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-   },
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
 ]
 
 
@@ -111,7 +112,8 @@ USE_TZ = True
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
-LOGIN_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist/'  # TODO: make different!
+# TODO: make different!
+LOGIN_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist/'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
@@ -130,6 +132,16 @@ CELERY_ENABLE_UTC = True
 
 WORKER_FILEURL = '/files'
 
+# REST Framework
+
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ]
+}
+
 # delft3dfrontend
 
 FRONTEND_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist'
@@ -140,7 +152,7 @@ try:
 except ImportError:
     SECRET_KEY = 'test'
 
-################## TESTING
+# TESTING
 
 if 'test' in sys.argv:
 
@@ -150,8 +162,8 @@ if 'test' in sys.argv:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-            }
         }
+    }
 
     # BROKER_BACKEND='memory'
     CELERY_RESULT_BACKEND = 'cache'
@@ -175,5 +187,5 @@ if 'test' in sys.argv:
 
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'
-    TEST_RUNNER = TEAMCITYDELFT3DGTRUNNER if is_running_under_teamcity() else DELFT3DGTRUNNER
-
+    TEST_RUNNER = TEAMCITYDELFT3DGTRUNNER if is_running_under_teamcity(
+    ) else DELFT3DGTRUNNER

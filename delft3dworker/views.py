@@ -20,17 +20,62 @@ from django.views.generic import View
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
+from rest_framework import viewsets
+
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
+from delft3dworker.serializers import ScenarioSerializer
+from delft3dworker.serializers import SceneSerializer
+from delft3dworker.serializers import TemplateSerializer
 
+
+# ################################### REST
+
+class ScenarioViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows scenarios to be viewed or edited.
+    """
+
+    queryset = Scenario.objects.all()
+    serializer_class = ScenarioSerializer
+
+
+class SceneViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows scenes to be viewed or edited.
+    """
+
+    queryset = Scene.objects.all()
+    serializer_class = SceneSerializer
+
+
+class TemplateViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows templates to be viewed or edited.
+    """
+
+    queryset = Template.objects.all()
+    serializer_class = TemplateSerializer
+
+
+# ###################################
+# The code below will be phased out in Sprint 4
+#
 
 # ################################### SCENARIO
 
 class ScenarioCreateView(View):
+
     model = Scenario
 
     def post(self, request, *args, **kwargs):
+        """Handles POST request by creating a Scenario
+
+        Arguments:
+        self    -- this ScenarioCreateView
+        request -- the POST request containing scenariosettings json
+        """
 
         if 'scenariosettings' not in request.POST:
             return JsonResponse(

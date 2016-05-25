@@ -22,11 +22,20 @@ from django.conf.urls.static import static
 
 urlpatterns = [
 
-    url(r'^admin/', admin.site.urls),
+    # Django Admin
+    url(r'^admin/',
+        admin.site.urls),
 
-    # namespaced url: url(r'/delft3dworker/^', include('delft3dworker.urls')),
-    url(r'^', include('delft3dworker.urls')),
+    # REST Framework
+    url(r'^api-auth/',
+        include('rest_framework.urls', namespace='rest_framework')),
 
-    url(r'^', include('delft3dgtfrontend.urls')),
+    # Delft3D-GT Worker API
+    url(r'^',
+        include('delft3dworker.urls')),
+
+    # Delft3D-GT Frontend
+    url(r'^',
+        include('delft3dgtfrontend.urls')),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
