@@ -96,6 +96,10 @@ class Scenario(models.Model):
             scene.abort()
         return "stopped"
 
+    def delete(self, *args, **kwargs):
+        self.stop()
+        super(Scenario, self).delete(*args, **kwargs)
+
     # INTERNALS
 
     def _parse_setting(self, key, setting):
@@ -184,7 +188,7 @@ class Scene(models.Model):
             "suid": self.suid,
             "scenario": self.scenario.id if self.scenario else None,
             "fileurl": self.fileurl,
-            "info": self.info,
+            "info": self.info if self.info else None,
             "parameters": self.parameters,
             "state": self.state,
             "task_id": self.task_id,
@@ -213,13 +217,9 @@ class Scene(models.Model):
 
         result = AbortableAsyncResult(self.task_id)
 
+        # If not running, revoke task
         if not result.state == BUSYSTATE:
-            return {
-                "error": "task is not busy",
-                "task_id": self.task_id,
-                "state": result.state,
-                "info": str(self.info)
-            }
+            return self.revoke()
 
         result.abort()
 
@@ -305,7 +305,7 @@ class Scene(models.Model):
         super(Scene, self).save(*args, **kwargs)
 
     def delete(self, deletefiles=True, *args, **kwargs):
-
+        self.revoke()
         self.abort()
         if deletefiles:
             self._delete_datafolder()
