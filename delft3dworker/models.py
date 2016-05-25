@@ -188,7 +188,7 @@ class Scene(models.Model):
             "suid": self.suid,
             "scenario": self.scenario.id if self.scenario else None,
             "fileurl": self.fileurl,
-            "info": self.info if self.info else None,
+            "info": self.info,
             "parameters": self.parameters,
             "state": self.state,
             "task_id": self.task_id,
@@ -305,7 +305,6 @@ class Scene(models.Model):
         super(Scene, self).save(*args, **kwargs)
 
     def delete(self, deletefiles=True, *args, **kwargs):
-        self.revoke()
         self.abort()
         if deletefiles:
             self._delete_datafolder()
