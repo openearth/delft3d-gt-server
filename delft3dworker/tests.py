@@ -107,8 +107,8 @@ INFO:root:Finished
                 progresses.append(match['progress'])
             messages.append(match['message'])
         self.assertTrue(
-            any(True for progress in progresses if progress < 0.001))
+            any(True for progress in progresses if float(progress) < 0.001))
         self.assertTrue(
-            any(True for progress in progresses if progress > 0.99))
+            any(True for progress in progresses if float(progress) > 0.99))
         self.assertTrue(
             any(True for message in messages if message is not None))
