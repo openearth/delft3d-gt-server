@@ -70,12 +70,6 @@ class ScenarioCreateView(View):
     model = Scenario
 
     def post(self, request, *args, **kwargs):
-        """Handles POST request by creating a Scenario
-
-        Arguments:
-        self    -- this ScenarioCreateView
-        request -- the POST request containing scenariosettings json
-        """
 
         if 'scenariosettings' not in request.POST:
             return JsonResponse(

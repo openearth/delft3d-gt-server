@@ -37,6 +37,7 @@ BUSYSTATE = "PROCESSING"
 # ################################### SCENARIO
 
 class Scenario(models.Model):
+
     """
     Scenario model
     """
@@ -150,6 +151,7 @@ class Scenario(models.Model):
 
 
 class Scene(models.Model):
+
     """
     Scene model
     """
@@ -433,6 +435,7 @@ class Scene(models.Model):
 # ################################### Template
 
 class Template(models.Model):
+
     """
     Template model
     """
