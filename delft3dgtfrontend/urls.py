@@ -22,7 +22,7 @@ urlpatterns = (
 
     # Index
     url(r'^$', login_required(serve), {
-        'document_root': settings.STATIC_ROOT
+        'document_root': settings.STATIC_ROOT,
         'path': 'index.html'
     }),
     url(r'^(?P<path>.*)$', login_required(serve), {
