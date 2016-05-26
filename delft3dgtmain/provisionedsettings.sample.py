@@ -22,11 +22,6 @@ DATABASES = {
     }
 }
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/1.9/howto/static-files/
-
-STATIC_ROOT = '/opt/delft3d-gt/static/'
-
 # delft3dworker
 DELFT3D_IMAGE_NAME = 'delft3d'
 POSTPROCESS_IMAGE_NAME = 'python27_container'
@@ -41,4 +36,3 @@ CELERY_ROUTES = {
   'delft3dworker.tasks.simulation': {'queue': 'sim'},
   'delft3dworker.tasks.postprocess': {'queue': 'post'},
 }
-
