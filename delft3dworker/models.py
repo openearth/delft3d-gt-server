@@ -46,6 +46,7 @@ class Scenario(models.Model):
 
     template = models.OneToOneField('Template', null=True)
 
+    scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
 
     # PROPERTY METHODS
@@ -59,23 +60,22 @@ class Scenario(models.Model):
             "template": self.template,
             "name": self.name,
             "parameters": self.parameters,
+            "scenes_parameters": self.scenes_parameters,
             "scenes": self.scene_set.all(),
             "id": self.id
         }
 
     def load_settings(self, settings):
-        self.parameters = [{}]
+        self.parameters = settings
+        self.scenes_parameters = [{}]
 
-        for key, value in settings.items():
+        for key, value in self.parameters.items():
             self._parse_setting(key, value)
-
-        # debugging output
-        # for value in self.parameters:
 
         self.save()
 
     def createscenes(self):
-        for i, sceneparameters in enumerate(self.parameters):
+        for i, sceneparameters in enumerate(self.scenes_parameters):
             scene = Scene(
                 name="{}: Run {}".format(self.name, i + 1),
                 scenario=self,
@@ -96,6 +96,10 @@ class Scenario(models.Model):
             scene.abort()
         return "stopped"
 
+    def delete(self, *args, **kwargs):
+        self.stop()
+        super(Scenario, self).delete(*args, **kwargs)
+
     # INTERNALS
 
     def _parse_setting(self, key, setting):
@@ -109,7 +113,7 @@ class Scenario(models.Model):
 
         if not setting["useautostep"]:
             # No autostep, just add these settings
-            for scene in self.parameters:
+            for scene in self.scenes_parameters:
                 if key not in scene:
                     scene[key] = setting
         else:
@@ -127,13 +131,13 @@ class Scenario(models.Model):
             # Current scenes times number of new values
             # 3 original runs (1 2 3), this settings adds two (a b) thus we now
             # have 6 scenes ( 1 1 2 2 3 3).
-            self.parameters = [
+            self.scenes_parameters = [
                 copy.copy(p) for p in
-                self.parameters for _ in range(len(values))
+                self.scenes_parameters for _ in range(len(values))
             ]
 
             i = 0
-            for scene in self.parameters:
+            for scene in self.scenes_parameters:
                 s = dict(setting)  # by using dict, we prevent an alias
                 # Using modulo we can assign a b in the correct
                 # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
@@ -213,13 +217,9 @@ class Scene(models.Model):
 
         result = AbortableAsyncResult(self.task_id)
 
+        # If not running, revoke task
         if not result.state == BUSYSTATE:
-            return {
-                "error": "task is not busy",
-                "task_id": self.task_id,
-                "state": result.state,
-                "info": str(self.info)
-            }
+            return self.revoke()
 
         result.abort()
 
@@ -305,7 +305,6 @@ class Scene(models.Model):
         super(Scene, self).save(*args, **kwargs)
 
     def delete(self, deletefiles=True, *args, **kwargs):
-
         self.abort()
         if deletefiles:
             self._delete_datafolder()

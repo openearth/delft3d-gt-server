@@ -39,43 +39,45 @@ class TeamcityDelft3DGTRunner(CeleryTestSuiteRunner, CoverageRunner,
 
 # TESTS
 
-class DockerTest(TestCase):
+# Skeleton to run Celery & Docker tests.
 
-    def setUp(self):
-        view_parameters = {
-            'name': 'Test Scene',
-            'suid': str(uuid.uuid4()),
-            'info': '{"dt": 20 }'
-        }
-        self.scene = Scene.objects.create(
-            **view_parameters)  # create test scene
+# class DockerTest(TestCase):
 
-    def tearDown(self):
-        Scene.objects.get(name='Test Scene').delete()  # delete the test Scene
+#     def setUp(self):
+#         view_parameters = {
+#             'name': 'Test Scene',
+#             'suid': str(uuid.uuid4()),
+#             'info': '{"dt": 20 }'
+#         }
+#         self.scene = Scene.objects.create(
+#             **view_parameters)  # create test scene
 
-    def testDocker(self):
-        self.scene.save()
-        # self.scene.start()  # don't actually start containers
+#     def tearDown(self):
+#         Scene.objects.get(name='Test Scene').delete()  # delete the test Scene
+
+#     def testDocker(self):
+#         self.scene.save()
+#         # self.scene.start()  # don't actually start containers
 
 
-class CeleryTaskModelsTest(TestCase):
+# class CeleryTaskModelsTest(TestCase):
 
-    def setUp(self):
-        view_parameters = {
-            'name': 'Test Scene',
-            'suid': str(uuid.uuid4()),
-            'info': '{"dt": 20 }'
-        }
-        Scene.objects.create(**view_parameters)  # create test scene
+#     def setUp(self):
+#         view_parameters = {
+#             'name': 'Test Scene',
+#             'suid': str(uuid.uuid4()),
+#             'info': '{"dt": 20 }'
+#         }
+#         Scene.objects.create(**view_parameters)  # create test scene
 
-        # create mocked result and store
-        self.result = MagicMock()
-        self.result.id = '8b15e176-210b-4faf-be80-13602c7b4e89'
-        self.result.state = 'SUCCESS'
-        self.result.info = {'progress': 1.0}
+#         # create mocked result and store
+#         self.result = MagicMock()
+#         self.result.id = '8b15e176-210b-4faf-be80-13602c7b4e89'
+#         self.result.state = 'SUCCESS'
+#         self.result.info = {'progress': 1.0}
 
-    def tearDown(self):
-        Scene.objects.get(name='Test Scene').delete()  # delete the test Scene
+#     def tearDown(self):
+#         Scene.objects.get(name='Test Scene').delete()  # delete the test Scene
 
 
 class LogTests(TestCase):
@@ -107,8 +109,8 @@ INFO:root:Finished
                 progresses.append(match['progress'])
             messages.append(match['message'])
         self.assertTrue(
-            any(True for progress in progresses if progress < 0.001))
+            any(True for progress in progresses if float(progress) < 0.001))
         self.assertTrue(
-            any(True for progress in progresses if progress > 0.99))
+            any(True for progress in progresses if float(progress) > 0.99))
         self.assertTrue(
             any(True for message in messages if message is not None))
