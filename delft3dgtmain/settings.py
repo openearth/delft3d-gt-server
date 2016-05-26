@@ -58,10 +58,17 @@ MIDDLEWARE_CLASSES = [
 
 ROOT_URLCONF = 'delft3dgtmain.urls'
 
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/1.9/howto/static-files/
+
+STATIC_ROOT = '/opt/delft3d-gt/static/'
+STATIC_URL = '/static/'
+STATICFILES_DIRS = ['/opt/delft3d-gt/delft3d-gt-ui/dist/']
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['/opt/delft3d-gt/delft3d-gt-ui/dist/', ],
+        'DIRS': [STATIC_ROOT],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -109,16 +116,8 @@ USE_L10N = True
 USE_TZ = True
 
 # Login
-
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
-# TODO: make different!
-LOGIN_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist/'
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/1.9/howto/static-files/
-
-STATIC_URL = '/static/'
 
 # Celery
 
@@ -144,9 +143,6 @@ REST_FRAMEWORK = {
     ]
 }
 
-# delft3dfrontend
-
-FRONTEND_STATIC_FILES = '/opt/delft3d-gt/delft3d-gt-ui/dist'
 
 # import provisioned settings
 try:
