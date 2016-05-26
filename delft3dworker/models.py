@@ -72,9 +72,6 @@ class Scenario(models.Model):
         for key, value in self.parameters.items():
             self._parse_setting(key, value)
 
-        # debugging output
-        # for value in self.parameters:
-
         self.save()
 
     def createscenes(self):
