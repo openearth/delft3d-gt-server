@@ -36,4 +36,3 @@ CELERY_ROUTES = {
   'delft3dworker.tasks.simulation': {'queue': 'sim'},
   'delft3dworker.tasks.postprocess': {'queue': 'post'},
 }
-
