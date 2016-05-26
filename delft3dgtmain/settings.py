@@ -63,7 +63,7 @@ ROOT_URLCONF = 'delft3dgtmain.urls'
 
 STATIC_ROOT = '/opt/delft3d-gt/static/'
 STATIC_URL = '/static/'
-STATICFILES_DIRS = ['/opt/delft3d-gt/delft3d-gt-ui/dist', ]
+STATICFILES_DIRS = ['/opt/delft3d-gt/delft3d-gt-ui/dist/']
 
 TEMPLATES = [
     {
