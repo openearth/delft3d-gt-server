@@ -30,6 +30,7 @@ from shutil import copytree
 from shutil import copyfile
 from shutil import rmtree
 
+import hashlib
 
 BUSYSTATE = "PROCESSING"
 
@@ -76,12 +77,32 @@ class Scenario(models.Model):
 
     def createscenes(self):
         for i, sceneparameters in enumerate(self.scenes_parameters):
-            scene = Scene(
-                name="{}: Run {}".format(self.name, i + 1),
-                scenario=self,
-                parameters=sceneparameters
-            )
-            scene.save()
+
+            # Create hash
+            m = hashlib.sha256()
+            m.update(str(sceneparameters))
+            phash = m.hexdigest()
+            print("Found hash {}".format(phash))
+
+            # Check if hash already exists
+            clones = Scene.objects.filter(parameters_hash=phash)
+
+            # If so, add scenario to scene
+            if len(clones) > 0:
+                print(clones)
+                scene = clones[0]  # cannot have more than one scene
+                scene.scenario.add(self)
+                return
+
+            # Scene input is unique
+            else:
+                scene = Scene(
+                    name="{}: Run {}".format(self.name, i + 1),
+                    parameters=sceneparameters,
+                    parameters_hash=phash
+                    )
+                scene.save()
+                scene.scenario.add(self)
         self.save()
 
     # CONTROL METHODS
@@ -163,7 +184,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     suid = models.CharField(max_length=256, editable=False)
 
-    scenario = models.ForeignKey('Scenario', null=True)
+    scenario = models.ManyToManyField(Scenario, null=True)
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
@@ -171,6 +192,7 @@ class Scene(models.Model):
     state = models.CharField(max_length=256, blank=True)
     task_id = models.CharField(max_length=256)
     workingdir = models.CharField(max_length=256)
+    parameters_hash = models.CharField(max_length=64, unique=True, blank=True)
 
     # PROPERTY METHODS
 
@@ -186,7 +208,8 @@ class Scene(models.Model):
             "id": self.id,
             "name": self.name,
             "suid": self.suid,
-            "scenario": self.scenario.id if self.scenario else None,
+            # could be one id (cannot be -1), or list of ids
+            "scenario": self.scenario.all()[0].id if self.scenario else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,
