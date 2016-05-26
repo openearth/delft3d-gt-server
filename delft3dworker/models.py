@@ -46,7 +46,8 @@ class Scenario(models.Model):
 
     template = models.OneToOneField('Template', null=True)
 
-    parameters = JSONField(blank=True)
+    scenes_parameters = JSONField(blank=True)
+    input_parameters = JSONField(blank=True)
 
     # PROPERTY METHODS
 
@@ -58,15 +59,17 @@ class Scenario(models.Model):
         return {
             "template": self.template,
             "name": self.name,
-            "parameters": self.parameters,
+            "input_parameters": self.input_parameters,
+            "scenes_parameters": self.scenes_parameters,
             "scenes": self.scene_set.all(),
             "id": self.id
         }
 
     def load_settings(self, settings):
-        self.parameters = [{}]
+        self.input_parameters = settings
+        self.scenes_parameters = [{}]
 
-        for key, value in settings.items():
+        for key, value in self.input_parameters.items():
             self._parse_setting(key, value)
 
         # debugging output
@@ -75,7 +78,7 @@ class Scenario(models.Model):
         self.save()
 
     def createscenes(self):
-        for i, sceneparameters in enumerate(self.parameters):
+        for i, sceneparameters in enumerate(self.scenes_parameters):
             scene = Scene(
                 name="{}: Run {}".format(self.name, i + 1),
                 scenario=self,
@@ -131,13 +134,13 @@ class Scenario(models.Model):
             # Current scenes times number of new values
             # 3 original runs (1 2 3), this settings adds two (a b) thus we now
             # have 6 scenes ( 1 1 2 2 3 3).
-            self.parameters = [
+            self.scenes_parameters = [
                 copy.copy(p) for p in
                 self.parameters for _ in range(len(values))
             ]
 
             i = 0
-            for scene in self.parameters:
+            for scene in self.scenes_parameters:
                 s = dict(setting)  # by using dict, we prevent an alias
                 # Using modulo we can assign a b in the correct
                 # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
