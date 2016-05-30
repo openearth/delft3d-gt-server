@@ -327,12 +327,10 @@ class SceneExportView(View):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         scene = get_object_or_404(Scene, id=scene_id)
 
-        # What we will export, for now default all True
-        # images = (self.request.GET.get('image') or self.request.POST.get('image'))
-        # inputp = (self.request.GET.get('input') or self.request.POST.get('input'))
-        images, inputp = True, True
-
-        stream, filename = scene.export(images=images, inputp=inputp)
+        # What we will export, now ; separated (doesn't work), should be list as in
+        # http://10.0.1.2:8000/scene/export?id=1&options=export_images&options=export_thirdparty
+        options = (self.request.GET.getlist('options') or self.request.POST.getlist('options'))
+        stream, filename = scene.export(options)
 
         resp = HttpResponse(
             stream.getvalue(),

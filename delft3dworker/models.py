@@ -251,7 +251,7 @@ class Scene(models.Model):
             "info": str(self.info)
         }
 
-    def export(self, images=True, inputp=True):
+    def export(self, options):
 
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
@@ -279,17 +279,19 @@ class Scene(models.Model):
                 name, ext = os.path.splitext(f)
 
                 # Could be dynamic or tuple of extensions
-                if images and ext in ('.png', '.jpg', '.gif'):
+                if 'export_images' in options and ext in ('.png', '.jpg', '.gif'):
+                    print("Exporting images")
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
 
-                if inputp and "simulation" in root and name == 'a':
+                if 'export_input' in options and "simulation" in root and name == 'a':
+                    print("Exporting input")
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
 
-                # if otherexport:
+                # if 'export_thirdparty' in options:
                     # pass
 
         # Must close zip for all contents to be written
