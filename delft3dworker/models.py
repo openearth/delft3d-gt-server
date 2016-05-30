@@ -82,7 +82,6 @@ class Scenario(models.Model):
             m = hashlib.sha256()
             m.update(str(sceneparameters))
             phash = m.hexdigest()
-            print("Found hash {}".format(phash))
 
             # Check if hash already exists
             clones = Scene.objects.filter(parameters_hash=phash)
@@ -209,7 +208,7 @@ class Scene(models.Model):
             "name": self.name,
             "suid": self.suid,
             # could be one id (cannot be -1), or list of ids
-            "scenario": self.scenario.all()[0].id if self.scenario else None,
+            "scenario": self.scenario.all() if self.scenario else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,
