@@ -59,13 +59,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
         model = Template
         fields = (
             'id',
-            'templatename',
-            'description',
-            'email',
-            'groups',
-            'label',
-            'model',
-            'site',
-            'variables',
-            'version',
+            'name',
+            'meta',
+            'sections',
         )
