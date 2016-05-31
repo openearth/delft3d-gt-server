@@ -86,6 +86,9 @@ class ScenarioCreateView(View):
                 }
             )
 
+        # hard code the tasks for the chain. This should be added to the scenariosettings
+        tasks = {'simulation': False, 'export': True}
+
         newscenario = Scenario(
             name="Scene {}".format(datetime.now())
         )
@@ -96,7 +99,7 @@ class ScenarioCreateView(View):
 
         # 25 april '16: Almar, Fedor & Tijn decided that
         # a scenario should be started server-side after creation
-        newscenario.start()
+        newscenario.start(tasks)
 
         return JsonResponse({'created': 'ok'})
 
@@ -169,7 +172,9 @@ class ScenarioStartView(View):
             self.request.GET.get('id') or self.request.POST.get('id')
         )
         scenario = get_object_or_404(Scenario, id=scenario_id)
-        payload = {'status': scenario.start()}
+        tasks = {'simulation': False, 'export': True}
+        payload = {'status': scenario.start(tasks)}
+
         return JsonResponse(payload)
 
     @method_decorator(csrf_exempt)

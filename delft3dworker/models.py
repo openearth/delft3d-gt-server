@@ -49,6 +49,7 @@ class Scenario(models.Model):
     scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
 
+
     # PROPERTY METHODS
 
     def get_absolute_url(self):
@@ -86,9 +87,9 @@ class Scenario(models.Model):
 
     # CONTROL METHODS
 
-    def start(self):
+    def start(self, chain_tasks):
         for scene in self.scene_set.all():
-            scene.start()
+            scene.start(chain_tasks)
         return "started"
 
     def stop(self):
@@ -196,7 +197,7 @@ class Scene(models.Model):
 
     # CONTROL METHODS
 
-    def start(self):
+    def start(self, chain_tasks):
 
         result = AbortableAsyncResult(self.task_id)
 
@@ -206,7 +207,7 @@ class Scene(models.Model):
         if result.state == BUSYSTATE:
             return {"error": "task already busy", "task_id": self.task_id}
 
-        result = chainedtask.delay(self.parameters, self.workingdir)
+        result = chainedtask.delay(self.parameters, self.workingdir, chain_tasks)
         self.task_id = result.task_id
         self.state = result.state
         self.save()
@@ -414,6 +415,8 @@ class Scene(models.Model):
 
                     else:
                         # Other images ?
+                        ## Dummy images
+                        self.info["delta_fringe_images"]["images"].append(f)
                         pass
 
         for root, dirs, files in os.walk(
