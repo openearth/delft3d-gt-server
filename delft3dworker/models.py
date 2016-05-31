@@ -439,19 +439,12 @@ class Template(models.Model):
     Template model
     """
 
-    templatename = models.CharField(max_length=256)
-
-    description = models.CharField(max_length=256, blank=True)
-    email = models.CharField(max_length=256, blank=True)
-    groups = JSONField(blank=True)
-    label = models.CharField(max_length=256, blank=True)
-    model = models.CharField(max_length=256, blank=True)
-    site = models.CharField(max_length=256, blank=True)
-    variables = JSONField(blank=True)
-    version = models.IntegerField(blank=True)
+    name = models.CharField(max_length=256)
+    meta = JSONField(blank=True)
+    sections = JSONField(blank=True)
 
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('template_detail'), self.id)
 
     def __unicode__(self):
-        return self.templatename
+        return self.name
