@@ -6,6 +6,7 @@ from __future__ import absolute_import
 from datetime import datetime
 import json
 
+import django_filters
 from django.core.urlresolvers import reverse_lazy
 from django.http import JsonResponse
 from django.http import HttpResponse
@@ -21,6 +22,8 @@ from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
 from rest_framework import viewsets
+from rest_framework import filters
+from rest_framework import generics
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
@@ -30,7 +33,26 @@ from delft3dworker.serializers import SceneSerializer
 from delft3dworker.serializers import TemplateSerializer
 
 
-# ################################### REST
+#################################### REST
+
+############ Filters
+
+
+class SceneFilter(filters.FilterSet):
+    """
+    FilterSet to filter Scenes on complex queries, such as
+    template, traversing db relationships.
+    """
+    strict = True
+    template = django_filters.CharFilter(name="scenario__template__name")
+
+    class Meta:
+        model = Scene
+        fields = ['template',]
+
+
+############# Views
+
 
 class ScenarioViewSet(viewsets.ModelViewSet):
     """
@@ -48,6 +70,46 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     queryset = Scene.objects.all()
     serializer_class = SceneSerializer
+    filter_backends = (filters.DjangoFilterBackend, filters.SearchFilter,)
+
+    # Django filter backend
+    filter_fields = ('name', 'state')  # Direct equality
+
+    # Our own custom filter
+    filter_class = SceneFilter
+
+    # Searchfilter backend
+    search_fields = ('^name', '^state', '^scenario__template__name',)
+
+    # Permissions backend
+    # permission_classes = (delft3dgtmain.permissions.etc)
+
+    def get_queryset(self):
+        """
+        Optionally restricts the returned purchases to a given user,
+        by filtering against a `username` query parameter in the URL.
+        """
+        queryset = Scene.objects.all()
+
+        # Filter on parameter
+        parameter = self.request.query_params.get('parameter', None)
+        if parameter is not None:
+            try:
+                p = parameter.split(',')
+                if len(p) == 2:
+                    key, value = p
+                    key = key.encode('ascii', 'ignore')
+                    if '.' in value:
+                        value = float(value)
+                    else:
+                        value = int(value)
+                    print((key, value))
+                    q = {key: {'value': value}}
+                    print(q)
+                    queryset = queryset.filter(parameters__contains=q)
+            except:
+                return Scene.objects.none()
+        return queryset
 
 
 class TemplateViewSet(viewsets.ModelViewSet):
@@ -57,6 +119,10 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
     queryset = Template.objects.all()
     serializer_class = TemplateSerializer
+
+
+
+
 
 
 # ###################################

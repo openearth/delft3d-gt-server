@@ -22,6 +22,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from jsonfield import JSONField
+# from django.contrib.postgres.fields import JSONField
 
 from mako.template import Template as MakoTemplate
 
