@@ -57,11 +57,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             # a scenario should be started server-side after creation
             instance.start()
 
-            return Response({'status': 'created scenario & scenes'})
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
 class SceneViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows scenes to be viewed or edited.
