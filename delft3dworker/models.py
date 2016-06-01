@@ -103,7 +103,6 @@ class Scenario(models.Model):
     # INTERNALS
 
     def _parse_setting(self, key, setting):
-
         if not ('values' in setting):
             return
 
@@ -114,37 +113,37 @@ class Scenario(models.Model):
             return
 
         # Input is not a list :(
-        if ',' in str(values):
-            values = values.split(',')
+        # if ',' in str(values):
+            # values = values.split(',')
 
-        # If values is a list:
+        # If values is a list, multiply scenes
         if isinstance(values, list):
-            print("Detected multiple values")
-            # Multiple values in list
+            print("Detected multiple values at {}".format(key))
+            
+            # Current scenes times number of new values
+            # 3 original runs (1 2 3), this settings adds two (a b) thus we now
+            # have 6 scenes ( 1 1 2 2 3 3).
+            self.scenes_parameters = [
+                copy.copy(p) for p in
+                self.scenes_parameters for _ in range(len(values))
+            ]
+
             i = 0
             for scene in self.scenes_parameters:
-
-                # Current scenes times number of new values
-                # 3 original runs (1 2 3), this settings adds two (a b) thus we now
-                # have 6 scenes ( 1 1 2 2 3 3).
-                self.scenes_parameters = [
-                    copy.copy(p) for p in
-                    self.scenes_parameters for _ in range(len(values))
-                ]
-
                 s = dict(setting)  # by using dict, we prevent an alias
                 # Using modulo we can assign a b in the correct
                 # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
                 # modulo gives 0 which is again the first value (a)
-                s['value'] = values[i % len(values)]
+                s['values'] = values[i % len(values)]
                 scene[key] = s
+                print(scene)
                 i += 1
 
-            # Only only value in a list
-            else:
-                for scene in self.scenes_parameters:
-                    if key not in scene:
-                        scene[key] = setting
+        # Set keys not yet occuring in scenes
+        else:
+            for scene in self.scenes_parameters:
+                if key not in scene:
+                    scene[key] = setting
 
     def __unicode__(self):
         return self.name
