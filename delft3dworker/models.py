@@ -112,14 +112,10 @@ class Scenario(models.Model):
             self.name = values
             return
 
-        # Input is not a list :(
-        # if ',' in str(values):
-            # values = values.split(',')
-
         # If values is a list, multiply scenes
         if isinstance(values, list):
-            print("Detected multiple values at {}".format(key))
-            
+            logging.info("Detected multiple values at {}".format(key))
+
             # Current scenes times number of new values
             # 3 original runs (1 2 3), this settings adds two (a b) thus we now
             # have 6 scenes ( 1 1 2 2 3 3).
@@ -136,7 +132,6 @@ class Scenario(models.Model):
                 # modulo gives 0 which is again the first value (a)
                 s['values'] = values[i % len(values)]
                 scene[key] = s
-                print(scene)
                 i += 1
 
         # Set keys not yet occuring in scenes

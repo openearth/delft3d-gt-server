@@ -20,7 +20,7 @@ class ScenarioTestCase(TestCase):
         # This should create 3 scenes
         multi_input = {
                 "basinslope": {
-                    "values": "0.0143,0.0145,0.0146"
+                    "values": [0.0143,0.0145,0.0146]
             },
         }
 
