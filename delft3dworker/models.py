@@ -104,40 +104,34 @@ class Scenario(models.Model):
 
     def _parse_setting(self, key, setting):
 
-        if not ('value' in setting or 'valid' in settings or setting['valid']):
+        if not ('values' in setting):
             return
+
+        values = setting['values']
 
         if key == "scenarioname":
-            self.name = setting['value']
+            self.name = values
             return
 
-        if not setting["useautostep"]:
-            # No autostep, just add these settings
-            for scene in self.scenes_parameters:
-                if key not in scene:
-                    scene[key] = setting
-        else:
-            # Autostep! Run past all parameter scenes, iteratively
-            minstep = float(setting["minstep"])
-            maxstep = float(setting["maxstep"])
-            step = float(setting["stepinterval"])
-            values = []
+        # Input is not a list :(
+        if ',' in str(values):
+            values = values.split(',')
 
-            curval = minstep
-            while curval <= maxstep:  # includes maxstep
-                values.append(round(curval, 2))
-                curval = curval + step
-
-            # Current scenes times number of new values
-            # 3 original runs (1 2 3), this settings adds two (a b) thus we now
-            # have 6 scenes ( 1 1 2 2 3 3).
-            self.scenes_parameters = [
-                copy.copy(p) for p in
-                self.scenes_parameters for _ in range(len(values))
-            ]
-
+        # If values is a list:
+        if isinstance(values, list):
+            print("Detected multiple values")
+            # Multiple values in list
             i = 0
             for scene in self.scenes_parameters:
+
+                # Current scenes times number of new values
+                # 3 original runs (1 2 3), this settings adds two (a b) thus we now
+                # have 6 scenes ( 1 1 2 2 3 3).
+                self.scenes_parameters = [
+                    copy.copy(p) for p in
+                    self.scenes_parameters for _ in range(len(values))
+                ]
+
                 s = dict(setting)  # by using dict, we prevent an alias
                 # Using modulo we can assign a b in the correct
                 # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
@@ -146,8 +140,13 @@ class Scenario(models.Model):
                 scene[key] = s
                 i += 1
 
-    def __unicode__(self):
+            # Only only value in a list
+            else:
+                for scene in self.scenes_parameters:
+                    if key not in scene:
+                        scene[key] = setting
 
+    def __unicode__(self):
         return self.name
 
 

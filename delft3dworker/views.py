@@ -20,7 +20,9 @@ from django.views.generic import View
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
+from rest_framework import status
 from rest_framework import viewsets
+from rest_framework.response import Response
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
@@ -36,9 +38,28 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows scenarios to be viewed or edited.
     """
-
     queryset = Scenario.objects.all()
     serializer_class = ScenarioSerializer
+
+    def perform_create(self, serializer):
+        if serializer.is_valid():
+            print(serializer.validated_data)
+            instance = serializer.save()
+            parameters = serializer.validated_data['parameters']  # Inspect validated field data.
+
+            if parameters:
+                instance.load_settings(parameters)
+                instance.createscenes()
+
+            instance.save()
+
+            # 25 april '16: Almar, Fedor & Tijn decided that
+            # a scenario should be started server-side after creation
+            instance.start()
+
+            return Response({'status': 'created scenario & scenes'})
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class SceneViewSet(viewsets.ModelViewSet):
