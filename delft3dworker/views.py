@@ -45,7 +45,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             print(serializer.validated_data)
             instance = serializer.save()
-            parameters = serializer.validated_data['parameters']  # Inspect validated field data.
+            parameters = serializer.validated_data['parameters'] if 'parameters' in serializer.validated_data else None  # Inspect validated field data.
 
             if parameters:
                 instance.load_settings(parameters)
