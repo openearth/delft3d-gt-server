@@ -6,13 +6,14 @@ from __future__ import absolute_import
 from datetime import datetime
 import json
 
+from django.contrib.auth.models import Group
+from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
-from django.http import JsonResponse
 from django.http import HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-
 from django.views.generic import CreateView
 from django.views.generic import DeleteView
 from django.views.generic import View
@@ -27,27 +28,44 @@ from rest_framework.response import Response
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
+from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneSerializer
 from delft3dworker.serializers import TemplateSerializer
+from delft3dworker.serializers import UserSerializer
 
 
 # ################################### REST
+
+class GroupViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows templates to be viewed or edited.
+    """
+
+    serializer_class = GroupSerializer
+
+    def get_queryset(self):
+        return Group.objects.all()
+
 
 class ScenarioViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows scenarios to be viewed or edited.
     """
-    queryset = Scenario.objects.all()
     serializer_class = ScenarioSerializer
+
+    def get_queryset(self):
+        return Scenario.objects.all()
 
     def perform_create(self, serializer):
         if serializer.is_valid():
             instance = serializer.save()
             instance.owner_url = self.request.user
+
+            # Inspect validated field data.
             parameters = serializer.validated_data['parameters'] if (
                 'parameters' in serializer.validated_data
-            ) else None  # Inspect validated field data.
+            ) else None
 
             if parameters:
                 instance.load_settings(parameters)
@@ -65,7 +83,6 @@ class SceneViewSet(viewsets.ModelViewSet):
     API endpoint that allows scenes to be viewed or edited.
     """
 
-    queryset = Scene.objects.all()
     serializer_class = SceneSerializer
 
     def perform_create(self, serializer):
@@ -74,14 +91,30 @@ class SceneViewSet(viewsets.ModelViewSet):
             instance.owner_url = self.request.user
             instance.save()
 
+    def get_queryset(self):
+        return Scene.objects.all()
+
 
 class TemplateViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows templates to be viewed or edited.
     """
 
-    queryset = Template.objects.all()
     serializer_class = TemplateSerializer
+
+    def get_queryset(self):
+        return Template.objects.all()
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows templates to be viewed or edited.
+    """
+
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        return User.objects.all()
 
 
 # ###################################
