@@ -40,6 +40,7 @@ INSTALLED_APPS = [
 
     'djcelery',
     'rest_framework',
+    'crispy_forms',
 
     'delft3dworker',
     'delft3dgtfrontend',
@@ -140,6 +141,10 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'rest_framework.filters.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
     ]
 }
 
