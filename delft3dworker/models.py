@@ -179,7 +179,9 @@ class Scene(models.Model):
             "id": self.id,
             "name": self.name,
             "suid": self.suid,
-            "scenario": self.scenario.id if self.scenario else None,
+            "scenario": self.scenario.id if (
+                self.scenario
+            ) else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,
