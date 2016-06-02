@@ -55,7 +55,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     serializer_class = ScenarioSerializer
 
     def get_queryset(self):
-        return Scenario.objects.all()
+        return Scenario.objects.filter(owner_url=self.request.user)
 
     def perform_create(self, serializer):
         if serializer.is_valid():
@@ -92,7 +92,7 @@ class SceneViewSet(viewsets.ModelViewSet):
             instance.save()
 
     def get_queryset(self):
-        return Scene.objects.all()
+        return Scene.objects.filter(owner_url=self.request.user)
 
 
 class TemplateViewSet(viewsets.ModelViewSet):
