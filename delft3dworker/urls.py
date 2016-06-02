@@ -16,7 +16,6 @@ router.register(r'scenes', views.SceneViewSet, 'scene')
 router.register(r'templates', views.TemplateViewSet, 'template')
 router.register(r'users', views.UserViewSet, 'user')
 
-
 # url patterns
 
 urlpatterns = (

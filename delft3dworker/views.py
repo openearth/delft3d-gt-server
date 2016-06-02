@@ -24,7 +24,9 @@ from django.views.generic import View
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
+from rest_framework.decorators import detail_route
 from rest_framework import filters
+from rest_framework.response import Response
 from rest_framework import viewsets
 
 from delft3dworker.models import Scenario
@@ -96,7 +98,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             # 25 april '16: Almar, Fedor & Tijn decided that
             # a scenario should be started server-side after creation
-            instance.start()
+            # instance.start()
 
 
 class SceneViewSet(viewsets.ModelViewSet):
@@ -221,6 +223,25 @@ class SceneViewSet(viewsets.ModelViewSet):
                 return Scene.objects.none()
 
             return queryset
+
+    @detail_route(methods=['get'])
+    def start(self, request, pk=None):
+        # ad custom function to route restart and export
+        scene = self.queryset.get(pk=pk)
+
+        if hasattr(request.data, 'workflow'):
+            scene.start(workflow=request.data['workflow'])
+        else:
+            scene.start()
+
+        serializer = self.get_serializer(scene)
+
+        return Response(serializer.data)
+
+
+@method_decorator(csrf_exempt)
+def dispatch(self, *args, **kwargs):
+    return super(SceneStartView, self).dispatch(*args, **kwargs)
 
 
 class TemplateViewSet(viewsets.ModelViewSet):

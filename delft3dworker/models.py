@@ -199,8 +199,7 @@ class Scene(models.Model):
 
     # CONTROL METHODS
 
-    def start(self):
-
+    def start(self, workflow="main"):
         result = AbortableAsyncResult(self.task_id)
 
         if self.task_id != "" and result.state == "PENDING":
@@ -209,12 +208,19 @@ class Scene(models.Model):
         if result.state == BUSYSTATE:
             return {"error": "task already busy", "task_id": self.task_id}
 
-        result = chainedtask.delay(self.parameters, self.workingdir)
-        self.task_id = result.task_id
-        self.state = result.state
-        self.save()
+        if workflow == "main":
+            result = chainedtask.delay(self.parameters, self.workingdir, workflow)
+            self.task_id = result.task_id
+            self.state = result.state
+            self.save()
+        elif workflow == "export":
+            # TODO, Implement export chain
+            logging.info("export workflow not available")
+        else:
+            logging.error("workflow {} unknown").format(workflow)
 
         return {"task_id": self.task_id, "scene_id": self.suid}
+
 
     def abort(self):
 
