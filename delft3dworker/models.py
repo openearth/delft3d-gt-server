@@ -22,6 +22,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from jsonfield import JSONField
+# from django.contrib.postgres.fields import JSONField  # When we use Postgresql 9.4
 
 from mako.template import Template as MakoTemplate
 
@@ -179,7 +180,9 @@ class Scene(models.Model):
             "id": self.id,
             "name": self.name,
             "suid": self.suid,
-            "scenario": self.scenario.id if self.scenario else None,
+            "scenario": self.scenario.id if (
+                self.scenario
+            ) else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,

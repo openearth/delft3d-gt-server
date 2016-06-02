@@ -3,16 +3,20 @@ Views for the ui.
 """
 from __future__ import absolute_import
 
-from datetime import datetime
+import django_filters
 import json
+import logging
 
+from datetime import datetime
+
+from django.contrib.auth.models import Group
+from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
-from django.http import JsonResponse
 from django.http import HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-
 from django.views.generic import CreateView
 from django.views.generic import DeleteView
 from django.views.generic import View
@@ -20,36 +24,76 @@ from django.views.generic import View
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
-from rest_framework import status
-from rest_framework import viewsets
+from rest_framework.decorators import detail_route
+from rest_framework import filters
 from rest_framework.response import Response
+from rest_framework import viewsets
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
+from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneSerializer
 from delft3dworker.serializers import TemplateSerializer
-
-from rest_framework.decorators import detail_route
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.settings import api_settings
+from delft3dworker.serializers import UserSerializer
 
 
-# ################################### REST
+
+
+
+#################################### REST
+
+############ Filters
+
+
+class SceneFilter(filters.FilterSet):
+    """
+    FilterSet to filter Scenes on complex queries, such as
+    template, traversing db relationships.
+    Needs an exact match (!)
+    """
+    template = django_filters.CharFilter(name="scenario__template__name")
+    scenario = django_filters.CharFilter(name="scenario__name")
+
+
+    class Meta:
+        model = Scene
+        fields = ['name', 'state', 'scenario', 'template']
+        # order_by = ['state','scenario','name']
+
+
+############# Views
+
+
+class GroupViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows templates to be viewed or edited.
+    """
+
+    serializer_class = GroupSerializer
+
+    def get_queryset(self):
+        return Group.objects.all()
+
 
 class ScenarioViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows scenarios to be viewed or edited.
     """
-    queryset = Scenario.objects.all()
     serializer_class = ScenarioSerializer
+
+    def get_queryset(self):
+        return Scenario.objects.all()
 
     def perform_create(self, serializer):
         if serializer.is_valid():
             instance = serializer.save()
-            parameters = serializer.validated_data['parameters'] if 'parameters' in serializer.validated_data else None  # Inspect validated field data.
+
+            # Inspect validated field data.
+            parameters = serializer.validated_data['parameters'] if (
+                'parameters' in serializer.validated_data
+            ) else None
 
             if parameters:
                 instance.load_settings(parameters)
@@ -61,13 +105,105 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             # a scenario should be started server-side after creation
             # instance.start()
 
+
 class SceneViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows scenes to be viewed or edited.
     """
 
-    queryset = Scene.objects.all()
     serializer_class = SceneSerializer
+    # filter_backends = (filters.DjangoFilterBackend, filters.SearchFilter,)
+
+    # Our own custom filter to create custom search fields
+    # this creates &template= among others
+    filter_class = SceneFilter
+
+    # Searchfilter backend for field &search=
+    # Filters on fields below beginning with value (^)
+    search_fields = ('^name', '^state', '^scenario__template__name', '^scenario__name')
+
+    # Permissions backend which we could use in filter
+    # permission_classes = (delft3dgtmain.permissions.etc)
+
+    def get_queryset(self):
+        """
+        Optionally restricts the returned purchases to a given parameter,
+        by filtering against a `parameter` query parameter in the URL.
+        
+        Possible values:
+            # filters on key occurance
+            - parameter="parameter  
+            # filters on key occurance and value
+            - parameter="parameter,value"  
+            # filters on key occurance and value between min & max
+            - parameter="parameter,minvalue,maxvalue"  
+        """
+        queryset = Scene.objects.all()
+
+        # Filter on parameter
+        parameter = self.request.query_params.get('parameter', None)
+        if parameter is not None:
+
+            # Processing user input
+            # will sometimes fail
+            try:
+                p = parameter.split(',')
+                # Key exist lookup
+
+                if len(p) == 1:
+                    key = parameter
+                    logging.info("Lookup parameter {}".format(key))
+                    queryset = queryset.filter(parameters__icontains=key)
+                    return queryset
+
+                # Key, value lookup
+                if len(p) == 2:
+                    key, value = p
+                    logging.info("Lookup value for parameter {}".format(key))
+
+                    # Find integers or floats
+                    value = float(value)
+
+                    # Create json lookup
+                    # q = {key: {'value': value}}
+
+                    # Not yet possible to do json queries directly
+                    # Requires JSONField from Postgresql 9.4 and Django 1.9
+                    # So we loop manually (bad performance!)
+                    wanted = []
+                    queryset = queryset.filter(parameters__icontains=key)
+                    for scene in queryset:
+                        if scene.parameters[key]['values'] == value:
+                            wanted.append(scene.id)
+
+                    return queryset.filter(pk__in=wanted)
+
+                # Key, min, max lookup
+                elif len(p) == 3:
+                    key, minvalue, maxvalue = p
+                    logging.info("Lookup value between {} and {} for parameter {}".format(minvalue, maxvalue, key))
+
+                    # Find integers or floats
+                    minvalue = float(minvalue)
+                    maxvalue = float(maxvalue)
+
+                    # Create json lookup
+                    # q = {key: {'value': value}}
+
+                    # Not yet possible to do json queries directly
+                    # Requires JSONField from Postgresql 9.4 and Django 1.9
+                    # So we loop manually (bad performance!)
+                    wanted = []
+                    queryset = queryset.filter(parameters__icontains=key)
+                    for scene in queryset:
+                        if minvalue <= scene.parameters[key]['values'] < maxvalue:
+                            wanted.append(scene.id)
+
+                    return queryset.filter(pk__in=wanted)
+
+            except:
+                return Scene.objects.none()
+        return queryset
 
     @detail_route(methods=['get'])
     def start(self, request, pk=None):
@@ -96,8 +232,25 @@ class TemplateViewSet(viewsets.ModelViewSet):
     API endpoint that allows templates to be viewed or edited.
     """
 
-    queryset = Template.objects.all()
     serializer_class = TemplateSerializer
+
+    def get_queryset(self):
+        return Template.objects.all()
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows templates to be viewed or edited.
+    """
+
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        return User.objects.all()
+
+
+
+
 
 
 # ###################################
