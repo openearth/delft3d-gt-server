@@ -46,7 +46,7 @@ class ListAccessTestCase(TestCase):
         Tests GET access rights on list Views
         """
 
-        # User Foo can access all models
+        # User Foo can access own models
         self.assertEqual(
             len(self._request(ScenarioViewSet, self.user_foo)),
             1
@@ -56,7 +56,7 @@ class ListAccessTestCase(TestCase):
             2
         )
 
-        # User Foo can access no models
+        # User Bar can access no models (because Bar owns none)
         self.assertEqual(
             len(self._request(ScenarioViewSet, self.user_bar)),
             0
