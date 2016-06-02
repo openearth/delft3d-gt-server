@@ -2,7 +2,38 @@
   {
     "fields": {
       "name": "org:Foo_Company",
-      "permissions": []
+      "permissions": [
+        [
+          "add_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "change_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "delete_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "add_scene",
+          "delft3dworker",
+          "scene"
+        ],
+        [
+          "change_scene",
+          "delft3dworker",
+          "scene"
+        ],
+        [
+          "delete_scene",
+          "delft3dworker",
+          "scene"
+        ]
+      ]
     },
     "model": "auth.group",
     "pk": 500
@@ -10,7 +41,38 @@
   {
     "fields": {
       "name": "org:Bar_Company",
-      "permissions": []
+      "permissions": [
+        [
+          "add_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "change_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "delete_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "add_scene",
+          "delft3dworker",
+          "scene"
+        ],
+        [
+          "change_scene",
+          "delft3dworker",
+          "scene"
+        ],
+        [
+          "delete_scene",
+          "delft3dworker",
+          "scene"
+        ]
+      ]
     },
     "model": "auth.group",
     "pk": 501
@@ -23,9 +85,11 @@
       "is_active": true,
       "is_superuser": false,
       "is_staff": false,
-      "last_login": null,
+      "last_login": "2016-05-31T09:44:13.719Z",
       "groups": [
-        500
+        [
+          "org:Foo_Company"
+        ]
       ],
       "user_permissions": [],
       "password": "pbkdf2_sha256$20000$twSLZRbL2oty$QbldXf1MNLCdf9n7xIoQKZX1D9phDylwrlplQqepEKc=",
@@ -45,7 +109,9 @@
       "is_staff": false,
       "last_login": null,
       "groups": [
-        501
+        [
+          "org:Bar_Company"
+        ]
       ],
       "user_permissions": [],
       "password": "pbkdf2_sha256$20000$3UJqTdQX0mMo$Or4V7/KXHbmZpVH3kjTWE2lbtA8JOzmzt0ngaU5Azz8=",

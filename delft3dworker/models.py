@@ -22,6 +22,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from jsonfield import JSONField
+# from django.contrib.postgres.fields import JSONField  # When we use Postgresql 9.4
 
 from mako.template import Template as MakoTemplate
 
@@ -44,7 +45,7 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.OneToOneField('Template', null=True)
+    template = models.ForeignKey('Template', null=True)
 
     scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
@@ -104,30 +105,18 @@ class Scenario(models.Model):
     # INTERNALS
 
     def _parse_setting(self, key, setting):
-
-        if not ('value' in setting or 'valid' in settings or setting['valid']):
+        if not ('values' in setting):
             return
+
+        values = setting['values']
 
         if key == "scenarioname":
-            self.name = setting['value']
+            self.name = values
             return
 
-        if not setting["useautostep"]:
-            # No autostep, just add these settings
-            for scene in self.scenes_parameters:
-                if key not in scene:
-                    scene[key] = setting
-        else:
-            # Autostep! Run past all parameter scenes, iteratively
-            minstep = float(setting["minstep"])
-            maxstep = float(setting["maxstep"])
-            step = float(setting["stepinterval"])
-            values = []
-
-            curval = minstep
-            while curval <= maxstep:  # includes maxstep
-                values.append(round(curval, 2))
-                curval = curval + step
+        # If values is a list, multiply scenes
+        if isinstance(values, list):
+            logging.info("Detected multiple values at {}".format(key))
 
             # Current scenes times number of new values
             # 3 original runs (1 2 3), this settings adds two (a b) thus we now
@@ -143,12 +132,17 @@ class Scenario(models.Model):
                 # Using modulo we can assign a b in the correct
                 # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
                 # modulo gives 0 which is again the first value (a)
-                s['value'] = values[i % len(values)]
+                s['values'] = values[i % len(values)]
                 scene[key] = s
                 i += 1
 
-    def __unicode__(self):
+        # Set keys not yet occuring in scenes
+        else:
+            for scene in self.scenes_parameters:
+                if key not in scene:
+                    scene[key] = setting
 
+    def __unicode__(self):
         return self.name
 
 
@@ -187,7 +181,9 @@ class Scene(models.Model):
             "id": self.id,
             "name": self.name,
             "suid": self.suid,
-            "scenario": self.scenario.id if self.scenario else None,
+            "scenario": self.scenario.id if (
+                self.scenario
+            ) else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,
@@ -442,19 +438,12 @@ class Template(models.Model):
     Template model
     """
 
-    templatename = models.CharField(max_length=256)
-
-    description = models.CharField(max_length=256, blank=True)
-    email = models.CharField(max_length=256, blank=True)
-    groups = JSONField(blank=True)
-    label = models.CharField(max_length=256, blank=True)
-    model = models.CharField(max_length=256, blank=True)
-    site = models.CharField(max_length=256, blank=True)
-    variables = JSONField(blank=True)
-    version = models.IntegerField(blank=True)
+    name = models.CharField(max_length=256)
+    meta = JSONField(blank=True)
+    sections = JSONField(blank=True)
 
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('template_detail'), self.id)
 
     def __unicode__(self):
-        return self.templatename
+        return self.name
