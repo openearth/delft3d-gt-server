@@ -44,8 +44,7 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    # named _url to improve representation of field in REST API
-    template_url = models.ForeignKey('Template', null=True)
+    template = models.ForeignKey('Template', null=True)
 
     scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
@@ -157,8 +156,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     suid = models.CharField(max_length=256, editable=False)
 
-    # named _url to improve representation of field in REST API
-    scenario_url = models.ForeignKey('Scenario', null=True)
+    scenario = models.ForeignKey('Scenario', null=True)
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
@@ -181,7 +179,9 @@ class Scene(models.Model):
             "id": self.id,
             "name": self.name,
             "suid": self.suid,
-            "scenario": self.scenario.id if self.scenario else None,
+            "scenario": self.scenario.id if (
+                self.scenario
+            ) else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,

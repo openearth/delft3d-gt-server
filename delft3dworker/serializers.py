@@ -32,6 +32,12 @@ class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
 
     # here we will write custom serialization and validation methods
 
+    template_url = serializers.HyperlinkedRelatedField(
+        read_only=True,
+        view_name='template-detail',
+        source='template'
+    )
+
     class Meta:
         model = Scenario
         fields = (
@@ -50,6 +56,12 @@ class SceneSerializer(serializers.HyperlinkedModelSerializer):
     """
 
     # here we will write custom serialization and validation methods
+
+    scenario_url = serializers.HyperlinkedRelatedField(
+        read_only=True,
+        view_name='scenario-detail',
+        source='scenario'
+    )
 
     class Meta:
         model = Scene
