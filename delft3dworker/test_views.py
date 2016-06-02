@@ -1,20 +1,106 @@
+from django.contrib.auth.models import User
 from django.test import TestCase
 
-from delft3dworker.models import Scene, Scenario
-from delft3dworker.views import SceneViewSet
 from rest_framework.test import APIRequestFactory
+from rest_framework.test import force_authenticate
 
-class SceneSearchTestCase(TestCase):
+from delft3dworker.models import Scenario
+from delft3dworker.models import Scene
+from delft3dworker.views import ScenarioViewSet
+from delft3dworker.views import SceneViewSet
+
+
+class ListAccessTestCase(TestCase):
+
     def setUp(self):
-        scenario = Scenario.objects.create(name='Test')
-        Scene.objects.create(name="Test",
+
+        # set up request factory
+        self.factory = APIRequestFactory()
+
+        # create users and store for later access
+        self.user_foo = User.objects.create(username='foo')
+        self.user_bar = User.objects.create(username='bar')
+
+        # create models in dB
+        scenario = Scenario.objects.create(
+            name='Test Scenario',
+            owner=self.user_foo,
+        )
+        Scene.objects.create(
+            name='Test Scene 1',
+            owner=self.user_foo,
+            parameters={'a': {'values': 2}},
             scenario=scenario,
-            state="SUCCESS",
-            parameters={'a': {'values': 2}}
-            )
+            state='SUCCESS',
+        )
+        Scene.objects.create(
+            name='Test Scene 2',
+            owner=self.user_foo,
+            parameters={'a': {'values': 3}},
+            scenario=scenario,
+            state='SUCCESS',
+        )
 
     def test_search(self):
-        """Test search options."""
+        """
+        Tests GET access rights on list Views
+        """
+
+        # User Foo can access all models
+        self.assertEqual(
+            len(self._request(ScenarioViewSet, self.user_foo)),
+            1
+        )
+        self.assertEqual(
+            len(self._request(SceneViewSet, self.user_foo)),
+            2
+        )
+
+        # User Foo can access no models
+        self.assertEqual(
+            len(self._request(ScenarioViewSet, self.user_bar)),
+            0
+        )
+        self.assertEqual(
+            len(self._request(SceneViewSet, self.user_bar)),
+            0
+        )
+
+    def _request(self, viewset, user):
+
+        # create view and request
+        view = viewset.as_view({'get': 'list'})
+        request = self.factory.get('/scenes/')
+        force_authenticate(request, user=user)
+
+        # send request to view and render response
+        response = view(request)
+        response.render()
+        self.assertEqual(response.status_code, 200)
+
+        return response.data
+
+
+class SceneSearchTestCase(TestCase):
+
+    def setUp(self):
+        self.user_bar = User.objects.create(username='bar')
+        scenario = Scenario.objects.create(
+            name='Test',
+            owner=self.user_bar,
+        )
+        Scene.objects.create(
+            name='Test',
+            owner=self.user_bar,
+            parameters={'a': {'values': 2}},
+            scenario=scenario,
+            state='SUCCESS',
+        )
+
+    def test_search(self):
+        """
+        Test search options
+        """
 
         # Exact matches
         search_query_exact_a = {'name': "Test"}
@@ -28,7 +114,9 @@ class SceneSearchTestCase(TestCase):
         # Partial matches from beginning of line
         search_query_partial_a = {'search': "Te"}
         search_query_partial_b = {'search': "Tes"}
-        search_query_partial_c = {'search': "SUCC", 'search': "Te", 'search': "T"}
+        search_query_partial_c = {
+            'search': "SUCC", 'search': "Te", 'search': "T"
+        }
 
         self.assertEqual(len(self._request(search_query_partial_a)), 1)
         self.assertEqual(len(self._request(search_query_partial_b)), 1)
@@ -53,25 +141,30 @@ class SceneSearchTestCase(TestCase):
         factory = APIRequestFactory()
         view = SceneViewSet.as_view({'get': 'list'})
         request = factory.get('/scenes/', query)
+        force_authenticate(request, user=self.user_bar)
         response = view(request)
+        response.render()
         return response.data
 
 
 class SceneTestCase(TestCase):
-
     """
-    test custom written function SceneViewSet
+    Test custom written function SceneViewSet
     """
 
     def setUp(self):
-        # create record in database
-        Scene.objects.create(name="Test main workflow", id=1)
+        self.user_foo = User.objects.create(username="foo")
+        Scene.objects.create(
+            name="Test main workflow",
+            owner=self.user_foo,
+        )
 
-    def test_scene_parses_input(self):
+    def test_scene_accepts_start(self):
         # call /scene/{pk}/start and test if 200 response is returned
         factory = APIRequestFactory()
         view = SceneViewSet.as_view({'get': 'retrieve'})
         request = factory.get('/scenes/1/start')
+        force_authenticate(request, user=self.user_foo)
         response = view(request, pk='1')
         response.render()
         self.assertEqual(response.status_code, 200)

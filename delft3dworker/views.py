@@ -41,8 +41,8 @@ from delft3dworker.serializers import UserSerializer
 
 # ################################### REST
 
-# Filters
 
+# ### Filters
 
 class SceneFilter(filters.FilterSet):
     """
@@ -58,7 +58,7 @@ class SceneFilter(filters.FilterSet):
         fields = ['name', 'state', 'scenario', 'template']
 
 
-# Views
+# ### ViewSets
 
 class GroupViewSet(viewsets.ModelViewSet):
     """
@@ -107,7 +107,6 @@ class SceneViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = SceneSerializer
-    # filter_backends = (filters.DjangoFilterBackend, filters.SearchFilter,)
 
     # Our own custom filter to create custom search fields
     # this creates &template= among others
@@ -140,10 +139,11 @@ class SceneViewSet(viewsets.ModelViewSet):
             # filters on key occurance and value between min & max
             - parameter="parameter,minvalue,maxvalue"
         """
-        queryset = Scene.objects.all()
+        queryset = Scene.objects.filter(owner=self.request.user)
 
         # Filter on parameter
         parameter = self.request.query_params.get('parameter', None)
+
         if parameter is not None:
 
             # Processing user input
@@ -222,7 +222,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
                 return Scene.objects.none()
 
-            return queryset
+        return queryset
 
     @detail_route(methods=['get'])
     def start(self, request, pk=None):
@@ -237,11 +237,6 @@ class SceneViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
-
-
-@method_decorator(csrf_exempt)
-def dispatch(self, *args, **kwargs):
-    return super(SceneStartView, self).dispatch(*args, **kwargs)
 
 
 class TemplateViewSet(viewsets.ModelViewSet):
