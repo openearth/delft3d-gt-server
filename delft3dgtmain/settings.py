@@ -181,6 +181,7 @@ if 'test' in sys.argv:
         'settings$',
         'tests$',
         'urls$',
+        'rest_framework$'
     ]
 
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
