@@ -3,11 +3,12 @@ Views for the ui.
 """
 from __future__ import absolute_import
 
-from datetime import datetime
+import django_filters
 import json
 import logging
 
-import django_filters
+from datetime import datetime
+
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
@@ -23,8 +24,8 @@ from django.views.generic import View
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
-from rest_framework import viewsets
 from rest_framework import filters
+from rest_framework import viewsets
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
@@ -34,7 +35,6 @@ from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneSerializer
 from delft3dworker.serializers import TemplateSerializer
 from delft3dworker.serializers import UserSerializer
-
 
 #################################### REST
 
