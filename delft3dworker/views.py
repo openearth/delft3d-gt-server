@@ -155,7 +155,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                     logging.info("Lookup value for parameter {}".format(key))
 
                     # Find integers or floats
-                    value = float(value) if '.' in value else int(value)
+                    value = float(value)
 
                     # Create json lookup
                     # q = {key: {'value': value}}
@@ -177,8 +177,8 @@ class SceneViewSet(viewsets.ModelViewSet):
                     logging.info("Lookup value between {} and {} for parameter {}".format(minvalue, maxvalue, key))
 
                     # Find integers or floats
-                    minvalue = float(minvalue) if '.' in minvalue else int(minvalue)
-                    maxvalue = float(maxvalue) if '.' in maxvalue else int(maxvalue)
+                    minvalue = float(minvalue)
+                    maxvalue = float(maxvalue)
 
                     # Create json lookup
                     # q = {key: {'value': value}}
