@@ -76,12 +76,12 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     serializer_class = ScenarioSerializer
 
     def get_queryset(self):
-        return Scenario.objects.filter(owner_url=self.request.user)
+        return Scenario.objects.filter(owner=self.request.user)
 
     def perform_create(self, serializer):
         if serializer.is_valid():
             instance = serializer.save()
-            instance.owner_url = self.request.user
+            instance.owner = self.request.user
 
             # Inspect validated field data.
             parameters = serializer.validated_data['parameters'] if (
@@ -122,7 +122,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if serializer.is_valid():
             instance = serializer.save()
-            instance.owner_url = self.request.user
+            instance.owner = self.request.user
             instance.save()
 
     def get_queryset(self):

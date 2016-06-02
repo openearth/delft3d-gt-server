@@ -23,7 +23,8 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from jsonfield import JSONField
-# from django.contrib.postgres.fields import JSONField  # When we use Postgresql 9.4
+# from django.contrib.postgres.fields import JSONField  # When we use
+# Postgresql 9.4
 
 from mako.template import Template as MakoTemplate
 
@@ -51,7 +52,7 @@ class Scenario(models.Model):
     scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
 
-    owner_url = models.ForeignKey(User, null=True)
+    owner = models.ForeignKey(User, null=True)
 
     # PROPERTY METHODS
 
@@ -82,8 +83,8 @@ class Scenario(models.Model):
         for i, sceneparameters in enumerate(self.scenes_parameters):
             scene = Scene(
                 name="{}: Run {}".format(self.name, i + 1),
-                owner_url=self.owner_url,
-                scenario_url=self,
+                owner=self.owner,
+                scenario=self,
                 parameters=sceneparameters
             )
             scene.save()
@@ -170,7 +171,7 @@ class Scene(models.Model):
     task_id = models.CharField(max_length=256)
     workingdir = models.CharField(max_length=256)
 
-    owner_url = models.ForeignKey(User, null=True)
+    owner = models.ForeignKey(User, null=True)
 
     # PROPERTY METHODS
 
