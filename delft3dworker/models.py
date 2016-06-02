@@ -58,7 +58,7 @@ class Scenario(models.Model):
 
     def serialize(self):
         return {
-            "template": self.template,
+            "template_url": self.template_url,
             "name": self.name,
             "parameters": self.parameters,
             "scenes_parameters": self.scenes_parameters,
@@ -181,7 +181,9 @@ class Scene(models.Model):
             "id": self.id,
             "name": self.name,
             "suid": self.suid,
-            "scenario": self.scenario.id if self.scenario else None,
+            "scenario_url": self.scenario_url.id if (
+                self.scenario_url
+            ) else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,
