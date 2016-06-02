@@ -48,7 +48,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if serializer.is_valid():
-            print(serializer.validated_data)
             instance = serializer.save()
             parameters = serializer.validated_data['parameters'] if 'parameters' in serializer.validated_data else None  # Inspect validated field data.
 
@@ -72,17 +71,16 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @detail_route(methods=['get'])
     def start(self, request, pk=None):
+        # ad custom function to route restart and export
         scene = self.queryset.get(pk=pk)
+
         if hasattr(request.data, 'workflow'):
             scene.start(workflow=request.data['workflow'])
         else:
             scene.start()
-        print '-------------------scene', scene, type(scene)
-        serializer = SceneSerializer(data=scene, context={'request': request})
-        serializer.is_valid()
-        print '------------------ serializer', serializer
-        # headers = self.get_success_headers(serializer.data)
-        # return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+        serializer = self.get_serializer(scene)
+
         return Response(serializer.data)
 
 

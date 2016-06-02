@@ -4,7 +4,6 @@ from django.views.static import serve
 
 from rest_framework import routers
 
-
 from delft3dworker import views
 
 
