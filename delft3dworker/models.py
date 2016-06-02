@@ -189,17 +189,26 @@ class Scene(models.Model):
 
     # CONTROL METHODS
 
-    def start(self):
-
+    def start(self, workflow="main"):
+        # print workflow
         result = AbortableAsyncResult(self.task_id)
 
         if self.task_id != "" and result.state == "PENDING":
+            print self.task_id
             return {"error": "task already PENDING", "task_id": self.task_id}
 
         if result.state == BUSYSTATE:
+            print 2
             return {"error": "task already busy", "task_id": self.task_id}
 
-        result = chainedtask.delay(self.parameters, self.workingdir)
+        if workflow == "main":
+            print 'main'
+        elif workflow == "export":
+            print 'hoera'
+        else:
+            logging.error("workflow {} unknown").format(workflow)
+
+        result = chainedtask.delay(self.parameters, self.workingdir, workflow)
         self.task_id = result.task_id
         self.state = result.state
         self.save()

@@ -25,7 +25,7 @@ logger = get_task_logger(__name__)
 
 
 @shared_task(bind=True, base=AbortableTask)
-def chainedtask(self, parameters, workingdir):
+def chainedtask(self, parameters, workingdir, workflow):
     """ Chained task which can be aborted. Contains model logic. """
 
     # create folder

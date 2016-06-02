@@ -4,6 +4,7 @@ from django.views.static import serve
 
 from rest_framework import routers
 
+
 from delft3dworker import views
 
 
@@ -13,7 +14,6 @@ router = routers.DefaultRouter()
 router.register(r'scenarios', views.ScenarioViewSet)
 router.register(r'scenes', views.SceneViewSet)
 router.register(r'templates', views.TemplateViewSet)
-
 
 # url patterns
 

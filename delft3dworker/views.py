@@ -31,6 +31,11 @@ from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneSerializer
 from delft3dworker.serializers import TemplateSerializer
 
+from rest_framework.decorators import detail_route
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.settings import api_settings
+
 
 # ################################### REST
 
@@ -55,7 +60,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             # 25 april '16: Almar, Fedor & Tijn decided that
             # a scenario should be started server-side after creation
-            instance.start()
+            # instance.start()
 
 class SceneViewSet(viewsets.ModelViewSet):
     """
@@ -64,6 +69,28 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     queryset = Scene.objects.all()
     serializer_class = SceneSerializer
+
+    @detail_route(methods=['get'])
+    def start(self, request, pk=None):
+        scene = self.queryset.get(pk=pk)
+        if hasattr(request.data, 'workflow'):
+            scene.start(workflow=request.data['workflow'])
+        else:
+            scene.start()
+        print '-------------------scene', scene, type(scene)
+        serializer = SceneSerializer(data=scene, context={'request': request})
+        serializer.is_valid()
+        print '------------------ serializer', serializer
+        # headers = self.get_success_headers(serializer.data)
+        # return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(serializer.data)
+
+
+@method_decorator(csrf_exempt)
+def dispatch(self, *args, **kwargs):
+    return super(SceneStartView, self).dispatch(*args, **kwargs)
+
+
 
 
 class TemplateViewSet(viewsets.ModelViewSet):
