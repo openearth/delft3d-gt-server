@@ -18,6 +18,7 @@ class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
         fields = (
             'id',
             'name',
+            'owner_url',
             'template',
             'parameters',
         )
@@ -36,6 +37,7 @@ class SceneSerializer(serializers.HyperlinkedModelSerializer):
         fields = (
             'id',
             'name',
+            'owner_url',
             'suid',
             'scenario',
             'fileurl',

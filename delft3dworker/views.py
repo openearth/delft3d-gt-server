@@ -43,9 +43,11 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if serializer.is_valid():
-            print(serializer.validated_data)
             instance = serializer.save()
-            parameters = serializer.validated_data['parameters'] if 'parameters' in serializer.validated_data else None  # Inspect validated field data.
+            instance.owner_url = self.request.user
+            parameters = serializer.validated_data['parameters'] if (
+                'parameters' in serializer.validated_data
+            ) else None  # Inspect validated field data.
 
             if parameters:
                 instance.load_settings(parameters)
@@ -57,6 +59,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             # a scenario should be started server-side after creation
             instance.start()
 
+
 class SceneViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows scenes to be viewed or edited.
@@ -64,6 +67,12 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     queryset = Scene.objects.all()
     serializer_class = SceneSerializer
+
+    def perform_create(self, serializer):
+        if serializer.is_valid():
+            instance = serializer.save()
+            instance.owner_url = self.request.user
+            instance.save()
 
 
 class TemplateViewSet(viewsets.ModelViewSet):
