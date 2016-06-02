@@ -43,9 +43,12 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if serializer.is_valid():
-            print(serializer.validated_data)
             instance = serializer.save()
-            parameters = serializer.validated_data['parameters'] if 'parameters' in serializer.validated_data else None  # Inspect validated field data.
+
+            # Inspect validated field data.
+            parameters = serializer.validated_data['parameters'] if (
+                'parameters' in serializer.validated_data
+            ) else None
 
             if parameters:
                 instance.load_settings(parameters)
@@ -56,6 +59,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             # 25 april '16: Almar, Fedor & Tijn decided that
             # a scenario should be started server-side after creation
             instance.start()
+
 
 class SceneViewSet(viewsets.ModelViewSet):
     """
