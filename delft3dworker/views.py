@@ -23,7 +23,6 @@ from json_views.views import JSONListView
 
 from rest_framework import viewsets
 from rest_framework import filters
-from rest_framework import generics
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
@@ -74,41 +73,89 @@ class SceneViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.DjangoFilterBackend, filters.SearchFilter,)
 
     # Django filter backend
+    # this creates &name=, &state=
     filter_fields = ('name', 'state')  # Direct equality
 
-    # Our own custom filter
+    # Our own custom filter to create custom search fields
+    # this creates &template=
     filter_class = SceneFilter
 
-    # Searchfilter backend
+    # Searchfilter backend for field &search=
+    # Filters on fields below beginning with value (^)
     search_fields = ('^name', '^state', '^scenario__template__name',)
 
-    # Permissions backend
+    # Permissions backend which we could use in filter
     # permission_classes = (delft3dgtmain.permissions.etc)
 
     def get_queryset(self):
         """
-        Optionally restricts the returned purchases to a given user,
-        by filtering against a `username` query parameter in the URL.
+        Optionally restricts the returned purchases to a given parameter,
+        by filtering against a `parameter` query parameter in the URL.
         """
         queryset = Scene.objects.all()
 
         # Filter on parameter
-        print(self.request.query_params)
         parameter = self.request.query_params.get('parameter', None)
         if parameter is not None:
+
+            # Processing user input
+            # will sometimes fail
             try:
                 p = parameter.split(',')
+
+                # Key exist lookup
+                if len(p) == 1:
+                    key = p
+                    print("Lookup parameter {}".format(key))
+
+                    queryset = queryset.filter(parameters__contains=key)
+                    return queryset
+
+                # Key, value lookup
                 if len(p) == 2:
                     key, value = p
-                    key = key.encode('ascii', 'ignore')
-                    if '.' in value:
-                        value = float(value)
-                    else:
-                        value = int(value)
-                    print((key, value))
-                    q = {key: {'value': value}}
-                    print(q)
-                    queryset = queryset.filter(parameters__contains=q)
+                    print("Lookup value for parameter {}".format(key))
+
+                    # Find integers or floats
+                    value = float(value) if '.' in value else int(value)
+
+                    # Create json lookup
+                    # q = {key: {'value': value}}
+
+                    # Not yet possible to do json queries directly
+                    # Requires JSONField from Postgresql 9.4 and Django 1.9
+                    # So we loop manually (bad performance!)
+                    wanted = []
+                    queryset = queryset.filter(parameters__contains=key)
+                    for scene in queryset:
+                        if scene.parameters[key]['values'] == value:
+                            wanted.append(scene.id)
+
+                    return queryset.filter(pk__in=wanted)
+
+                # Key, min, max lookup
+                elif len(p) == 3:
+                    key, minvalue, maxvalue = p
+                    print("Lookup value between {} and {} for parameter {}".format(minvalue, maxvalue, key))
+
+                    # Find integers or floats
+                    minvalue = float(minvalue) if '.' in minvalue else int(minvalue)
+                    maxvalue = float(maxvalue) if '.' in maxvalue else int(maxvalue)
+
+                    # Create json lookup
+                    # q = {key: {'value': value}}
+
+                    # Not yet possible to do json queries directly
+                    # Requires JSONField from Postgresql 9.4 and Django 1.9
+                    # So we loop manually (bad performance!)
+                    wanted = []
+                    queryset = queryset.filter(parameters__contains=key)
+                    for scene in queryset:
+                        if minvalue <= scene.parameters[key]['values'] <= maxvalue:
+                            wanted.append(scene.id)
+
+                    return queryset.filter(pk__in=wanted)
+
             except:
                 return Scene.objects.none()
         return queryset
