@@ -40,6 +40,7 @@ INSTALLED_APPS = [
 
     'djcelery',
     'rest_framework',
+    'crispy_forms',
 
     'delft3dworker',
     'delft3dgtfrontend',

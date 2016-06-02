@@ -41,14 +41,15 @@ class SceneFilter(filters.FilterSet):
     """
     FilterSet to filter Scenes on complex queries, such as
     template, traversing db relationships.
+    Needs an exact match (!)
     """
-    strict = True
     template = django_filters.CharFilter(name="scenario__template__name")
+    scenario = django_filters.CharFilter(name="scenario__name")
 
     class Meta:
         model = Scene
-        fields = ['template',]
-        order_by = ['template',]
+        fields = ['name', 'state', 'scenario', 'template']
+        # order_by = ['state','scenario','name']
 
 
 ############# Views
@@ -70,19 +71,15 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     queryset = Scene.objects.all()
     serializer_class = SceneSerializer
-    filter_backends = (filters.DjangoFilterBackend, filters.SearchFilter,)
-
-    # Django filter backend
-    # this creates &name=, &state=
-    filter_fields = ('name', 'state')  # Direct equality
+    # filter_backends = (filters.DjangoFilterBackend, filters.SearchFilter,)
 
     # Our own custom filter to create custom search fields
-    # this creates &template=
+    # this creates &template= among others
     filter_class = SceneFilter
 
     # Searchfilter backend for field &search=
     # Filters on fields below beginning with value (^)
-    search_fields = ('^name', '^state', '^scenario__template__name',)
+    search_fields = ('^name', '^state', '^scenario__template__name', '^scenario__name')
 
     # Permissions backend which we could use in filter
     # permission_classes = (delft3dgtmain.permissions.etc)
@@ -91,6 +88,14 @@ class SceneViewSet(viewsets.ModelViewSet):
         """
         Optionally restricts the returned purchases to a given parameter,
         by filtering against a `parameter` query parameter in the URL.
+        
+        Possible values:
+            # filters on key occurance
+            - parameter="parameter  
+            # filters on key occurance and value
+            - parameter="parameter,value"  
+            # filters on key occurance and value between min & max
+            - parameter="parameter,minvalue,maxvalue"  
         """
         queryset = Scene.objects.all()
 
@@ -151,7 +156,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                     wanted = []
                     queryset = queryset.filter(parameters__contains=key)
                     for scene in queryset:
-                        if minvalue <= scene.parameters[key]['values'] <= maxvalue:
+                        if minvalue <= scene.parameters[key]['values'] < maxvalue:
                             wanted.append(scene.id)
 
                     return queryset.filter(pk__in=wanted)
