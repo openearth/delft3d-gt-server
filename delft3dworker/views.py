@@ -49,6 +49,7 @@ class SceneFilter(filters.FilterSet):
     class Meta:
         model = Scene
         fields = ['template',]
+        order_by = ['template',]
 
 
 ############# Views
@@ -92,6 +93,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         queryset = Scene.objects.all()
 
         # Filter on parameter
+        print(self.request.query_params)
         parameter = self.request.query_params.get('parameter', None)
         if parameter is not None:
             try:
