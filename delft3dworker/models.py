@@ -45,7 +45,7 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.OneToOneField('Template', null=True)
+    template = models.ForeignKey('Template', null=True)
 
     scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
