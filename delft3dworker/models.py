@@ -195,6 +195,7 @@ class Scene(models.Model):
             "parameters": self.parameters,
             "state": self.state,
             "task_id": self.task_id,
+            "owner": self.owner,
         }
 
     # CONTROL METHODS
