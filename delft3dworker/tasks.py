@@ -222,7 +222,6 @@ def dummy_preprocess(self, workingdir, _):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
-    print(workingdir)
     inputfolder = os.path.join(workingdir, 'preprocess')
     outputfolder = os.path.join(workingdir, 'simulation')
 
