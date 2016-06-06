@@ -1,21 +1,14 @@
 from __future__ import absolute_import
 
 import json
+import logging
 import os
-import ConfigParser
 import time
-from shutil import copyfile
-import pwd
-import grp
 
-
-from delft3dworker.utils import delft3d_logparser
-from delft3dworker.utils import python_logparser
 from delft3dworker.utils import PersistentLogger
 
 from django.conf import settings  # noqa
 
-from celery import chord
 from celery import shared_task
 from celery.contrib.abortable import AbortableTask, AbortableAsyncResult
 from celery.utils.log import get_task_logger
@@ -50,15 +43,25 @@ def chainedtask(self, parameters, workingdir, workflow):
     #         if not config.has_option(section, key):
     #             config.set(*map(str, [section, key, value]))
 
-    # with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
+    # with open(os.path.join(workingdir, 'input.ini'), z'w') as f:
     #     config.write(f)  # Yes, the ConfigParser writes to f
 
     # define chain and results
-    # chain = preprocess.s(workingdir, "") | simulation.s(workingdir) | dummy_export.s(workingdir)
-    if chain_tasks['export']:
-        chain = dummy_export.s(workingdir)
-    else:
+    # dummy chains:
+    if workflow == "export":
+        chain = dummy.s() | dummy_export.s(workingdir)
+    elif workflow == "main":
         chain = dummy_preprocess.s(workingdir, "") | dummy_simulation.s(workingdir)
+    else:
+        logging.info("workflow not available")
+
+    # # real chains:
+    # if workflow == "export":
+    #     chain = dummy.s() | export.s(workingdir)
+    # elif workflow == "main":
+    #     chain = preprocess.s(workingdir, "") | simulation.s(workingdir)
+    # else:
+    #     logging.info("workflow not available")
 
     chain_result = chain()
     results = {}
@@ -519,15 +522,14 @@ def dummy_export(self, _, workingdir):
     inputfolder = os.path.join(workingdir, 'simulation')
     outputfolder = os.path.join(workingdir, 'export')
 
-    # create export container with mount for input data and mount for result data.
+    # create Preprocess container
     volumes = ['{0}:/data/output:z'.format(outputfolder),
                '{0}:/data/input:ro'.format(inputfolder)]
 
-    # This command starts the export dummy container
-    command = "python dummy_export.py" # "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"
+    command = "python dummy_export.py"  # dummy container
 
-    export_container = DockerClient(
-        settings.EXPORT_DUMMY_IMAGE_NAME,
+    preprocess_container = DockerClient(
+        settings.PREPROCESS_DUMMY_IMAGE_NAME,
         volumes,
         '',
         command
@@ -536,7 +538,7 @@ def dummy_export(self, _, workingdir):
     # start preprocess
     state_meta = {"model_id": self.request.id, "output": ""}
 
-    export_container.start()
+    preprocess_container.start()
     logger.info("Started export")
     self.update_state(state='STARTED', meta=state_meta)
 
@@ -548,26 +550,34 @@ def dummy_export(self, _, workingdir):
 
         # abort handling
         if self.is_aborted():
-            export_container.stop()
+            preprocess_container.stop()
             break
 
         # if no abort or revoke: update state
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(export_container.get_log())
-            state_meta["container_id"] = export_container.id
+            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["container_id"] = preprocess_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
                 self.update_state(state='PROCESSING', meta=state_meta)
 
-        running = export_container.running()
+        running = preprocess_container.running()
         time.sleep(2)
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
     return state_meta
 
+@shared_task(bind=True, base=AbortableTask)
+def dummy(self):
+    """
+    Chained task which can be aborted. This task is a dummy task to maintain chain functionality.
+    An export chain with a single task is not allowed.
+
+    """
+    return
 
 # DockerClient
 

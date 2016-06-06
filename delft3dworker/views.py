@@ -103,7 +103,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             # 25 april '16: Almar, Fedor & Tijn decided that
             # a scenario should be started server-side after creation
-            # instance.start()
+            instance.start()
 
 
 class SceneViewSet(viewsets.ModelViewSet):
@@ -139,6 +139,7 @@ class SceneViewSet(viewsets.ModelViewSet):
             - parameter="parameter,minvalue,maxvalue"  
         """
         queryset = Scene.objects.all()
+        self.queryset = queryset
 
         # Filter on parameter
         parameter = self.request.query_params.get('parameter', None)
@@ -203,6 +204,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
             except:
                 return Scene.objects.none()
+
         return queryset
 
     @detail_route(methods=['get'])
@@ -210,10 +212,10 @@ class SceneViewSet(viewsets.ModelViewSet):
         # ad custom function to route restart and export
         scene = self.queryset.get(pk=pk)
 
-        if hasattr(request.data, 'workflow'):
-            scene.start(workflow=request.data['workflow'])
+        if 'workflow' in request.data:
+            scene.start(workflow=request.data["workflow"])
         else:
-            scene.start()
+            scene.start(workflow="main")
 
         serializer = self.get_serializer(scene)
 

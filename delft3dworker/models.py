@@ -89,9 +89,9 @@ class Scenario(models.Model):
 
     # CONTROL METHODS
 
-    def start(self, chain_tasks):
+    def start(self):
         for scene in self.scene_set.all():
-            scene.start(chain_tasks)
+            scene.start(workflow="main")
         return "started"
 
     def stop(self):
@@ -204,17 +204,11 @@ class Scene(models.Model):
         if result.state == BUSYSTATE:
             return {"error": "task already busy", "task_id": self.task_id}
 
-        if workflow == "main":
-            result = chainedtask.delay(
+        result = chainedtask.delay(
                 self.parameters, self.workingdir, workflow)
-            self.task_id = result.task_id
-            self.state = result.state
-            self.save()
-        elif workflow == "export":
-            # TODO, Implement export chain
-            logging.info("export workflow not available")
-        else:
-            logging.error("workflow {} unknown").format(workflow)
+        self.task_id = result.task_id
+        self.state = result.state
+        self.save()
 
         return {"task_id": self.task_id, "scene_id": self.suid}
 
