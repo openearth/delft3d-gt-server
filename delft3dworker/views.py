@@ -112,7 +112,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         filters.DjangoFilterBackend,
         filters.SearchFilter,
         filters.DjangoObjectPermissionsFilter,
-        )
+    )
 
     # Our own custom filter to create custom search fields
     # this creates &template= among others
@@ -176,7 +176,8 @@ class SceneViewSet(viewsets.ModelViewSet):
                     elif len(p) == 2:
 
                         key, value = p
-                        logging.info("Lookup value for parameter {}".format(key))
+                        logging.info(
+                            "Lookup value for parameter {}".format(key))
 
                         # Find integers or floats
                         value = float(value)
@@ -195,7 +196,6 @@ class SceneViewSet(viewsets.ModelViewSet):
                                 wanted.append(scene.id)
 
                         queryset = queryset.filter(pk__in=wanted)
-
 
                     # Key, min, max lookup
                     elif len(p) == 3:
@@ -255,18 +255,21 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["get","post"])
+    @detail_route(methods=["get", "post"])
     def publish_company(self, request, pk=None):
         scene = self.get_object()
-        groups = [group for group in self.request.user.groups.all() if "world" not in group.name]
+        groups = [
+            group for group in self.request.user.groups.all() if (
+                "world" not in group.name
+            )]
         print(groups)
         # If we can still edit, scene is not published
-        published = not self.request.user.has_perm('delft3dworker.change_scene', scene)
+        published = not self.request.user.has_perm(
+            'delft3dworker.change_scene', scene)
 
         if not published:
 
             # Remove write permissions for user
-            remove_perm('add_scene', self.request.user, scene)
             remove_perm('change_scene', self.request.user, scene)
             remove_perm('delete_scene', self.request.user, scene)
 
@@ -277,8 +280,10 @@ class SceneViewSet(viewsets.ModelViewSet):
             return Response({'status': 'Published scene'})
 
         else:
-            return Response({'status': 'Already published at company or world level'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'status': 'Already published at company or world level'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @detail_route(methods=["get", "post"])
     def publish_world(self, request, pk=None):
@@ -292,7 +297,6 @@ class SceneViewSet(viewsets.ModelViewSet):
         if len(groups) == 0:
 
             # Remove write permissions for user
-            remove_perm('add_scene', self.request.user, scene)
             remove_perm('change_scene', self.request.user, scene)
             remove_perm('delete_scene', self.request.user, scene)
 
@@ -308,8 +312,10 @@ class SceneViewSet(viewsets.ModelViewSet):
             return Response({'status': 'Published scene'})
 
         else:
-            return Response({'status': "Already published at company or world level"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'status': "Already published at company or world level"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class TemplateViewSet(viewsets.ModelViewSet):
@@ -332,9 +338,7 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
     def get_queryset(self):
-        user = get_object_or_404(User, id=self.request.user.id)
-        wanted = [group.id for group in user.groups.all()]
-        return User.objects.filter(groups__id__in=wanted)
+        return User.objects.all()
 
 
 class GroupViewSet(viewsets.ModelViewSet):
