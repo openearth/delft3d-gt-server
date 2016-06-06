@@ -47,21 +47,21 @@ def chainedtask(self, parameters, workingdir, workflow):
     #     config.write(f)  # Yes, the ConfigParser writes to f
 
     # define chain and results
-    # dummy chains:
-    if workflow == "export":
-        chain = dummy.s() | dummy_export.s(workingdir)
-    elif workflow == "main":
-        chain = dummy_preprocess.s(workingdir, "") | dummy_simulation.s(workingdir)
-    else:
-        logging.info("workflow not available")
-
-    # # real chains:
+    # # dummy chains:
     # if workflow == "export":
-    #     chain = dummy.s() | export.s(workingdir)
+    #     chain = dummy.s() | dummy_export.s(workingdir)
     # elif workflow == "main":
-    #     chain = preprocess.s(workingdir, "") | simulation.s(workingdir)
+    #     chain = dummy_preprocess.s(workingdir, "") | dummy_simulation.s(workingdir)
     # else:
     #     logging.info("workflow not available")
+
+    # real chains:
+    if workflow == "export":
+        chain = dummy.s() | export.s(workingdir)
+    elif workflow == "main":
+        chain = preprocess.s(workingdir, "") | simulation.s(workingdir)
+    else:
+        logging.info("workflow not available")
 
     chain_result = chain()
     results = {}
@@ -511,6 +511,62 @@ def postprocess(self, _, workingdir):
         running = postprocessing_container.running()
 
     # postprocessing_container.delete()  # Doesn't work on NFS fs
+
+    return state_meta
+
+@shared_task(bind=True, base=AbortableTask)
+def export(self, _, workingdir):
+    """ Chained task which can be aborted. Contains model logic. """
+
+    # # create folders
+    inputfolder = os.path.join(workingdir, 'simulation')
+    outputfolder = os.path.join(workingdir, 'export')
+
+    # create Preprocess container
+    volumes = ['{0}:/data/output:z'.format(outputfolder),
+               '{0}:/data/input:ro'.format(inputfolder)]
+
+    command = "/data/run.sh /data/svn/scripts/export/export2grdecl.py"  # dummy container
+
+    preprocess_container = DockerClient(
+        settings.EXPORT_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
+
+    # start preprocess
+    state_meta = {"model_id": self.request.id, "output": ""}
+
+    preprocess_container.start()
+    logger.info("Started export")
+    self.update_state(state='STARTED', meta=state_meta)
+
+    log = PersistentLogger(parser="python")
+
+    # loop task
+    running = True
+    while running:
+
+        # abort handling
+        if self.is_aborted():
+            preprocess_container.stop()
+            break
+
+        # if no abort or revoke: update state
+        else:
+            state_meta["task"] = self.__name__
+            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["container_id"] = preprocess_container.id
+            # race condition: although we check it in this if/else statement,
+            # aborted state is sometimes lost
+            if not self.is_aborted():
+                self.update_state(state='PROCESSING', meta=state_meta)
+
+        running = preprocess_container.running()
+        time.sleep(2)
+
+    # preprocess_container.delete()  # Doesn't work on NFS fs
 
     return state_meta
 
