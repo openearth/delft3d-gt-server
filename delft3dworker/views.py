@@ -249,7 +249,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         options = self.request.query_params.getlist('options', [])
         # What we will export, now ; separated (doesn't work), should be list as in
-        # http://10.0.1.2:8000/scene/export?id=1&options=export_images&options=export_thirdparty
+        # delft3dgt-local:8000/api/v1/scenes/44/export/?options=export_images&options=export_input
 
         if len(options) > 0:
             stream, filename = scene.export(options)
