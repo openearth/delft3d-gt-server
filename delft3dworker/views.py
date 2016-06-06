@@ -25,6 +25,7 @@ from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
 from rest_framework.decorators import detail_route
+from rest_framework.decorators import list_route
 from rest_framework import filters
 from rest_framework.response import Response
 from rest_framework import viewsets
@@ -39,13 +40,10 @@ from delft3dworker.serializers import TemplateSerializer
 from delft3dworker.serializers import UserSerializer
 
 
+# ################################### REST
 
 
-
-#################################### REST
-
-############ Filters
-
+# ### Filters
 
 class SceneFilter(filters.FilterSet):
     """
@@ -56,15 +54,12 @@ class SceneFilter(filters.FilterSet):
     template = django_filters.CharFilter(name="scenario__template__name")
     scenario = django_filters.CharFilter(name="scenario__name")
 
-
     class Meta:
         model = Scene
         fields = ['name', 'state', 'scenario', 'template']
-        # order_by = ['state','scenario','name']
 
 
-############# Views
-
+# ### ViewSets
 
 class GroupViewSet(viewsets.ModelViewSet):
     """
@@ -84,11 +79,12 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     serializer_class = ScenarioSerializer
 
     def get_queryset(self):
-        return Scenario.objects.all()
+        return Scenario.objects.filter(owner=self.request.user)
 
     def perform_create(self, serializer):
         if serializer.is_valid():
             instance = serializer.save()
+            instance.owner = self.request.user
 
             # Inspect validated field data.
             parameters = serializer.validated_data['parameters'] if (
@@ -112,7 +108,6 @@ class SceneViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = SceneSerializer
-    # filter_backends = (filters.DjangoFilterBackend, filters.SearchFilter,)
 
     # Our own custom filter to create custom search fields
     # this creates &template= among others
@@ -120,45 +115,56 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     # Searchfilter backend for field &search=
     # Filters on fields below beginning with value (^)
-    search_fields = ('^name', '^state', '^scenario__template__name', '^scenario__name')
+    search_fields = (
+        '^name', '^state', '^scenario__template__name', '^scenario__name')
 
     # Permissions backend which we could use in filter
     # permission_classes = (delft3dgtmain.permissions.etc)
+
+    def perform_create(self, serializer):
+        if serializer.is_valid():
+            instance = serializer.save()
+            instance.owner = self.request.user
+            instance.save()
 
     def get_queryset(self):
         """
         Optionally restricts the returned purchases to a given parameter,
         by filtering against a `parameter` query parameter in the URL.
-        
+
         Possible values:
             # filters on key occurance
-            - parameter="parameter  
+            - parameter="parameter
             # filters on key occurance and value
-            - parameter="parameter,value"  
+            - parameter="parameter,value"
             # filters on key occurance and value between min & max
-            - parameter="parameter,minvalue,maxvalue"  
+            - parameter="parameter,minvalue,maxvalue"
         """
-        queryset = Scene.objects.all()
-        self.queryset = queryset
+        self.queryset = Scene.objects.filter(owner=self.request.user)
 
         # Filter on parameter
         parameter = self.request.query_params.get('parameter', None)
+
         if parameter is not None:
 
             # Processing user input
             # will sometimes fail
             try:
-                p = parameter.split(',')
-                # Key exist lookup
 
+                p = parameter.split(',')
+
+                # Key exist lookup
                 if len(p) == 1:
+
                     key = parameter
                     logging.info("Lookup parameter {}".format(key))
-                    queryset = queryset.filter(parameters__icontains=key)
-                    return queryset
+                    self.queryset = self.queryset.filter(
+                        parameters__icontains=key)
+                    return self.queryset
 
                 # Key, value lookup
                 if len(p) == 2:
+
                     key, value = p
                     logging.info("Lookup value for parameter {}".format(key))
 
@@ -172,17 +178,26 @@ class SceneViewSet(viewsets.ModelViewSet):
                     # Requires JSONField from Postgresql 9.4 and Django 1.9
                     # So we loop manually (bad performance!)
                     wanted = []
-                    queryset = queryset.filter(parameters__icontains=key)
-                    for scene in queryset:
+                    self.queryset = self.queryset.filter(
+                        parameters__icontains=key)
+
+                    for scene in self.queryset:
                         if scene.parameters[key]['values'] == value:
                             wanted.append(scene.id)
 
-                    return queryset.filter(pk__in=wanted)
+                    return self.queryset.filter(pk__in=wanted)
 
                 # Key, min, max lookup
                 elif len(p) == 3:
+
                     key, minvalue, maxvalue = p
-                    logging.info("Lookup value between {} and {} for parameter {}".format(minvalue, maxvalue, key))
+                    logging.info(
+                        "Lookup value [{} - {}] for parameter {}".format(
+                            minvalue,
+                            maxvalue,
+                            key
+                        )
+                    )
 
                     # Find integers or floats
                     minvalue = float(minvalue)
@@ -195,17 +210,23 @@ class SceneViewSet(viewsets.ModelViewSet):
                     # Requires JSONField from Postgresql 9.4 and Django 1.9
                     # So we loop manually (bad performance!)
                     wanted = []
-                    queryset = queryset.filter(parameters__icontains=key)
-                    for scene in queryset:
-                        if minvalue <= scene.parameters[key]['values'] < maxvalue:
+                    self.queryset = self.queryset.filter(
+                        parameters__icontains=key)
+
+                    for scene in self.queryset:
+
+                        values = scene.parameters[key]['values']
+                        if minvalue <= values < maxvalue:
+
                             wanted.append(scene.id)
 
-                    return queryset.filter(pk__in=wanted)
+                    return self.queryset.filter(pk__in=wanted)
 
             except:
+
                 return Scene.objects.none()
 
-        return queryset
+        return self.queryset
 
     @detail_route(methods=['get'])
     def start(self, request, pk=None):
@@ -220,13 +241,6 @@ class SceneViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
-
-
-@method_decorator(csrf_exempt)
-def dispatch(self, *args, **kwargs):
-    return super(SceneStartView, self).dispatch(*args, **kwargs)
-
-
 
 
 class TemplateViewSet(viewsets.ModelViewSet):
@@ -250,9 +264,14 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return User.objects.all()
 
+    @list_route()
+    def me(self, request):
 
+        me = User.objects.filter(pk=request.user.pk)
 
+        serializer = self.get_serializer(me, many=True)
 
+        return Response(serializer.data)
 
 
 # ###################################
@@ -282,7 +301,8 @@ class ScenarioCreateView(View):
                 }
             )
 
-        # hard code the tasks for the chain. This should be added to the scenariosettings
+        # hard code the tasks for the chain. This should be added to the
+        # scenariosettings
         tasks = {'simulation': False, 'export': True}
 
         newscenario = Scenario(

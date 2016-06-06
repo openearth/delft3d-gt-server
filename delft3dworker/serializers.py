@@ -32,6 +32,12 @@ class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
 
     # here we will write custom serialization and validation methods
 
+    owner_url = serializers.HyperlinkedRelatedField(
+        read_only=True,
+        view_name='user-detail',
+        source='owner'
+    )
+
     template_url = serializers.HyperlinkedRelatedField(
         read_only=True,
         view_name='template-detail',
@@ -43,6 +49,7 @@ class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
         fields = (
             'id',
             'name',
+            'owner_url',
             'template_url',
             'parameters',
             'scene_set',
@@ -57,6 +64,12 @@ class SceneSerializer(serializers.HyperlinkedModelSerializer):
 
     # here we will write custom serialization and validation methods
 
+    owner_url = serializers.HyperlinkedRelatedField(
+        read_only=True,
+        view_name='user-detail',
+        source='owner'
+    )
+
     scenario_url = serializers.HyperlinkedRelatedField(
         read_only=True,
         view_name='scenario-detail',
@@ -68,6 +81,7 @@ class SceneSerializer(serializers.HyperlinkedModelSerializer):
         fields = (
             'id',
             'name',
+            'owner_url',
             'suid',
             'scenario_url',
             'fileurl',

@@ -18,6 +18,7 @@ from datetime import datetime
 from delft3dworker.tasks import chainedtask
 
 from django.conf import settings  # noqa
+from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
@@ -51,6 +52,7 @@ class Scenario(models.Model):
     scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
 
+    owner = models.ForeignKey(User, null=True)
 
     # PROPERTY METHODS
 
@@ -81,6 +83,7 @@ class Scenario(models.Model):
         for i, sceneparameters in enumerate(self.scenes_parameters):
             scene = Scene(
                 name="{}: Run {}".format(self.name, i + 1),
+                owner=self.owner,
                 scenario=self,
                 parameters=sceneparameters
             )
@@ -168,6 +171,8 @@ class Scene(models.Model):
     task_id = models.CharField(max_length=256)
     workingdir = models.CharField(max_length=256)
 
+    owner = models.ForeignKey(User, null=True)
+
     # PROPERTY METHODS
 
     def get_absolute_url(self):
@@ -194,7 +199,6 @@ class Scene(models.Model):
 
     # CONTROL METHODS
 
-
     def start(self, workflow="main"):
         result = AbortableAsyncResult(self.task_id)
 
@@ -205,7 +209,7 @@ class Scene(models.Model):
             return {"error": "task already busy", "task_id": self.task_id}
 
         result = chainedtask.delay(
-                self.parameters, self.workingdir, workflow)
+            self.parameters, self.workingdir, workflow)
         self.task_id = result.task_id
         self.state = result.state
         self.save()
@@ -413,7 +417,7 @@ class Scene(models.Model):
 
                     else:
                         # Other images ?
-                        ## Dummy images
+                        # Dummy images
                         self.info["delta_fringe_images"]["images"].append(f)
                         pass
 
