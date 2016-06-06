@@ -21,6 +21,7 @@ class TaskTest(TestCase):
         settings.CELERY_ALWAYS_EAGER = True
         current_app.conf.CELERY_ALWAYS_EAGER = True
 
+        # Are normally from provisioning
         settings.DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'
         settings.POSTPROCESS_DUMMY_IMAGE_NAME = 'dummy_postprocessing'
         settings.PREPROCESS_DUMMY_IMAGE_NAME = 'dummy_preprocessing'
