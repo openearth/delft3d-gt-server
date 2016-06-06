@@ -186,7 +186,11 @@ if 'test' in sys.argv:
         'settings$',
         'tests$',
         'urls$',
+        'rest_framework$',
+        'crispy_forms$'
     ]
+
+    WORKER_FILEDIR = ''
 
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'

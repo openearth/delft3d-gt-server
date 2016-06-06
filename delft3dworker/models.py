@@ -22,7 +22,8 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from jsonfield import JSONField
-# from django.contrib.postgres.fields import JSONField  # When we use Postgresql 9.4
+# from django.contrib.postgres.fields import JSONField  # When we use
+# Postgresql 9.4
 
 from mako.template import Template as MakoTemplate
 
@@ -45,7 +46,7 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.ForeignKey('Template', null=True)
+    template = models.ForeignKey('Template', blank=True, null=True)
 
     scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
@@ -193,8 +194,8 @@ class Scene(models.Model):
 
     # CONTROL METHODS
 
-    def start(self, chain_tasks):
 
+    def start(self, workflow="main"):
         result = AbortableAsyncResult(self.task_id)
 
         if self.task_id != "" and result.state == "PENDING":
@@ -203,10 +204,17 @@ class Scene(models.Model):
         if result.state == BUSYSTATE:
             return {"error": "task already busy", "task_id": self.task_id}
 
-        result = chainedtask.delay(self.parameters, self.workingdir, chain_tasks)
-        self.task_id = result.task_id
-        self.state = result.state
-        self.save()
+        if workflow == "main":
+            result = chainedtask.delay(
+                self.parameters, self.workingdir, workflow)
+            self.task_id = result.task_id
+            self.state = result.state
+            self.save()
+        elif workflow == "export":
+            # TODO, Implement export chain
+            logging.info("export workflow not available")
+        else:
+            logging.error("workflow {} unknown").format(workflow)
 
         return {"task_id": self.task_id, "scene_id": self.suid}
 
