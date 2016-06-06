@@ -1,3 +1,4 @@
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.test import TestCase
 
@@ -8,6 +9,7 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.views import ScenarioViewSet
 from delft3dworker.views import SceneViewSet
+from delft3dworker.views import UserViewSet
 
 
 class ListAccessTestCase(TestCase):
@@ -168,3 +170,36 @@ class SceneTestCase(TestCase):
         response = view(request, pk='1')
         response.render()
         self.assertEqual(response.status_code, 200)
+
+
+class UserTestCase(TestCase):
+    """
+    Test Custom User query
+    """
+
+    def setUp(self):
+
+        # create user in dB
+        self.user_foo = User.objects.create(
+            username="foo",
+            first_name="Foo",
+            last_name="Oof",
+            email="foo@company.nl"
+        )
+        groups_foo = Group.objects.create(name="org:Foo_Company")
+        groups_foo.user_set.add(self.user_foo)
+
+        self.factory = APIRequestFactory()
+
+    def test_me(self):
+        view = UserViewSet.as_view({'get': 'list'})
+        request = self.factory.get('/users/me/')
+        force_authenticate(request, user=self.user_foo)
+        response = view(request)
+        response.render()
+        self.assertEqual(response.status_code, 200)
+
+        self.assertContains(response, "foo")
+        self.assertContains(response, "Foo")
+        self.assertContains(response, "Oof")
+        self.assertContains(response, "foo@company.nl")
