@@ -99,7 +99,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             # 25 april '16: Almar, Fedor & Tijn decided that
             # a scenario should be started server-side after creation
-            # instance.start()
+            instance.start()
 
 
 class SceneViewSet(viewsets.ModelViewSet):
@@ -233,10 +233,10 @@ class SceneViewSet(viewsets.ModelViewSet):
         # ad custom function to route restart and export
         scene = self.queryset.get(pk=pk)
 
-        if hasattr(request.data, 'workflow'):
-            scene.start(workflow=request.data['workflow'])
+        if 'workflow' in request.data:
+            scene.start(workflow=request.data["workflow"])
         else:
-            scene.start()
+            scene.start(workflow="main")
 
         serializer = self.get_serializer(scene)
 
@@ -301,6 +301,10 @@ class ScenarioCreateView(View):
                 }
             )
 
+        # hard code the tasks for the chain. This should be added to the
+        # scenariosettings
+        tasks = {'simulation': False, 'export': True}
+
         newscenario = Scenario(
             name="Scene {}".format(datetime.now())
         )
@@ -311,7 +315,7 @@ class ScenarioCreateView(View):
 
         # 25 april '16: Almar, Fedor & Tijn decided that
         # a scenario should be started server-side after creation
-        newscenario.start()
+        newscenario.start(tasks)
 
         return JsonResponse({'created': 'ok'})
 
@@ -384,7 +388,9 @@ class ScenarioStartView(View):
             self.request.GET.get('id') or self.request.POST.get('id')
         )
         scenario = get_object_or_404(Scenario, id=scenario_id)
-        payload = {'status': scenario.start()}
+        tasks = {'simulation': False, 'export': True}
+        payload = {'status': scenario.start(tasks)}
+
         return JsonResponse(payload)
 
     @method_decorator(csrf_exempt)
