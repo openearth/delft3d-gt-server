@@ -27,12 +27,11 @@ from guardian.shortcuts import get_groups_with_perms, get_users_with_perms
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
-from rest_framework.decorators import detail_route
-from rest_framework.decorators import list_route
 from rest_framework import filters
 from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.decorators import detail_route
+from rest_framework.decorators import list_route
 from rest_framework.response import Response
 
 from delft3dworker.models import Scenario
@@ -316,6 +315,32 @@ class SceneViewSet(viewsets.ModelViewSet):
                 {'status': "Already published at company or world level"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    @detail_route(methods=['get'])
+    def export(self, request, pk=None):
+        scene = self.get_object()
+
+        options = self.request.query_params.getlist('options', [])
+        # What we will export, now ; separated (doesn't work), should be list
+        # as in https://delft3dgt-local:8000/api/v1/scenes/44/
+        # export/?options=export_images&options=export_input
+
+        if len(options) > 0:
+            stream, filename = scene.export(options)
+
+            resp = HttpResponse(
+                stream.getvalue(),
+                content_type="application/x-zip-compressed"
+            )
+            resp[
+                'Content-Disposition'] = 'attachment; filename={}'.format(
+                    filename
+            )
+
+            return resp
+        else:
+            return Response({'status': 'No export options given'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 class TemplateViewSet(viewsets.ModelViewSet):
@@ -637,7 +662,11 @@ class SceneExportView(View):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         scene = get_object_or_404(Scene, id=scene_id)
 
-        stream, filename = scene.export()
+        # What we will export, now ; separated (doesn't work), should be list as in
+        # http://10.0.1.2:8000/scene/export?id=1&options=export_images&options=export_thirdparty
+        options = (self.request.GET.getlist(
+            'options') or self.request.POST.getlist('options'))
+        stream, filename = scene.export(options)
 
         resp = HttpResponse(
             stream.getvalue(),
