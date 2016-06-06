@@ -3,11 +3,10 @@ import os
 from django.conf import settings
 from django.test import TestCase
 
-from mock import patch, MagicMock, create_autospec
+from mock import patch
 
 from celery import current_app
 from delft3dworker.tasks import chainedtask, dummy
-from delft3dworker.tasks import DockerClient
 
 # Main thing to test here is the valid forking in
 # the tasks and its return values.
@@ -17,7 +16,7 @@ from delft3dworker.tasks import DockerClient
 class TaskTest(TestCase):
 
     def setUp(self):
-        # mockDockerClient = create_autospec(DockerClient)
+        # Run celery tasks directly
         settings.CELERY_ALWAYS_EAGER = True
         current_app.conf.CELERY_ALWAYS_EAGER = True
 
