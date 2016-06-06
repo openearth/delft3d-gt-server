@@ -1,259 +1,177 @@
 [
   {
-    "fields": {
-      "description": "Description",
-      "templatename": "Default (delta plain)",
-      "variables": [
+     "pk": 1,
+     "model": "delft3dworker.template",
+     "fields": {
+       "name": "Default (delta plain)",
+       "meta": {
+         "description": "A river or tide dominated delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
+         "creator": "fedor.baart@deltares.nl"
+       },
+       "sections": [
         {
           "variables": [
             {
-              "description": "Name of this scenario",
-              "iseditable": true,
-              "min": 4,
               "default": "New scenario",
-              "max": 1024,
-              "required": true,
-              "label": "Scenario name",
-              "units": "",
-              "stepoptions": {
-                "autostep": false,
-                "maxstep": 0,
-                "minstep": 0,
-                "defaultstep": 0,
-                "multipleof": 0
+              "id": "name",
+              "type": "text",
+              "name": "Name",
+              "validators": {
+                "required": true
+              }
+            },
+            {
+              "name": "Model Engine",
+              "default": "Delft3D Curvilinear",
+              "disabled": true,
+              "validators": {
+                "required": true
               },
               "type": "text",
-              "variableid": "scenarioname"
+              "id": "engine"
+            },
+            {
+              "name": "Version",
+              "default": "v0.1",
+              "disabled": true,
+              "validators": {
+                "required": true
+              },
+              "type": "semver",
+              "id": "version"
             }
           ],
-          "name": "scenario",
-          "label": "Scenario information"
+          "name": "Scenario"
         },
         {
           "variables": [
             {
-              "description": "Simulation end time of the model",
-              "iseditable": true,
-              "min": 0,
+              "name": "Stop time",
               "default": 87840,
-              "max": 230880,
-              "required": false,
-              "label": "Simulation duration",
-              "units": "min",
-              "stepoptions": {
-                "autostep": false,
-                "maxstep": 0,
-                "minstep": 0,
-                "defaultstep": 0,
-                "multipleof": 0
+              "validators": {
+                "max": 230880,
+                "required": true,
+                "min": 0
               },
+              "units": "min",
               "type": "numeric",
-              "variableid": "simstoptime"
+              "id": "simstoptime"
             },
             {
-              "description": "Simulation timestep",
-              "iseditable": true,
-              "min": 0.5,
+              "name": "Timestep",
               "default": 1,
-              "max": 20,
-              "required": false,
-              "label": "Simulation duration",
-              "units": "min",
-              "stepoptions": {
-                "autostep": false,
-                "maxstep": 0,
-                "minstep": 0,
-                "defaultstep": 0,
-                "multipleof": 0
+              "validators": {
+                "max": 20,
+                "required": true,
+                "min": 0.5
               },
+              "units": "min",
               "type": "numeric",
-              "variableid": "dt"
+              "id": "dt"
             },
             {
-              "description": "Interval at which data is written",
-              "iseditable": true,
-              "min": 720,
+              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
               "default": 1440,
-              "max": 2880,
-              "required": false,
-              "label": "Data output interval",
+              "validators": {
+                "max": 2880,
+                "required": true,
+                "min": 720
+              },
               "units": "min",
-              "stepoptions": {
-                "autostep": false,
-                "maxstep": 0,
-                "minstep": 0,
-                "defaultstep": 0,
-                "multipleof": 0
-              },
               "type": "numeric",
-              "variableid": "outputinterval"
+              "id": "outputinterval",
+              "name": "Output timestep"
             }
           ],
-          "name": "simulationsettings",
-          "label": "Simulation settings"
+          "name": "Parameters"
         },
         {
           "variables": [
             {
-              "description": "Slope of the basin",
-              "iseditable": true,
-              "min": 0.01,
+              "name": "Basin slope",
               "default": 0.0143,
-              "max": 0.3,
-              "required": false,
-              "label": "Basin slope",
-              "stepoptions": {
-                "autostep": true,
-                "maxstep": 2,
-                "minstep": 1,
-                "defaultstep": 0.1,
-                "multipleof": 0
+              "validators": {
+                "max": 0.3,
+                "min": 0.01
               },
+              "factor": true,
               "units": "deg",
-              "choices": [
-                "Option A",
-                "Option B",
-                "Option C"
-              ],
               "type": "numeric",
-              "variableid": "basinslope"
+              "id": "basinslope"
             },
             {
-              "description": "Width of the river in meters",
-              "iseditable": true,
-              "min": 100,
+              "name": "River width",
               "default": 300,
-              "max": 1000,
-              "required": false,
-              "label": "River width",
-              "stepoptions": {
-                "autostep": true,
-                "maxstep": 10,
-                "minstep": 10,
-                "defaultstep": 200,
-                "multipleof": 100
+              "validators": {
+                "max": 1000,
+                "min": 100
               },
+              "factor": true,
               "units": "m",
-              "choices": [
-                "Option A",
-                "Option B",
-                "Option C"
-              ],
               "type": "numeric",
-              "variableid": "riverwidth"
+              "id": "riverwidth"
             }
           ],
-          "name": "geometry",
-          "label": "Geometry settings"
+          "name": "Geometry"
         },
         {
           "variables": [
             {
-              "description": "Discharge of the river in cubic meters per second.",
-              "iseditable": true,
-              "min": 0,
+              "name": "River discharge",
               "default": 1000,
-              "max": 2000,
-              "required": false,
-              "label": "River discharge",
-              "stepoptions": {
-                "autostep": true,
-                "maxstep": 500,
-                "minstep": 50,
-                "defaultstep": 500,
-                "multipleof": 0
+              "validators": {
+                "max": 2000,
+                "min": 0
               },
+              "factor": true,
               "units": "m³/s",
-              "choices": [
-                "Option A",
-                "Option B",
-                "Option C"
-              ],
               "type": "numeric",
-              "variableid": "riverdischarge"
+              "id": "riverdischarge"
             },
             {
-              "description": "Tidal amplitude in meters.",
-              "iseditable": true,
-              "min": 0,
-              "default": "1",
-              "max": 3,
-              "required": false,
-              "label": "Tidal amplitude",
-              "units": "m",
-              "stepoptions": {
-                "autostep": true,
-                "maxstep": 0.25,
-                "minstep": 0,
-                "defaultstep": 0,
-                "multipleof": 0
+              "name": "Tidal amplitude",
+              "default": 1,
+              "validators": {
+                "max": 3,
+                "min": 0
               },
+              "factor": true,
+              "units": "m",
               "type": "numeric",
-              "variableid": "tidalamplitude"
+              "id": "tidalamplitude"
             }
           ],
-          "name": "forces",
-          "label": "Force settings"
+          "name": "Forces"
         },
         {
           "variables": [
             {
-              "group": "composition",
-              "variableid": "sandvolcomposition",
-              "iseditable": true,
-              "min": 0,
+              "name": "Sand volumetric composition",
               "default": 50,
-              "max": 100,
-              "required": false,
-              "label": "Sand volumetric composition",
-              "units": "%",
-              "stepoptions": {
-                "autostep": false,
-                "maxstep": 0,
-                "minstep": 0,
-                "defaultstep": 0,
-                "multipleof": 0
+              "validators": {
+                "max": 100,
+                "min": 0
               },
+              "units": "%",
               "type": "numeric",
-              "description": "Sand volumetric composition in percent (add up to 100%)"
+              "id": "sandvolcomposition"
             },
             {
-              "group": "composition",
-              "variableid": "clayvolcomposition",
-              "iseditable": true,
-              "min": 0,
+              "name": "Clay volumetric composition",
               "default": 50,
-              "max": 100,
-              "required": false,
-              "label": "Clay volumetric composition",
-              "units": "%",
-              "stepoptions": {
-                "autostep": false,
-                "maxstep": 0,
-                "minstep": 0,
-                "defaultstep": 0,
-                "multipleof": 0
+              "disabled": false,
+              "validators": {
+                "max": 100,
+                "min": 0
               },
+              "units": "%",
               "type": "numeric",
-              "description": "Clay volumetric composition in percent. (add up to 100%)"
+              "id": "clayvolcomposition"
             }
           ],
-          "name": "sedimentcomposition",
-          "label": "Sediment composition settings"
+          "name": "Sediment composition"
         }
-      ],
-      "site": "Location A",
-      "label": "My model label",
-      "version": 1,
-      "groups": {
-        "composition": {
-          "targetvalue": 100
-        }
-      },
-      "model": "Default model",
-      "email": "email@email.com"
-    },
-    "model": "delft3dworker.template",
-    "pk": 1
+      ]
+    }
   }
 ]

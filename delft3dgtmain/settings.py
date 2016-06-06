@@ -40,6 +40,7 @@ INSTALLED_APPS = [
 
     'djcelery',
     'rest_framework',
+    'crispy_forms',
 
     'delft3dworker',
     'delft3dgtfrontend',
@@ -140,6 +141,10 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'rest_framework.filters.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
     ]
 }
 
@@ -181,7 +186,11 @@ if 'test' in sys.argv:
         'settings$',
         'tests$',
         'urls$',
+        'rest_framework$',
+        'crispy_forms$'
     ]
+
+    WORKER_FILEDIR = ''
 
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'

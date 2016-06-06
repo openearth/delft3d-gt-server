@@ -1,16 +1,10 @@
 from __future__ import absolute_import
 
 import json
+import logging
 import os
-import ConfigParser
 import time
-from shutil import copyfile
-import pwd
-import grp
 
-
-from delft3dworker.utils import delft3d_logparser
-from delft3dworker.utils import python_logparser
 from delft3dworker.utils import PersistentLogger
 
 from django.conf import settings  # noqa
@@ -25,7 +19,9 @@ logger = get_task_logger(__name__)
 
 
 @shared_task(bind=True, base=AbortableTask)
-def chainedtask(self, parameters, workingdir):
+
+def chainedtask(self, parameters, workingdir, workflow):
+
     """ Chained task which can be aborted. Contains model logic. """
 
     # create folder
@@ -47,11 +43,26 @@ def chainedtask(self, parameters, workingdir):
     #         if not config.has_option(section, key):
     #             config.set(*map(str, [section, key, value]))
 
-    # with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
+    # with open(os.path.join(workingdir, 'input.ini'), z'w') as f:
     #     config.write(f)  # Yes, the ConfigParser writes to f
 
     # define chain and results
-    chain = preprocess.s(workingdir, "") | simulation.s(workingdir)
+    # dummy chains:
+    if workflow == "export":
+        chain = dummy.s() | dummy_export.s(workingdir)
+    elif workflow == "main":
+        chain = dummy_preprocess.s(workingdir, "") | dummy_simulation.s(workingdir)
+    else:
+        logging.info("workflow not available")
+
+    # # real chains:
+    # if workflow == "export":
+    #     chain = dummy.s() | export.s(workingdir)
+    # elif workflow == "main":
+    #     chain = preprocess.s(workingdir, "") | simulation.s(workingdir)
+    # else:
+    #     logging.info("workflow not available")
+
     chain_result = chain()
     results = {}
 
@@ -205,6 +216,61 @@ def preprocess(self, workingdir, _):
 
     return state_meta
 
+@shared_task(bind=True, base=AbortableTask)
+def dummy_preprocess(self, workingdir, _):
+    """ Chained task which can be aborted. Contains model logic. """
+
+    # # create folders
+    inputfolder = os.path.join(workingdir, 'preprocess')
+    outputfolder = os.path.join(workingdir, 'simulation')
+
+    # create Preprocess container
+    volumes = ['{0}:/data/output:z'.format(outputfolder),
+               '{0}:/data/input:ro'.format(inputfolder)]
+
+    command = "python dummy_create_config.py {}".format(3)  # dummy container
+
+    preprocess_container = DockerClient(
+        settings.PREPROCESS_DUMMY_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
+
+    # start preprocess
+    state_meta = {"model_id": self.request.id, "output": ""}
+
+    preprocess_container.start()
+    logger.info("Started preprocessing")
+    self.update_state(state='STARTED', meta=state_meta)
+
+    log = PersistentLogger(parser="python")
+
+    # loop task
+    running = True
+    while running:
+
+        # abort handling
+        if self.is_aborted():
+            preprocess_container.stop()
+            break
+
+        # if no abort or revoke: update state
+        else:
+            state_meta["task"] = self.__name__
+            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["container_id"] = preprocess_container.id
+            # race condition: although we check it in this if/else statement,
+            # aborted state is sometimes lost
+            if not self.is_aborted():
+                self.update_state(state='PROCESSING', meta=state_meta)
+
+        running = preprocess_container.running()
+        time.sleep(2)
+
+    # preprocess_container.delete()  # Doesn't work on NFS fs
+
+    return state_meta
 
 @shared_task(bind=True, base=AbortableTask)
 def simulation(self, _, workingdir):
@@ -306,6 +372,91 @@ def simulation(self, _, workingdir):
 
 
 @shared_task(bind=True, base=AbortableTask)
+def dummy_simulation(self, _, workingdir):
+    """
+    TODO Check if processing is still running
+    before starting another one.
+    TODO Check how we want to log processing
+    docker run -v /data/container/files/ea8b3912-dedc-4da5-aff8-2a9f3591586e/simulation/:/data -t dummy_preprocessing python dummy_netcdf_output.py
+    """
+    # create folders
+    inputfolder = os.path.join(workingdir, 'simulation')
+    outputfolder = os.path.join(workingdir, 'process')
+    # os.makedirs(outputfolder)
+
+    # create Sim container
+    volumes = ['{0}:/data/input'.format(inputfolder)]
+    command = "python dummy_netcdf_output.py"
+
+    simulation_container = DockerClient(
+        settings.DELFT3D_DUMMY_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
+
+    # create Process container
+    volumes = ['{0}:/data/input:ro'.format(inputfolder),
+               '{0}:/data/output:z'.format(outputfolder)]
+    command = 'python dummy_plot_netcdf.py'
+    processing_container = DockerClient(
+        settings.PROCESS_DUMMY_IMAGE_NAME, volumes, '', command)
+
+    # start simulation
+    state_meta = {"model_id": self.request.id, "output": ""}
+    simulation_container.start()
+    logger.info("Started simulation")
+    self.update_state(state='STARTED', meta=state_meta)
+
+    simlog = PersistentLogger(parser="delft3d")
+    proclog = PersistentLogger(parser="python")
+
+    # loop task
+    running = True
+    while running:
+
+        # abort handling
+        if self.is_aborted():
+            processing_container.stop()
+            simulation_container.stop()
+            break
+
+        # if no abort or revoke: update state
+        else:
+            # process
+            # sim has progress
+            if simlog.changed() and not processing_container.running():
+                logger.info("Started processing, sim progress changed.")
+                processing_container.start()
+                logger.info(state_meta["output"])
+
+            # update state
+            state_meta["task"] = self.__name__
+            state_meta["output"] = [
+                simlog.parse(simulation_container.get_log()),
+                proclog.parse(processing_container.get_log())
+            ]
+            state_meta["container_id"] = {
+                "simulation": simulation_container.id,
+                "processing": processing_container.id
+            }
+
+            # logger.info(state_meta["output"])
+            # race condition: although we check it in this if/else statement,
+            # aborted state is sometimes lost
+            if not self.is_aborted():
+                self.update_state(state="PROCESSING", meta=state_meta)
+
+        time.sleep(2)
+
+        running = simulation_container.running()
+
+    # simulation_container.delete()  # Doesn't work on NFS fs
+    # processing_container.delete()  # Doesn't work on NFS fs
+
+    return state_meta
+
+@shared_task(bind=True, base=AbortableTask)
 def postprocess(self, _, workingdir):
     # create folders
     outputfolder = os.path.join(workingdir, 'postprocess')
@@ -363,6 +514,70 @@ def postprocess(self, _, workingdir):
 
     return state_meta
 
+@shared_task(bind=True, base=AbortableTask)
+def dummy_export(self, _, workingdir):
+    """ Chained task which can be aborted. Contains model logic. """
+
+    # # create folders
+    inputfolder = os.path.join(workingdir, 'simulation')
+    outputfolder = os.path.join(workingdir, 'export')
+
+    # create Preprocess container
+    volumes = ['{0}:/data/output:z'.format(outputfolder),
+               '{0}:/data/input:ro'.format(inputfolder)]
+
+    command = "python dummy_export.py"  # dummy container
+
+    preprocess_container = DockerClient(
+        settings.PREPROCESS_DUMMY_IMAGE_NAME,
+        volumes,
+        '',
+        command
+    )
+
+    # start preprocess
+    state_meta = {"model_id": self.request.id, "output": ""}
+
+    preprocess_container.start()
+    logger.info("Started export")
+    self.update_state(state='STARTED', meta=state_meta)
+
+    log = PersistentLogger(parser="python")
+
+    # loop task
+    running = True
+    while running:
+
+        # abort handling
+        if self.is_aborted():
+            preprocess_container.stop()
+            break
+
+        # if no abort or revoke: update state
+        else:
+            state_meta["task"] = self.__name__
+            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["container_id"] = preprocess_container.id
+            # race condition: although we check it in this if/else statement,
+            # aborted state is sometimes lost
+            if not self.is_aborted():
+                self.update_state(state='PROCESSING', meta=state_meta)
+
+        running = preprocess_container.running()
+        time.sleep(2)
+
+    # preprocess_container.delete()  # Doesn't work on NFS fs
+
+    return state_meta
+
+@shared_task(bind=True, base=AbortableTask)
+def dummy(self):
+    """
+    Chained task which can be aborted. This task is a dummy task to maintain chain functionality.
+    An export chain with a single task is not allowed.
+
+    """
+    return
 
 # DockerClient
 

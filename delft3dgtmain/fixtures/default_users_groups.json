@@ -1,16 +1,86 @@
 [
   {
     "fields": {
-      "name": "org:Foo_Company",
+      "name": "access:world",
       "permissions": []
+    },
+    "model": "auth.group",
+    "pk": 42
+  },
+  {
+    "fields": {
+      "name": "access:org:Foo_Company",
+      "permissions": [
+        [
+          "add_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "change_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "delete_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "add_scene",
+          "delft3dworker",
+          "scene"
+        ],
+        [
+          "change_scene",
+          "delft3dworker",
+          "scene"
+        ],
+        [
+          "delete_scene",
+          "delft3dworker",
+          "scene"
+        ]
+      ]
     },
     "model": "auth.group",
     "pk": 500
   },
   {
     "fields": {
-      "name": "org:Bar_Company",
-      "permissions": []
+      "name": "access:org:Bar_Company",
+      "permissions": [
+        [
+          "add_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "change_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "delete_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "add_scene",
+          "delft3dworker",
+          "scene"
+        ],
+        [
+          "change_scene",
+          "delft3dworker",
+          "scene"
+        ],
+        [
+          "delete_scene",
+          "delft3dworker",
+          "scene"
+        ]
+      ]
     },
     "model": "auth.group",
     "pk": 501
@@ -25,7 +95,12 @@
       "is_staff": false,
       "last_login": null,
       "groups": [
-        500
+        [
+          "access:org:Foo_Company"
+        ],
+        [
+          "access:world"
+        ]
       ],
       "user_permissions": [],
       "password": "pbkdf2_sha256$20000$twSLZRbL2oty$QbldXf1MNLCdf9n7xIoQKZX1D9phDylwrlplQqepEKc=",
@@ -45,7 +120,12 @@
       "is_staff": false,
       "last_login": null,
       "groups": [
-        501
+        [
+          "access:org:Bar_Company"
+        ],
+        [
+          "access:world"
+        ]
       ],
       "user_permissions": [],
       "password": "pbkdf2_sha256$20000$3UJqTdQX0mMo$Or4V7/KXHbmZpVH3kjTWE2lbtA8JOzmzt0ngaU5Azz8=",
