@@ -196,7 +196,9 @@ if 'test' in sys.argv:
         'tests$',
         'urls$',
         'rest_framework$',
-        'crispy_forms$'
+        'crispy_forms$',
+        'guardian$',
+        'delft3dworker.management$'
     ]
 
     WORKER_FILEDIR = ''
