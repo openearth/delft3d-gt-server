@@ -139,7 +139,7 @@ class SceneViewSet(viewsets.ModelViewSet):
             # filters on key occurance and value between min & max
             - parameter="parameter,minvalue,maxvalue"
         """
-        queryset = Scene.objects.filter(owner=self.request.user)
+        self.queryset = Scene.objects.filter(owner=self.request.user)
 
         # Filter on parameter
         parameter = self.request.query_params.get('parameter', None)
@@ -157,8 +157,9 @@ class SceneViewSet(viewsets.ModelViewSet):
 
                     key = parameter
                     logging.info("Lookup parameter {}".format(key))
-                    queryset = queryset.filter(parameters__icontains=key)
-                    return queryset
+                    self.queryset = self.queryset.filter(
+                        parameters__icontains=key)
+                    return self.queryset
 
                 # Key, value lookup
                 if len(p) == 2:
@@ -176,13 +177,14 @@ class SceneViewSet(viewsets.ModelViewSet):
                     # Requires JSONField from Postgresql 9.4 and Django 1.9
                     # So we loop manually (bad performance!)
                     wanted = []
-                    queryset = queryset.filter(parameters__icontains=key)
+                    self.queryset = self.queryset.filter(
+                        parameters__icontains=key)
 
-                    for scene in queryset:
+                    for scene in self.queryset:
                         if scene.parameters[key]['values'] == value:
                             wanted.append(scene.id)
 
-                    return queryset.filter(pk__in=wanted)
+                    return self.queryset.filter(pk__in=wanted)
 
                 # Key, min, max lookup
                 elif len(p) == 3:
@@ -207,22 +209,23 @@ class SceneViewSet(viewsets.ModelViewSet):
                     # Requires JSONField from Postgresql 9.4 and Django 1.9
                     # So we loop manually (bad performance!)
                     wanted = []
-                    queryset = queryset.filter(parameters__icontains=key)
+                    self.queryset = self.queryset.filter(
+                        parameters__icontains=key)
 
-                    for scene in queryset:
+                    for scene in self.queryset:
 
                         values = scene.parameters[key]['values']
                         if minvalue <= values < maxvalue:
 
                             wanted.append(scene.id)
 
-                    return queryset.filter(pk__in=wanted)
+                    return self.queryset.filter(pk__in=wanted)
 
             except:
 
                 return Scene.objects.none()
 
-        return queryset
+        return self.queryset
 
     @detail_route(methods=['get'])
     def start(self, request, pk=None):
