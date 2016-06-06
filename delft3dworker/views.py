@@ -27,6 +27,8 @@ from guardian.shortcuts import get_groups_with_perms, get_users_with_perms
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
+from rest_framework.decorators import detail_route
+from rest_framework.decorators import list_route
 from rest_framework import filters
 from rest_framework import status
 from rest_framework import viewsets
@@ -97,7 +99,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             # 25 april '16: Almar, Fedor & Tijn decided that
             # a scenario should be started server-side after creation
-            # instance.start()
+            instance.start()
 
 
 class SceneViewSet(viewsets.ModelViewSet):
@@ -148,7 +150,7 @@ class SceneViewSet(viewsets.ModelViewSet):
             # filters on key occurance and value between min & max
             - parameter="parameter,minvalue,maxvalue"
         """
-        queryset = Scene.objects.filter(owner=self.request.user)
+        self.queryset = Scene.objects.filter(owner=self.request.user)
 
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
@@ -194,6 +196,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
                         queryset = queryset.filter(pk__in=wanted)
 
+
                     # Key, min, max lookup
                     elif len(p) == 3:
 
@@ -220,7 +223,6 @@ class SceneViewSet(viewsets.ModelViewSet):
                         queryset = queryset.filter(parameters__icontains=key)
 
                         for scene in queryset:
-
                             values = scene.parameters[key]['values']
                             if minvalue <= values < maxvalue:
 
@@ -244,10 +246,10 @@ class SceneViewSet(viewsets.ModelViewSet):
         # ad custom function to route restart and export
         scene = self.queryset.get(pk=pk)
 
-        if hasattr(request.data, 'workflow'):
-            scene.start(workflow=request.data['workflow'])
+        if 'workflow' in request.data:
+            scene.start(workflow=request.data["workflow"])
         else:
-            scene.start()
+            scene.start(workflow="main")
 
         serializer = self.get_serializer(scene)
 
@@ -347,6 +349,15 @@ class GroupViewSet(viewsets.ModelViewSet):
         wanted = [group.id for group in user.groups.all()]
         return Group.objects.filter(pk__in=wanted)
 
+    @list_route()
+    def me(self, request):
+
+        me = User.objects.filter(pk=request.user.pk)
+
+        serializer = self.get_serializer(me, many=True)
+
+        return Response(serializer.data)
+
 
 # ###################################
 # The code below will be phased out in Sprint 4
@@ -375,6 +386,10 @@ class ScenarioCreateView(View):
                 }
             )
 
+        # hard code the tasks for the chain. This should be added to the
+        # scenariosettings
+        tasks = {'simulation': False, 'export': True}
+
         newscenario = Scenario(
             name="Scene {}".format(datetime.now())
         )
@@ -385,7 +400,7 @@ class ScenarioCreateView(View):
 
         # 25 april '16: Almar, Fedor & Tijn decided that
         # a scenario should be started server-side after creation
-        newscenario.start()
+        newscenario.start(tasks)
 
         return JsonResponse({'created': 'ok'})
 
@@ -458,7 +473,9 @@ class ScenarioStartView(View):
             self.request.GET.get('id') or self.request.POST.get('id')
         )
         scenario = get_object_or_404(Scenario, id=scenario_id)
-        payload = {'status': scenario.start()}
+        tasks = {'simulation': False, 'export': True}
+        payload = {'status': scenario.start(tasks)}
+
         return JsonResponse(payload)
 
     @method_decorator(csrf_exempt)

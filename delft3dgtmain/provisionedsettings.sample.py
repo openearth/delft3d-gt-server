@@ -28,6 +28,13 @@ POSTPROCESS_IMAGE_NAME = 'python27_container'
 PREPROCESS_IMAGE_NAME = 'python27_container'
 PROCESS_IMAGE_NAME = 'python27_container'
 
+# dummy workers
+DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'
+POSTPROCESS_DUMMY_IMAGE_NAME = 'dummy_postprocessing'
+PREPROCESS_DUMMY_IMAGE_NAME = 'dummy_preprocessing'
+PROCESS_DUMMY_IMAGE_NAME = 'dummy_processing'
+EXPORT_DUMMY_IMAGE_NAME = 'dummy_export'
+
 WORKER_FILEDIR = '/data/container/files'
 
 CELERY_ROUTES = {
@@ -35,4 +42,5 @@ CELERY_ROUTES = {
   'delft3dworker.tasks.preprocess': {'queue': 'pre'},
   'delft3dworker.tasks.simulation': {'queue': 'sim'},
   'delft3dworker.tasks.postprocess': {'queue': 'post'},
+  'delft3dworker.tasks.export': {'queue': 'export'},
 }

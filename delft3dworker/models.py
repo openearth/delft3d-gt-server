@@ -49,7 +49,7 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.ForeignKey('Template', null=True)
+    template = models.ForeignKey('Template', blank=True, null=True)
 
     scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
@@ -106,7 +106,7 @@ class Scenario(models.Model):
 
     def start(self):
         for scene in self.scene_set.all():
-            scene.start()
+            scene.start(workflow="main")
         return "started"
 
     def stop(self):
@@ -225,19 +225,13 @@ class Scene(models.Model):
         if result.state == BUSYSTATE:
             return {"error": "task already busy", "task_id": self.task_id}
 
-        if workflow == "main":
-            result = chainedtask.delay(self.parameters, self.workingdir, workflow)
-            self.task_id = result.task_id
-            self.state = result.state
-            self.save()
-        elif workflow == "export":
-            # TODO, Implement export chain
-            logging.info("export workflow not available")
-        else:
-            logging.error("workflow {} unknown").format(workflow)
+        result = chainedtask.delay(
+            self.parameters, self.workingdir, workflow)
+        self.task_id = result.task_id
+        self.state = result.state
+        self.save()
 
         return {"task_id": self.task_id, "scene_id": self.suid}
-
 
     def abort(self):
 
@@ -440,6 +434,8 @@ class Scene(models.Model):
 
                     else:
                         # Other images ?
+                        # Dummy images
+                        self.info["delta_fringe_images"]["images"].append(f)
                         pass
 
         for root, dirs, files in os.walk(

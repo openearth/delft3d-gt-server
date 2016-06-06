@@ -1,7 +1,15 @@
 [
   {
     "fields": {
-      "name": "org:Foo_Company",
+      "name": "access:world",
+      "permissions": []
+    },
+    "model": "auth.group",
+    "pk": 42
+  },
+  {
+    "fields": {
+      "name": "access:org:Foo_Company",
       "permissions": [
         [
           "add_scenario",
@@ -40,7 +48,7 @@
   },
   {
     "fields": {
-      "name": "org:Bar_Company",
+      "name": "access:org:Bar_Company",
       "permissions": [
         [
           "add_scenario",
@@ -85,10 +93,13 @@
       "is_active": true,
       "is_superuser": false,
       "is_staff": false,
-      "last_login": "2016-05-31T09:44:13.719Z",
+      "last_login": null,
       "groups": [
         [
-          "org:Foo_Company"
+          "access:org:Foo_Company"
+        ],
+        [
+          "access:world"
         ]
       ],
       "user_permissions": [],
@@ -110,7 +121,10 @@
       "last_login": null,
       "groups": [
         [
-          "org:Bar_Company"
+          "access:org:Bar_Company"
+        ],
+        [
+          "access:world"
         ]
       ],
       "user_permissions": [],
