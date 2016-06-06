@@ -22,6 +22,8 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
+from guardian.shortcuts import assign_perm
+
 from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
 # Postgresql 9.4
@@ -56,6 +58,11 @@ class Scenario(models.Model):
 
     # PROPERTY METHODS
 
+    class Meta:
+            permissions = (
+                ('view_scenario', 'View Scenario'),
+            )
+
     def get_absolute_url(self):
 
         return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
@@ -88,6 +95,11 @@ class Scenario(models.Model):
                 parameters=sceneparameters
             )
             scene.save()
+
+            assign_perm('view_scene', self.owner, scene)
+            assign_perm('change_scene', self.owner, scene)
+            assign_perm('delete_scene', self.owner, scene)
+
         self.save()
 
     # CONTROL METHODS
@@ -174,6 +186,11 @@ class Scene(models.Model):
     owner = models.ForeignKey(User, null=True)
 
     # PROPERTY METHODS
+    class Meta:
+            permissions = (
+                ('view_scene', 'View Scene'),
+            )
+
 
     def get_absolute_url(self):
 
@@ -463,3 +480,8 @@ class Template(models.Model):
 
     def __unicode__(self):
         return self.name
+
+    class Meta:
+        permissions = (
+            ('view_template', 'View Template'),
+        )

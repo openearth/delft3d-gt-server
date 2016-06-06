@@ -1,14 +1,19 @@
 from django.contrib import admin
 
-# from models import ProcessingTask
+from guardian.admin import GuardedModelAdmin
+
 from models import Scenario
 from models import Scene
-# from models import SimulationTask
 from models import Template
 
+@admin.register(Template)
+class TemplateAdmin(GuardedModelAdmin):
+    pass
 
-admin.site.register(Template)
-admin.site.register(Scenario)
-admin.site.register(Scene)
-# admin.site.register(SimulationTask)
-# admin.site.register(ProcessingTask)
+@admin.register(Scenario)
+class ScenarioAdmin(GuardedModelAdmin):
+    pass
+
+@admin.register(Scene)
+class SceneAdmin(GuardedModelAdmin):
+    pass
