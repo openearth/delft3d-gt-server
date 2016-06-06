@@ -54,6 +54,7 @@ def chainedtask(self, parameters, workingdir, workflow):
         chain = dummy_preprocess.s(workingdir, "") | dummy_simulation.s(workingdir)
     else:
         logging.info("workflow not available")
+        return
 
     # # real chains:
     # if workflow == "export":
