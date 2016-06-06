@@ -7,6 +7,7 @@ from os import listdir, walk
 from os.path import join, dirname, split
 from shutil import rmtree
 
+
 class Command(BaseCommand):
     help = 'Removes leftover file directories not linked to existing models.'
 
@@ -22,7 +23,7 @@ class Command(BaseCommand):
                 linked.add(scenedir)
 
             r, d, f = walk(settings.WORKER_FILEDIR).next()
-            existing = set([join(r,directory) for directory in d])
+            existing = set([join(r, directory) for directory in d])
 
             linked = linked | ignore
             unlinked = existing - linked

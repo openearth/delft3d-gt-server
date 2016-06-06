@@ -21,14 +21,18 @@ from django.views.generic import CreateView
 from django.views.generic import DeleteView
 from django.views.generic import View
 
+from guardian.shortcuts import assign_perm, remove_perm
+from guardian.shortcuts import get_groups_with_perms, get_users_with_perms
+
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
+from rest_framework import filters
+from rest_framework import status
+from rest_framework import viewsets
 from rest_framework.decorators import detail_route
 from rest_framework.decorators import list_route
-from rest_framework import filters
 from rest_framework.response import Response
-from rest_framework import viewsets
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
@@ -38,6 +42,7 @@ from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneSerializer
 from delft3dworker.serializers import TemplateSerializer
 from delft3dworker.serializers import UserSerializer
+from delft3dworker.permissions import ViewObjectPermissions
 
 
 # ################################### REST
@@ -51,32 +56,22 @@ class SceneFilter(filters.FilterSet):
     template, traversing db relationships.
     Needs an exact match (!)
     """
-    template = django_filters.CharFilter(name="scenario__template__name")
+    # template = django_filters.CharFilter(name="scenario__template__name")
     scenario = django_filters.CharFilter(name="scenario__name")
 
     class Meta:
         model = Scene
-        fields = ['name', 'state', 'scenario', 'template']
+        fields = ['name', 'state', 'scenario']
 
 
 # ### ViewSets
-
-class GroupViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows templates to be viewed or edited.
-    """
-
-    serializer_class = GroupSerializer
-
-    def get_queryset(self):
-        return Group.objects.all()
-
 
 class ScenarioViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows scenarios to be viewed or edited.
     """
     serializer_class = ScenarioSerializer
+    permission_classes = (ViewObjectPermissions,)
 
     def get_queryset(self):
         return Scenario.objects.filter(owner=self.request.user)
@@ -95,6 +90,10 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                 instance.load_settings(parameters)
                 instance.createscenes()
 
+            assign_perm('view_scenario', self.request.user, instance)
+            assign_perm('change_scenario', self.request.user, instance)
+            assign_perm('delete_scenario', self.request.user, instance)
+
             instance.save()
 
             # 25 april '16: Almar, Fedor & Tijn decided that
@@ -108,6 +107,11 @@ class SceneViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = SceneSerializer
+    filter_backends = (
+        filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.DjangoObjectPermissionsFilter,
+    )
 
     # Our own custom filter to create custom search fields
     # this creates &template= among others
@@ -119,13 +123,18 @@ class SceneViewSet(viewsets.ModelViewSet):
         '^name', '^state', '^scenario__template__name', '^scenario__name')
 
     # Permissions backend which we could use in filter
-    # permission_classes = (delft3dgtmain.permissions.etc)
+    permission_classes = (ViewObjectPermissions,)
 
     def perform_create(self, serializer):
         if serializer.is_valid():
             instance = serializer.save()
             instance.owner = self.request.user
+
             instance.save()
+
+            assign_perm('view_scene', self.request.user, instance)
+            assign_perm('change_scene', self.request.user, instance)
+            assign_perm('delete_scene', self.request.user, instance)
 
     def get_queryset(self):
         """
@@ -143,90 +152,93 @@ class SceneViewSet(viewsets.ModelViewSet):
         self.queryset = Scene.objects.filter(owner=self.request.user)
 
         # Filter on parameter
-        parameter = self.request.query_params.get('parameter', None)
+        parameters = self.request.query_params.getlist('parameter', [])
+        template = self.request.query_params.getlist('template', [])
 
-        if parameter is not None:
-
+        if len(parameters) > 0:
+            print("Filtering on parameters")
             # Processing user input
             # will sometimes fail
             try:
+                for parameter in parameters:
 
-                p = parameter.split(',')
+                    p = parameter.split(',')
 
-                # Key exist lookup
-                if len(p) == 1:
+                    # Key exist lookup
+                    if len(p) == 1:
 
-                    key = parameter
-                    logging.info("Lookup parameter {}".format(key))
-                    self.queryset = self.queryset.filter(
-                        parameters__icontains=key)
-                    return self.queryset
+                        key = parameter
+                        logging.info("Lookup parameter {}".format(key))
+                        queryset = queryset.filter(parameters__icontains=key)
 
-                # Key, value lookup
-                if len(p) == 2:
+                    # Key, value lookup
+                    elif len(p) == 2:
 
-                    key, value = p
-                    logging.info("Lookup value for parameter {}".format(key))
+                        key, value = p
+                        logging.info(
+                            "Lookup value for parameter {}".format(key))
 
-                    # Find integers or floats
-                    value = float(value)
+                        # Find integers or floats
+                        value = float(value)
 
-                    # Create json lookup
-                    # q = {key: {'value': value}}
+                        # Create json lookup
+                        # q = {key: {'value': value}}
 
-                    # Not yet possible to do json queries directly
-                    # Requires JSONField from Postgresql 9.4 and Django 1.9
-                    # So we loop manually (bad performance!)
-                    wanted = []
-                    self.queryset = self.queryset.filter(
-                        parameters__icontains=key)
+                        # Not yet possible to do json queries directly
+                        # Requires JSONField from Postgresql 9.4 and Django 1.9
+                        # So we loop manually (bad performance!)
+                        wanted = []
+                        queryset = queryset.filter(parameters__icontains=key)
 
-                    for scene in self.queryset:
-                        if scene.parameters[key]['values'] == value:
-                            wanted.append(scene.id)
+                        for scene in queryset:
+                            if scene.parameters[key]['values'] == value:
+                                wanted.append(scene.id)
 
-                    return self.queryset.filter(pk__in=wanted)
+                        queryset = queryset.filter(pk__in=wanted)
 
-                # Key, min, max lookup
-                elif len(p) == 3:
+                    # Key, min, max lookup
+                    elif len(p) == 3:
 
-                    key, minvalue, maxvalue = p
-                    logging.info(
-                        "Lookup value [{} - {}] for parameter {}".format(
-                            minvalue,
-                            maxvalue,
-                            key
+                        key, minvalue, maxvalue = p
+                        logging.info(
+                            "Lookup value [{} - {}] for parameter {}".format(
+                                minvalue,
+                                maxvalue,
+                                key
+                            )
                         )
-                    )
 
-                    # Find integers or floats
-                    minvalue = float(minvalue)
-                    maxvalue = float(maxvalue)
+                        # Find integers or floats
+                        minvalue = float(minvalue)
+                        maxvalue = float(maxvalue)
 
-                    # Create json lookup
-                    # q = {key: {'value': value}}
+                        # Create json lookup
+                        # q = {key: {'value': value}}
 
-                    # Not yet possible to do json queries directly
-                    # Requires JSONField from Postgresql 9.4 and Django 1.9
-                    # So we loop manually (bad performance!)
-                    wanted = []
-                    self.queryset = self.queryset.filter(
-                        parameters__icontains=key)
+                        # Not yet possible to do json queries directly
+                        # Requires JSONField from Postgresql 9.4 and Django 1.9
+                        # So we loop manually (bad performance!)
+                        wanted = []
+                        queryset = queryset.filter(parameters__icontains=key)
 
-                    for scene in self.queryset:
+                        for scene in queryset:
+                            values = scene.parameters[key]['values']
+                            if minvalue <= values < maxvalue:
 
-                        values = scene.parameters[key]['values']
-                        if minvalue <= values < maxvalue:
+                                wanted.append(scene.id)
 
-                            wanted.append(scene.id)
-
-                    return self.queryset.filter(pk__in=wanted)
+                        queryset = queryset.filter(pk__in=wanted)
 
             except:
-
                 return Scene.objects.none()
 
-        return self.queryset
+        if len(template) > 0:
+            print("Filtering on template")
+            queryset = queryset.filter(scenario__template__name__in=template)
+
+        self.queryset = queryset  # for start route
+
+        return queryset
 
     @detail_route(methods=['get'])
     def start(self, request, pk=None):
@@ -242,6 +254,94 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
+    @detail_route(methods=["get", "post"])
+    def publish_company(self, request, pk=None):
+        scene = self.get_object()
+        groups = [
+            group for group in self.request.user.groups.all() if (
+                "world" not in group.name
+            )]
+        print(groups)
+        # If we can still edit, scene is not published
+        published = not self.request.user.has_perm(
+            'delft3dworker.change_scene', scene)
+
+        if not published:
+
+            # Remove write permissions for user
+            remove_perm('change_scene', self.request.user, scene)
+            remove_perm('delete_scene', self.request.user, scene)
+
+            # Set permissions for group
+            for group in groups:
+                assign_perm('view_scene', group, scene)
+
+            return Response({'status': 'Published scene'})
+
+        else:
+            return Response(
+                {'status': 'Already published at company or world level'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @detail_route(methods=["get", "post"])
+    def publish_world(self, request, pk=None):
+        scene = self.get_object()
+        world = Group.objects.get(name="world")
+
+        # Check if unpublished by checking if there are any groups
+        groups = get_groups_with_perms(scene)
+
+        # No groups
+        if len(groups) == 0:
+
+            # Remove write permissions for user
+            remove_perm('change_scene', self.request.user, scene)
+            remove_perm('delete_scene', self.request.user, scene)
+
+            # Set permissions for group
+            assign_perm('view_scene', world, scene)
+
+            return Response({'status': 'Published scene'})
+
+        # If world group not yet in groups
+        elif world not in groups:
+            assign_perm('view_scene', world, scene)
+
+            return Response({'status': 'Published scene'})
+
+        else:
+            return Response(
+                {'status': "Already published at company or world level"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @detail_route(methods=['get'])
+    def export(self, request, pk=None):
+        scene = self.get_object()
+
+        options = self.request.query_params.getlist('options', [])
+        # What we will export, now ; separated (doesn't work), should be list
+        # as in https://delft3dgt-local:8000/api/v1/scenes/44/
+        # export/?options=export_images&options=export_input
+
+        if len(options) > 0:
+            stream, filename = scene.export(options)
+
+            resp = HttpResponse(
+                stream.getvalue(),
+                content_type="application/x-zip-compressed"
+            )
+            resp[
+                'Content-Disposition'] = 'attachment; filename={}'.format(
+                    filename
+            )
+
+            return resp
+        else:
+            return Response({'status': 'No export options given'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
 
 class TemplateViewSet(viewsets.ModelViewSet):
     """
@@ -249,6 +349,7 @@ class TemplateViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = TemplateSerializer
+    permission_classes = (ViewObjectPermissions,)
 
     def get_queryset(self):
         return Template.objects.all()
@@ -263,6 +364,19 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return User.objects.all()
+
+
+class GroupViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+
+    serializer_class = GroupSerializer
+
+    def get_queryset(self):
+        user = get_object_or_404(User, id=self.request.user.id)
+        wanted = [group.id for group in user.groups.all()]
+        return Group.objects.filter(pk__in=wanted)
 
     @list_route()
     def me(self, request):
@@ -548,7 +662,11 @@ class SceneExportView(View):
         scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
         scene = get_object_or_404(Scene, id=scene_id)
 
-        stream, filename = scene.export()
+        # What we will export, now ; separated (doesn't work), should be list as in
+        # http://10.0.1.2:8000/scene/export?id=1&options=export_images&options=export_thirdparty
+        options = (self.request.GET.getlist(
+            'options') or self.request.POST.getlist('options'))
+        stream, filename = scene.export(options)
 
         resp = HttpResponse(
             stream.getvalue(),

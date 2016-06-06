@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'djcelery',
     'rest_framework',
     'crispy_forms',
-
+    'guardian',
     'delft3dworker',
     'delft3dgtfrontend',
 ]
@@ -58,6 +58,13 @@ MIDDLEWARE_CLASSES = [
 ]
 
 ROOT_URLCONF = 'delft3dgtmain.urls'
+
+# Object permissions
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # default
+    'guardian.backends.ObjectPermissionBackend',
+]
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
@@ -139,12 +146,14 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'delft3dworker.authentication.CsrfExemptSessionAuthentication',
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
-    ],
+    # 'DEFAULT_PERMISSION_CLASSES': [
+        # 'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
+        # 'delft3dworker.permissions.ViewObjectPermissions',
+    # ],
     'DEFAULT_FILTER_BACKENDS': [
         'rest_framework.filters.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
+        # 'rest_framework.filters.DjangoObjectPermissionsFilter',
     ]
 }
 
