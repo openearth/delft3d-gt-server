@@ -25,6 +25,7 @@ from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
 from rest_framework.decorators import detail_route
+from rest_framework.decorators import list_route
 from rest_framework import filters
 from rest_framework.response import Response
 from rest_framework import viewsets
@@ -262,6 +263,15 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return User.objects.all()
+
+    @list_route()
+    def me(self, request):
+
+        me = User.objects.filter(pk=request.user.pk)
+
+        serializer = self.get_serializer(me, many=True)
+
+        return Response(serializer.data)
 
 
 # ###################################
