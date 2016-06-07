@@ -242,7 +242,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    @detail_route(methods=["get", "post"])
+    @detail_route(methods=["post"])
     def start(self, request, pk=None):
         # ad custom function to route restart and export
         scene = self.queryset.get(pk=pk)
@@ -256,9 +256,9 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["get", "post"])
+    @detail_route(methods=["post"])
     def publish_company(self, request, pk=None):
-        scene = self.get_object()
+        scene = self.queryset.get(pk=pk)
         groups = [
             group for group in self.request.user.groups.all() if (
                 "world" not in group.name
@@ -286,9 +286,9 @@ class SceneViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @detail_route(methods=["get", "post"])
+    @detail_route(methods=["post"])
     def publish_world(self, request, pk=None):
-        scene = self.get_object()
+        scene = self.queryset.get(pk=pk)
         world = Group.objects.get(name="access:world")
 
         # Check if unpublished by checking if there are any groups
@@ -318,7 +318,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @detail_route(methods=['get'])
+    @detail_route(methods=["get"])
     def export(self, request, pk=None):
         scene = self.get_object()
 
