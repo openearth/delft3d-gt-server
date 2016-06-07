@@ -1,6 +1,14 @@
 [
   {
     "fields": {
+      "name": "access:world",
+      "permissions": []
+    },
+    "model": "auth.group",
+    "pk": 42
+  },
+  {
+    "fields": {
       "name": "access:org:Foo_Company",
       "permissions": [
         [
