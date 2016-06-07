@@ -148,7 +148,10 @@ class Scenario(models.Model):
                 # Using modulo we can assign a b in the correct
                 # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
                 # modulo gives 0 which is again the first value (a)
-                s['values'] = values[i % len(values)]
+                # Rename key in settings
+                s['value'] = values[i % len(values)]
+                # delete keys named 'values'
+                s.pop('values')
                 scene[key] = s
                 i += 1
 
