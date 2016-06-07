@@ -73,7 +73,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ScenarioSerializer
     permission_classes = (permissions.IsAuthenticated,
-        ViewObjectPermissions,)
+                          ViewObjectPermissions,)
 
     def get_queryset(self):
         return Scenario.objects.filter(owner=self.request.user)
@@ -126,7 +126,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     # Permissions backend which we could use in filter
     permission_classes = (permissions.IsAuthenticated,
-        ViewObjectPermissions,)
+                          ViewObjectPermissions,)
 
     def perform_create(self, serializer):
         if serializer.is_valid():
@@ -152,7 +152,8 @@ class SceneViewSet(viewsets.ModelViewSet):
             # filters on key occurance and value between min & max
             - parameter="parameter,minvalue,maxvalue"
         """
-        queryset = Scene.objects.filter(owner=self.request.user)
+        queryset = Scene.objects.all()
+        self.queryset = queryset
 
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
@@ -241,12 +242,12 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    @detail_route(methods=['get'])
+    @detail_route(methods=["get", "post"])
     def start(self, request, pk=None):
         # ad custom function to route restart and export
         scene = self.queryset.get(pk=pk)
 
-        if 'workflow' in request.data:
+        if "workflow" in request.data:
             scene.start(workflow=request.data["workflow"])
         else:
             scene.start(workflow="main")
@@ -288,7 +289,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     @detail_route(methods=["get", "post"])
     def publish_world(self, request, pk=None):
         scene = self.get_object()
-        world = Group.objects.get(name="world")
+        world = Group.objects.get(name="access:world")
 
         # Check if unpublished by checking if there are any groups
         groups = get_groups_with_perms(scene)
@@ -351,7 +352,7 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
     serializer_class = TemplateSerializer
     permission_classes = (permissions.IsAuthenticated,
-        ViewObjectPermissions,)
+                          ViewObjectPermissions,)
 
     def get_queryset(self):
         return Template.objects.all()
