@@ -365,6 +365,15 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return User.objects.all()
 
+    @list_route()
+    def me(self, request):
+
+        me = User.objects.filter(pk=request.user.pk)
+
+        serializer = self.get_serializer(me, many=True)
+
+        return Response(serializer.data)
+
 
 class GroupViewSet(viewsets.ModelViewSet):
     """
@@ -378,21 +387,13 @@ class GroupViewSet(viewsets.ModelViewSet):
         wanted = [group.id for group in user.groups.all()]
         return Group.objects.filter(pk__in=wanted)
 
-    @list_route()
-    def me(self, request):
-
-        me = User.objects.filter(pk=request.user.pk)
-
-        serializer = self.get_serializer(me, many=True)
-
-        return Response(serializer.data)
-
 
 # ###################################
 # The code below will be phased out in Sprint 4
 #
 
 # ################################### SCENARIO
+
 
 class ScenarioCreateView(View):
 
