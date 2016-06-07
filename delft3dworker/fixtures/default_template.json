@@ -1,20 +1,17 @@
 [
   {
-     "pk": 1,
-     "model": "delft3dworker.template",
-     "fields": {
-       "name": "Default (delta plain)",
-       "meta": {
-         "description": "A river or tide dominated delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
-         "creator": "fedor.baart@deltares.nl"
-       },
-       "sections": [
+    "fields": {
+      "meta": {
+        "description": "A river or tide dominated delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
+        "creator": "fedor.baart@deltares.nl"
+      },
+      "sections": [
         {
           "variables": [
             {
               "default": "New scenario",
-              "id": "name",
               "type": "text",
+              "id": "name",
               "name": "Name",
               "validators": {
                 "required": true
@@ -171,7 +168,185 @@
           ],
           "name": "Sediment composition"
         }
-      ]
-    }
+      ],
+      "name": "Default (delta plain)"
+    },
+    "model": "delft3dworker.template",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "meta": {
+        "description": "In this delta, sediments are brought in by the tides instead of brought in by the river.",
+        "creator": "fedor.baart@deltares.nl"
+      },
+      "sections": [
+        {
+          "variables": [
+            {
+              "default": "New scenario",
+              "type": "text",
+              "id": "name",
+              "name": "Name",
+              "validators": {
+                "required": true
+              }
+            },
+            {
+              "name": "Model Engine",
+              "default": "Delft3D Curvilinear",
+              "disabled": true,
+              "validators": {
+                "required": true
+              },
+              "type": "text",
+              "id": "engine"
+            },
+            {
+              "name": "Version",
+              "default": "v0.1",
+              "disabled": true,
+              "validators": {
+                "required": true
+              },
+              "type": "semver",
+              "id": "version"
+            }
+          ],
+          "name": "Scenario"
+        },
+        {
+          "variables": [
+            {
+              "name": "Stop time",
+              "default": 87840,
+              "validators": {
+                "max": 230880,
+                "required": true,
+                "min": 0
+              },
+              "units": "min",
+              "type": "numeric",
+              "id": "simstoptime"
+            },
+            {
+              "name": "Timestep",
+              "default": 1,
+              "validators": {
+                "max": 20,
+                "required": true,
+                "min": 0.5
+              },
+              "units": "min",
+              "type": "numeric",
+              "id": "dt"
+            },
+            {
+              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+              "default": 1440,
+              "validators": {
+                "max": 2880,
+                "required": true,
+                "min": 720
+              },
+              "units": "min",
+              "type": "numeric",
+              "id": "outputinterval",
+              "name": "Output timestep"
+            }
+          ],
+          "name": "Parameters"
+        },
+        {
+          "variables": [
+            {
+              "name": "Basin slope",
+              "default": 0.0143,
+              "validators": {
+                "max": 0.3,
+                "min": 0.01
+              },
+              "factor": true,
+              "units": "deg",
+              "type": "numeric",
+              "id": "basinslope"
+            },
+            {
+              "name": "River width",
+              "default": 300,
+              "validators": {
+                "max": 1000,
+                "min": 100
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "riverwidth"
+            }
+          ],
+          "name": "Geometry"
+        },
+        {
+          "variables": [
+            {
+              "name": "River discharge",
+              "default": 0,
+              "validators": {
+                "max": 2000,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m³/s",
+              "type": "numeric",
+              "id": "riverdischarge"
+            },
+            {
+              "name": "Tidal amplitude",
+              "default": 1,
+              "validators": {
+                "max": 3,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "tidalamplitude"
+            }
+          ],
+          "name": "Forces"
+        },
+        {
+          "variables": [
+            {
+              "name": "Sand volumetric composition",
+              "default": 50,
+              "validators": {
+                "max": 100,
+                "min": 0
+              },
+              "units": "%",
+              "type": "numeric",
+              "id": "sandvolcomposition"
+            },
+            {
+              "name": "Clay volumetric composition",
+              "default": 50,
+              "disabled": false,
+              "validators": {
+                "max": 100,
+                "min": 0
+              },
+              "units": "%",
+              "type": "numeric",
+              "id": "clayvolcomposition"
+            }
+          ],
+          "name": "Sediment composition"
+        }
+      ],
+      "name": "Ebb Title Delta"
+    },
+    "model": "delft3dworker.template",
+    "pk": 2
   }
 ]
