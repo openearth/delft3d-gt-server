@@ -149,7 +149,7 @@ class SceneViewSet(viewsets.ModelViewSet):
             # filters on key occurance and value between min & max
             - parameter="parameter,minvalue,maxvalue"
         """
-        self.queryset = Scene.objects.filter(owner=self.request.user)
+        queryset = Scene.objects.filter(owner=self.request.user)
 
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
@@ -235,8 +235,6 @@ class SceneViewSet(viewsets.ModelViewSet):
         if len(template) > 0:
             print("Filtering on template")
             queryset = queryset.filter(scenario__template__name__in=template)
-
-        self.queryset = queryset  # for start route
 
         return queryset
 
