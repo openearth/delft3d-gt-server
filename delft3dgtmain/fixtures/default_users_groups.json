@@ -42,6 +42,11 @@
           "view_scene",
           "delft3dworker",
           "scene"
+        ],
+        [
+          "view_template",
+          "delft3dworker",
+          "template"
         ]
       ]
     },
@@ -91,6 +96,11 @@
           "view_scene",
           "delft3dworker",
           "scene"
+        ],
+        [
+          "view_template",
+          "delft3dworker",
+          "template"
         ]
       ]
     },
