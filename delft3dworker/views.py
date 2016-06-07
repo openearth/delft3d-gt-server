@@ -30,6 +30,7 @@ from json_views.views import JSONListView
 from rest_framework import filters
 from rest_framework import status
 from rest_framework import viewsets
+from rest_framework import permissions
 from rest_framework.decorators import detail_route
 from rest_framework.decorators import list_route
 from rest_framework.response import Response
@@ -71,7 +72,8 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     API endpoint that allows scenarios to be viewed or edited.
     """
     serializer_class = ScenarioSerializer
-    permission_classes = (ViewObjectPermissions,)
+    permission_classes = (permissions.IsAuthenticated,
+        ViewObjectPermissions,)
 
     def get_queryset(self):
         return Scenario.objects.filter(owner=self.request.user)
@@ -123,7 +125,8 @@ class SceneViewSet(viewsets.ModelViewSet):
         '^name', '^state', '^scenario__template__name', '^scenario__name')
 
     # Permissions backend which we could use in filter
-    permission_classes = (ViewObjectPermissions,)
+    permission_classes = (permissions.IsAuthenticated,
+        ViewObjectPermissions,)
 
     def perform_create(self, serializer):
         if serializer.is_valid():
@@ -347,7 +350,8 @@ class TemplateViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = TemplateSerializer
-    permission_classes = (ViewObjectPermissions,)
+    permission_classes = (permissions.IsAuthenticated,
+        ViewObjectPermissions,)
 
     def get_queryset(self):
         return Template.objects.all()

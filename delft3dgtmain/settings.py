@@ -66,6 +66,8 @@ AUTHENTICATION_BACKENDS = [
     'guardian.backends.ObjectPermissionBackend',
 ]
 
+ANONYMOUS_USER_NAME = None  # No anon user
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
@@ -146,10 +148,11 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'delft3dworker.authentication.CsrfExemptSessionAuthentication',
     ],
-    # 'DEFAULT_PERMISSION_CLASSES': [
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
         # 'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
         # 'delft3dworker.permissions.ViewObjectPermissions',
-    # ],
+    ],
     'DEFAULT_FILTER_BACKENDS': [
         'rest_framework.filters.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
