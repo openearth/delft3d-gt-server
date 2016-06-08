@@ -23,6 +23,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_objects_for_user
 
 from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
@@ -87,7 +88,7 @@ class Scenario(models.Model):
 
         self.save()
 
-    def createscenes(self):
+    def createscenes(self, user):
         for i, sceneparameters in enumerate(self.scenes_parameters):
 
             # Create hash
@@ -96,11 +97,11 @@ class Scenario(models.Model):
             phash = m.hexdigest()
 
             # Check if hash already exists
-            clones = Scene.objects.filter(parameters_hash=phash)
+            scenes = Scene.objects.filter(parameters_hash=phash)
+            clones = get_objects_for_user(user, "view_scene", scenes)
 
             # If so, add scenario to scene
             if len(clones) > 0:
-                print(clones)
                 scene = clones[0]  # cannot have more than one scene
                 scene.scenario.add(self)
                 return
