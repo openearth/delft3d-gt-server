@@ -98,7 +98,8 @@ class Scenario(models.Model):
 
             # Check if hash already exists
             scenes = Scene.objects.filter(parameters_hash=phash)
-            clones = get_objects_for_user(user, "view_scene", scenes)
+            clones = get_objects_for_user(
+                user, "view_scene", scenes, accept_global_perms=False)
 
             # If so, add scenario to scene
             if len(clones) > 0:
@@ -206,7 +207,7 @@ class Scene(models.Model):
     state = models.CharField(max_length=256, blank=True)
     task_id = models.CharField(max_length=256)
     workingdir = models.CharField(max_length=256)
-    parameters_hash = models.CharField(max_length=64, unique=True, blank=True)
+    parameters_hash = models.CharField(max_length=64, blank=True)
 
     shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
     shared = models.CharField(max_length=1, choices=shared_choices)
