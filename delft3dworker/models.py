@@ -384,16 +384,11 @@ class Scene(models.Model):
         if not os.path.exists(self.workingdir):
             os.makedirs(self.workingdir, 02775)
 
-            # outputfolder = os.path.join(self.workingdir, 'postprocess')
-            # os.makedirs(outputfolder)
+            folders = ['process', 'preprocess', 'simulation', 'export']
 
-            outputfolder = os.path.join(self.workingdir, 'process')
-            os.makedirs(outputfolder)
+            for f in folders:
+                os.makedirs(os.path.join(self.workingdir, f))
 
-            inputfolder = os.path.join(self.workingdir, 'preprocess')
-            outputfolder = os.path.join(self.workingdir, 'simulation')
-            os.makedirs(inputfolder)
-            os.makedirs(outputfolder)
 
     def _delete_datafolder(self):
         # delete directory for scene

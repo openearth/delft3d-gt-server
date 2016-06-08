@@ -137,6 +137,8 @@ def chainedtask(self, parameters, workingdir, workflow):
         running = not chain_result.ready()
 
     logger.info("Finishing chain")
+    if workflow == 'export':
+        results['export'] = True
     results['result'] = "Finished"
     self.update_state(state="FINISHING", meta=results)
 
@@ -400,7 +402,11 @@ def dummy_simulation(self, _, workingdir):
                '{0}:/data/output:z'.format(outputfolder)]
     command = 'python dummy_plot_netcdf.py'
     processing_container = DockerClient(
-        settings.PROCESS_DUMMY_IMAGE_NAME, volumes, '', command)
+        settings.PROCESS_DUMMY_IMAGE_NAME,
+        volumes,
+        '',
+        command,
+        tail=5)
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -644,7 +650,7 @@ class DockerClient():
     """
 
     def __init__(self, name, volumebinds, outputfile, command,
-                 base_url='unix://var/run/docker.sock'):
+                 base_url='unix://var/run/docker.sock', tail=1):
         self.name = name
         self.volumebinds = volumebinds
         self.outputfile = outputfile
@@ -655,6 +661,7 @@ class DockerClient():
         self.config = self.client.create_host_config(binds=self.volumebinds)
         self.container = self.client.create_container(
             self.name, host_config=self.config, command=self.command)
+        self.tail = tail
 
         self.id = self.container.get('Id')
 
@@ -686,7 +693,7 @@ class DockerClient():
             stream=False,
             stdout=False,
             stderr=True,
-            tail=5
+            tail=self.tail
         ).replace('\n', '')
         return self.errlog
 
