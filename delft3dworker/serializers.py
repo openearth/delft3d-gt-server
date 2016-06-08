@@ -24,7 +24,7 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
         )
 
 
-class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
+class ScenarioSerializer(serializers.ModelSerializer):
     """
     A default REST Framework HyperlinkedModelSerializer for the Scenario model
     source: http://www.django-rest-framework.org/api-guide/serializers/
@@ -38,19 +38,13 @@ class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
         source='owner'
     )
 
-    template_url = serializers.HyperlinkedRelatedField(
-        queryset=Template.objects.all(),
-        view_name='template-detail',
-        source='template'
-    )
-
     class Meta:
         model = Scenario
         fields = (
             'id',
             'name',
             'owner_url',
-            'template_url',
+            'template',
             'parameters',
             'scene_set',
         )

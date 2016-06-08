@@ -80,7 +80,6 @@ class Scenario(models.Model):
     def load_settings(self, settings):
         self.parameters = settings
         self.scenes_parameters = [{}]
-        self.template = Template.objects.get(pk=settings.template)
 
         for key, value in self.parameters.items():
             self._parse_setting(key, value)
