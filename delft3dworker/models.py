@@ -219,6 +219,7 @@ class Scene(models.Model):
             "state": self.state,
             "task_id": self.task_id,
             "owner": self.owner,
+            "shared": self.shared,
         }
 
     # CONTROL METHODS
