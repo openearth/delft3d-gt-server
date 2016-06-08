@@ -104,7 +104,6 @@ class Scenario(models.Model):
             if len(clones) > 0:
                 scene = clones[0]  # cannot have more than one scene
                 scene.scenario.add(self)
-                return
 
             # Scene input is unique
             else:
