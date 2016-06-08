@@ -347,8 +347,14 @@ class Scene(models.Model):
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
 
-                # if 'export_thirdparty' in options:
-                    # pass
+                # Zip movie
+                if 'export_movie' in options and (
+                        ext in '.mp4'):
+
+                    abs_path = os.path.join(root, f)
+                    rel_path = os.path.relpath(abs_path, self.workingdir)
+                    zf.write(abs_path, rel_path)
+
 
         # Must close zip for all contents to be written
         zf.close()
