@@ -111,9 +111,9 @@ class Scenario(models.Model):
                 scene = Scene(
                     name="{}: Run {}".format(self.name, i + 1),
                     owner=self.owner,
-                    scenario=self,
                     parameters=sceneparameters,
-                    shared="p"  # private
+                    shared="p",  # private
+                    parameters_hash=phash,
                 )
                 scene.save()
                 scene.scenario.add(self)
@@ -232,7 +232,7 @@ class Scene(models.Model):
             "name": self.name,
             "suid": self.suid,
             # could be one id (cannot be -1), or list of ids
-            "scenario": self.scenario.all() if self.scenario else None,
+            "scenario": self.scenario.values('id') if self.scenario else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,
