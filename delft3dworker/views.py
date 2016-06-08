@@ -132,7 +132,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             instance = serializer.save()
             instance.owner = self.request.user
-
+            instance.share = "p"  # private
             instance.save()
 
             assign_perm('view_scene', self.request.user, instance)
@@ -152,7 +152,8 @@ class SceneViewSet(viewsets.ModelViewSet):
             # filters on key occurance and value between min & max
             - parameter="parameter,minvalue,maxvalue"
         """
-        self.queryset = Scene.objects.all()
+        queryset = Scene.objects.all()
+        self.queryset = queryset
 
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
@@ -172,7 +173,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
                         key = parameter
                         print("Lookup parameter {}".format(key))
-                        self.queryset = self.queryset.filter(parameters__icontains=key)
+                        queryset = queryset.filter(parameters__icontains=key)
 
                     # Key, value lookup
                     elif len(p) == 2:
@@ -194,13 +195,13 @@ class SceneViewSet(viewsets.ModelViewSet):
                         # Requires JSONField from Postgresql 9.4 and Django 1.9
                         # So we loop manually (bad performance!)
                         wanted = []
-                        self.queryset = self.queryset.filter(parameters__icontains=key)
+                        queryset = queryset.filter(parameters__icontains=key)
 
-                        for scene in self.queryset:
+                        for scene in queryset:
                             if scene.parameters[key]['value'] == value:
                                 wanted.append(scene.id)
 
-                        self.queryset = self.queryset.filter(pk__in=wanted)
+                        queryset = queryset.filter(pk__in=wanted)
 
                     # Key, min, max lookup
                     elif len(p) == 3:
@@ -225,27 +226,29 @@ class SceneViewSet(viewsets.ModelViewSet):
                         # Requires JSONField from Postgresql 9.4 and Django 1.9
                         # So we loop manually (bad performance!)
                         wanted = []
-                        self.queryset = self.queryset.filter(parameters__icontains=key)
+                        queryset = queryset.filter(parameters__icontains=key)
 
-                        for scene in self.queryset:
+                        for scene in queryset:
                             values = scene.parameters[key]['value']
                             if minvalue <= values < maxvalue:
 
                                 wanted.append(scene.id)
 
-                        self.queryset = self.queryset.filter(pk__in=wanted)
+                        queryset = queryset.filter(pk__in=wanted)
 
             except:
                 # print("Something failed in search")
                 return Scene.objects.none()
 
         if len(template) > 0:
-            self.queryset = self.queryset.filter(scenario__template__name__in=template)
+            queryset = queryset.filter(scenario__template__name__in=template)
 
         if len(shared) > 0:
             lookup = {"private": "p", "company": "c", "public": "w"}
             wanted = [lookup[share] for share in shared if share in lookup]
-            self.queryset = self.queryset.filter(shared__in=wanted)
+            queryset = queryset.filter(shared__in=wanted)
+
+        self.queryset = queryset
 
         return self.queryset
 
@@ -272,8 +275,7 @@ class SceneViewSet(viewsets.ModelViewSet):
             )]
 
         # If we can still edit, scene is not published
-        published = not self.request.user.has_perm(
-            'delft3dworker.change_scene', scene)
+        published = "p" != scene.shared
 
         if not published:
 
@@ -313,6 +315,9 @@ class SceneViewSet(viewsets.ModelViewSet):
 
             # Set permissions for group
             assign_perm('view_scene', world, scene)
+
+            scene.shared = "w"
+            scene.save()
 
             return Response({'status': 'Published scene'})
 

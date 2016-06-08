@@ -92,7 +92,8 @@ class Scenario(models.Model):
                 name="{}: Run {}".format(self.name, i + 1),
                 owner=self.owner,
                 scenario=self,
-                parameters=sceneparameters
+                parameters=sceneparameters,
+                shared="p"  # private
             )
             scene.save()
 
