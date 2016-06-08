@@ -132,7 +132,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             instance = serializer.save()
             instance.owner = self.request.user
-            instance.share = "p"  # private
+            instance.shared = "p"  # private
             instance.save()
 
             assign_perm('view_scene', self.request.user, instance)
@@ -172,14 +172,14 @@ class SceneViewSet(viewsets.ModelViewSet):
                     if len(p) == 1:
 
                         key = parameter
-                        print("Lookup parameter {}".format(key))
+                        logging.info("Lookup parameter {}".format(key))
                         queryset = queryset.filter(parameters__icontains=key)
 
                     # Key, value lookup
                     elif len(p) == 2:
 
                         key, value = p
-                        print(
+                        logging.info(
                             "Lookup value for parameter {}".format(key))
 
                         # Find integers or floats
@@ -207,7 +207,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                     elif len(p) == 3:
 
                         key, minvalue, maxvalue = p
-                        print(
+                        logging.info(
                             "Lookup value [{} - {}] for parameter {}".format(
                                 minvalue,
                                 maxvalue,
@@ -237,7 +237,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                         queryset = queryset.filter(pk__in=wanted)
 
             except:
-                # print("Something failed in search")
+                logging.error("Something failed in search")
                 return Scene.objects.none()
 
         if len(template) > 0:
