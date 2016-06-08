@@ -186,7 +186,8 @@ class SceneViewSet(viewsets.ModelViewSet):
                         try:
                             value = float(value)
                         except:
-                            pass  # could filter on string such as parameter = engine
+                            # could filter on string such as parameter = engine
+                            pass
 
                         # Create json lookup
                         # q = {key: {'value': value}}
@@ -500,7 +501,12 @@ class ScenarioListView(JSONListView):
 
     def get_queryset(self):
         scenarios = Scenario.objects.all().order_by('id')
-        queryset = get_objects_for_user(self.request.user, "view_scenario", klass=scenarios, accept_global_perms=False)
+        queryset = get_objects_for_user(
+            self.request.user,
+            "view_scenario",
+            klass=scenarios,
+            accept_global_perms=False
+        )
         return queryset
 
     @method_decorator(csrf_exempt)
@@ -623,7 +629,12 @@ class SceneListView(JSONListView):
 
     def get_queryset(self):
         scenes = Scene.objects.all().order_by('id')
-        queryset = get_objects_for_user(self.request.user, "view_scene", klass=scenes, accept_global_perms=False)
+        queryset = get_objects_for_user(
+            self.request.user,
+            "view_scene",
+            klass=scenes,
+            accept_global_perms=False
+        )
         return queryset
 
     @method_decorator(csrf_exempt)

@@ -50,7 +50,7 @@ class ScenarioSerializer(serializers.ModelSerializer):
         )
 
 
-class SceneSerializer(serializers.HyperlinkedModelSerializer):
+class SceneSerializer(serializers.ModelSerializer):
     """
     A default REST Framework HyperlinkedModelSerializer for the Scene model
     source: http://www.django-rest-framework.org/api-guide/serializers/
@@ -64,12 +64,6 @@ class SceneSerializer(serializers.HyperlinkedModelSerializer):
         source='owner'
     )
 
-    scenario_url = serializers.HyperlinkedRelatedField(
-        read_only=True,
-        view_name='scenario-detail',
-        source='scenario'
-    )
-
     class Meta:
         model = Scene
         fields = (
@@ -78,7 +72,7 @@ class SceneSerializer(serializers.HyperlinkedModelSerializer):
             'owner_url',
             'shared',
             'suid',
-            'scenario_url',
+            'scenario',
             'fileurl',
             'info',
             'parameters',
