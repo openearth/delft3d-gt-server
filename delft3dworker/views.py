@@ -22,7 +22,7 @@ from django.views.generic import DeleteView
 from django.views.generic import View
 
 from guardian.shortcuts import assign_perm, remove_perm
-from guardian.shortcuts import get_groups_with_perms, get_users_with_perms
+from guardian.shortcuts import get_groups_with_perms, get_objects_for_user
 
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
@@ -132,7 +132,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             instance = serializer.save()
             instance.owner = self.request.user
-
+            instance.shared = "p"  # private
             instance.save()
 
             assign_perm('view_scene', self.request.user, instance)
@@ -158,9 +158,9 @@ class SceneViewSet(viewsets.ModelViewSet):
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
         template = self.request.query_params.getlist('template', [])
+        shared = self.request.query_params.getlist('shared', [])
 
         if len(parameters) > 0:
-            print("Filtering on parameters")
             # Processing user input
             # will sometimes fail
             try:
@@ -183,7 +183,10 @@ class SceneViewSet(viewsets.ModelViewSet):
                             "Lookup value for parameter {}".format(key))
 
                         # Find integers or floats
-                        value = float(value)
+                        try:
+                            value = float(value)
+                        except:
+                            pass  # could filter on string such as parameter = engine
 
                         # Create json lookup
                         # q = {key: {'value': value}}
@@ -195,7 +198,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                         queryset = queryset.filter(parameters__icontains=key)
 
                         for scene in queryset:
-                            if scene.parameters[key]['values'] == value:
+                            if scene.parameters[key]['value'] == value:
                                 wanted.append(scene.id)
 
                         queryset = queryset.filter(pk__in=wanted)
@@ -226,7 +229,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                         queryset = queryset.filter(parameters__icontains=key)
 
                         for scene in queryset:
-                            values = scene.parameters[key]['values']
+                            values = scene.parameters[key]['value']
                             if minvalue <= values < maxvalue:
 
                                 wanted.append(scene.id)
@@ -234,13 +237,20 @@ class SceneViewSet(viewsets.ModelViewSet):
                         queryset = queryset.filter(pk__in=wanted)
 
             except:
+                logging.error("Something failed in search")
                 return Scene.objects.none()
 
         if len(template) > 0:
-            print("Filtering on template")
             queryset = queryset.filter(scenario__template__name__in=template)
 
-        return queryset
+        if len(shared) > 0:
+            lookup = {"private": "p", "company": "c", "public": "w"}
+            wanted = [lookup[share] for share in shared if share in lookup]
+            queryset = queryset.filter(shared__in=wanted)
+
+        self.queryset = queryset
+
+        return self.queryset
 
     @detail_route(methods=["post"])
     def start(self, request, pk=None):
@@ -263,10 +273,9 @@ class SceneViewSet(viewsets.ModelViewSet):
             group for group in self.request.user.groups.all() if (
                 "world" not in group.name
             )]
-        print(groups)
+
         # If we can still edit, scene is not published
-        published = not self.request.user.has_perm(
-            'delft3dworker.change_scene', scene)
+        published = "p" != scene.shared
 
         if not published:
 
@@ -277,6 +286,9 @@ class SceneViewSet(viewsets.ModelViewSet):
             # Set permissions for group
             for group in groups:
                 assign_perm('view_scene', group, scene)
+
+            scene.shared = "c"
+            scene.save()
 
             return Response({'status': 'Published scene'})
 
@@ -304,11 +316,17 @@ class SceneViewSet(viewsets.ModelViewSet):
             # Set permissions for group
             assign_perm('view_scene', world, scene)
 
+            scene.shared = "w"
+            scene.save()
+
             return Response({'status': 'Published scene'})
 
         # If world group not yet in groups
         elif world not in groups:
             assign_perm('view_scene', world, scene)
+
+            scene.shared = "w"
+            scene.save()
 
             return Response({'status': 'Published scene'})
 
@@ -481,7 +499,8 @@ class ScenarioListView(JSONListView):
     model = Scenario
 
     def get_queryset(self):
-        queryset = Scenario.objects.all().order_by('id')
+        scenarios = Scenario.objects.all().order_by('id')
+        queryset = get_objects_for_user(self.request.user, "view_scenario", klass=scenarios, accept_global_perms=False)
         return queryset
 
     @method_decorator(csrf_exempt)
@@ -603,7 +622,8 @@ class SceneListView(JSONListView):
     model = Scene
 
     def get_queryset(self):
-        queryset = Scene.objects.all().order_by('id')
+        scenes = Scene.objects.all().order_by('id')
+        queryset = get_objects_for_user(self.request.user, "view_scene", klass=scenes, accept_global_perms=False)
         return queryset
 
     @method_decorator(csrf_exempt)
