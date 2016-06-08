@@ -93,7 +93,8 @@ class Scenario(models.Model):
                 name="{}: Run {}".format(self.name, i + 1),
                 owner=self.owner,
                 scenario=self,
-                parameters=sceneparameters
+                parameters=sceneparameters,
+                shared="p"  # private
             )
             scene.save()
 
@@ -187,6 +188,8 @@ class Scene(models.Model):
     task_id = models.CharField(max_length=256)
     workingdir = models.CharField(max_length=256)
 
+    shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
+    shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True)
 
     # PROPERTY METHODS
@@ -216,6 +219,7 @@ class Scene(models.Model):
             "state": self.state,
             "task_id": self.task_id,
             "owner": self.owner,
+            "shared": self.shared,
         }
 
     # CONTROL METHODS
