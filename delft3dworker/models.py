@@ -186,6 +186,8 @@ class Scene(models.Model):
     task_id = models.CharField(max_length=256)
     workingdir = models.CharField(max_length=256)
 
+    shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
+    shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True)
 
     # PROPERTY METHODS

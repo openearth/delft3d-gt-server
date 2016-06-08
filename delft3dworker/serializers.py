@@ -82,6 +82,7 @@ class SceneSerializer(serializers.HyperlinkedModelSerializer):
             'id',
             'name',
             'owner_url',
+            'shared',
             'suid',
             'scenario_url',
             'fileurl',

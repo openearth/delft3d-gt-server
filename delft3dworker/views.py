@@ -152,15 +152,14 @@ class SceneViewSet(viewsets.ModelViewSet):
             # filters on key occurance and value between min & max
             - parameter="parameter,minvalue,maxvalue"
         """
-        queryset = Scene.objects.all()
-        self.queryset = queryset
+        self.queryset = Scene.objects.all()
 
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
         template = self.request.query_params.getlist('template', [])
+        shared = self.request.query_params.getlist('shared', [])
 
         if len(parameters) > 0:
-            print("Filtering on parameters")
             # Processing user input
             # will sometimes fail
             try:
@@ -172,18 +171,21 @@ class SceneViewSet(viewsets.ModelViewSet):
                     if len(p) == 1:
 
                         key = parameter
-                        logging.info("Lookup parameter {}".format(key))
-                        queryset = queryset.filter(parameters__icontains=key)
+                        print("Lookup parameter {}".format(key))
+                        self.queryset = self.queryset.filter(parameters__icontains=key)
 
                     # Key, value lookup
                     elif len(p) == 2:
 
                         key, value = p
-                        logging.info(
+                        print(
                             "Lookup value for parameter {}".format(key))
 
                         # Find integers or floats
-                        value = float(value)
+                        try:
+                            value = float(value)
+                        except:
+                            pass  # could filter on string such as parameter = engine
 
                         # Create json lookup
                         # q = {key: {'value': value}}
@@ -192,19 +194,19 @@ class SceneViewSet(viewsets.ModelViewSet):
                         # Requires JSONField from Postgresql 9.4 and Django 1.9
                         # So we loop manually (bad performance!)
                         wanted = []
-                        queryset = queryset.filter(parameters__icontains=key)
+                        self.queryset = self.queryset.filter(parameters__icontains=key)
 
-                        for scene in queryset:
-                            if scene.parameters[key]['values'] == value:
+                        for scene in self.queryset:
+                            if scene.parameters[key]['value'] == value:
                                 wanted.append(scene.id)
 
-                        queryset = queryset.filter(pk__in=wanted)
+                        self.queryset = self.queryset.filter(pk__in=wanted)
 
                     # Key, min, max lookup
                     elif len(p) == 3:
 
                         key, minvalue, maxvalue = p
-                        logging.info(
+                        print(
                             "Lookup value [{} - {}] for parameter {}".format(
                                 minvalue,
                                 maxvalue,
@@ -223,24 +225,29 @@ class SceneViewSet(viewsets.ModelViewSet):
                         # Requires JSONField from Postgresql 9.4 and Django 1.9
                         # So we loop manually (bad performance!)
                         wanted = []
-                        queryset = queryset.filter(parameters__icontains=key)
+                        self.queryset = self.queryset.filter(parameters__icontains=key)
 
-                        for scene in queryset:
-                            values = scene.parameters[key]['values']
+                        for scene in self.queryset:
+                            values = scene.parameters[key]['value']
                             if minvalue <= values < maxvalue:
 
                                 wanted.append(scene.id)
 
-                        queryset = queryset.filter(pk__in=wanted)
+                        self.queryset = self.queryset.filter(pk__in=wanted)
 
             except:
+                # print("Something failed in search")
                 return Scene.objects.none()
 
         if len(template) > 0:
-            print("Filtering on template")
-            queryset = queryset.filter(scenario__template__name__in=template)
+            self.queryset = self.queryset.filter(scenario__template__name__in=template)
 
-        return queryset
+        if len(shared) > 0:
+            lookup = {"private": "p", "company": "c", "public": "w"}
+            wanted = [lookup[share] for share in shared if share in lookup]
+            self.queryset = self.queryset.filter(shared__in=wanted)
+
+        return self.queryset
 
     @detail_route(methods=["post"])
     def start(self, request, pk=None):
@@ -263,7 +270,7 @@ class SceneViewSet(viewsets.ModelViewSet):
             group for group in self.request.user.groups.all() if (
                 "world" not in group.name
             )]
-        print(groups)
+
         # If we can still edit, scene is not published
         published = not self.request.user.has_perm(
             'delft3dworker.change_scene', scene)
@@ -277,6 +284,9 @@ class SceneViewSet(viewsets.ModelViewSet):
             # Set permissions for group
             for group in groups:
                 assign_perm('view_scene', group, scene)
+
+            scene.shared = "c"
+            scene.save()
 
             return Response({'status': 'Published scene'})
 
@@ -309,6 +319,9 @@ class SceneViewSet(viewsets.ModelViewSet):
         # If world group not yet in groups
         elif world not in groups:
             assign_perm('view_scene', world, scene)
+
+            scene.shared = "w"
+            scene.save()
 
             return Response({'status': 'Published scene'})
 
