@@ -4,6 +4,25 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
 
+from django.contrib.auth.models import Group
+from django.contrib.auth.models import User
+
+
+class GroupSerializer(serializers.HyperlinkedModelSerializer):
+    """
+    A default REST Framework HyperlinkedModelSerializer for the Group model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    # here we will write custom serialization and validation methods
+
+    class Meta:
+        model = Group
+        fields = (
+            'id',
+            'name',
+        )
+
 
 class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
     """
@@ -13,13 +32,27 @@ class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
 
     # here we will write custom serialization and validation methods
 
+    owner_url = serializers.HyperlinkedRelatedField(
+        read_only=True,
+        view_name='user-detail',
+        source='owner'
+    )
+
+    template_url = serializers.HyperlinkedRelatedField(
+        read_only=True,
+        view_name='template-detail',
+        source='template'
+    )
+
     class Meta:
         model = Scenario
         fields = (
             'id',
             'name',
-            'template',
+            'owner_url',
+            'template_url',
             'parameters',
+            'scene_set',
         )
 
 
@@ -31,13 +64,26 @@ class SceneSerializer(serializers.HyperlinkedModelSerializer):
 
     # here we will write custom serialization and validation methods
 
+    owner_url = serializers.HyperlinkedRelatedField(
+        read_only=True,
+        view_name='user-detail',
+        source='owner'
+    )
+
+    scenario_url = serializers.HyperlinkedRelatedField(
+        read_only=True,
+        view_name='scenario-detail',
+        source='scenario'
+    )
+
     class Meta:
         model = Scene
         fields = (
             'id',
             'name',
+            'owner_url',
             'suid',
-            'scenario',
+            'scenario_url',
             'fileurl',
             'info',
             'parameters',
@@ -59,13 +105,27 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
         model = Template
         fields = (
             'id',
-            'templatename',
-            'description',
+            'name',
+            'meta',
+            'sections',
+        )
+
+
+class UserSerializer(serializers.HyperlinkedModelSerializer):
+    """
+    A default REST Framework HyperlinkedModelSerializer for the User model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    # here we will write custom serialization and validation methods
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'username',
+            'first_name',
+            'last_name',
             'email',
             'groups',
-            'label',
-            'model',
-            'site',
-            'variables',
-            'version',
         )

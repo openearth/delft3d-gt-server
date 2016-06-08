@@ -15,28 +15,14 @@ class ScenarioTestCase(TestCase):
         # This should create only one scene
         single_input = {
             "basinslope": {
-                "group": "",
-                "maxstep": 0.3,
-                "minstep": 0.01,
-                "stepinterval": 0.1,
-                "units": "deg",
-                "useautostep": False,
-                "valid": True,
-                "value": 0.0143
+                "values": 0.0143
             },
         }
 
         # This should create 3 scenes
         multi_input = {
                 "basinslope": {
-                "group": "",
-                "maxstep": 0.03,
-                "minstep": 0.01,
-                "stepinterval": 0.01,
-                "units": "deg",
-                "useautostep": True,
-                "valid": True,
-                "value": 0.0143
+                    "values": [0.0143,0.0145,0.0146]
             },
         }
 

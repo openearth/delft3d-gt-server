@@ -18,10 +18,15 @@ from datetime import datetime
 from delft3dworker.tasks import chainedtask
 
 from django.conf import settings  # noqa
+from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
+from guardian.shortcuts import assign_perm
+
 from jsonfield import JSONField
+# from django.contrib.postgres.fields import JSONField  # When we use
+# Postgresql 9.4
 
 from mako.template import Template as MakoTemplate
 
@@ -45,12 +50,19 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.OneToOneField('Template', null=True)
+    template = models.ForeignKey('Template', blank=True, null=True)
 
     scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
 
+    owner = models.ForeignKey(User, null=True)
+
     # PROPERTY METHODS
+
+    class Meta:
+            permissions = (
+                ('view_scenario', 'View Scenario'),
+            )
 
     def get_absolute_url(self):
 
@@ -97,18 +109,24 @@ class Scenario(models.Model):
             else:
                 scene = Scene(
                     name="{}: Run {}".format(self.name, i + 1),
-                    parameters=sceneparameters,
-                    parameters_hash=phash
-                    )
+                    owner=self.owner,
+                    scenario=self,
+                    parameters=sceneparameters
+                )
                 scene.save()
                 scene.scenario.add(self)
+
+                assign_perm('view_scene', self.owner, scene)
+                assign_perm('change_scene', self.owner, scene)
+                assign_perm('delete_scene', self.owner, scene)
+
         self.save()
 
     # CONTROL METHODS
 
     def start(self):
         for scene in self.scene_set.all():
-            scene.start()
+            scene.start(workflow="main")
         return "started"
 
     def stop(self):
@@ -123,30 +141,18 @@ class Scenario(models.Model):
     # INTERNALS
 
     def _parse_setting(self, key, setting):
-
-        if not ('value' in setting or 'valid' in settings or setting['valid']):
+        if not ('values' in setting):
             return
+
+        values = setting['values']
 
         if key == "scenarioname":
-            self.name = setting['value']
+            self.name = values
             return
 
-        if not setting["useautostep"]:
-            # No autostep, just add these settings
-            for scene in self.scenes_parameters:
-                if key not in scene:
-                    scene[key] = setting
-        else:
-            # Autostep! Run past all parameter scenes, iteratively
-            minstep = float(setting["minstep"])
-            maxstep = float(setting["maxstep"])
-            step = float(setting["stepinterval"])
-            values = []
-
-            curval = minstep
-            while curval <= maxstep:  # includes maxstep
-                values.append(round(curval, 2))
-                curval = curval + step
+        # If values is a list, multiply scenes
+        if isinstance(values, list):
+            logging.info("Detected multiple values at {}".format(key))
 
             # Current scenes times number of new values
             # 3 original runs (1 2 3), this settings adds two (a b) thus we now
@@ -162,12 +168,20 @@ class Scenario(models.Model):
                 # Using modulo we can assign a b in the correct
                 # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
                 # modulo gives 0 which is again the first value (a)
+                # Rename key in settings
                 s['value'] = values[i % len(values)]
+                # delete keys named 'values'
+                s.pop('values')
                 scene[key] = s
                 i += 1
 
-    def __unicode__(self):
+        # Set keys not yet occuring in scenes
+        else:
+            for scene in self.scenes_parameters:
+                if key not in scene:
+                    scene[key] = setting
 
+    def __unicode__(self):
         return self.name
 
 
@@ -193,7 +207,14 @@ class Scene(models.Model):
     workingdir = models.CharField(max_length=256)
     parameters_hash = models.CharField(max_length=64, unique=True, blank=True)
 
+    owner = models.ForeignKey(User, null=True)
+
     # PROPERTY METHODS
+    class Meta:
+            permissions = (
+                ('view_scene', 'View Scene'),
+            )
+
 
     def get_absolute_url(self):
 
@@ -214,12 +235,12 @@ class Scene(models.Model):
             "parameters": self.parameters,
             "state": self.state,
             "task_id": self.task_id,
+            "owner": self.owner,
         }
 
     # CONTROL METHODS
 
-    def start(self):
-
+    def start(self, workflow="main"):
         result = AbortableAsyncResult(self.task_id)
 
         if self.task_id != "" and result.state == "PENDING":
@@ -228,7 +249,8 @@ class Scene(models.Model):
         if result.state == BUSYSTATE:
             return {"error": "task already busy", "task_id": self.task_id}
 
-        result = chainedtask.delay(self.parameters, self.workingdir)
+        result = chainedtask.delay(
+            self.parameters, self.workingdir, workflow)
         self.task_id = result.task_id
         self.state = result.state
         self.save()
@@ -273,7 +295,7 @@ class Scene(models.Model):
             "info": str(self.info)
         }
 
-    def export(self):
+    def export(self, options):
 
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
@@ -299,11 +321,20 @@ class Scene(models.Model):
         for root, dirs, files in os.walk(self.workingdir):
             for f in files:
                 name, ext = os.path.splitext(f)
+
                 # Could be dynamic or tuple of extensions
-                if ext in ('.png', '.jpg', '.gif'):
+                if 'export_images' in options and ext in ('.png', '.jpg', '.gif'):
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
+
+                if 'export_input' in options and "simulation" in root and name == 'a':
+                    abs_path = os.path.join(root, f)
+                    rel_path = os.path.relpath(abs_path, self.workingdir)
+                    zf.write(abs_path, rel_path)
+
+                # if 'export_thirdparty' in options:
+                    # pass
 
         # Must close zip for all contents to be written
         zf.close()
@@ -436,6 +467,8 @@ class Scene(models.Model):
 
                     else:
                         # Other images ?
+                        # Dummy images
+                        self.info["delta_fringe_images"]["images"].append(f)
                         pass
 
         for root, dirs, files in os.walk(
@@ -461,19 +494,17 @@ class Template(models.Model):
     Template model
     """
 
-    templatename = models.CharField(max_length=256)
-
-    description = models.CharField(max_length=256, blank=True)
-    email = models.CharField(max_length=256, blank=True)
-    groups = JSONField(blank=True)
-    label = models.CharField(max_length=256, blank=True)
-    model = models.CharField(max_length=256, blank=True)
-    site = models.CharField(max_length=256, blank=True)
-    variables = JSONField(blank=True)
-    version = models.IntegerField(blank=True)
+    name = models.CharField(max_length=256)
+    meta = JSONField(blank=True)
+    sections = JSONField(blank=True)
 
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('template_detail'), self.id)
 
     def __unicode__(self):
-        return self.templatename
+        return self.name
+
+    class Meta:
+        permissions = (
+            ('view_template', 'View Template'),
+        )

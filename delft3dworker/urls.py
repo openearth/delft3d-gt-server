@@ -10,10 +10,11 @@ from delft3dworker import views
 # REST Framework Router
 
 router = routers.DefaultRouter()
-router.register(r'scenarios', views.ScenarioViewSet)
-router.register(r'scenes', views.SceneViewSet)
-router.register(r'templates', views.TemplateViewSet)
-
+router.register(r'groups', views.GroupViewSet, 'group')
+router.register(r'scenarios', views.ScenarioViewSet, 'scenario')
+router.register(r'scenes', views.SceneViewSet, 'scene')
+router.register(r'templates', views.TemplateViewSet, 'template')
+router.register(r'users', views.UserViewSet, 'user')
 
 # url patterns
 

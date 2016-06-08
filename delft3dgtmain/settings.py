@@ -40,7 +40,8 @@ INSTALLED_APPS = [
 
     'djcelery',
     'rest_framework',
-
+    'crispy_forms',
+    'guardian',
     'delft3dworker',
     'delft3dgtfrontend',
 ]
@@ -57,6 +58,15 @@ MIDDLEWARE_CLASSES = [
 ]
 
 ROOT_URLCONF = 'delft3dgtmain.urls'
+
+# Object permissions
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # default
+    'guardian.backends.ObjectPermissionBackend',
+]
+
+ANONYMOUS_USER_NAME = None  # No anon user
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
@@ -88,16 +98,20 @@ WSGI_APPLICATION = 'delft3dgtmain.wsgi.application'
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': 'django.contrib.auth.password_validation'
+        '.UserAttributeSimilarityValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'NAME': 'django.contrib.auth.password_validation'
+        '.MinimumLengthValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        'NAME': 'django.contrib.auth.password_validation'
+        '.CommonPasswordValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'NAME': 'django.contrib.auth.password_validation'
+        '.NumericPasswordValidator',
     },
 ]
 
@@ -135,11 +149,18 @@ WORKER_FILEURL = '/files'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
         'delft3dworker.authentication.CsrfExemptSessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+        'rest_framework.permissions.IsAuthenticated',
+        # 'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
+        # 'delft3dworker.permissions.ViewObjectPermissions',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'rest_framework.filters.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        # 'rest_framework.filters.DjangoObjectPermissionsFilter',
     ]
 }
 
@@ -181,7 +202,13 @@ if 'test' in sys.argv:
         'settings$',
         'tests$',
         'urls$',
+        'rest_framework$',
+        'crispy_forms$',
+        'guardian$',
+        'delft3dworker.management$'
     ]
+
+    WORKER_FILEDIR = ''
 
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'
