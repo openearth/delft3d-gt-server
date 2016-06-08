@@ -39,7 +39,7 @@ class ScenarioSerializer(serializers.HyperlinkedModelSerializer):
     )
 
     template_url = serializers.HyperlinkedRelatedField(
-        read_only=True,
+        queryset=Template.objects.all(),
         view_name='template-detail',
         source='template'
     )
