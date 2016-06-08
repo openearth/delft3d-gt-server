@@ -23,6 +23,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_objects_for_user
 
 from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
@@ -35,6 +36,7 @@ from shutil import copytree
 from shutil import copyfile
 from shutil import rmtree
 
+import hashlib
 
 BUSYSTATE = "PROCESSING"
 
@@ -86,20 +88,39 @@ class Scenario(models.Model):
 
         self.save()
 
-    def createscenes(self):
+    def createscenes(self, user):
         for i, sceneparameters in enumerate(self.scenes_parameters):
-            scene = Scene(
-                name="{}: Run {}".format(self.name, i + 1),
-                owner=self.owner,
-                scenario=self,
-                parameters=sceneparameters,
-                shared="p"  # private
-            )
-            scene.save()
 
-            assign_perm('view_scene', self.owner, scene)
-            assign_perm('change_scene', self.owner, scene)
-            assign_perm('delete_scene', self.owner, scene)
+            # Create hash
+            m = hashlib.sha256()
+            m.update(str(sceneparameters))
+            phash = m.hexdigest()
+
+            # Check if hash already exists
+            scenes = Scene.objects.filter(parameters_hash=phash)
+            clones = get_objects_for_user(user, "view_scene", scenes)
+
+            # If so, add scenario to scene
+            if len(clones) > 0:
+                scene = clones[0]  # cannot have more than one scene
+                scene.scenario.add(self)
+                return
+
+            # Scene input is unique
+            else:
+                scene = Scene(
+                    name="{}: Run {}".format(self.name, i + 1),
+                    owner=self.owner,
+                    parameters=sceneparameters,
+                    shared="p",  # private
+                    parameters_hash=phash,
+                )
+                scene.save()
+                scene.scenario.add(self)
+
+                assign_perm('view_scene', self.owner, scene)
+                assign_perm('change_scene', self.owner, scene)
+                assign_perm('delete_scene', self.owner, scene)
 
         self.save()
 
@@ -178,7 +199,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     suid = models.CharField(max_length=256, editable=False)
 
-    scenario = models.ForeignKey('Scenario', null=True)
+    scenario = models.ManyToManyField(Scenario, null=True)
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
@@ -186,6 +207,7 @@ class Scene(models.Model):
     state = models.CharField(max_length=256, blank=True)
     task_id = models.CharField(max_length=256)
     workingdir = models.CharField(max_length=256)
+    parameters_hash = models.CharField(max_length=64, unique=True, blank=True)
 
     shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
     shared = models.CharField(max_length=1, choices=shared_choices)
@@ -209,9 +231,8 @@ class Scene(models.Model):
             "id": self.id,
             "name": self.name,
             "suid": self.suid,
-            "scenario": self.scenario.id if (
-                self.scenario
-            ) else None,
+            # could be one id (cannot be -1), or list of ids
+            "scenario": self.scenario.values('id') if self.scenario else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,

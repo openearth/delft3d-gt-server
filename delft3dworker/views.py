@@ -90,7 +90,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             if parameters:
                 instance.load_settings(parameters)
-                instance.createscenes()
+                instance.createscenes(self.request.user)
 
             assign_perm('view_scenario', self.request.user, instance)
             assign_perm('change_scenario', self.request.user, instance)

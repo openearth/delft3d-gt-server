@@ -6,6 +6,8 @@ class ScenarioTestCase(TestCase):
     def setUp(self):
         Scenario.objects.create(name="Test single scene")
         Scenario.objects.create(name="Test multiple scenes")
+        Scenario.objects.create(name="Test hash A")
+        Scenario.objects.create(name="Test hash B")
 
     def test_scenario_parses_input(self):
         """Correctly parse scenario input"""
@@ -32,3 +34,31 @@ class ScenarioTestCase(TestCase):
 
         self.assertEqual(len(scenario_single.scenes_parameters), 1)
         self.assertEqual(len(scenario_multi.scenes_parameters), 3)
+
+    def test_hash_scenes(self):
+        """Test if scene clone is detected and thus has both Scenarios."""
+
+        single_input = {
+            "basinslope": {
+                "group": "",
+                "maxstep": 0.3,
+                "minstep": 0.01,
+                "stepinterval": 0.1,
+                "units": "deg",
+                "useautostep": False,
+                "valid": True,
+                "value": 0.0143
+            },
+        }
+
+        scenario_A = Scenario.objects.get(name="Test hash A")
+        scenario_A.load_settings(single_input)
+        scenario_A.createscenes()
+
+        scenario_B = Scenario.objects.get(name="Test hash B")
+        scenario_B.load_settings(single_input)
+        scenario_B.createscenes()
+
+        scene = scenario_B.scene_set.all()[0]
+        self.assertIn(scenario_A, scene.scenario.all())
+        self.assertIn(scenario_B, scene.scenario.all())
