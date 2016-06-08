@@ -22,7 +22,7 @@ from django.views.generic import DeleteView
 from django.views.generic import View
 
 from guardian.shortcuts import assign_perm, remove_perm
-from guardian.shortcuts import get_groups_with_perms, get_users_with_perms
+from guardian.shortcuts import get_groups_with_perms, get_objects_for_user
 
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
@@ -481,7 +481,8 @@ class ScenarioListView(JSONListView):
     model = Scenario
 
     def get_queryset(self):
-        queryset = Scenario.objects.all().order_by('id')
+        scenarios = Scenario.objects.all().order_by('id')
+        queryset = get_objects_for_user(self.request.user, "view_scenario", scenarios, accept_global_perms=False)
         return queryset
 
     @method_decorator(csrf_exempt)
@@ -603,7 +604,8 @@ class SceneListView(JSONListView):
     model = Scene
 
     def get_queryset(self):
-        queryset = Scene.objects.all().order_by('id')
+        scenes = Scene.objects.all().order_by('id')
+        queryset = get_objects_for_user(self.request.user, "view_scene", scenes, accept_global_perms=False)
         return queryset
 
     @method_decorator(csrf_exempt)
