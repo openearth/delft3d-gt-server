@@ -9,7 +9,7 @@
         {
           "variables": [
             {
-              "default": "New scenario",
+              "default": "New Delta Plain Scenario ",
               "type": "text",
               "id": "name",
               "name": "Name",
@@ -44,13 +44,13 @@
           "variables": [
             {
               "name": "Stop time",
-              "default": 87840,
+              "default": 60,
               "validators": {
-                "max": 230880,
+                "max": 160,
                 "required": true,
                 "min": 0
               },
-              "units": "min",
+              "units": "days",
               "type": "numeric",
               "id": "simstoptime"
             },
@@ -68,13 +68,13 @@
             },
             {
               "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
-              "default": 1440,
+              "default": 1,
               "validators": {
-                "max": 2880,
+                "max": 2,
                 "required": true,
-                "min": 720
+                "min": 0.5
               },
-              "units": "min",
+              "units": "days",
               "type": "numeric",
               "id": "outputinterval",
               "name": "Output timestep"
@@ -141,28 +141,27 @@
           "name": "Forces"
         },
         {
+          "slider": {
+            "sum": 100,
+            "valid": true,
+            "steps": 10
+          },
           "variables": [
             {
               "name": "Sand volumetric composition",
-              "default": 50,
-              "validators": {
-                "max": 100,
-                "min": 0
-              },
+              "default": 1,
+              "validators": {},
               "units": "%",
-              "type": "numeric",
+              "type": "slider",
               "id": "sandvolcomposition"
             },
             {
               "name": "Clay volumetric composition",
-              "default": 50,
+              "default": 1,
               "disabled": false,
-              "validators": {
-                "max": 100,
-                "min": 0
-              },
+              "validators": {},
               "units": "%",
-              "type": "numeric",
+              "type": "slider",
               "id": "clayvolcomposition"
             }
           ],
@@ -184,7 +183,7 @@
         {
           "variables": [
             {
-              "default": "New scenario",
+              "default": "New Ebb Title Scenario",
               "type": "text",
               "id": "name",
               "name": "Name",
@@ -219,13 +218,13 @@
           "variables": [
             {
               "name": "Stop time",
-              "default": 87840,
+              "default": 60,
               "validators": {
-                "max": 230880,
+                "max": 160,
                 "required": true,
                 "min": 0
               },
-              "units": "min",
+              "units": "days",
               "type": "numeric",
               "id": "simstoptime"
             },
@@ -243,13 +242,13 @@
             },
             {
               "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
-              "default": 1440,
+              "default": 1,
               "validators": {
-                "max": 2880,
+                "max": 2,
                 "required": true,
-                "min": 720
+                "min": 0.5
               },
-              "units": "min",
+              "units": "days",
               "type": "numeric",
               "id": "outputinterval",
               "name": "Output timestep"
@@ -316,28 +315,27 @@
           "name": "Forces"
         },
         {
+          "slider": {
+            "sum": 100,
+            "valid": true,
+            "steps": 10
+          },
           "variables": [
             {
               "name": "Sand volumetric composition",
-              "default": 50,
-              "validators": {
-                "max": 100,
-                "min": 0
-              },
+              "default": 1,
+              "validators": {},
               "units": "%",
-              "type": "numeric",
+              "type": "slider",
               "id": "sandvolcomposition"
             },
             {
               "name": "Clay volumetric composition",
-              "default": 50,
+              "default": 1,
               "disabled": false,
-              "validators": {
-                "max": 100,
-                "min": 0
-              },
+              "validators": {},
               "units": "%",
-              "type": "numeric",
+              "type": "slider",
               "id": "clayvolcomposition"
             }
           ],
