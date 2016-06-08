@@ -59,9 +59,9 @@ class Scenario(models.Model):
     # PROPERTY METHODS
 
     class Meta:
-            permissions = (
-                ('view_scenario', 'View Scenario'),
-            )
+        permissions = (
+            ('view_scenario', 'View Scenario'),
+        )
 
     def get_absolute_url(self):
 
@@ -193,10 +193,9 @@ class Scene(models.Model):
 
     # PROPERTY METHODS
     class Meta:
-            permissions = (
-                ('view_scene', 'View Scene'),
-            )
-
+        permissions = (
+            ('view_scene', 'View Scene'),
+        )
 
     def get_absolute_url(self):
 
@@ -307,12 +306,22 @@ class Scene(models.Model):
                 name, ext = os.path.splitext(f)
 
                 # Could be dynamic or tuple of extensions
-                if 'export_images' in options and ext in ('.png', '.jpg', '.gif'):
+                if (
+                    'export_images' in options
+                ) and (
+                    ext in '.png', '.jpg', '.gif'
+                ):
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
 
-                if 'export_input' in options and "simulation" in root and name == 'a':
+                if (
+                    'export_input' in options
+                ) and (
+                    "simulation" in root
+                ) and (
+                    name == 'a'
+                ):
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
