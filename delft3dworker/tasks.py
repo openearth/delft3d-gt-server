@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import json
 import logging
 import os
+import subprocess
 import time
 
 from delft3dworker.utils import PersistentLogger
@@ -426,6 +427,17 @@ def dummy_simulation(self, _, workingdir):
             # process
             # sim has progress
             if simlog.changed() and not processing_container.running():
+
+                # Create movie which can be zipped later
+                directory = os.path.join(workingdir, 'process')
+                command_fringe = """ffmpeg -framerate 13 -pattern_type glob -i '{}/delta_fringe_*.png' -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/delta_fringe.mp4""".format(directory, directory)
+                command_channel = """ffmpeg -framerate 13 -pattern_type glob -i '{}/channel_network_*.png' -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/channel_network.mp4""".format(directory, directory)
+                command_sediment = """ffmpeg -framerate 13 -pattern_type glob -i '{}/sediment_fraction_*.png' -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/sediment_fraction.mp4""".format(directory, directory)
+
+                subprocess.call(command_fringe, shell=True)
+                subprocess.call(command_channel, shell=True)
+                subprocess.call(command_sediment, shell=True)
+
                 logger.info("Started processing, sim progress changed.")
                 processing_container.start()
                 logger.info(state_meta["output"])

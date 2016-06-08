@@ -296,16 +296,6 @@ class Scene(models.Model):
         # The zip compressor
         zf = zipfile.ZipFile(stream, "w")
 
-        # Create movie which can be zipped later
-        if 'export_movie' in options:
-            directory = os.path.join(self.workingdir, 'process')
-            command_fringe = """ffmpeg -framerate 13 -pattern_type glob -i '{}/delta_fringe_*.png' -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/delta_fringe.mp4""".format(directory, directory)
-            command_channel = """ffmpeg -framerate 13 -pattern_type glob -i '{}/channel_network_*.png' -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/channel_network.mp4""".format(directory, directory)
-            command_sediment = """ffmpeg -framerate 13 -pattern_type glob -i '{}/sediment_fraction_*.png' -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/sediment_fraction.mp4""".format(directory, directory)
-            subprocess.call(command_fringe, shell=True)
-            subprocess.call(command_channel, shell=True)
-            subprocess.call(command_sediment, shell=True)
-
         # Add files here.
         # If you run out of memory you have 2 options:
         # - stream
@@ -336,13 +326,13 @@ class Scene(models.Model):
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
 
-            # Zip movie
-            if 'export_movie' in options and (
-                    ext in ['.mp4']):
+                # Zip movie
+                if 'export_movie' in options and (
+                        ext in '.mp4'):
 
-                abs_path = os.path.join(root, f)
-                rel_path = os.path.relpath(abs_path, self.workingdir)
-                zf.write(abs_path, rel_path)
+                    abs_path = os.path.join(root, f)
+                    rel_path = os.path.relpath(abs_path, self.workingdir)
+                    zf.write(abs_path, rel_path)
 
 
         # Must close zip for all contents to be written
