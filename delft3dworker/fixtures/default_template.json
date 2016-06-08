@@ -9,7 +9,7 @@
         {
           "variables": [
             {
-              "default": "New scenario",
+              "default": "New Delta Plain Scenario ",
               "type": "text",
               "id": "name",
               "name": "Name",
@@ -141,28 +141,27 @@
           "name": "Forces"
         },
         {
+          "slider": {
+            "sum": 100,
+            "valid": true,
+            "steps": 10
+          },
           "variables": [
             {
               "name": "Sand volumetric composition",
-              "default": 50,
-              "validators": {
-                "max": 100,
-                "min": 0
-              },
+              "default": 1,
+              "validators": {},
               "units": "%",
-              "type": "numeric",
+              "type": "slider",
               "id": "sandvolcomposition"
             },
             {
               "name": "Clay volumetric composition",
-              "default": 50,
+              "default": 1,
               "disabled": false,
-              "validators": {
-                "max": 100,
-                "min": 0
-              },
+              "validators": {},
               "units": "%",
-              "type": "numeric",
+              "type": "slider",
               "id": "clayvolcomposition"
             }
           ],
@@ -184,7 +183,7 @@
         {
           "variables": [
             {
-              "default": "New scenario",
+              "default": "New Ebb Title Scenario",
               "type": "text",
               "id": "name",
               "name": "Name",
@@ -316,28 +315,27 @@
           "name": "Forces"
         },
         {
+          "slider": {
+            "sum": 100,
+            "valid": true,
+            "steps": 10
+          },
           "variables": [
             {
               "name": "Sand volumetric composition",
-              "default": 50,
-              "validators": {
-                "max": 100,
-                "min": 0
-              },
+              "default": 1,
+              "validators": {},
               "units": "%",
-              "type": "numeric",
+              "type": "slider",
               "id": "sandvolcomposition"
             },
             {
               "name": "Clay volumetric composition",
-              "default": 50,
+              "default": 1,
               "disabled": false,
-              "validators": {
-                "max": 100,
-                "min": 0
-              },
+              "validators": {},
               "units": "%",
-              "type": "numeric",
+              "type": "slider",
               "id": "clayvolcomposition"
             }
           ],
