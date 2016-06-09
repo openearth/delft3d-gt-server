@@ -89,6 +89,7 @@
               "default": 0.0143,
               "validators": {
                 "max": 0.3,
+                "required": true,
                 "min": 0.01
               },
               "factor": true,
@@ -101,6 +102,7 @@
               "default": 300,
               "validators": {
                 "max": 1000,
+                "required": true,
                 "min": 100
               },
               "factor": true,
@@ -118,6 +120,7 @@
               "default": 1000,
               "validators": {
                 "max": 2000,
+                "required": true,
                 "min": 0
               },
               "factor": true,
@@ -130,6 +133,7 @@
               "default": 1,
               "validators": {
                 "max": 3,
+                "required": true,
                 "min": 0
               },
               "factor": true,
@@ -165,7 +169,7 @@
               "id": "clayvolcomposition"
             }
           ],
-          "name": "Sediment composition"
+          "name": "Initial substrate sediment composition"
         }
       ],
       "name": "Default (delta plain)"
@@ -183,7 +187,7 @@
         {
           "variables": [
             {
-              "default": "New Ebb Title Scenario",
+              "default": "New Ebb Title Scenario ",
               "type": "text",
               "id": "name",
               "name": "Name",
@@ -263,6 +267,7 @@
               "default": 0.0143,
               "validators": {
                 "max": 0.3,
+                "required": true,
                 "min": 0.01
               },
               "factor": true,
@@ -275,6 +280,7 @@
               "default": 300,
               "validators": {
                 "max": 1000,
+                "required": true,
                 "min": 100
               },
               "factor": true,
@@ -292,6 +298,7 @@
               "default": 0,
               "validators": {
                 "max": 2000,
+                "required": true,
                 "min": 0
               },
               "factor": true,
@@ -304,6 +311,7 @@
               "default": 1,
               "validators": {
                 "max": 3,
+                "required": true,
                 "min": 0
               },
               "factor": true,
@@ -339,7 +347,7 @@
               "id": "clayvolcomposition"
             }
           ],
-          "name": "Sediment composition"
+          "name": "Initial substrate sediment composition"
         }
       ],
       "name": "Ebb Title Delta"
