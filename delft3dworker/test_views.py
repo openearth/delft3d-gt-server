@@ -1,9 +1,12 @@
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission
 from django.test import TestCase
 
 from rest_framework.test import APIRequestFactory
 from rest_framework.test import force_authenticate
+
+from guardian.shortcuts import assign_perm
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
@@ -20,28 +23,50 @@ class ListAccessTestCase(TestCase):
         self.factory = APIRequestFactory()
 
         # create users and store for later access
-        self.user_foo = User.objects.create(username='foo')
-        self.user_bar = User.objects.create(username='bar')
+        self.user_foo = User.objects.create_user(username='foo')
+        self.user_bar = User.objects.create_user(username='bar')
 
         # create models in dB
         scenario = Scenario.objects.create(
             name='Test Scenario',
             owner=self.user_foo,
         )
-        Scene.objects.create(
+        a = Scene.objects.create(
             name='Test Scene 1',
             owner=self.user_foo,
             parameters={'a': {'values': 2}},
-            scenario=scenario,
             state='SUCCESS',
         )
-        Scene.objects.create(
+        a.scenario.add(scenario)
+        b = Scene.objects.create(
             name='Test Scene 2',
             owner=self.user_foo,
             parameters={'a': {'values': 3}},
-            scenario=scenario,
             state='SUCCESS',
         )
+        b.scenario.add(scenario)
+
+        # Model general
+        self.user_foo.user_permissions.add(Permission.objects.get(codename='view_scenario'))
+        self.user_foo.user_permissions.add(Permission.objects.get(codename='view_scene'))
+        self.user_bar.user_permissions.add(Permission.objects.get(codename='view_scenario'))
+        self.user_bar.user_permissions.add(Permission.objects.get(codename='view_scene'))
+
+        # Object general
+        assign_perm('view_scenario', self.user_foo, scenario)
+        assign_perm('change_scenario', self.user_foo, scenario)
+        assign_perm('delete_scenario', self.user_foo, scenario)
+
+        assign_perm('view_scene', self.user_foo, a)
+        assign_perm('change_scene', self.user_foo, a)
+        assign_perm('delete_scene', self.user_foo, a)
+        assign_perm('view_scene', self.user_foo, b)
+        assign_perm('change_scene', self.user_foo, b)
+        assign_perm('delete_scene', self.user_foo, b)
+
+        # Refetch to empty permissions cache
+        self.user_foo = User.objects.get(pk=self.user_foo.pk)
+        self.user_bar = User.objects.get(pk=self.user_bar.pk)
 
     def test_search(self):
         """
@@ -91,13 +116,25 @@ class SceneSearchTestCase(TestCase):
             name='Test',
             owner=self.user_bar,
         )
-        Scene.objects.create(
+        scene = Scene.objects.create(
             name='Test',
             owner=self.user_bar,
-            parameters={'a': {'values': 2}},
-            scenario=scenario,
+            parameters={'a': {'value': 2}},
             state='SUCCESS',
         )
+        scene.scenario.add(scenario)
+
+        # Object general
+        assign_perm('view_scene', self.user_bar, scene)
+        assign_perm('change_scene', self.user_bar, scene)
+        assign_perm('delete_scene', self.user_bar, scene)
+
+        # Model general
+        self.user_bar.user_permissions.add(Permission.objects.get(codename='view_scenario'))
+        self.user_bar.user_permissions.add(Permission.objects.get(codename='view_scene'))
+
+        # Refetch to empty permissions cache
+        self.user_bar = User.objects.get(pk=self.user_bar.pk)
 
     def test_search(self):
         """
@@ -106,7 +143,7 @@ class SceneSearchTestCase(TestCase):
 
         # Exact matches
         search_query_exact_a = {'name': "Test"}
-        search_query_exact_b = {'name': "Test2"}
+        search_query_exact_b = {'state': "FINISHED"}
         search_query_exact_c = {'scenario': "Test", 'name': "Test"}
 
         self.assertEqual(len(self._request(search_query_exact_a)), 1)
@@ -156,16 +193,28 @@ class SceneTestCase(TestCase):
 
     def setUp(self):
         self.user_foo = User.objects.create(username="foo")
-        Scene.objects.create(
+        scene = Scene.objects.create(
             name="Test main workflow",
             owner=self.user_foo,
         )
+
+        # Object general
+        assign_perm('view_scene', self.user_foo, scene)
+        assign_perm('change_scene', self.user_foo, scene)
+        assign_perm('delete_scene', self.user_foo, scene)
+
+        # Model general
+        self.user_foo.user_permissions.add(Permission.objects.get(codename='view_scenario'))
+        self.user_foo.user_permissions.add(Permission.objects.get(codename='view_scene'))
+
+        # Refetch to empty permissions cache
+        self.user_foo = User.objects.get(pk=self.user_foo.pk)
 
     def test_scene_accepts_start(self):
         # call /scene/{pk}/start and test if 200 response is returned
         factory = APIRequestFactory()
         view = SceneViewSet.as_view({'get': 'retrieve'})
-        request = factory.get('/scenes/1/start')
+        request = factory.get('/scenes/1/start/')
         force_authenticate(request, user=self.user_foo)
         response = view(request, pk='1')
         response.render()
