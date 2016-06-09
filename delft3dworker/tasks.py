@@ -65,7 +65,7 @@ def chainedtask(self, parameters, workingdir, workflow):
         logging.info("workflow not available")
 
     chain_result = chain()
-    results = {}
+    results = {'export': False}
 
     # main task loop
     running = True
@@ -138,7 +138,7 @@ def chainedtask(self, parameters, workingdir, workflow):
         running = not chain_result.ready()
 
     logger.info("Finishing chain")
-    if workflow == 'export':
+    if workflow == 'export' and os.path.exists(os.path.join(workingdir,'export','trim-a.grdecl')):
         results['export'] = True
     results['result'] = "Finished"
     self.update_state(state="FINISHING", meta=results)

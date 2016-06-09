@@ -79,7 +79,7 @@ class SceneSerializer(serializers.ModelSerializer):
 
     # here we will write custom serialization and validation methods
 
-    owner = UserSerializer()
+    owner = UserSerializer(read_only=True)
 
     # Run update state on serialization
     state = serializers.CharField(source='_update_state')
