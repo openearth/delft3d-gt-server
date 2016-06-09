@@ -245,7 +245,6 @@ class Scene(models.Model):
     # CONTROL METHODS
 
     def start(self, workflow="main"):
-        print("Started scene")
         result = AbortableAsyncResult(self.task_id)
 
         if self.task_id != "" and result.state == "PENDING":
