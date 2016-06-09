@@ -64,6 +64,9 @@ class SceneSerializer(serializers.ModelSerializer):
         source='owner'
     )
 
+    # Run update state on serialization
+    state = serializers.CharField(source='_update_state')
+
     class Meta:
         model = Scene
         fields = (

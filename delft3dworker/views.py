@@ -154,10 +154,6 @@ class SceneViewSet(viewsets.ModelViewSet):
         """
         queryset = Scene.objects.all()
 
-        # Update scene states
-        for scene in queryset:
-            scene._update_state()
-
         self.queryset = queryset
 
         # Filter on parameter
