@@ -199,7 +199,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     suid = models.CharField(max_length=256, editable=False)
 
-    scenario = models.ManyToManyField(Scenario, null=True)
+    scenario = models.ManyToManyField(Scenario)
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
@@ -355,7 +355,6 @@ class Scene(models.Model):
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
 
-
         # Must close zip for all contents to be written
         zf.close()
         return stream, zip_filename
@@ -394,7 +393,6 @@ class Scene(models.Model):
 
             for f in folders:
                 os.makedirs(os.path.join(self.workingdir, f))
-
 
     def _delete_datafolder(self):
         # delete directory for scene
