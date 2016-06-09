@@ -127,17 +127,19 @@ class Scenario(models.Model):
     # CONTROL METHODS
 
     def start(self):
+        # Only start scenes that are really new
+        # not already existing in other scenarios
         for scene in self.scene_set.all():
-            scene.start(workflow="main")
+            if scene.scenario.all() == [self]:
+                scene.start(workflow="main")
         return "started"
 
-    def stop(self):
-        for scene in self.scene_set.all():
-            scene.abort()
-        return "stopped"
-
     def delete(self, *args, **kwargs):
-        self.stop()
+        for scene in self.scene_set.all():
+            print(scene.scenario.all())
+            if scene.scenario.all() == [self]:
+                scene.delete()
+
         super(Scenario, self).delete(*args, **kwargs)
 
     # INTERNALS
