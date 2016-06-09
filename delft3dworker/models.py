@@ -444,9 +444,7 @@ class Scene(models.Model):
         # only update state if it has a task_id (which means the task is
         # started)
         if self.task_id != '':
-            print("Updating state for {}".format(self.task_id))
             result = AbortableAsyncResult(self.task_id)
-            print(result)
             self.info = result.info if isinstance(
                 result.info, dict) else {"info": str(result.info)}
             self.state = result.state
