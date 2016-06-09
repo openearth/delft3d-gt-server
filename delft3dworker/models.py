@@ -24,6 +24,7 @@ from django.db import models
 
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
+from guardian.core import has_perm
 
 from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
@@ -134,9 +135,9 @@ class Scenario(models.Model):
                 scene.start(workflow="main")
         return "started"
 
-    def delete(self, *args, **kwargs):
+    def delete(self, user, *args, **kwargs):
         for scene in self.scene_set.all():
-            if len(scene.scenario.all()) == 1:
+            if len(scene.scenario.all()) == 1 and user.has_perm('scene.delete_scene', scene):
                 scene.delete()
 
         super(Scenario, self).delete(*args, **kwargs)

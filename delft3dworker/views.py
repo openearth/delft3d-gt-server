@@ -102,6 +102,10 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             # a scenario should be started server-side after creation
             instance.start()
 
+    # Pass on user to check permissions
+    def perform_destroy(self, instance):
+        instance.delete(self.request.user)
+
 
 class SceneViewSet(viewsets.ModelViewSet):
     """
@@ -278,6 +282,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
+
 
     @detail_route(methods=["post"])
     def publish_company(self, request, pk=None):
