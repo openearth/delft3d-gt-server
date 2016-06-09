@@ -130,14 +130,13 @@ class Scenario(models.Model):
         # Only start scenes that are really new
         # not already existing in other scenarios
         for scene in self.scene_set.all():
-            if scene.scenario.all() == [self]:
+            if len(scene.scenario.all()) == 1:
                 scene.start(workflow="main")
         return "started"
 
     def delete(self, *args, **kwargs):
         for scene in self.scene_set.all():
-            print(scene.scenario.all())
-            if scene.scenario.all() == [self]:
+            if len(scene.scenario.all()) == 1:
                 scene.delete()
 
         super(Scenario, self).delete(*args, **kwargs)
@@ -247,6 +246,7 @@ class Scene(models.Model):
     # CONTROL METHODS
 
     def start(self, workflow="main"):
+        print("Started scene")
         result = AbortableAsyncResult(self.task_id)
 
         if self.task_id != "" and result.state == "PENDING":
