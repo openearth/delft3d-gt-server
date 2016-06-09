@@ -127,17 +127,17 @@ class Scenario(models.Model):
     # CONTROL METHODS
 
     def start(self):
+        # Only start scenes that are really new
+        # not already existing in other scenarios
         for scene in self.scene_set.all():
-            scene.start(workflow="main")
+            if len(scene.scenario.all()) == 1:
+                scene.start(workflow="main")
         return "started"
 
-    def stop(self):
+    def delete(self, user, *args, **kwargs):
         for scene in self.scene_set.all():
-            scene.abort()
-        return "stopped"
-
-    def delete(self, *args, **kwargs):
-        self.stop()
+            if len(scene.scenario.all()) == 1 and user.has_perm('delft3dworker.delete_scene', scene):
+                scene.delete()
         super(Scenario, self).delete(*args, **kwargs)
 
     # INTERNALS
@@ -343,6 +343,13 @@ class Scene(models.Model):
                 ) and (
                     name == 'a'
                 ):
+                    abs_path = os.path.join(root, f)
+                    rel_path = os.path.relpath(abs_path, self.workingdir)
+                    zf.write(abs_path, rel_path)
+
+                if 'export_thirdparty' in options and (
+                    'export' in root):
+
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
