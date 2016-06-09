@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import json
 import logging
 import os
+import shlex
 import subprocess
 import time
 
@@ -20,9 +21,7 @@ logger = get_task_logger(__name__)
 
 
 @shared_task(bind=True, base=AbortableTask)
-
 def chainedtask(self, parameters, workingdir, workflow):
-
     """ Chained task which can be aborted. Contains model logic. """
 
     # create folder
@@ -52,7 +51,11 @@ def chainedtask(self, parameters, workingdir, workflow):
     # if workflow == "export":
     #     chain = dummy.s() | dummy_export.s(workingdir)
     # elif workflow == "main":
-    #     chain = dummy_preprocess.s(workingdir, "") | dummy_simulation.s(workingdir)
+    #     chain = (
+    #         dummy_preprocess.s(workingdir, "")
+    #     ) | (
+    #         dummy_simulation.s(workingdir)
+    #     )
     # else:
     #     logging.info("workflow not available")
 
@@ -138,7 +141,7 @@ def chainedtask(self, parameters, workingdir, workflow):
         running = not chain_result.ready()
 
     logger.info("Finishing chain")
-    if workflow == 'export' and os.path.exists(os.path.join(workingdir,'export','trim-a.grdecl')):
+    if workflow == 'export' and os.path.exists(os.path.join(workingdir, 'export', 'trim-a.grdecl')):
         results['export'] = True
     results['result'] = "Finished"
     self.update_state(state="FINISHING", meta=results)
@@ -219,6 +222,7 @@ def preprocess(self, workingdir, _):
 
     return state_meta
 
+
 @shared_task(bind=True, base=AbortableTask)
 def dummy_preprocess(self, workingdir, _):
     """ Chained task which can be aborted. Contains model logic. """
@@ -274,6 +278,7 @@ def dummy_preprocess(self, workingdir, _):
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
     return state_meta
+
 
 @shared_task(bind=True, base=AbortableTask)
 def simulation(self, _, workingdir):
@@ -343,6 +348,39 @@ def simulation(self, _, workingdir):
             # process
             # sim has progress
             if simlog.changed() and not processing_container.running():
+                # Create movie which can be zipped later
+                directory = os.path.join(workingdir, 'process')
+                command_fringe = """/bin/ffmpeg -framerate 13 -pattern_type glob -i '{}/delta_fringe_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/delta_fringe.mp4""".format(
+                    directory, directory
+                )
+                command_channel = """/bin/ffmpeg -framerate 13 -pattern_type glob -i '{}/channel_network_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/channel_network.mp4""".format(
+                    directory, directory
+                )
+                command_sediment = """/bin/ffmpeg -framerate 13 -pattern_type glob -i '{}/sediment_fraction_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/sediment_fraction.mp4""".format(
+                    directory, directory
+                )
+
+                command_line_process = subprocess.Popen(
+                    shlex.split(command_fringe),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                logger.info(process_output)
+
+                command_line_process = subprocess.Popen(
+                    shlex.split(command_channel),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                logger.info(process_output)
+
+                command_line_process = subprocess.Popen(
+                    shlex.split(command_sediment),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                logger.info(process_output)
+
                 logger.info("Started processing, sim progress changed.")
                 processing_container.start()
                 logger.info(state_meta["output"])
@@ -433,17 +471,6 @@ def dummy_simulation(self, _, workingdir):
             # process
             # sim has progress
             if simlog.changed() and not processing_container.running():
-
-                # Create movie which can be zipped later
-                directory = os.path.join(workingdir, 'process')
-                command_fringe = """ffmpeg -framerate 13 -pattern_type glob -i '{}/delta_fringe_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/delta_fringe.mp4""".format(directory, directory)
-                command_channel = """ffmpeg -framerate 13 -pattern_type glob -i '{}/channel_network_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/channel_network.mp4""".format(directory, directory)
-                command_sediment = """ffmpeg -framerate 13 -pattern_type glob -i '{}/sediment_fraction_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/sediment_fraction.mp4""".format(directory, directory)
-
-                subprocess.call(command_fringe, shell=True)
-                subprocess.call(command_channel, shell=True)
-                subprocess.call(command_sediment, shell=True)
-
                 logger.info("Started processing, sim progress changed.")
                 processing_container.start()
                 logger.info(state_meta["output"])
@@ -473,6 +500,7 @@ def dummy_simulation(self, _, workingdir):
     # processing_container.delete()  # Doesn't work on NFS fs
 
     return state_meta
+
 
 @shared_task(bind=True, base=AbortableTask)
 def postprocess(self, _, workingdir):
@@ -532,6 +560,7 @@ def postprocess(self, _, workingdir):
 
     return state_meta
 
+
 @shared_task(bind=True, base=AbortableTask)
 def export(self, _, workingdir):
     """ Chained task which can be aborted. Contains model logic. """
@@ -544,7 +573,8 @@ def export(self, _, workingdir):
     volumes = ['{0}:/data/output:z'.format(outputfolder),
                '{0}:/data/input:ro'.format(inputfolder)]
 
-    command = "/data/run.sh /data/svn/scripts/export/export2grdecl.py"  # dummy container
+    # dummy container
+    command = "/data/run.sh /data/svn/scripts/export/export2grdecl.py"
 
     preprocess_container = DockerClient(
         settings.EXPORT_IMAGE_NAME,
@@ -587,6 +617,7 @@ def export(self, _, workingdir):
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
     return state_meta
+
 
 @shared_task(bind=True, base=AbortableTask)
 def dummy_export(self, _, workingdir):
@@ -644,6 +675,7 @@ def dummy_export(self, _, workingdir):
 
     return state_meta
 
+
 @shared_task(bind=True, base=AbortableTask)
 def dummy(self):
     """
@@ -654,6 +686,7 @@ def dummy(self):
     return
 
 # DockerClient
+
 
 class DockerClient():
 
