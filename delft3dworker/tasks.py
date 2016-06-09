@@ -365,6 +365,7 @@ def simulation(self, _, workingdir):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                 )
+                process_output, _ = command_line_process.communicate()
                 logger.info(process_output)
 
                 command_line_process = subprocess.Popen(
@@ -372,6 +373,7 @@ def simulation(self, _, workingdir):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                 )
+                process_output, _ = command_line_process.communicate()
                 logger.info(process_output)
 
                 command_line_process = subprocess.Popen(
@@ -379,6 +381,7 @@ def simulation(self, _, workingdir):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                 )
+                process_output, _ = command_line_process.communicate()
                 logger.info(process_output)
 
                 logger.info("Started processing, sim progress changed.")
