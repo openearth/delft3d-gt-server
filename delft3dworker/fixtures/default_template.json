@@ -180,14 +180,15 @@
   {
     "fields": {
       "meta": {
-        "description": "In this delta, sediments are brought in by the tides instead of brought in by the river.",
-        "creator": "fedor.baart@deltares.nl"
+        "description": "This scenario allows exploration of extreme values. This can be used to explore the limits of our boundary forcings.",
+        "authors": "Liang Li, Andrea Forzoni, Tijn Schmits",
+        "note": "This scenario creates 16 runs. Do not expect all of them to succeed because the combination of the forcing can be unrealistic."
       },
       "sections": [
         {
           "variables": [
             {
-              "default": "New Ebb Title Scenario ",
+              "default": "New Extremes Scenario",
               "type": "text",
               "id": "name",
               "name": "Name",
@@ -264,7 +265,7 @@
           "variables": [
             {
               "name": "Basin slope",
-              "default": 0.0143,
+              "default": "0.01,0.3",
               "validators": {
                 "max": 0.3,
                 "required": true,
@@ -277,7 +278,7 @@
             },
             {
               "name": "River width",
-              "default": 300,
+              "default": "100,1000",
               "validators": {
                 "max": 1000,
                 "required": true,
@@ -295,7 +296,7 @@
           "variables": [
             {
               "name": "River discharge",
-              "default": 0,
+              "default": "100,2000",
               "validators": {
                 "max": 2000,
                 "required": true,
@@ -308,7 +309,7 @@
             },
             {
               "name": "Tidal amplitude",
-              "default": 1,
+              "default": "0,3",
               "validators": {
                 "max": 3,
                 "required": true,
@@ -350,7 +351,7 @@
           "name": "Initial substrate sediment composition"
         }
       ],
-      "name": "Ebb Title Delta"
+      "name": "Extremes in Range Exploration Scenario"
     },
     "model": "delft3dworker.template",
     "pk": 2

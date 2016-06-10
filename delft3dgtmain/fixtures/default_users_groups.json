@@ -123,7 +123,7 @@
       "is_active": true,
       "is_superuser": false,
       "is_staff": false,
-      "last_login": null,
+      "last_login": "2016-05-29T12:34:59.972Z",
       "groups": [
         [
           "access:world"
@@ -148,7 +148,7 @@
       "is_active": true,
       "is_superuser": false,
       "is_staff": false,
-      "last_login": null,
+      "last_login": "2016-05-29T11:24:40.046Z",
       "groups": [
         [
           "access:world"
@@ -164,5 +164,30 @@
     },
     "model": "auth.user",
     "pk": 501
+  },
+  {
+    "fields": {
+      "username": "foo2",
+      "first_name": "Second Foo",
+      "last_name": "User",
+      "is_active": true,
+      "is_superuser": false,
+      "is_staff": false,
+      "last_login": "2016-05-27T14:57:10Z",
+      "groups": [
+        [
+          "access:world"
+        ],
+        [
+          "access:org:Foo_Company"
+        ]
+      ],
+      "user_permissions": [],
+      "password": "pbkdf2_sha256$20000$5Q6LPVSietTb$m/7kemHtL3Y3iCESAh+umtDOurXQiyuS7XlfM6JKvmo=",
+      "email": "foo2@bar.com",
+      "date_joined": "2016-05-27T14:55:11Z"
+    },
+    "model": "auth.user",
+    "pk": 503
   }
 ]
