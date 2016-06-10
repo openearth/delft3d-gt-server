@@ -151,6 +151,7 @@ class SceneViewSet(viewsets.ModelViewSet):
             instance.save()
 
             assign_perm('view_scene', self.request.user, instance)
+            assign_perm('add_scene', self.request.user, instance)
             assign_perm('change_scene', self.request.user, instance)
             assign_perm('delete_scene', self.request.user, instance)
 
@@ -270,7 +271,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @detail_route(methods=["post"])
     def start(self, request, pk=None):
-        scene = get_object_or_404(Scene, pk=pk)
+        scene = self.get_object()
 
         if "workflow" in request.data:
             scene.start(workflow=request.data["workflow"])
@@ -281,9 +282,9 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["post"])
+    @detail_route(methods=["post"], permission_classes=(permissions.IsAuthenticated, ViewObjectPermissions))
     def stop(self, request, pk=None):
-        scene = get_object_or_404(Scene, pk=pk)
+        scene = self.get_object()
 
         scene.abort()
 
@@ -294,7 +295,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @detail_route(methods=["post"])
     def publish_company(self, request, pk=None):
-        scene = get_object_or_404(Scene, pk=pk)
+        scene = self.get_object()
         groups = [
             group for group in self.request.user.groups.all() if (
                 "world" not in group.name
@@ -306,6 +307,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         if not published:
 
             # Remove write permissions for user
+            remove_perm('add_scene', self.request.user, scene)
             remove_perm('change_scene', self.request.user, scene)
             remove_perm('delete_scene', self.request.user, scene)
 
@@ -327,7 +329,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     # @permission_required_or_403('scene.change_scene')
     @detail_route(methods=["post"])
     def publish_world(self, request, pk=None):
-        scene = get_object_or_404(Scene, pk=pk)
+        scene = self.get_object()
         world = Group.objects.get(name="access:world")
 
         # Check if unpublished by checking if there are any groups
@@ -337,6 +339,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         if len(groups) == 0:
 
             # Remove write permissions for user
+            remove_perm('add_scene', self.request.user, scene)
             remove_perm('change_scene', self.request.user, scene)
             remove_perm('delete_scene', self.request.user, scene)
 
@@ -366,7 +369,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     # @permission_required_or_403('scene.change_scene')
     @detail_route(methods=["get"])
     def export(self, request, pk=None):
-        scene = get_object_or_404(Scene, pk=pk)
+        scene = self.get_object()
 
         options = self.request.query_params.getlist('options', [])
         # What we will export, now ; separated (doesn't work), should be list
