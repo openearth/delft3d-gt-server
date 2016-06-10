@@ -18,10 +18,16 @@ from datetime import datetime
 from delft3dworker.tasks import chainedtask
 
 from django.conf import settings  # noqa
+from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
+from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_objects_for_user
+
 from jsonfield import JSONField
+# from django.contrib.postgres.fields import JSONField  # When we use
+# Postgresql 9.4
 
 from mako.template import Template as MakoTemplate
 
@@ -30,6 +36,7 @@ from shutil import copytree
 from shutil import copyfile
 from shutil import rmtree
 
+import hashlib
 
 BUSYSTATE = "PROCESSING"
 
@@ -44,11 +51,19 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.OneToOneField('Template', null=True)
+    template = models.ForeignKey('Template', blank=True, null=True)
 
+    scenes_parameters = JSONField(blank=True)
     parameters = JSONField(blank=True)
 
+    owner = models.ForeignKey(User, null=True)
+
     # PROPERTY METHODS
+
+    class Meta:
+        permissions = (
+            ('view_scenario', 'View Scenario'),
+        )
 
     def get_absolute_url(self):
 
@@ -59,95 +74,117 @@ class Scenario(models.Model):
             "template": self.template,
             "name": self.name,
             "parameters": self.parameters,
+            "scenes_parameters": self.scenes_parameters,
             "scenes": self.scene_set.all(),
             "id": self.id
         }
 
     def load_settings(self, settings):
-        self.parameters = [{}]
+        self.parameters = settings
+        self.scenes_parameters = [{}]
 
-        for key, value in settings.items():
+        for key, value in self.parameters.items():
             self._parse_setting(key, value)
-
-        # debugging output
-        # for value in self.parameters:
 
         self.save()
 
-    def createscenes(self):
-        for i, sceneparameters in enumerate(self.parameters):
-            scene = Scene(
-                name="{}: Run {}".format(self.name, i + 1),
-                scenario=self,
-                parameters=sceneparameters
-            )
-            scene.save()
+    def createscenes(self, user):
+        for i, sceneparameters in enumerate(self.scenes_parameters):
+
+            # Create hash
+            m = hashlib.sha256()
+            m.update(str(sceneparameters))
+            phash = m.hexdigest()
+
+            # Check if hash already exists
+            scenes = Scene.objects.filter(parameters_hash=phash)
+            clones = get_objects_for_user(
+                user, "view_scene", scenes, accept_global_perms=False)
+
+            # If so, add scenario to scene
+            if len(clones) > 0:
+                scene = clones[0]  # cannot have more than one scene
+                scene.scenario.add(self)
+
+            # Scene input is unique
+            else:
+                scene = Scene(
+                    name="{}: Run {}".format(self.name, i + 1),
+                    owner=self.owner,
+                    parameters=sceneparameters,
+                    shared="p",  # private
+                    parameters_hash=phash,
+                )
+                scene.save()
+                scene.scenario.add(self)
+
+                assign_perm('view_scene', self.owner, scene)
+                assign_perm('add_scene', self.owner, scene)
+                assign_perm('change_scene', self.owner, scene)
+                assign_perm('delete_scene', self.owner, scene)
+
         self.save()
 
     # CONTROL METHODS
 
     def start(self):
+        # Only start scenes that are really new
+        # not already existing in other scenarios
         for scene in self.scene_set.all():
-            scene.start()
+            if len(scene.scenario.all()) == 1:
+                scene.start(workflow="main")
         return "started"
 
-    def stop(self):
+    def delete(self, user, *args, **kwargs):
         for scene in self.scene_set.all():
-            scene.abort()
-        return "stopped"
-
-    def delete(self, *args, **kwargs):
-        self.stop()
+            if len(scene.scenario.all()) == 1 and user.has_perm('delft3dworker.delete_scene', scene):
+                scene.delete()
         super(Scenario, self).delete(*args, **kwargs)
 
     # INTERNALS
 
     def _parse_setting(self, key, setting):
-
-        if not ('value' in setting or 'valid' in settings or setting['valid']):
+        if not ('values' in setting):
             return
+
+        values = setting['values']
 
         if key == "scenarioname":
-            self.name = setting['value']
+            self.name = values
             return
 
-        if not setting["useautostep"]:
-            # No autostep, just add these settings
-            for scene in self.parameters:
-                if key not in scene:
-                    scene[key] = setting
-        else:
-            # Autostep! Run past all parameter scenes, iteratively
-            minstep = float(setting["minstep"])
-            maxstep = float(setting["maxstep"])
-            step = float(setting["stepinterval"])
-            values = []
-
-            curval = minstep
-            while curval <= maxstep:  # includes maxstep
-                values.append(round(curval, 2))
-                curval = curval + step
+        # If values is a list, multiply scenes
+        if isinstance(values, list):
+            logging.info("Detected multiple values at {}".format(key))
 
             # Current scenes times number of new values
             # 3 original runs (1 2 3), this settings adds two (a b) thus we now
             # have 6 scenes ( 1 1 2 2 3 3).
-            self.parameters = [
+            self.scenes_parameters = [
                 copy.copy(p) for p in
-                self.parameters for _ in range(len(values))
+                self.scenes_parameters for _ in range(len(values))
             ]
 
             i = 0
-            for scene in self.parameters:
+            for scene in self.scenes_parameters:
                 s = dict(setting)  # by using dict, we prevent an alias
                 # Using modulo we can assign a b in the correct
                 # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
                 # modulo gives 0 which is again the first value (a)
+                # Rename key in settings
                 s['value'] = values[i % len(values)]
+                # delete keys named 'values'
+                s.pop('values')
                 scene[key] = s
                 i += 1
 
-    def __unicode__(self):
+        # Set keys not yet occuring in scenes
+        else:
+            for scene in self.scenes_parameters:
+                if key not in scene:
+                    scene[key] = setting
 
+    def __unicode__(self):
         return self.name
 
 
@@ -163,7 +200,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     suid = models.CharField(max_length=256, editable=False)
 
-    scenario = models.ForeignKey('Scenario', null=True)
+    scenario = models.ManyToManyField(Scenario)
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
@@ -171,8 +208,17 @@ class Scene(models.Model):
     state = models.CharField(max_length=256, blank=True)
     task_id = models.CharField(max_length=256)
     workingdir = models.CharField(max_length=256)
+    parameters_hash = models.CharField(max_length=64, blank=True)
+
+    shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
+    shared = models.CharField(max_length=1, choices=shared_choices)
+    owner = models.ForeignKey(User, null=True)
 
     # PROPERTY METHODS
+    class Meta:
+        permissions = (
+            ('view_scene', 'View Scene'),
+        )
 
     def get_absolute_url(self):
 
@@ -186,18 +232,20 @@ class Scene(models.Model):
             "id": self.id,
             "name": self.name,
             "suid": self.suid,
-            "scenario": self.scenario.id if self.scenario else None,
+            # could be one id (cannot be -1), or list of ids
+            "scenario": self.scenario.values('id') if self.scenario else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,
             "state": self.state,
             "task_id": self.task_id,
+            "owner": self.owner,
+            "shared": self.shared,
         }
 
     # CONTROL METHODS
 
-    def start(self):
-
+    def start(self, workflow="main"):
         result = AbortableAsyncResult(self.task_id)
 
         if self.task_id != "" and result.state == "PENDING":
@@ -206,7 +254,8 @@ class Scene(models.Model):
         if result.state == BUSYSTATE:
             return {"error": "task already busy", "task_id": self.task_id}
 
-        result = chainedtask.delay(self.parameters, self.workingdir)
+        result = chainedtask.delay(
+            self.parameters, self.workingdir, workflow)
         self.task_id = result.task_id
         self.state = result.state
         self.save()
@@ -251,7 +300,7 @@ class Scene(models.Model):
             "info": str(self.info)
         }
 
-    def export(self):
+    def export(self, options):
 
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
@@ -277,8 +326,39 @@ class Scene(models.Model):
         for root, dirs, files in os.walk(self.workingdir):
             for f in files:
                 name, ext = os.path.splitext(f)
+
                 # Could be dynamic or tuple of extensions
-                if ext in ('.png', '.jpg', '.gif'):
+                if (
+                    'export_images' in options
+                ) and (
+                    ext in '.png', '.jpg', '.gif'
+                ):
+                    abs_path = os.path.join(root, f)
+                    rel_path = os.path.relpath(abs_path, self.workingdir)
+                    zf.write(abs_path, rel_path)
+
+                if (
+                    'export_input' in options
+                ) and (
+                    "simulation" in root
+                ) and (
+                    name == 'a'
+                ):
+                    abs_path = os.path.join(root, f)
+                    rel_path = os.path.relpath(abs_path, self.workingdir)
+                    zf.write(abs_path, rel_path)
+
+                if 'export_thirdparty' in options and (
+                    'export' in root):
+
+                    abs_path = os.path.join(root, f)
+                    rel_path = os.path.relpath(abs_path, self.workingdir)
+                    zf.write(abs_path, rel_path)
+
+                # Zip movie
+                if 'export_movie' in options and (
+                        ext in '.mp4'):
+
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
@@ -317,16 +397,10 @@ class Scene(models.Model):
         if not os.path.exists(self.workingdir):
             os.makedirs(self.workingdir, 02775)
 
-            # outputfolder = os.path.join(self.workingdir, 'postprocess')
-            # os.makedirs(outputfolder)
+            folders = ['process', 'preprocess', 'simulation', 'export']
 
-            outputfolder = os.path.join(self.workingdir, 'process')
-            os.makedirs(outputfolder)
-
-            inputfolder = os.path.join(self.workingdir, 'preprocess')
-            outputfolder = os.path.join(self.workingdir, 'simulation')
-            os.makedirs(inputfolder)
-            os.makedirs(outputfolder)
+            for f in folders:
+                os.makedirs(os.path.join(self.workingdir, f))
 
     def _delete_datafolder(self):
         # delete directory for scene
@@ -414,6 +488,8 @@ class Scene(models.Model):
 
                     else:
                         # Other images ?
+                        # Dummy images
+                        self.info["delta_fringe_images"]["images"].append(f)
                         pass
 
         for root, dirs, files in os.walk(
@@ -426,6 +502,7 @@ class Scene(models.Model):
                     break
 
         self.save()
+        return self.state
 
     def __unicode__(self):
         return self.name
@@ -439,19 +516,17 @@ class Template(models.Model):
     Template model
     """
 
-    templatename = models.CharField(max_length=256)
-
-    description = models.CharField(max_length=256, blank=True)
-    email = models.CharField(max_length=256, blank=True)
-    groups = JSONField(blank=True)
-    label = models.CharField(max_length=256, blank=True)
-    model = models.CharField(max_length=256, blank=True)
-    site = models.CharField(max_length=256, blank=True)
-    variables = JSONField(blank=True)
-    version = models.IntegerField(blank=True)
+    name = models.CharField(max_length=256)
+    meta = JSONField(blank=True)
+    sections = JSONField(blank=True)
 
     def get_absolute_url(self):
         return "{0}?id={1}".format(reverse_lazy('template_detail'), self.id)
 
     def __unicode__(self):
-        return self.templatename
+        return self.name
+
+    class Meta:
+        permissions = (
+            ('view_template', 'View Template'),
+        )
