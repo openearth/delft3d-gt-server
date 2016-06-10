@@ -76,7 +76,10 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                        filters.OrderingFilter)
     permission_classes = (permissions.IsAuthenticated,
                           ViewObjectPermissions,)
-    ordering = ('name',)
+
+    # Default ordering by id, so latest run is last in list
+    # reverse by setting ('-id',)
+    ordering = ('id',)
 
     queryset = Scenario.objects.all()
 
