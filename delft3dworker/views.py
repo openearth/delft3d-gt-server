@@ -125,7 +125,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         filters.DjangoObjectPermissionsFilter,
     )
     # Default order by name, so runs don't jump around
-    ordering = ('name',)
+    ordering = ('id',)
 
     # Our own custom filter to create custom search fields
     # this creates &template= among others
