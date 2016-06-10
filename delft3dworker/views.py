@@ -72,9 +72,11 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     API endpoint that allows scenarios to be viewed or edited.
     """
     serializer_class = ScenarioSerializer
-    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    filter_backends = (filters.DjangoObjectPermissionsFilter,
+                       filters.OrderingFilter)
     permission_classes = (permissions.IsAuthenticated,
                           ViewObjectPermissions,)
+    ordering = ('name',)
 
     queryset = Scenario.objects.all()
 
@@ -116,8 +118,11 @@ class SceneViewSet(viewsets.ModelViewSet):
     filter_backends = (
         filters.DjangoFilterBackend,
         filters.SearchFilter,
+        filters.OrderingFilter,
         filters.DjangoObjectPermissionsFilter,
     )
+    # Default order by name, so runs don't jump around
+    ordering = ('name',)
 
     # Our own custom filter to create custom search fields
     # this creates &template= among others
