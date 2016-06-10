@@ -282,7 +282,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["post"], permission_classes=(permissions.IsAuthenticated, ViewObjectPermissions))
+    @detail_route(methods=["post"])
     def stop(self, request, pk=None):
         scene = self.get_object()
 
