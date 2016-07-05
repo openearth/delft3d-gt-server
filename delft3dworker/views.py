@@ -304,6 +304,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         if ('p' == scene.shared):
 
             # Remove write permissions for user
+            remove_perm('change_scene', self.request.user, scene)
             remove_perm('delete_scene', self.request.user, scene)
 
             # Set permissions for group
@@ -333,6 +334,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         if len(groups) == 0:
 
             # Remove write permissions for user
+            remove_perm('change_scene', self.request.user, scene)
             remove_perm('delete_scene', self.request.user, scene)
 
             # Set permissions for group
