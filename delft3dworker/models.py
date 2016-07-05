@@ -137,7 +137,8 @@ class Scenario(models.Model):
 
     def delete(self, user, *args, **kwargs):
         for scene in self.scene_set.all():
-            if len(scene.scenario.all()) == 1 and user.has_perm('delft3dworker.delete_scene', scene):
+            if len(scene.scenario.all()) == 1 and user.has_perm(
+                    'delft3dworker.delete_scene', scene):
                 scene.delete()
         super(Scenario, self).delete(*args, **kwargs)
 
@@ -349,7 +350,7 @@ class Scene(models.Model):
                     zf.write(abs_path, rel_path)
 
                 if 'export_thirdparty' in options and (
-                    'export' in root):
+                        'export' in root):
 
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)

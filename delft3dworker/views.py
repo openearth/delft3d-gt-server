@@ -300,13 +300,10 @@ class SceneViewSet(viewsets.ModelViewSet):
                 "world" not in group.name
             )]
 
-        # If we can still edit, scene is not published
-        published = "p" != scene.shared
-
-        if not published:
+        # if scene is still private
+        if ('p' == scene.shared):
 
             # Remove write permissions for user
-            remove_perm('change_scene', self.request.user, scene)
             remove_perm('delete_scene', self.request.user, scene)
 
             # Set permissions for group
@@ -324,7 +321,6 @@ class SceneViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    # @permission_required_or_403('scene.change_scene')
     @detail_route(methods=["post"])
     def publish_world(self, request, pk=None):
         scene = self.get_object()
@@ -337,8 +333,6 @@ class SceneViewSet(viewsets.ModelViewSet):
         if len(groups) == 0:
 
             # Remove write permissions for user
-            remove_perm('add_scene', self.request.user, scene)
-            remove_perm('change_scene', self.request.user, scene)
             remove_perm('delete_scene', self.request.user, scene)
 
             # Set permissions for group
@@ -360,11 +354,10 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         else:
             return Response(
-                {'status': "Already published at company or world level"},
+                {'status': "Already published at world level"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    # @permission_required_or_403('scene.change_scene')
     @detail_route(methods=["get"])
     def export(self, request, pk=None):
         scene = self.get_object()
