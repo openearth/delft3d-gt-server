@@ -1,13 +1,15 @@
 from django.test import TestCase
-from delft3dworker.models import Scenario
+from delft3dworker.models import Scenario, User
 
 
 class ScenarioTestCase(TestCase):
     def setUp(self):
-        Scenario.objects.create(name="Test single scene")
-        Scenario.objects.create(name="Test multiple scenes")
-        Scenario.objects.create(name="Test hash A")
-        Scenario.objects.create(name="Test hash B")
+        self.user_foo = User.objects.create(username='foo')
+
+        self.scenario_single = Scenario.objects.create(name="Test single scene", owner=self.user_foo)
+        self.scenario_multi = Scenario.objects.create(name="Test multiple scenes", owner=self.user_foo)
+        self.scenario_A = Scenario.objects.create(name="Test hash A", owner=self.user_foo)
+        self.scenario_B = Scenario.objects.create(name="Test hash B", owner=self.user_foo)
 
     def test_scenario_parses_input(self):
         """Correctly parse scenario input"""
@@ -26,14 +28,11 @@ class ScenarioTestCase(TestCase):
             },
         }
 
-        scenario_single = Scenario.objects.get(name="Test single scene")
-        scenario_multi = Scenario.objects.get(name="Test multiple scenes")
+        self.scenario_single.load_settings(single_input)
+        self.scenario_multi.load_settings(multi_input)
 
-        scenario_single.load_settings(single_input)
-        scenario_multi.load_settings(multi_input)
-
-        self.assertEqual(len(scenario_single.scenes_parameters), 1)
-        self.assertEqual(len(scenario_multi.scenes_parameters), 3)
+        self.assertEqual(len(self.scenario_single.scenes_parameters), 1)
+        self.assertEqual(len(self.scenario_multi.scenes_parameters), 3)
 
     def test_hash_scenes(self):
         """Test if scene clone is detected and thus has both Scenarios."""
@@ -51,14 +50,12 @@ class ScenarioTestCase(TestCase):
             },
         }
 
-        scenario_A = Scenario.objects.get(name="Test hash A")
-        scenario_A.load_settings(single_input)
-        scenario_A.createscenes()
+        self.scenario_A.load_settings(single_input)
+        self.scenario_A.createscenes(self.user_foo)
 
-        scenario_B = Scenario.objects.get(name="Test hash B")
-        scenario_B.load_settings(single_input)
-        scenario_B.createscenes()
+        self.scenario_B.load_settings(single_input)
+        self.scenario_B.createscenes(self.user_foo)
 
-        scene = scenario_B.scene_set.all()[0]
-        self.assertIn(scenario_A, scene.scenario.all())
-        self.assertIn(scenario_B, scene.scenario.all())
+        scene = self.scenario_B.scene_set.all()[0]
+        self.assertIn(self.scenario_A, scene.scenario.all())
+        self.assertIn(self.scenario_B, scene.scenario.all())
