@@ -403,7 +403,7 @@ class SearchFormViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
-        return SearchForm.objects.all()
+        return SearchForm.objects.filter(name="MAIN")
 
 
 class TemplateViewSet(viewsets.ModelViewSet):

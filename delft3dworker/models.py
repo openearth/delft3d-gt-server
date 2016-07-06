@@ -524,7 +524,7 @@ class SearchForm(models.Model):
         self.sections = "[]"
         for template in Template.objects.all():
             self._update_sections(template.sections)
-        pass
+        return
 
     def _update_sections(self, tmpl_sections):
 
@@ -607,6 +607,7 @@ class Template(models.Model):
     def save(self, *args, **kwargs):
         returnval = super(Template, self).save(*args, **kwargs)
 
+        # update the MAIN search form after any template save
         searchform, created = SearchForm.objects.get_or_create(name="MAIN")
         searchform.update()
 
