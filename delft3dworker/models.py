@@ -18,12 +18,15 @@ from datetime import datetime
 from delft3dworker.tasks import chainedtask
 
 from django.conf import settings  # noqa
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_groups_with_perms
 from guardian.shortcuts import get_objects_for_user
+from guardian.shortcuts import remove_perm
 
 from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
@@ -247,6 +250,9 @@ class Scene(models.Model):
     # CONTROL METHODS
 
     def start(self, workflow="main"):
+        if ('p' != self.shared):
+            return {"info": "start skipped - scene pubished"}
+
         result = AbortableAsyncResult(self.task_id)
 
         if self.task_id != "" and result.state == "PENDING":
@@ -264,6 +270,8 @@ class Scene(models.Model):
         return {"task_id": self.task_id, "scene_id": self.suid}
 
     def abort(self):
+        if ('p' != self.shared):
+            return {"info": "abort skipped - scene pubished"}
 
         result = AbortableAsyncResult(self.task_id)
 
@@ -287,6 +295,8 @@ class Scene(models.Model):
         }
 
     def revoke(self):
+        if ('p' != self.shared):
+            return {"info": "revoke skipped - scene pubished"}
 
         result = AbortableAsyncResult(self.task_id)
         self.info = result.info if isinstance(
@@ -371,6 +381,8 @@ class Scene(models.Model):
     # CRUD METHODS
 
     def save(self, *args, **kwargs):
+        if ('p' != self.shared):
+            return
 
         # if scene does not have a unique uuid, create it and create folder
         if self.suid == '':
@@ -386,10 +398,54 @@ class Scene(models.Model):
         super(Scene, self).save(*args, **kwargs)
 
     def delete(self, deletefiles=True, *args, **kwargs):
+        if ('p' != self.shared):
+            return
+
         self.abort()
         if deletefiles:
             self._delete_datafolder()
         super(Scene, self).delete(*args, **kwargs)
+
+    def publish_company(self, user):
+        if ('p' != self.shared) or (user != self.owner):
+            return False
+
+        # Remove write permissions for user
+        remove_perm('delete_scene', user, self)
+
+        # Set permissions for groups
+        groups = [
+            group for group in user.groups.all() if (
+                "world" not in group.name
+            )
+        ]
+        for group in groups:
+            assign_perm('view_scene', group, self)
+
+        # update scene
+        self.shared = "c"
+        self.save()
+
+        return True
+
+    def publish_world(self, user):
+        if user != self.owner:
+            return False
+
+        # Remove write permissions for user
+        remove_perm('delete_scene', user, self)
+
+        # Set permissions for groups
+        for group in get_groups_with_perms(self):
+            remove_perm('view_scene', group, self)
+        world = Group.objects.get(name="access:world")
+        assign_perm('view_scene', world, self)
+
+        # update scene
+        self.shared = "w"
+        self.save()
+
+        return True
 
     # INTERNALS
 
