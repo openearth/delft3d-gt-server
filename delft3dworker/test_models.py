@@ -108,13 +108,26 @@ class SceneTestCase(TestCase):
         self.user_c.user_permissions.add(
             Permission.objects.get(codename='view_scene'))
 
-    def test_only_a_can_see_scene(self):
-        self.assertEqual(len(get_objects_for_user(
+    def test_after_publishing_more_can_see(self):
+        scene = get_objects_for_user(
             self.user_a,
             "view_scene",
             Scene.objects.all(),
             accept_global_perms=False
-        )), 1)
+        )[0]
+        self.assertTrue(scene.publish_company(self.user_a))
+        self.assertEqual(scene.shared, 'c')
+        self.assertTrue(scene.publish_world(self.user_a))
+        self.assertEqual(scene.shared, 'w')
+
+    def test_after_publishing_more_can_see(self):
+        scene = get_objects_for_user(
+            self.user_a,
+            "view_scene",
+            Scene.objects.all(),
+            accept_global_perms=False
+        )[0]
+
         self.assertEqual(len(get_objects_for_user(
             self.user_b,
             "view_scene",
@@ -127,14 +140,6 @@ class SceneTestCase(TestCase):
             Scene.objects.all(),
             accept_global_perms=False
         )), 0)
-
-    def test_after_publishing_more_can_see(self):
-        scene = get_objects_for_user(
-            self.user_a,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )[0]
 
         # publish company
         self.assertTrue(scene.publish_company(self.user_a))
@@ -176,6 +181,19 @@ class SceneTestCase(TestCase):
             accept_global_perms=False
         )[0]
 
+        self.assertEqual(len(get_objects_for_user(
+            self.user_b,
+            "view_scene",
+            Scene.objects.all(),
+            accept_global_perms=False
+        )), 0)
+        self.assertEqual(len(get_objects_for_user(
+            self.user_c,
+            "view_scene",
+            Scene.objects.all(),
+            accept_global_perms=False
+        )), 0)
+
         # publish world
         self.assertTrue(scene.publish_world(self.user_a))
 
@@ -192,7 +210,7 @@ class SceneTestCase(TestCase):
             accept_global_perms=False
         )), 1)
 
-    def test_no_controls_after_publishing(self):
+    def test_no_controls_after_publishing_company(self):
         scene = get_objects_for_user(
             self.user_a,
             "view_scene",
@@ -201,6 +219,22 @@ class SceneTestCase(TestCase):
         )[0]
 
         self.assertTrue(scene.publish_company(self.user_a))
+        self.assertEqual(
+            scene.start(), {"info": "start skipped - scene pubished"})
+        self.assertEqual(
+            scene.abort(), {"info": "abort skipped - scene pubished"})
+        self.assertEqual(
+            scene.revoke(), {"info": "revoke skipped - scene pubished"})
+
+    def test_no_controls_after_publishing_world(self):
+        scene = get_objects_for_user(
+            self.user_a,
+            "view_scene",
+            Scene.objects.all(),
+            accept_global_perms=False
+        )[0]
+
+        self.assertTrue(scene.publish_world(self.user_a))
         self.assertEqual(
             scene.start(), {"info": "start skipped - scene pubished"})
         self.assertEqual(
