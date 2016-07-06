@@ -312,7 +312,6 @@ class Scene(models.Model):
         }
 
     def export(self, options):
-
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
         # - django-filebrowser (filtering and more elegant browsing)
@@ -381,9 +380,6 @@ class Scene(models.Model):
     # CRUD METHODS
 
     def save(self, *args, **kwargs):
-        if ('p' != self.shared):
-            return
-
         # if scene does not have a unique uuid, create it and create folder
         if self.suid == '':
             self.suid = str(uuid.uuid4())
