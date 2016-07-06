@@ -23,8 +23,8 @@ class ListAccessTestCase(TestCase):
         self.factory = APIRequestFactory()
 
         # create users and store for later access
-        self.user_foo = User.objects.create(username='foo')
-        self.user_bar = User.objects.create(username='bar')
+        self.user_foo = User.objects.create_user(username='foo')
+        self.user_bar = User.objects.create_user(username='bar')
 
         # create models in dB
         scenario = Scenario.objects.create(
@@ -117,7 +117,7 @@ class ListAccessTestCase(TestCase):
 class SceneSearchTestCase(TestCase):
 
     def setUp(self):
-        self.user_bar = User.objects.create(username='bar')
+        self.user_bar = User.objects.create_user(username='bar')
         scenario = Scenario.objects.create(
             name='Test',
             owner=self.user_bar,
@@ -201,7 +201,7 @@ class SceneTestCase(TestCase):
     """
 
     def setUp(self):
-        self.user_foo = User.objects.create(username="foo")
+        self.user_foo = User.objects.create_user(username="foo")
         scene = Scene.objects.create(
             name="Test main workflow",
             owner=self.user_foo,
@@ -241,7 +241,7 @@ class UserTestCase(TestCase):
     def setUp(self):
 
         # create user in dB
-        self.user_foo = User.objects.create(
+        self.user_foo = User.objects.create_user(
             username="foo",
             first_name="Foo",
             last_name="Oof",

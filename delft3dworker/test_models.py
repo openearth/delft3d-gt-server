@@ -13,7 +13,7 @@ from delft3dworker.models import Scene
 class ScenarioTestCase(TestCase):
 
     def setUp(self):
-        self.user_foo = User.objects.create(username='foo')
+        self.user_foo = User.objects.create_user(username='foo')
 
         self.scenario_single = Scenario.objects.create(
             name="Test single scene", owner=self.user_foo)
@@ -77,9 +77,9 @@ class ScenarioTestCase(TestCase):
 class SceneTestCase(TestCase):
 
     def setUp(self):
-        self.user_a = User.objects.create(username='A')
-        self.user_b = User.objects.create(username='B')
-        self.user_c = User.objects.create(username='C')
+        self.user_a = User.objects.create_user(username='A')
+        self.user_b = User.objects.create_user(username='B')
+        self.user_c = User.objects.create_user(username='C')
 
         company_w = Group.objects.create(name='access:world')
         company_w.user_set.add(self.user_a)
