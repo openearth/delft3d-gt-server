@@ -140,7 +140,7 @@ LOGIN_REDIRECT_URL = '/'
 BROKER_URL = 'redis://localhost'
 CELERY_RESULT_BACKEND = 'redis://localhost'
 
-# Disabling rate limits altogether is recommended if you don’t have any tasks using them. 
+# Disabling rate limits altogether is recommended if you don't have any tasks using them. 
 # This is because the rate limit subsystem introduces quite a lot of complexity.
 CELERY_DISABLE_RATE_LIMITS = True
 
@@ -157,9 +157,6 @@ CELERY_TASK_RESULT_EXPIRES = None
 # Can be a relative or absolute path, but be aware that the suffix .db 
 # may be appended to the file name (depending on Python version).
 CELERYD_STATE_DB = 'celery_state'
-
-# Unsure if this works for celery
-CELERY_RESULT_PERSISTENT = True
 
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
