@@ -36,6 +36,7 @@ class ListAccessTestCase(TestCase):
             owner=self.user_foo,
             parameters={'a': {'values': 2}},
             state='SUCCESS',
+            shared='p',
         )
         a.scenario.add(scenario)
         b = Scene.objects.create(
@@ -43,6 +44,7 @@ class ListAccessTestCase(TestCase):
             owner=self.user_foo,
             parameters={'a': {'values': 3}},
             state='SUCCESS',
+            shared='p',
         )
         b.scenario.add(scenario)
 
@@ -125,6 +127,7 @@ class SceneSearchTestCase(TestCase):
             owner=self.user_bar,
             parameters={'a': {'value': 2}},
             state='SUCCESS',
+            shared='p',
         )
         scene.scenario.add(scenario)
 
@@ -202,6 +205,7 @@ class SceneTestCase(TestCase):
         scene = Scene.objects.create(
             name="Test main workflow",
             owner=self.user_foo,
+            shared='p',
         )
 
         # Object general
