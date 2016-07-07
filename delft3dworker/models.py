@@ -515,6 +515,12 @@ class SearchForm(models.Model):
 
     """
     SearchForm model:
+    This model is used to make a search form similar to the Template model.
+    The idea was to provide a json to the front-end similar to how we deliver
+    the Templates: via the API.
+    Possible improvements: Becuase we only have one SearchForm, we could
+    implement a 'view' on all Templates, which automatically generates the
+    json at each request.
     """
 
     name = models.CharField(max_length=256)
