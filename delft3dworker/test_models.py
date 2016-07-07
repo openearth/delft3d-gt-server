@@ -1,8 +1,11 @@
 import json
+import os
+import zipfile
 
 from django.test import TestCase
 
 from delft3dworker.models import Scenario
+from delft3dworker.models import Scene
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 from delft3dworker.models import User
@@ -305,3 +308,63 @@ class SearchFormTestCase(TestCase):
             searchform.sections,
             self.sections_res
         )
+
+
+class SceneTestCase(TestCase):
+
+    def setUp(self):
+        # Set up user & scene
+        self.user_foo = User.objects.create(username='foo')
+        self.scene = Scene.objects.create(
+            name="Test Scene", owner=self.user_foo)
+
+        # If scene is saved, uid and workingdir are created
+        self.scene.save()
+        self.wd = self.scene.workingdir
+
+        # Add files mimicking export options.
+        self.images = ['image.png', 'image.jpg', 'image.gif', 'image.jpeg']
+        self.simulation = ['simulation/a.sim', 'simulation/b.sim']
+        self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
+        self.export = ['export/export.something']
+
+    def test_export_images(self):
+        # Mimick touch for creating empty files
+        for f in self.images:
+            open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
+
+        stream, fn = self.scene.export(['export_images'])
+        zf = zipfile.ZipFile(stream)
+        self.assertEqual(len(zf.namelist()), 3)
+
+    def test_export_sim(self):
+        # Mimick touch for creating empty files
+        for f in self.simulation:
+            open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
+            # print(os.path.join(os.getcwd(), self.wd, f))
+        stream, fn = self.scene.export(['export_input'])
+        zf = zipfile.ZipFile(stream)
+        self.assertEqual(len(zf.namelist()), 1)
+
+    def test_export_movies(self):
+        # Mimick touch for creating empty files
+        for f in self.movies:
+            # Also make some data
+            if 'big' in f:
+                open(os.path.join(os.getcwd(), self.wd, f), 'a').write('TEST')
+            else:
+                open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
+            # print(os.path.join(os.getcwd(), self.wd, f))
+
+        stream, fn = self.scene.export(['export_movie'])
+        zf = zipfile.ZipFile(stream)
+        self.assertEqual(len(zf.namelist()), 1)
+
+    def test_export_export(self):
+        # Mimick touch for creating empty files
+        for f in self.export:
+            open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
+
+        stream, fn = self.scene.export(['export_thirdparty'])
+        zf = zipfile.ZipFile(stream)
+        self.assertEqual(len(zf.namelist()), 1)
