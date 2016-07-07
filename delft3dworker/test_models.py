@@ -199,6 +199,13 @@ class SearchFormTestCase(TestCase):
         ]
         """
 
+        self.templates_res = json.loads("""
+            [
+                {"name":"Template 1", "id":1},
+                {"name":"Template 2", "id":2}
+            ]
+        """)
+
         self.sections_res = json.loads("""
         [
             {
@@ -208,9 +215,7 @@ class SearchFormTestCase(TestCase):
                         "id": "var_1",
                         "name": "Var 1",
                         "type": "numeric",
-                        "default": "0",
                         "validators": {
-                            "required":true,
                             "min": -10,
                             "max": 10
                         }
@@ -224,18 +229,14 @@ class SearchFormTestCase(TestCase):
                         "id": "var_2",
                         "name": "Var 2",
                         "type": "text",
-                        "default": "moo",
                         "validators": {
-                            "required":true
                         }
                     },
                     {
                         "id": "var_3",
                         "name": "Var 3",
                         "type": "text",
-                        "default": "moo",
                         "validators": {
-                            "required":false
                         }
                     }
                 ]
@@ -247,9 +248,7 @@ class SearchFormTestCase(TestCase):
                         "id": "var 4",
                         "name": "Var 4",
                         "type": "numeric",
-                        "default": "0",
                         "validators": {
-                            "required":true,
                             "min": -1,
                             "max": 1
                         }
@@ -263,9 +262,7 @@ class SearchFormTestCase(TestCase):
                         "id": "var 5",
                         "name": "Var 5",
                         "type": "text",
-                        "default": "moo",
                         "validators": {
-                            "required":false
                         }
                     }
                 ]
@@ -288,13 +285,6 @@ class SearchFormTestCase(TestCase):
         searchforms = SearchForm.objects.filter(name='MAIN')
         self.assertEqual(len(searchforms), 1)
 
-        # search form sections is equal template secionts
-        searchform = searchforms[0]
-        self.assertEqual(
-            searchform.sections,
-            template.sections
-        )
-
         template2 = Template.objects.create(
             name='Template 2',
             meta='{}',
@@ -305,8 +295,12 @@ class SearchFormTestCase(TestCase):
         searchforms = SearchForm.objects.filter(name='MAIN')
         self.assertEqual(len(searchforms), 1)
 
-        # search form sections is equal template secionts
+        # all fields are as expected
         searchform = searchforms[0]
+        self.assertEqual(
+            searchform.templates,
+            self.templates_res
+        )
         self.assertEqual(
             searchform.sections,
             self.sections_res
