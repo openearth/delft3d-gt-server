@@ -38,9 +38,11 @@ from rest_framework.response import Response
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
+from delft3dworker.models import SearchForm
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneSerializer
+from delft3dworker.serializers import SearchFormSerializer
 from delft3dworker.serializers import TemplateSerializer
 from delft3dworker.serializers import UserSerializer
 from delft3dworker.permissions import ViewObjectPermissions
@@ -341,6 +343,18 @@ class SceneViewSet(viewsets.ModelViewSet):
         else:
             return Response({'status': 'No export options given'},
                             status=status.HTTP_400_BAD_REQUEST)
+
+
+class SearchFormViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows search forms to be viewed.
+    """
+
+    serializer_class = SearchFormSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return SearchForm.objects.filter(name="MAIN")
 
 
 class TemplateViewSet(viewsets.ModelViewSet):
