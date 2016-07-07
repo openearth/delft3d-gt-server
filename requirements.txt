@@ -12,6 +12,7 @@ django-jsonfield==0.9.19
 django-guardian==1.4.4
 djangorestframework==3.3.3
 docker-py==1.7.2
+flower==0.9.1
 kombu==3.0.34
 Mako==1.0.3
 markdown==2.6.6

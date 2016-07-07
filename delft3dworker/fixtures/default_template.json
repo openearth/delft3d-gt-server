@@ -1,20 +1,17 @@
 [
   {
-     "pk": 1,
-     "model": "delft3dworker.template",
-     "fields": {
-       "name": "Default (delta plain)",
-       "meta": {
-         "description": "A river or tide dominated delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
-         "creator": "fedor.baart@deltares.nl"
-       },
-       "sections": [
+    "fields": {
+      "meta": {
+        "description": "A river or tide dominated delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
+        "creator": "fedor.baart@deltares.nl"
+      },
+      "sections": [
         {
           "variables": [
             {
-              "default": "New scenario",
-              "id": "name",
+              "default": "New Delta Plain Scenario ",
               "type": "text",
+              "id": "name",
               "name": "Name",
               "validators": {
                 "required": true
@@ -47,13 +44,13 @@
           "variables": [
             {
               "name": "Stop time",
-              "default": 87840,
+              "default": 60,
               "validators": {
-                "max": 230880,
+                "max": 160,
                 "required": true,
                 "min": 0
               },
-              "units": "min",
+              "units": "days",
               "type": "numeric",
               "id": "simstoptime"
             },
@@ -71,13 +68,13 @@
             },
             {
               "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
-              "default": 1440,
+              "default": 1,
               "validators": {
-                "max": 2880,
+                "max": 2,
                 "required": true,
-                "min": 720
+                "min": 0.5
               },
-              "units": "min",
+              "units": "days",
               "type": "numeric",
               "id": "outputinterval",
               "name": "Output timestep"
@@ -92,6 +89,7 @@
               "default": 0.0143,
               "validators": {
                 "max": 0.3,
+                "required": true,
                 "min": 0.01
               },
               "factor": true,
@@ -104,6 +102,7 @@
               "default": 300,
               "validators": {
                 "max": 1000,
+                "required": true,
                 "min": 100
               },
               "factor": true,
@@ -121,6 +120,7 @@
               "default": 1000,
               "validators": {
                 "max": 2000,
+                "required": true,
                 "min": 0
               },
               "factor": true,
@@ -133,6 +133,7 @@
               "default": 1,
               "validators": {
                 "max": 3,
+                "required": true,
                 "min": 0
               },
               "factor": true,
@@ -144,34 +145,215 @@
           "name": "Forces"
         },
         {
+          "slider": {
+            "sum": 100,
+            "valid": true,
+            "steps": 10
+          },
           "variables": [
             {
               "name": "Sand volumetric composition",
-              "default": 50,
-              "validators": {
-                "max": 100,
-                "min": 0
-              },
+              "default": 1,
+              "validators": {},
               "units": "%",
-              "type": "numeric",
+              "type": "slider",
               "id": "sandvolcomposition"
             },
             {
               "name": "Clay volumetric composition",
-              "default": 50,
+              "default": 1,
               "disabled": false,
-              "validators": {
-                "max": 100,
-                "min": 0
-              },
+              "validators": {},
               "units": "%",
-              "type": "numeric",
+              "type": "slider",
               "id": "clayvolcomposition"
             }
           ],
-          "name": "Sediment composition"
+          "name": "Initial substrate sediment composition"
         }
-      ]
-    }
+      ],
+      "name": "Default (delta plain)"
+    },
+    "model": "delft3dworker.template",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "meta": {
+        "description": "This scenario allows exploration of extreme values. This can be used to explore the limits of our boundary forcings.",
+        "authors": "Liang Li, Andrea Forzoni, Tijn Schmits",
+        "note": "This scenario creates 16 runs. Do not expect all of them to succeed because the combination of the forcing can be unrealistic."
+      },
+      "sections": [
+        {
+          "variables": [
+            {
+              "default": "New Extremes Scenario",
+              "type": "text",
+              "id": "name",
+              "name": "Name",
+              "validators": {
+                "required": true
+              }
+            },
+            {
+              "name": "Model Engine",
+              "default": "Delft3D Curvilinear",
+              "disabled": true,
+              "validators": {
+                "required": true
+              },
+              "type": "text",
+              "id": "engine"
+            },
+            {
+              "name": "Version",
+              "default": "v0.1",
+              "disabled": true,
+              "validators": {
+                "required": true
+              },
+              "type": "semver",
+              "id": "version"
+            }
+          ],
+          "name": "Scenario"
+        },
+        {
+          "variables": [
+            {
+              "name": "Stop time",
+              "default": 60,
+              "validators": {
+                "max": 160,
+                "required": true,
+                "min": 0
+              },
+              "units": "days",
+              "type": "numeric",
+              "id": "simstoptime"
+            },
+            {
+              "name": "Timestep",
+              "default": 1,
+              "validators": {
+                "max": 20,
+                "required": true,
+                "min": 0.5
+              },
+              "units": "min",
+              "type": "numeric",
+              "id": "dt"
+            },
+            {
+              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+              "default": 1,
+              "validators": {
+                "max": 2,
+                "required": true,
+                "min": 0.5
+              },
+              "units": "days",
+              "type": "numeric",
+              "id": "outputinterval",
+              "name": "Output timestep"
+            }
+          ],
+          "name": "Parameters"
+        },
+        {
+          "variables": [
+            {
+              "name": "Basin slope",
+              "default": "0.01,0.3",
+              "validators": {
+                "max": 0.3,
+                "required": true,
+                "min": 0.01
+              },
+              "factor": true,
+              "units": "deg",
+              "type": "numeric",
+              "id": "basinslope"
+            },
+            {
+              "name": "River width",
+              "default": "100,1000",
+              "validators": {
+                "max": 1000,
+                "required": true,
+                "min": 100
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "riverwidth"
+            }
+          ],
+          "name": "Geometry"
+        },
+        {
+          "variables": [
+            {
+              "name": "River discharge",
+              "default": "100,2000",
+              "validators": {
+                "max": 2000,
+                "required": true,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m³/s",
+              "type": "numeric",
+              "id": "riverdischarge"
+            },
+            {
+              "name": "Tidal amplitude",
+              "default": "0,3",
+              "validators": {
+                "max": 3,
+                "required": true,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "tidalamplitude"
+            }
+          ],
+          "name": "Forces"
+        },
+        {
+          "slider": {
+            "sum": 100,
+            "valid": true,
+            "steps": 10
+          },
+          "variables": [
+            {
+              "name": "Sand volumetric composition",
+              "default": 1,
+              "validators": {},
+              "units": "%",
+              "type": "slider",
+              "id": "sandvolcomposition"
+            },
+            {
+              "name": "Clay volumetric composition",
+              "default": 1,
+              "disabled": false,
+              "validators": {},
+              "units": "%",
+              "type": "slider",
+              "id": "clayvolcomposition"
+            }
+          ],
+          "name": "Initial substrate sediment composition"
+        }
+      ],
+      "name": "Extremes in Range Exploration Scenario"
+    },
+    "model": "delft3dworker.template",
+    "pk": 2
   }
 ]

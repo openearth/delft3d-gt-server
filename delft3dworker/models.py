@@ -23,6 +23,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_objects_for_user
 
 from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
@@ -35,6 +36,7 @@ from shutil import copytree
 from shutil import copyfile
 from shutil import rmtree
 
+import hashlib
 
 BUSYSTATE = "PROCESSING"
 
@@ -59,9 +61,9 @@ class Scenario(models.Model):
     # PROPERTY METHODS
 
     class Meta:
-            permissions = (
-                ('view_scenario', 'View Scenario'),
-            )
+        permissions = (
+            ('view_scenario', 'View Scenario'),
+        )
 
     def get_absolute_url(self):
 
@@ -86,36 +88,58 @@ class Scenario(models.Model):
 
         self.save()
 
-    def createscenes(self):
+    def createscenes(self, user):
         for i, sceneparameters in enumerate(self.scenes_parameters):
-            scene = Scene(
-                name="{}: Run {}".format(self.name, i + 1),
-                owner=self.owner,
-                scenario=self,
-                parameters=sceneparameters
-            )
-            scene.save()
 
-            assign_perm('view_scene', self.owner, scene)
-            assign_perm('change_scene', self.owner, scene)
-            assign_perm('delete_scene', self.owner, scene)
+            # Create hash
+            m = hashlib.sha256()
+            m.update(str(sceneparameters))
+            phash = m.hexdigest()
+
+            # Check if hash already exists
+            scenes = Scene.objects.filter(parameters_hash=phash)
+            clones = get_objects_for_user(
+                user, "view_scene", scenes, accept_global_perms=False)
+
+            # If so, add scenario to scene
+            if len(clones) > 0:
+                scene = clones[0]  # cannot have more than one scene
+                scene.scenario.add(self)
+
+            # Scene input is unique
+            else:
+                scene = Scene(
+                    name="{}: Run {}".format(self.name, i + 1),
+                    owner=self.owner,
+                    parameters=sceneparameters,
+                    shared="p",  # private
+                    parameters_hash=phash,
+                )
+                scene.save()
+                scene.scenario.add(self)
+
+                assign_perm('view_scene', self.owner, scene)
+                assign_perm('add_scene', self.owner, scene)
+                assign_perm('change_scene', self.owner, scene)
+                assign_perm('delete_scene', self.owner, scene)
 
         self.save()
 
     # CONTROL METHODS
 
     def start(self):
+        # Only start scenes that are really new
+        # not already existing in other scenarios
         for scene in self.scene_set.all():
-            scene.start(workflow="main")
+            if len(scene.scenario.all()) == 1:
+                scene.start(workflow="main")
         return "started"
 
-    def stop(self):
+    def delete(self, user, *args, **kwargs):
         for scene in self.scene_set.all():
-            scene.abort()
-        return "stopped"
-
-    def delete(self, *args, **kwargs):
-        self.stop()
+            if len(scene.scenario.all()) == 1 and user.has_perm(
+                    'delft3dworker.delete_scene', scene):
+                scene.delete()
         super(Scenario, self).delete(*args, **kwargs)
 
     # INTERNALS
@@ -148,7 +172,10 @@ class Scenario(models.Model):
                 # Using modulo we can assign a b in the correct
                 # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
                 # modulo gives 0 which is again the first value (a)
-                s['values'] = values[i % len(values)]
+                # Rename key in settings
+                s['value'] = values[i % len(values)]
+                # delete keys named 'values'
+                s.pop('values')
                 scene[key] = s
                 i += 1
 
@@ -174,7 +201,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     suid = models.CharField(max_length=256, editable=False)
 
-    scenario = models.ForeignKey('Scenario', null=True)
+    scenario = models.ManyToManyField(Scenario)
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
@@ -182,15 +209,17 @@ class Scene(models.Model):
     state = models.CharField(max_length=256, blank=True)
     task_id = models.CharField(max_length=256)
     workingdir = models.CharField(max_length=256)
+    parameters_hash = models.CharField(max_length=64, blank=True)
 
+    shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
+    shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True)
 
     # PROPERTY METHODS
     class Meta:
-            permissions = (
-                ('view_scene', 'View Scene'),
-            )
-
+        permissions = (
+            ('view_scene', 'View Scene'),
+        )
 
     def get_absolute_url(self):
 
@@ -204,15 +233,15 @@ class Scene(models.Model):
             "id": self.id,
             "name": self.name,
             "suid": self.suid,
-            "scenario": self.scenario.id if (
-                self.scenario
-            ) else None,
+            # could be one id (cannot be -1), or list of ids
+            "scenario": self.scenario.values('id') if self.scenario else None,
             "fileurl": self.fileurl,
             "info": self.info,
             "parameters": self.parameters,
             "state": self.state,
             "task_id": self.task_id,
             "owner": self.owner,
+            "shared": self.shared,
         }
 
     # CONTROL METHODS
@@ -300,18 +329,40 @@ class Scene(models.Model):
                 name, ext = os.path.splitext(f)
 
                 # Could be dynamic or tuple of extensions
-                if 'export_images' in options and ext in ('.png', '.jpg', '.gif'):
+                if (
+                    'export_images' in options
+                ) and (
+                    ext in '.png', '.jpg', '.gif'
+                ):
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
 
-                if 'export_input' in options and "simulation" in root and name == 'a':
+                if (
+                    'export_input' in options
+                ) and (
+                    "simulation" in root
+                ) and (
+                    name == 'a'
+                ):
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
 
-                # if 'export_thirdparty' in options:
-                    # pass
+                if 'export_thirdparty' in options and (
+                        'export' in root):
+
+                    abs_path = os.path.join(root, f)
+                    rel_path = os.path.relpath(abs_path, self.workingdir)
+                    zf.write(abs_path, rel_path)
+
+                # Zip movie
+                if 'export_movie' in options and (
+                        ext in '.mp4'):
+
+                    abs_path = os.path.join(root, f)
+                    rel_path = os.path.relpath(abs_path, self.workingdir)
+                    zf.write(abs_path, rel_path)
 
         # Must close zip for all contents to be written
         zf.close()
@@ -347,16 +398,10 @@ class Scene(models.Model):
         if not os.path.exists(self.workingdir):
             os.makedirs(self.workingdir, 02775)
 
-            # outputfolder = os.path.join(self.workingdir, 'postprocess')
-            # os.makedirs(outputfolder)
+            folders = ['process', 'preprocess', 'simulation', 'export']
 
-            outputfolder = os.path.join(self.workingdir, 'process')
-            os.makedirs(outputfolder)
-
-            inputfolder = os.path.join(self.workingdir, 'preprocess')
-            outputfolder = os.path.join(self.workingdir, 'simulation')
-            os.makedirs(inputfolder)
-            os.makedirs(outputfolder)
+            for f in folders:
+                os.makedirs(os.path.join(self.workingdir, f))
 
     def _delete_datafolder(self):
         # delete directory for scene
@@ -458,12 +503,102 @@ class Scene(models.Model):
                     break
 
         self.save()
+        return self.state
 
     def __unicode__(self):
         return self.name
 
 
 # ################################### Template
+
+class SearchForm(models.Model):
+
+    """
+    SearchForm model:
+    This model is used to make a search form similar to the Template model.
+    The idea was to provide a json to the front-end similar to how we deliver
+    the Templates: via the API.
+    Possible improvements: Becuase we only have one SearchForm, we could
+    implement a 'view' on all Templates, which automatically generates the
+    json at each request.
+    """
+
+    name = models.CharField(max_length=256)
+    sections = JSONField(default="[]")
+
+    def update(self):
+        self.sections = "[]"
+        for template in Template.objects.all():
+            self._update_sections(template.sections)
+        return
+
+    def _update_sections(self, tmpl_sections):
+
+        # for each section
+        for tmpl_section in tmpl_sections:
+
+            # find matching (i.e. name && type equal) sections
+            # in this search form
+            matching_sections = [section for section in self.sections if (
+                section["name"] == tmpl_section["name"]
+            )]
+
+            # add or update
+            if not matching_sections:
+
+                self.sections.append(tmpl_section)
+
+            else:
+
+                srch_section = matching_sections[0]
+
+                # for each variable
+                for tmpl_variable in tmpl_section["variables"]:
+
+                    # find matching (i.e. name && type equal) sections
+                    # in this search form
+                    matching_variables = [
+                        variable for variable in srch_section["variables"] if (
+                            variable["name"] == tmpl_variable["name"]
+                        )
+                    ]
+
+                    # add or update
+                    if not matching_variables:
+
+                        srch_section["variables"].append(tmpl_variable)
+
+                    else:
+
+                        srch_variable = matching_variables[0]
+
+                        # only update min and max validators if numeric
+                        if (
+                            srch_variable["type"] == "numeric" and
+                            tmpl_variable["type"] == "numeric"
+                        ):
+
+                            tmpl_validators = tmpl_variable["validators"]
+                            srch_validators = srch_variable["validators"]
+
+                            if (
+                                float(tmpl_validators["min"]) < float(
+                                    srch_validators["min"])
+                            ):
+                                srch_validators["min"] = tmpl_validators["min"]
+
+                            if (
+                                float(tmpl_validators["max"]) > float(
+                                    srch_validators["max"])
+                            ):
+                                srch_validators["max"] = tmpl_validators["max"]
+
+        self.save()
+        return
+
+    def __unicode__(self):
+        return self.name
+
 
 class Template(models.Model):
 
@@ -475,8 +610,17 @@ class Template(models.Model):
     meta = JSONField(blank=True)
     sections = JSONField(blank=True)
 
+    def save(self, *args, **kwargs):
+        returnval = super(Template, self).save(*args, **kwargs)
+
+        # update the MAIN search form after any template save
+        searchform, created = SearchForm.objects.get_or_create(name="MAIN")
+        searchform.update()
+
+        return returnval
+
     def get_absolute_url(self):
-        return "{0}?id={1}".format(reverse_lazy('template_detail'), self.id)
+        return "{0}?id={1}".format(reverse_lazy('tmpl_detail'), self.id)
 
     def __unicode__(self):
         return self.name

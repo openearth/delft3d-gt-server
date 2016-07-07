@@ -22,14 +22,15 @@ from django.views.generic import DeleteView
 from django.views.generic import View
 
 from guardian.shortcuts import assign_perm, remove_perm
-from guardian.shortcuts import get_groups_with_perms, get_users_with_perms
-
+from guardian.shortcuts import get_groups_with_perms, get_objects_for_user
+from guardian.decorators import permission_required_or_403
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
 from rest_framework import filters
 from rest_framework import status
 from rest_framework import viewsets
+from rest_framework import permissions
 from rest_framework.decorators import detail_route
 from rest_framework.decorators import list_route
 from rest_framework.response import Response
@@ -37,9 +38,11 @@ from rest_framework.response import Response
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
+from delft3dworker.models import SearchForm
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneSerializer
+from delft3dworker.serializers import SearchFormSerializer
 from delft3dworker.serializers import TemplateSerializer
 from delft3dworker.serializers import UserSerializer
 from delft3dworker.permissions import ViewObjectPermissions
@@ -71,10 +74,16 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     API endpoint that allows scenarios to be viewed or edited.
     """
     serializer_class = ScenarioSerializer
-    permission_classes = (ViewObjectPermissions,)
+    filter_backends = (filters.DjangoObjectPermissionsFilter,
+                       filters.OrderingFilter)
+    permission_classes = (permissions.IsAuthenticated,
+                          ViewObjectPermissions,)
 
-    def get_queryset(self):
-        return Scenario.objects.filter(owner=self.request.user)
+    # Default ordering by id, so latest run is last in list
+    # reverse by setting ('-id',)
+    ordering = ('id',)
+
+    queryset = Scenario.objects.all()
 
     def perform_create(self, serializer):
         if serializer.is_valid():
@@ -88,7 +97,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             if parameters:
                 instance.load_settings(parameters)
-                instance.createscenes()
+                instance.createscenes(self.request.user)
 
             assign_perm('view_scenario', self.request.user, instance)
             assign_perm('change_scenario', self.request.user, instance)
@@ -100,6 +109,10 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             # a scenario should be started server-side after creation
             instance.start()
 
+    # Pass on user to check permissions
+    def perform_destroy(self, instance):
+        instance.delete(self.request.user)
+
 
 class SceneViewSet(viewsets.ModelViewSet):
     """
@@ -110,8 +123,11 @@ class SceneViewSet(viewsets.ModelViewSet):
     filter_backends = (
         filters.DjangoFilterBackend,
         filters.SearchFilter,
+        filters.OrderingFilter,
         filters.DjangoObjectPermissionsFilter,
     )
+    # Default order by name, so runs don't jump around
+    ordering = ('id',)
 
     # Our own custom filter to create custom search fields
     # this creates &template= among others
@@ -123,16 +139,21 @@ class SceneViewSet(viewsets.ModelViewSet):
         '^name', '^state', '^scenario__template__name', '^scenario__name')
 
     # Permissions backend which we could use in filter
-    permission_classes = (ViewObjectPermissions,)
+    permission_classes = (permissions.IsAuthenticated,
+                          ViewObjectPermissions,)
+
+    # If we overwrite get queryset
+    queryset = Scene.objects.none()
 
     def perform_create(self, serializer):
         if serializer.is_valid():
             instance = serializer.save()
             instance.owner = self.request.user
-
+            instance.shared = "p"  # private
             instance.save()
 
             assign_perm('view_scene', self.request.user, instance)
+            assign_perm('add_scene', self.request.user, instance)
             assign_perm('change_scene', self.request.user, instance)
             assign_perm('delete_scene', self.request.user, instance)
 
@@ -149,14 +170,15 @@ class SceneViewSet(viewsets.ModelViewSet):
             # filters on key occurance and value between min & max
             - parameter="parameter,minvalue,maxvalue"
         """
-        self.queryset = Scene.objects.filter(owner=self.request.user)
+        queryset = Scene.objects.all()
+        # self.queryset = queryset
 
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
         template = self.request.query_params.getlist('template', [])
+        shared = self.request.query_params.getlist('shared', [])
 
         if len(parameters) > 0:
-            print("Filtering on parameters")
             # Processing user input
             # will sometimes fail
             try:
@@ -179,7 +201,11 @@ class SceneViewSet(viewsets.ModelViewSet):
                             "Lookup value for parameter {}".format(key))
 
                         # Find integers or floats
-                        value = float(value)
+                        try:
+                            value = float(value)
+                        except:
+                            # could filter on string such as parameter = engine
+                            pass
 
                         # Create json lookup
                         # q = {key: {'value': value}}
@@ -191,7 +217,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                         queryset = queryset.filter(parameters__icontains=key)
 
                         for scene in queryset:
-                            if scene.parameters[key]['values'] == value:
+                            if scene.parameters[key]['value'] == value:
                                 wanted.append(scene.id)
 
                         queryset = queryset.filter(pk__in=wanted)
@@ -222,7 +248,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                         queryset = queryset.filter(parameters__icontains=key)
 
                         for scene in queryset:
-                            values = scene.parameters[key]['values']
+                            values = scene.parameters[key]['value']
                             if minvalue <= values < maxvalue:
 
                                 wanted.append(scene.id)
@@ -230,22 +256,26 @@ class SceneViewSet(viewsets.ModelViewSet):
                         queryset = queryset.filter(pk__in=wanted)
 
             except:
+                logging.error("Something failed in search")
                 return Scene.objects.none()
 
         if len(template) > 0:
-            print("Filtering on template")
             queryset = queryset.filter(scenario__template__name__in=template)
 
-        self.queryset = queryset  # for start route
+        if len(shared) > 0:
+            lookup = {"private": "p", "company": "c", "public": "w"}
+            wanted = [lookup[share] for share in shared if share in lookup]
+            queryset = queryset.filter(shared__in=wanted)
+
+        # self.queryset = queryset
 
         return queryset
 
-    @detail_route(methods=['get'])
+    @detail_route(methods=["post"])
     def start(self, request, pk=None):
-        # ad custom function to route restart and export
-        scene = self.queryset.get(pk=pk)
+        scene = self.get_object()
 
-        if 'workflow' in request.data:
+        if "workflow" in request.data:
             scene.start(workflow=request.data["workflow"])
         else:
             scene.start(workflow="main")
@@ -254,17 +284,26 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["get", "post"])
+    @detail_route(methods=["post"])
+    def stop(self, request, pk=None):
+        scene = self.get_object()
+
+        scene.abort()
+
+        serializer = self.get_serializer(scene)
+
+        return Response(serializer.data)
+
+    @detail_route(methods=["post"])
     def publish_company(self, request, pk=None):
         scene = self.get_object()
         groups = [
             group for group in self.request.user.groups.all() if (
                 "world" not in group.name
             )]
-        print(groups)
+
         # If we can still edit, scene is not published
-        published = not self.request.user.has_perm(
-            'delft3dworker.change_scene', scene)
+        published = "p" != scene.shared
 
         if not published:
 
@@ -276,6 +315,9 @@ class SceneViewSet(viewsets.ModelViewSet):
             for group in groups:
                 assign_perm('view_scene', group, scene)
 
+            scene.shared = "c"
+            scene.save()
+
             return Response({'status': 'Published scene'})
 
         else:
@@ -284,10 +326,11 @@ class SceneViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @detail_route(methods=["get", "post"])
+    # @permission_required_or_403('scene.change_scene')
+    @detail_route(methods=["post"])
     def publish_world(self, request, pk=None):
         scene = self.get_object()
-        world = Group.objects.get(name="world")
+        world = Group.objects.get(name="access:world")
 
         # Check if unpublished by checking if there are any groups
         groups = get_groups_with_perms(scene)
@@ -296,17 +339,24 @@ class SceneViewSet(viewsets.ModelViewSet):
         if len(groups) == 0:
 
             # Remove write permissions for user
+            remove_perm('add_scene', self.request.user, scene)
             remove_perm('change_scene', self.request.user, scene)
             remove_perm('delete_scene', self.request.user, scene)
 
             # Set permissions for group
             assign_perm('view_scene', world, scene)
 
+            scene.shared = "w"
+            scene.save()
+
             return Response({'status': 'Published scene'})
 
         # If world group not yet in groups
         elif world not in groups:
             assign_perm('view_scene', world, scene)
+
+            scene.shared = "w"
+            scene.save()
 
             return Response({'status': 'Published scene'})
 
@@ -316,7 +366,8 @@ class SceneViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @detail_route(methods=['get'])
+    # @permission_required_or_403('scene.change_scene')
+    @detail_route(methods=["get"])
     def export(self, request, pk=None):
         scene = self.get_object()
 
@@ -343,13 +394,27 @@ class SceneViewSet(viewsets.ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
 
 
+class SearchFormViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows search forms to be viewed.
+    """
+
+    serializer_class = SearchFormSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return SearchForm.objects.filter(name="MAIN")
+
+
 class TemplateViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows templates to be viewed or edited.
     """
 
     serializer_class = TemplateSerializer
-    permission_classes = (ViewObjectPermissions,)
+    permission_classes = (permissions.IsAuthenticated,
+                          ViewObjectPermissions,)
+    # filter_backends = (filters.DjangoObjectPermissionsFilter,)
 
     def get_queryset(self):
         return Template.objects.all()
@@ -362,21 +427,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
     serializer_class = UserSerializer
 
-    def get_queryset(self):
-        return User.objects.all()
-
-
-class GroupViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-
-    serializer_class = GroupSerializer
-
-    def get_queryset(self):
-        user = get_object_or_404(User, id=self.request.user.id)
-        wanted = [group.id for group in user.groups.all()]
-        return Group.objects.filter(pk__in=wanted)
+    queryset = User.objects.all()
+    # filter_backends = (filters.DjangoObjectPermissionsFilter,)
 
     @list_route()
     def me(self, request):
@@ -388,326 +440,16 @@ class GroupViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-# ###################################
-# The code below will be phased out in Sprint 4
-#
+class GroupViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
 
-# ################################### SCENARIO
-
-class ScenarioCreateView(View):
-
-    model = Scenario
-
-    def post(self, request, *args, **kwargs):
-
-        if 'scenariosettings' not in request.POST:
-            return JsonResponse(
-                {'created': 'false', 'error': 'no scenariosettings found'}
-            )
-
-        try:
-            scenariosettings = json.loads(request.POST['scenariosettings'])
-        except ValueError:
-            return JsonResponse(
-                {
-                    'created': 'false',
-                    'error': 'scenariosettings not in json format'
-                }
-            )
-
-        # hard code the tasks for the chain. This should be added to the
-        # scenariosettings
-        tasks = {'simulation': False, 'export': True}
-
-        newscenario = Scenario(
-            name="Scene {}".format(datetime.now())
-        )
-        newscenario.save()  # Before creating children
-
-        newscenario.load_settings(scenariosettings)
-        newscenario.createscenes()
-
-        # 25 april '16: Almar, Fedor & Tijn decided that
-        # a scenario should be started server-side after creation
-        newscenario.start(tasks)
-
-        return JsonResponse({'created': 'ok'})
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(ScenarioCreateView, self).dispatch(*args, **kwargs)
-
-
-class ScenarioDeleteView(DeleteView):
-    model = Scenario
-
-    def get_object(self):
-        scenario_id = (
-            self.request.GET.get('id') or self.request.POST.get('id')
-        )
-        return Scenario.objects.get(id=scenario_id)
-
-    def delete(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.object.delete()
-        payload = {'status': 'deleted'}
-        return JsonResponse(payload)
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(ScenarioDeleteView, self).dispatch(*args, **kwargs)
-
-
-class ScenarioDetailView(JSONDetailView):
-    model = Scenario
-
-    def get_object(self):
-        scenario_id = (
-            self.request.GET.get('id') or self.request.POST.get('id')
-        )
-        scenario = Scenario.objects.get(id=scenario_id)
-        return scenario
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(ScenarioDetailView, self).dispatch(*args, **kwargs)
-
-
-class ScenarioListView(JSONListView):
-    model = Scenario
+    serializer_class = GroupSerializer
+    # filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    queryset = Group.objects.none()  # Required for DjangoModelPermissions
 
     def get_queryset(self):
-        queryset = Scenario.objects.all().order_by('id')
-        return queryset
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(ScenarioListView, self).dispatch(*args, **kwargs)
-
-
-class ScenarioStartView(View):
-    model = Scenario
-
-    # TODO: remove get
-    def get(self, request, *args, **kwargs):
-        scenario_id = (
-            self.request.GET.get('id') or self.request.POST.get('id')
-        )
-        scenario = get_object_or_404(Scenario, id=scenario_id)
-        payload = {'status': scenario.start()}
-        return JsonResponse(payload)
-
-    def post(self, request, *args, **kwargs):
-        scenario_id = (
-            self.request.GET.get('id') or self.request.POST.get('id')
-        )
-        scenario = get_object_or_404(Scenario, id=scenario_id)
-        tasks = {'simulation': False, 'export': True}
-        payload = {'status': scenario.start(tasks)}
-
-        return JsonResponse(payload)
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(ScenarioStartView, self).dispatch(*args, **kwargs)
-
-
-class ScenarioStopView(View):
-    model = Scenario
-
-    # TODO: remove get
-    def get(self, request, *args, **kwargs):
-        scenario_id = (
-            self.request.GET.get('id') or self.request.POST.get('id')
-        )
-        scenario = get_object_or_404(Scenario, id=scenario_id)
-        payload = {
-            'id': scenario_id,
-            'status': scenario.stop()
-        }
-        return JsonResponse(payload)
-
-    def post(self, request, *args, **kwargs):
-        scenario_id = (
-            self.request.GET.get('id') or self.request.POST.get('id')
-        )
-        scenario = get_object_or_404(Scenario, id=scenario_id)
-        payload = {
-            'id': scenario_id,
-            'status': scenario.stop()
-        }
-        return JsonResponse(payload)
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(ScenarioStopView, self).dispatch(*args, **kwargs)
-
-
-# ################################### SCENE
-
-class SceneCreateView(CreateView):
-    model = Scene
-    fields = ['name', 'state', 'info']
-
-    def post(self, request, *args, **kwargs):
-        return super(SceneCreateView, self).post(request, *args, **kwargs)
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(SceneCreateView, self).dispatch(*args, **kwargs)
-
-
-class SceneDeleteView(DeleteView):
-    model = Scene
-
-    def get_object(self):
-        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
-        return Scene.objects.get(id=scene_id)
-
-    def delete(self, request, *args, **kwargs):
-        deletefiles = (
-            request.GET.get('deletefiles') or request.POST.get('deletefiles')
-        )
-        self.success_url = reverse_lazy('scene_delete')
-
-        scene = self.get_object()
-        deletefiles = (deletefiles is not None) and ("true" in deletefiles)
-        scene.delete(deletefiles=deletefiles)
-
-        payload = {'status': 'deleted', 'files_deleted': deletefiles}
-        return JsonResponse(payload)
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(SceneDeleteView, self).dispatch(*args, **kwargs)
-
-
-class SceneDetailView(JSONDetailView):
-    model = Scene
-
-    def get_object(self):
-        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
-        scene = Scene.objects.get(id=scene_id)
-        return scene
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(SceneDetailView, self).dispatch(*args, **kwargs)
-
-
-class SceneListView(JSONListView):
-    model = Scene
-
-    def get_queryset(self):
-        queryset = Scene.objects.all().order_by('id')
-        return queryset
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(SceneListView, self).dispatch(*args, **kwargs)
-
-
-class SceneStartView(View):
-    model = Scene
-
-    # TODO: remove get
-    def get(self, request, *args, **kwargs):
-        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
-        scene = get_object_or_404(Scene, id=scene_id)
-        payload = {'status': scene.start()}
-        return JsonResponse(payload)
-
-    def post(self, request, *args, **kwargs):
-        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
-        scene = get_object_or_404(Scene, id=scene_id)
-        payload = {'status': scene.start()}
-
-        return JsonResponse(payload)
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(SceneStartView, self).dispatch(*args, **kwargs)
-
-
-class SceneStopView(View):
-    model = Scene
-
-    # TODO: remove get
-    def get(self, request, *args, **kwargs):
-        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
-        scene = get_object_or_404(Scene, id=scene_id)
-        payload = {'status': scene.abort()}
-        return JsonResponse(payload)
-
-    def post(self, request, *args, **kwargs):
-        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
-        scene = get_object_or_404(Scene, id=scene_id)
-        payload = {'status': scene.abort()}
-
-        return JsonResponse(payload)
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(SceneStopView, self).dispatch(*args, **kwargs)
-
-
-class SceneExportView(View):
-    model = Scene
-
-    def get(self, request, *args, **kwargs):
-        """export data into a zip file
-        - scene: model run
-        - selection: images or log
-        """
-        scene_id = (self.request.GET.get('id') or self.request.POST.get('id'))
-        scene = get_object_or_404(Scene, id=scene_id)
-
-        # What we will export, now ; separated (doesn't work), should be list as in
-        # http://10.0.1.2:8000/scene/export?id=1&options=export_images&options=export_thirdparty
-        options = (self.request.GET.getlist(
-            'options') or self.request.POST.getlist('options'))
-        stream, filename = scene.export(options)
-
-        resp = HttpResponse(
-            stream.getvalue(),
-            content_type="application/x-zip-compressed"
-        )
-        resp[
-            'Content-Disposition'] = 'attachment; filename={}'.format(filename)
-
-        # TODO create a test with a django request
-        # and test if the file can be read
-        return resp
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(SceneExportView, self).dispatch(*args, **kwargs)
-
-
-# ################################### TEMPLATE
-
-class TemplateDetailView(JSONDetailView):
-    model = Template
-
-    def get_object(self):
-        template_id = (
-            self.request.GET.get('id') or self.request.POST.get('id')
-        )
-        template = Template.objects.get(id=template_id)
-        return template
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(TemplateDetailView, self).dispatch(*args, **kwargs)
-
-
-class TemplateListView(JSONListView):
-    model = Template
-
-    def get_queryset(self):
-        queryset = Template.objects.all().order_by('id')
-        return queryset
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super(TemplateListView, self).dispatch(*args, **kwargs)
+        user = get_object_or_404(User, id=self.request.user.id)
+        wanted = [group.id for group in user.groups.all()]
+        return Group.objects.filter(pk__in=wanted)
