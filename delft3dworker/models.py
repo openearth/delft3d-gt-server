@@ -524,13 +524,22 @@ class SearchForm(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    sections = JSONField(default="[]")
+    templates = JSONField(default='[]')
+    sections = JSONField(default='[]')
 
     def update(self):
+        self.templates = "[]"
         self.sections = "[]"
         for template in Template.objects.all():
+            self._update_templates(template.name, template.id)
             self._update_sections(template.sections)
         return
+
+    def _update_templates(self, tmpl_name, tmpl_id):
+        self.templates.append({
+            'name': tmpl_name,
+            'id': tmpl_id,
+        })
 
     def _update_sections(self, tmpl_sections):
 
@@ -546,6 +555,17 @@ class SearchForm(models.Model):
             # add or update
             if not matching_sections:
 
+                # remove non-required fields from variables
+                for variable in tmpl_section["variables"]:
+                    try:
+                        del variable["default"]
+                    except KeyError:
+                        pass  # if no default is in the dict, now worries
+                    try:
+                        del variable["validators"]["required"]
+                    except KeyError:
+                        pass  # if no required is in the dict, now worries
+
                 self.sections.append(tmpl_section)
 
             else:
@@ -555,7 +575,7 @@ class SearchForm(models.Model):
                 # for each variable
                 for tmpl_variable in tmpl_section["variables"]:
 
-                    # find matching (i.e. name && type equal) sections
+                    # find matching (i.e. name equal) sections
                     # in this search form
                     matching_variables = [
                         variable for variable in srch_section["variables"] if (
@@ -566,6 +586,15 @@ class SearchForm(models.Model):
                     # add or update
                     if not matching_variables:
 
+                        # remove non-required fields from variables
+                        try:
+                            del tmpl_variable["default"]
+                        except KeyError:
+                            pass  # if no default is in the dict, now worries
+                        try:
+                            del tmpl_variable["validators"]["required"]
+                        except KeyError:
+                            pass  # if no required is in the dict, now worries
                         srch_section["variables"].append(tmpl_variable)
 
                     else:

@@ -3,6 +3,7 @@ from rest_framework.renderers import JSONRenderer
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
+from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 
 from django.contrib.auth.models import Group
@@ -111,11 +112,12 @@ class SearchFormSerializer(serializers.HyperlinkedModelSerializer):
     # here we will write custom serialization and validation methods
 
     class Meta:
-        model = Template
+        model = SearchForm
         fields = (
             'id',
             'name',
             'sections',
+            'templates',
         )
 
 
