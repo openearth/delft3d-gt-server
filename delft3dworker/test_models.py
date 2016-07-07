@@ -295,7 +295,7 @@ class SearchFormTestCase(TestCase):
         searchforms = SearchForm.objects.filter(name='MAIN')
         self.assertEqual(len(searchforms), 1)
 
-        # search form sections is equal template secionts
+        # all fields are as expected
         searchform = searchforms[0]
         self.assertEqual(
             searchform.templates,

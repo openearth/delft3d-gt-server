@@ -560,11 +560,11 @@ class SearchForm(models.Model):
                     try:
                         del variable["default"]
                     except KeyError:
-                        pass  # if no default is in the dict, now worries
+                        pass  # if no default is in the dict, no worries
                     try:
                         del variable["validators"]["required"]
                     except KeyError:
-                        pass  # if no required is in the dict, now worries
+                        pass  # if no required is in the dict, no worries
 
                 self.sections.append(tmpl_section)
 
@@ -590,11 +590,11 @@ class SearchForm(models.Model):
                         try:
                             del tmpl_variable["default"]
                         except KeyError:
-                            pass  # if no default is in the dict, now worries
+                            pass  # if no default is in the dict, no worries
                         try:
                             del tmpl_variable["validators"]["required"]
                         except KeyError:
-                            pass  # if no required is in the dict, now worries
+                            pass  # if no required is in the dict, no worries
                         srch_section["variables"].append(tmpl_variable)
 
                     else:
