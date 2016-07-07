@@ -102,6 +102,23 @@ class SceneSerializer(serializers.ModelSerializer):
         )
 
 
+class SearchFormSerializer(serializers.HyperlinkedModelSerializer):
+    """
+    A default REST Framework HyperlinkedModelSerializer for the Template model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    # here we will write custom serialization and validation methods
+
+    class Meta:
+        model = Template
+        fields = (
+            'id',
+            'name',
+            'sections',
+        )
+
+
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     """
     A default REST Framework HyperlinkedModelSerializer for the Template model
