@@ -269,7 +269,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    @detail_route(methods=["post"])
+    @detail_route(methods=["put"])  # denied after publish to company/world
     def start(self, request, pk=None):
         scene = self.get_object()
 
@@ -282,7 +282,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["post"])
+    @detail_route(methods=["put"])  # denied after publish to company/world
     def stop(self, request, pk=None):
         scene = self.get_object()
 
@@ -292,7 +292,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["post"])
+    @detail_route(methods=["post"])  # denied after publish to world
     def publish_company(self, request, pk=None):
         published = self.get_object().publish_company(request.user)
 
@@ -304,7 +304,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scene to company'})
 
-    @detail_route(methods=["post"])
+    @detail_route(methods=["post"])  # denied after publish to world
     def publish_world(self, request, pk=None):
         published = self.get_object().publish_world(request.user)
 
@@ -316,7 +316,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scene to world'})
 
-    @detail_route(methods=["get"])
+    @detail_route(methods=["post"])  # denied after publish to world
     def export(self, request, pk=None):
         scene = self.get_object()
 

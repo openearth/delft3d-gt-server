@@ -394,19 +394,15 @@ class Scene(models.Model):
         super(Scene, self).save(*args, **kwargs)
 
     def delete(self, deletefiles=True, *args, **kwargs):
-        if ('p' != self.shared):
-            return
-
         self.abort()
         if deletefiles:
             self._delete_datafolder()
         super(Scene, self).delete(*args, **kwargs)
 
     def publish_company(self, user):
-        if ('p' != self.shared) or (user != self.owner):
-            return False
-
-        # Remove write permissions for user
+        # revokes the right to change object with PUT
+        remove_perm('change_scene', user, self)
+        # revokes the right to delete object with DELETE
         remove_perm('delete_scene', user, self)
 
         # Set permissions for groups
@@ -425,10 +421,13 @@ class Scene(models.Model):
         return True
 
     def publish_world(self, user):
-        if user != self.owner:
-            return False
+        # Remove permissions
 
-        # Remove write permissions for user
+        # revokes the right to change object with POST
+        remove_perm('add_scene', user, self)
+        # revokes the right to change object with PUT
+        remove_perm('change_scene', user, self)
+        # revokes the right to delete object with DELETE
         remove_perm('delete_scene', user, self)
 
         # Set permissions for groups

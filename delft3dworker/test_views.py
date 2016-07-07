@@ -1,8 +1,10 @@
 from django.contrib.auth.models import Group
-from django.contrib.auth.models import User
 from django.contrib.auth.models import Permission
+from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
 from django.test import TestCase
 
+from rest_framework.test import APIClient
 from rest_framework.test import APIRequestFactory
 from rest_framework.test import force_authenticate
 
@@ -201,17 +203,15 @@ class SceneTestCase(TestCase):
     """
 
     def setUp(self):
-        self.user_foo = User.objects.create_user(username="foo")
-        scene = Scene.objects.create(
+        self.user_foo = User.objects.create_user(
+            username="foo",
+            password="secret"
+        )
+        self.scene = Scene.objects.create(
             name="Test main workflow",
             owner=self.user_foo,
             shared='p',
         )
-
-        # Object general
-        assign_perm('view_scene', self.user_foo, scene)
-        assign_perm('change_scene', self.user_foo, scene)
-        assign_perm('delete_scene', self.user_foo, scene)
 
         # Model general
         self.user_foo.user_permissions.add(
@@ -219,17 +219,26 @@ class SceneTestCase(TestCase):
         self.user_foo.user_permissions.add(
             Permission.objects.get(codename='view_scene'))
 
+        # Object general
+        assign_perm('view_scene', self.user_foo, self.scene)
+        assign_perm('change_scene', self.user_foo, self.scene)
+        assign_perm('delete_scene', self.user_foo, self.scene)
+
         # Refetch to empty permissions cache
         self.user_foo = User.objects.get(pk=self.user_foo.pk)
 
-    def test_scene_accepts_start(self):
-        # call /scene/{pk}/start and test if 200 response is returned
-        factory = APIRequestFactory()
-        view = SceneViewSet.as_view({'get': 'retrieve'})
-        request = factory.get('/scenes/1/start/')
-        force_authenticate(request, user=self.user_foo)
-        response = view(request, pk='1')
-        response.render()
+    def test_scene_get(self):
+        client = APIClient()
+        client.login(username='foo', password='secret')
+        url = reverse('scene-detail', args=['1'])
+        response = client.get(url, format='json')
+        self.assertEqual(response.status_code, 200)
+
+    def test_scene_post(self):
+        client = APIClient()
+        client.login(username='foo', password='secret')
+        url = reverse('scene-list')
+        response = client.post(url, {}, format='json')
         self.assertEqual(response.status_code, 200)
 
 

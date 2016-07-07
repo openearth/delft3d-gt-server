@@ -29,4 +29,4 @@ urlpatterns = (
     url(r'^data(?P<path>.*)$', login_required(serve), {
         'document_root': '/data/',
     }),
-    )
+)
