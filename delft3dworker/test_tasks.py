@@ -7,13 +7,29 @@ from django.test import TestCase
 
 from mock import patch
 
-from delft3dworker.tasks import chainedtask, dummy
+from delft3dworker.tasks import chainedtask, dummy, DockerClient
 
 
 # Main thing to test here is the valid forking in
 # the tasks and its return values.
 
 # Hard thing to do is to mock Docker
+
+class DockerTest(TestCase):
+
+    @patch('delft3dworker.tasks.Client', autospec=True, create=True)
+    def setUp(self, mockClient):
+        mockClient.return_value.inspect_container.return_value = {"State": {"Running": True}}
+        mockClient.return_value.create_container.return_value = {"Id": 22, "State": {"Running": True}}
+        self.client = DockerClient('docker', {}, 'output', 'command', tail=2)
+
+    def testdocker(self):
+        self.client.start()
+        self.assertTrue(self.client.running())
+        self.assertTrue(isinstance(self.client.status(), dict))
+        self.client.stop()
+        self.client.delete()
+
 
 class TaskTest(TestCase):
 

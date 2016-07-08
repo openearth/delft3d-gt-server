@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import json
+from mock import patch
 import os
 import zipfile
 
@@ -276,6 +277,22 @@ class SceneTestCase(TestCase):
         stream, fn = self.scene.export(['export_thirdparty'])
         zf = zipfile.ZipFile(stream)
         self.assertEqual(len(zf.namelist()), 1)
+
+    @patch('delft3dworker.tasks.chainedtask.delay', autospec=True)
+    def test_start_scene(self, mockchainedtask):
+        # mockchainedtask.return_value = {"info": {}, 'id': 22, 'state': ""}
+        mockchainedtask.return_value.task_id = 22
+        mockchainedtask.return_value.state = "PROCESSING"
+        started = self.scene.start()
+
+    @patch('celery.contrib.abortable.AbortableAsyncResult', autospec=True)
+    def test_stop_scene(self, mockchainedtask):
+        mockchainedtask.return_value = {"info": {}, 'id': 22, 'state': ""}
+        self.scene.state = "PROCESSING"
+        aborted = self.scene.abort()
+
+        self.scene.state = "BUSY"
+        revoked = self.scene.abort()
 
 
 class SearchFormTestCase(TestCase):

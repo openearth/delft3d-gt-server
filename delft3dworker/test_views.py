@@ -7,6 +7,7 @@ from django.core.urlresolvers import reverse
 from django.test import TestCase
 
 from rest_framework import status
+from rest_framework.test import APIClient
 from rest_framework.test import APITestCase
 from rest_framework.test import APIRequestFactory
 from rest_framework.test import force_authenticate
@@ -31,8 +32,8 @@ class ListAccessTestCase(TestCase):
         self.factory = APIRequestFactory()
 
         # create users and store for later access
-        self.user_foo = User.objects.create_user(username='foo')
-        self.user_bar = User.objects.create_user(username='bar')
+        self.user_foo = User.objects.create_user(username='foo', password="secret")
+        self.user_bar = User.objects.create_user(username='bar', password="secret")
 
         # create models in dB
         scenario = Scenario.objects.create(
@@ -60,6 +61,10 @@ class ListAccessTestCase(TestCase):
         self.user_foo.user_permissions.add(
             Permission.objects.get(codename='view_scenario'))
         self.user_foo.user_permissions.add(
+            Permission.objects.get(codename='add_scenario'))
+        self.user_foo.user_permissions.add(
+            Permission.objects.get(codename='delete_scenario'))
+        self.user_foo.user_permissions.add(
             Permission.objects.get(codename='view_scene'))
         self.user_bar.user_permissions.add(
             Permission.objects.get(codename='view_scenario'))
@@ -81,6 +86,19 @@ class ListAccessTestCase(TestCase):
         # Refetch to empty permissions cache
         self.user_foo = User.objects.get(pk=self.user_foo.pk)
         self.user_bar = User.objects.get(pk=self.user_bar.pk)
+
+    @patch('delft3dworker.models.Scenario.start', autospec=True,)
+    def test_scenario_post(self, mockScenariostart):
+        # list view for POST (create new)
+        url = reverse('scenario-list')
+
+        self.client.login(username='foo', password='secret')
+        data = {
+            "name": "New Scenario",
+            "parameter": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_search(self):
         """
