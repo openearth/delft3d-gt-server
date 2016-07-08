@@ -7,7 +7,7 @@ from django.core.urlresolvers import reverse
 from django.test import TestCase
 
 from rest_framework import status
-from rest_framework.test import APIClient
+from rest_framework.test import APITestCase
 from rest_framework.test import APIRequestFactory
 from rest_framework.test import force_authenticate
 
@@ -205,7 +205,7 @@ class SceneSearchTestCase(TestCase):
         return response.data
 
 
-class SceneTestCase(TestCase):
+class SceneTestCase(APITestCase):
     """
     Test custom written function SceneViewSet
     """
@@ -232,30 +232,30 @@ class SceneTestCase(TestCase):
             owner=self.user_foo,
             shared='p',
         )
-        self.scene.start = MagicMock()  # we do not want to run simulations
         for perm in ['view_scene', 'add_scene',
                      'change_scene', 'delete_scene']:
             assign_perm(perm, self.user_foo, self.scene)
 
     def test_scene_get(self):
-        # only user Foo can see the scene
-        client = APIClient()
+        # detail view
         url = reverse('scene-detail', args=[self.scene.pk])
 
-        client.login(username='bar', password='secret')
-        response = client.get(url, format='json')
-        self.assertEqual(response.status_code, 404)
-
-        client.login(username='foo', password='secret')
-        response = client.get(url, format='json')
+        # foo can see
+        self.client.login(username='foo', password='secret')
+        response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # bar cannot see
+        self.client.login(username='bar', password='secret')
+        response = self.client.get(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_scene_post(self):
-        # both users can create scenes
-        client = APIClient()
+        # list view for POST (create new)
         url = reverse('scene-list')
 
-        client.login(username='bar', password='secret')
+        # foo can create
+        self.client.login(username='foo', password='secret')
         data = {
             "name": "New Scene",
             "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
@@ -263,10 +263,11 @@ class SceneTestCase(TestCase):
             "shared": "p",
             "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
         }
-        response = client.post(url, data, format='json')
+        response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        client.login(username='foo', password='secret')
+        # bar can create
+        self.client.login(username='bar', password='secret')
         data = {
             "name": "New Scene",
             "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
@@ -274,61 +275,101 @@ class SceneTestCase(TestCase):
             "shared": "p",
             "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
         }
-        response = client.post(url, data, format='json')
+        response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    @patch('delft3dworker.views.SceneViewSet.get_object')
-    def test_scene_start(self, mockedMethod):
-        # only user Foo can start scene, which calls Scene.start once with
-        # the right arguments
-        mockedMethod.return_value = self.scene
+    def test_scene_put(self):
+        # detail view for PUT (udpate)
+        url = reverse('scene-detail', args=[self.scene.pk])
 
-        url = reverse('scene-start', args=[self.scene.pk])
-
-        # TODO: remove this (now added as verification for obj-lvl permissions)
-        self.assertTrue(
-            not self.user_bar.has_perm('change_scene', self.scene)
-        )
-        self.assertTrue(
-            self.user_foo.has_perm('change_scene', self.scene)
-        )
-
-        client = APIClient()
-        client.login(username='bar', password='secret')
-        response = client.put(url, {}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.scene.start.assert_not_called()
-
-        client = APIClient()
-        client.login(username='foo', password='secret')
-        response = client.put(url, {}, format='json')
+        # foo can update
+        self.client.login(username='foo', password='secret')
+        data = {
+            "name": "New Scene (updated)",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        self.scene.start.assert_called_with(workflow="main")
-        response = client.put(url, {"workflow": "test"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.scene.start.assert_called_with(workflow="test")
+        # bar cannot update
+        self.client.login(username='bar', password='secret')
+        data = {
+            "name": "New Scene (updated)",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    @patch('delft3dworker.views.SceneViewSet.get_object')
-    def test_scene_no_start_after_publish(self, mockedMethod):
-        # only user Foo can start scene, which calls Scene.start once with
-        # the right arguments
-        mockedMethod.return_value = self.scene
-
-        client = APIClient()
-        url = reverse('scene-start', args=[self.scene.pk])
-
+    def test_scene_no_put_after_publish(self):
+        # the scene is published
         self.scene.publish_company(self.user_foo)
 
-        client.login(username='bar', password='secret')
-        response = client.put(url, {}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.scene.start.assert_not_called()
+        # detail view for PUT (update)
+        url = reverse('scene-detail', args=[self.scene.pk])
 
-        client.login(username='foo', password='secret')
-        response = client.put(url, {}, format='json')
+        # foo cannot update
+        self.client.login(username='foo', password='secret')
+        data = {
+            "name": "New Scene (updated)",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.scene.start.assert_not_called()
+
+        # bar cannot update
+        self.client.login(username='bar', password='secret')
+        data = {
+            "name": "New Scene (updated)",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @patch('delft3dworker.models.Scene.start')
+    def test_scene_start(self, mockedMethod):
+        # start view
+        url = reverse('scene-start', args=[self.scene.pk])
+
+        # bar cannot see
+        self.client.login(username='bar', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        mockedMethod.assert_not_called()
+
+        # foo can start, both default and with arguments
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mockedMethod.assert_called_with(workflow="main")
+        response = self.client.put(url, {"workflow": "test"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mockedMethod.assert_called_with(workflow="test")
+
+    @patch('delft3dworker.models.Scene.start')
+    def test_scene_no_start_after_publish(self, mockedMethod):
+        # the scene is published
+        self.scene.publish_company(self.user_foo)
+
+        # start view
+        url = reverse('scene-start', args=[self.scene.pk])
+
+        # foo cannot start (forbidden)
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        mockedMethod.assert_not_called()
 
 
 class UserTestCase(TestCase):
