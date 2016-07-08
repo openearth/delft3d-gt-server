@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import os
 
 from django.conf import settings
@@ -7,6 +9,7 @@ from mock import patch
 
 from celery import current_app
 from delft3dworker.tasks import chainedtask, dummy
+
 
 # Main thing to test here is the valid forking in
 # the tasks and its return values.
@@ -46,7 +49,7 @@ class TaskTest(TestCase):
         # Autospec cant do init
         mockDockerClient.return_value.id = '1238761287361'
         mockDockerClient.return_value.running = self.getFalse
-        
+
         # If we want to test revoke and aborts
         # mockControl.return_value.inspect.revoked = []
 
@@ -65,13 +68,13 @@ class TaskTest(TestCase):
         parameters = [{}, os.getcwd(), 'main']
         delay = chainedtask.delay(*parameters)
         self.assertTrue("result" in delay.result)
-        self.assertTrue(delay.result['result'] == "Finished")        
+        self.assertTrue(delay.result['result'] == "Finished")
 
         # Dummy workflow
         parameters = [{}, os.getcwd(), 'dummy']
         delay = chainedtask.delay(*parameters)
         self.assertTrue("result" in delay.result)
-        self.assertTrue(delay.result['result'] == "Finished")        
+        self.assertTrue(delay.result['result'] == "Finished")
 
         # Dummy export workflow
         parameters = [{}, os.getcwd(), 'dummy_export']

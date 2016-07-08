@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from delft3dworker.utils import delft3d_logparser
 from delft3dworker.utils import PersistentLogger
 

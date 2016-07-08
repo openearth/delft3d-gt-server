@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.auth.models import Permission
@@ -47,10 +49,14 @@ class ListAccessTestCase(TestCase):
         b.scenario.add(scenario)
 
         # Model general
-        self.user_foo.user_permissions.add(Permission.objects.get(codename='view_scenario'))
-        self.user_foo.user_permissions.add(Permission.objects.get(codename='view_scene'))
-        self.user_bar.user_permissions.add(Permission.objects.get(codename='view_scenario'))
-        self.user_bar.user_permissions.add(Permission.objects.get(codename='view_scene'))
+        self.user_foo.user_permissions.add(
+            Permission.objects.get(codename='view_scenario'))
+        self.user_foo.user_permissions.add(
+            Permission.objects.get(codename='view_scene'))
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scenario'))
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scene'))
 
         # Object general
         assign_perm('view_scenario', self.user_foo, scenario)
@@ -130,8 +136,10 @@ class SceneSearchTestCase(TestCase):
         assign_perm('delete_scene', self.user_bar, scene)
 
         # Model general
-        self.user_bar.user_permissions.add(Permission.objects.get(codename='view_scenario'))
-        self.user_bar.user_permissions.add(Permission.objects.get(codename='view_scene'))
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scenario'))
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scene'))
 
         # Refetch to empty permissions cache
         self.user_bar = User.objects.get(pk=self.user_bar.pk)
@@ -204,8 +212,10 @@ class SceneTestCase(TestCase):
         assign_perm('delete_scene', self.user_foo, scene)
 
         # Model general
-        self.user_foo.user_permissions.add(Permission.objects.get(codename='view_scenario'))
-        self.user_foo.user_permissions.add(Permission.objects.get(codename='view_scene'))
+        self.user_foo.user_permissions.add(
+            Permission.objects.get(codename='view_scenario'))
+        self.user_foo.user_permissions.add(
+            Permission.objects.get(codename='view_scene'))
 
         # Refetch to empty permissions cache
         self.user_foo = User.objects.get(pk=self.user_foo.pk)
