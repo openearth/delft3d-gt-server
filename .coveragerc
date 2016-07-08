@@ -1,0 +1,30 @@
+[run]
+plugins =
+    django_coverage_plugin
+
+[run]
+include =
+    delft3d*
+
+omit = 
+    *__init__*
+    common.views.test
+    django
+    djcelery
+    locale
+    *migrations*
+    *settings*
+    *test*
+    urls*
+    rest_framework*
+    crispy_forms*
+    guardian*
+    delft3dworker/management*
+    delft3dgtfrontend/templates
+    delft3dworker/fixtures*
+    delft3dworker/templates*
+    delft3dworker/admin*
+    delft3dgtfrontend/apps*
+
+[html]
+directory = test/coverage

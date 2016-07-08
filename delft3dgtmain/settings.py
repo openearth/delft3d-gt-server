@@ -211,29 +211,12 @@ if 'test' in sys.argv:
         }
     }
 
+    # Debug on running tests
+    DEBUG = True
+
     # BROKER_BACKEND='memory'
     CELERY_RESULT_BACKEND = 'cache'
     CELERY_CACHE_BACKEND = 'memory'
-
-    COVERAGE_REPORT_HTML_OUTPUT_DIR = 'test/coverage'
-    COVERAGE_PATH_EXCLUDES = [
-        r'.*migrations.*'
-    ]
-    COVERAGE_MODULE_EXCLUDES = [
-        '__init__',
-        'common.views.test',
-        'django',
-        'djcelery',
-        'locale$',
-        'migrations'
-        'settings$',
-        'tests$',
-        'urls$',
-        'rest_framework$',
-        'crispy_forms$',
-        'guardian$',
-        'delft3dworker.management$'
-    ]
 
     WORKER_FILEDIR = 'test/'
 
