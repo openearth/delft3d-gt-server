@@ -1,8 +1,4 @@
 [run]
-plugins =
-    django_coverage_plugin
-
-[run]
 include =
     delft3d*
 
