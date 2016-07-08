@@ -204,7 +204,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     suid = models.CharField(max_length=256, editable=False)
 
-    scenario = models.ManyToManyField(Scenario)
+    scenario = models.ManyToManyField(Scenario, blank=True)
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import json
 import os
 import zipfile
@@ -7,8 +9,8 @@ from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from guardian.shortcuts import get_objects_for_user
 from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_objects_for_user
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
@@ -84,48 +86,65 @@ class ScenarioTestCase(TestCase):
 class SceneTestCase(TestCase):
 
     def setUp(self):
+
+        # create users, groups and assign permissions
         self.user_a = User.objects.create_user(username='A')
         self.user_b = User.objects.create_user(username='B')
         self.user_c = User.objects.create_user(username='C')
 
         company_w = Group.objects.create(name='access:world')
-        company_w.user_set.add(self.user_a)
-        company_w.user_set.add(self.user_b)
-        company_w.user_set.add(self.user_c)
+        for user in [self.user_a, self.user_b, self.user_c]:
+            company_w.user_set.add(user)
+            for perm in ['view_scene', 'add_scene',
+                         'change_scene', 'delete_scene']:
+                user.user_permissions.add(
+                    Permission.objects.get(codename=perm)
+                )
+
         company_x = Group.objects.create(name='access:org:Company X')
         company_x.user_set.add(self.user_a)
         company_x.user_set.add(self.user_b)
         company_y = Group.objects.create(name='access:org:Company Y')
         company_y.user_set.add(self.user_c)
 
-        scene = Scene.objects.create(
+        # scene
+        self.scene = Scene.objects.create(
             name='Scene',
             owner=self.user_a,
             shared='p',
         )
-        assign_perm('view_scene', self.user_a, scene)
-        assign_perm('change_scene', self.user_a, scene)
-        assign_perm('delete_scene', self.user_a, scene)
+        self.wd = self.scene.workingdir
+        assign_perm('view_scene', self.user_a, self.scene)
+        assign_perm('add_scene', self.user_a, self.scene)
+        assign_perm('change_scene', self.user_a, self.scene)
+        assign_perm('delete_scene', self.user_a, self.scene)
 
-        # Model general
-        self.user_a.user_permissions.add(
-            Permission.objects.get(codename='view_scene'))
-        self.user_b.user_permissions.add(
-            Permission.objects.get(codename='view_scene'))
-        self.user_c.user_permissions.add(
-            Permission.objects.get(codename='view_scene'))
+        # Add files mimicking export options.
+        self.images = ['image.png', 'image.jpg', 'image.gif', 'image.jpeg']
+        self.simulation = ['simulation/a.sim', 'simulation/b.sim']
+        self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
+        self.export = ['export/export.something']
 
-    def test_after_publishing_more_can_see(self):
-        scene = get_objects_for_user(
-            self.user_a,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )[0]
-        self.assertTrue(scene.publish_company(self.user_a))
-        self.assertEqual(scene.shared, 'c')
-        self.assertTrue(scene.publish_world(self.user_a))
-        self.assertEqual(scene.shared, 'w')
+    def test_after_publishing_rights_are_revoked(self):
+        self.assertEqual(self.scene.shared, 'p')
+        self.assertTrue(self.user_a.has_perm('view_scene', self.scene))
+        self.assertTrue(self.user_a.has_perm('add_scene', self.scene))
+        self.assertTrue(self.user_a.has_perm('change_scene', self.scene))
+        self.assertTrue(self.user_a.has_perm('delete_scene', self.scene))
+
+        self.assertTrue(self.scene.publish_company(self.user_a))
+        self.assertEqual(self.scene.shared, 'c')
+        self.assertTrue(self.user_a.has_perm('view_scene', self.scene))
+        self.assertTrue(self.user_a.has_perm('add_scene', self.scene))
+        self.assertTrue(not self.user_a.has_perm('change_scene', self.scene))
+        self.assertTrue(not self.user_a.has_perm('delete_scene', self.scene))
+
+        self.assertTrue(self.scene.publish_world(self.user_a))
+        self.assertEqual(self.scene.shared, 'w')
+        self.assertTrue(self.user_a.has_perm('view_scene', self.scene))
+        self.assertTrue(not self.user_a.has_perm('add_scene', self.scene))
+        self.assertTrue(not self.user_a.has_perm('change_scene', self.scene))
+        self.assertTrue(not self.user_a.has_perm('delete_scene', self.scene))
 
     def test_after_publishing_more_can_see(self):
         scene = get_objects_for_user(
@@ -216,6 +235,47 @@ class SceneTestCase(TestCase):
             Scene.objects.all(),
             accept_global_perms=False
         )), 1)
+
+    def test_export_images(self):
+        # Mimick touch for creating empty files
+        for f in self.images:
+            open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
+
+        stream, fn = self.scene.export(['export_images'])
+        zf = zipfile.ZipFile(stream)
+        self.assertEqual(len(zf.namelist()), 3)
+
+    def test_export_sim(self):
+        # Mimick touch for creating empty files
+        for f in self.simulation:
+            open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
+            # print(os.path.join(os.getcwd(), self.wd, f))
+        stream, fn = self.scene.export(['export_input'])
+        zf = zipfile.ZipFile(stream)
+        self.assertEqual(len(zf.namelist()), 1)
+
+    def test_export_movies(self):
+        # Mimick touch for creating empty files
+        for f in self.movies:
+            # Also make some data
+            if 'big' in f:
+                open(os.path.join(os.getcwd(), self.wd, f), 'a').write('TEST')
+            else:
+                open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
+            # print(os.path.join(os.getcwd(), self.wd, f))
+
+        stream, fn = self.scene.export(['export_movie'])
+        zf = zipfile.ZipFile(stream)
+        self.assertEqual(len(zf.namelist()), 1)
+
+    def test_export_export(self):
+        # Mimick touch for creating empty files
+        for f in self.export:
+            open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
+
+        stream, fn = self.scene.export(['export_thirdparty'])
+        zf = zipfile.ZipFile(stream)
+        self.assertEqual(len(zf.namelist()), 1)
 
 
 class SearchFormTestCase(TestCase):
@@ -451,63 +511,3 @@ class SearchFormTestCase(TestCase):
             searchform.sections,
             self.sections_res
         )
-
-
-class SceneTestCase(TestCase):
-
-    def setUp(self):
-        # Set up user & scene
-        self.user_foo = User.objects.create(username='foo')
-        self.scene = Scene.objects.create(
-            name="Test Scene", owner=self.user_foo)
-
-        # If scene is saved, uid and workingdir are created
-        self.scene.save()
-        self.wd = self.scene.workingdir
-
-        # Add files mimicking export options.
-        self.images = ['image.png', 'image.jpg', 'image.gif', 'image.jpeg']
-        self.simulation = ['simulation/a.sim', 'simulation/b.sim']
-        self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
-        self.export = ['export/export.something']
-
-    def test_export_images(self):
-        # Mimick touch for creating empty files
-        for f in self.images:
-            open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-
-        stream, fn = self.scene.export(['export_images'])
-        zf = zipfile.ZipFile(stream)
-        self.assertEqual(len(zf.namelist()), 3)
-
-    def test_export_sim(self):
-        # Mimick touch for creating empty files
-        for f in self.simulation:
-            open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-            # print(os.path.join(os.getcwd(), self.wd, f))
-        stream, fn = self.scene.export(['export_input'])
-        zf = zipfile.ZipFile(stream)
-        self.assertEqual(len(zf.namelist()), 1)
-
-    def test_export_movies(self):
-        # Mimick touch for creating empty files
-        for f in self.movies:
-            # Also make some data
-            if 'big' in f:
-                open(os.path.join(os.getcwd(), self.wd, f), 'a').write('TEST')
-            else:
-                open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-            # print(os.path.join(os.getcwd(), self.wd, f))
-
-        stream, fn = self.scene.export(['export_movie'])
-        zf = zipfile.ZipFile(stream)
-        self.assertEqual(len(zf.namelist()), 1)
-
-    def test_export_export(self):
-        # Mimick touch for creating empty files
-        for f in self.export:
-            open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-
-        stream, fn = self.scene.export(['export_thirdparty'])
-        zf = zipfile.ZipFile(stream)
-        self.assertEqual(len(zf.namelist()), 1)

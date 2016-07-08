@@ -1,14 +1,20 @@
+from __future__ import absolute_import
+
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
+from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.test import APIRequestFactory
 from rest_framework.test import force_authenticate
 
 from guardian.shortcuts import assign_perm
+
+from mock import MagicMock
+from mock import patch
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
@@ -111,7 +117,7 @@ class ListAccessTestCase(TestCase):
         # send request to view and render response
         response = view(request)
         response.render()
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         return response.data
 
@@ -124,19 +130,21 @@ class SceneSearchTestCase(TestCase):
             name='Test',
             owner=self.user_bar,
         )
-        scene = Scene.objects.create(
+        self.scene = Scene.objects.create(
             name='Test',
             owner=self.user_bar,
             parameters={'a': {'value': 2}},
             state='SUCCESS',
             shared='p',
         )
-        scene.scenario.add(scenario)
+        self.scene.scenario.add(scenario)
+        # we do not want to test the model, only the views
+        self.scene.start = MagicMock()
 
         # Object general
-        assign_perm('view_scene', self.user_bar, scene)
-        assign_perm('change_scene', self.user_bar, scene)
-        assign_perm('delete_scene', self.user_bar, scene)
+        assign_perm('view_scene', self.user_bar, self.scene)
+        assign_perm('change_scene', self.user_bar, self.scene)
+        assign_perm('delete_scene', self.user_bar, self.scene)
 
         # Model general
         self.user_bar.user_permissions.add(
@@ -203,43 +211,124 @@ class SceneTestCase(TestCase):
     """
 
     def setUp(self):
+        # create Users and assign permissions
         self.user_foo = User.objects.create_user(
             username="foo",
             password="secret"
         )
+        self.user_bar = User.objects.create_user(
+            username="bar",
+            password="secret"
+        )
+        for user in [self.user_foo, self.user_bar]:
+            for perm in ['view_scene', 'add_scene',
+                         'change_scene', 'delete_scene']:
+                user.user_permissions.add(
+                    Permission.objects.get(codename=perm))
+
+        # create Scene instance and assign permissions for user_foo
         self.scene = Scene.objects.create(
             name="Test main workflow",
             owner=self.user_foo,
             shared='p',
         )
-
-        # Model general
-        self.user_foo.user_permissions.add(
-            Permission.objects.get(codename='view_scenario'))
-        self.user_foo.user_permissions.add(
-            Permission.objects.get(codename='view_scene'))
-
-        # Object general
-        assign_perm('view_scene', self.user_foo, self.scene)
-        assign_perm('change_scene', self.user_foo, self.scene)
-        assign_perm('delete_scene', self.user_foo, self.scene)
-
-        # Refetch to empty permissions cache
-        self.user_foo = User.objects.get(pk=self.user_foo.pk)
+        self.scene.start = MagicMock()  # we do not want to run simulations
+        for perm in ['view_scene', 'add_scene',
+                     'change_scene', 'delete_scene']:
+            assign_perm(perm, self.user_foo, self.scene)
 
     def test_scene_get(self):
+        # only user Foo can see the scene
         client = APIClient()
-        client.login(username='foo', password='secret')
-        url = reverse('scene-detail', args=['1'])
+        url = reverse('scene-detail', args=[self.scene.pk])
+
+        client.login(username='bar', password='secret')
         response = client.get(url, format='json')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 404)
+
+        client.login(username='foo', password='secret')
+        response = client.get(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_scene_post(self):
+        # both users can create scenes
+        client = APIClient()
+        url = reverse('scene-list')
+
+        client.login(username='bar', password='secret')
+        data = {
+            "name": "New Scene",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        client.login(username='foo', password='secret')
+        data = {
+            "name": "New Scene",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    @patch('delft3dworker.views.SceneViewSet.get_object')
+    def test_scene_start(self, mockedMethod):
+        # only user Foo can start scene, which calls Scene.start once with
+        # the right arguments
+        mockedMethod.return_value = self.scene
+
+        url = reverse('scene-start', args=[self.scene.pk])
+
+        # TODO: remove this (now added as verification for obj-lvl permissions)
+        self.assertTrue(
+            not self.user_bar.has_perm('change_scene', self.scene)
+        )
+        self.assertTrue(
+            self.user_foo.has_perm('change_scene', self.scene)
+        )
+
+        client = APIClient()
+        client.login(username='bar', password='secret')
+        response = client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.scene.start.assert_not_called()
+
         client = APIClient()
         client.login(username='foo', password='secret')
-        url = reverse('scene-list')
-        response = client.post(url, {}, format='json')
-        self.assertEqual(response.status_code, 200)
+        response = client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.scene.start.assert_called_with(workflow="main")
+        response = client.put(url, {"workflow": "test"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.scene.start.assert_called_with(workflow="test")
+
+    @patch('delft3dworker.views.SceneViewSet.get_object')
+    def test_scene_no_start_after_publish(self, mockedMethod):
+        # only user Foo can start scene, which calls Scene.start once with
+        # the right arguments
+        mockedMethod.return_value = self.scene
+
+        client = APIClient()
+        url = reverse('scene-start', args=[self.scene.pk])
+
+        self.scene.publish_company(self.user_foo)
+
+        client.login(username='bar', password='secret')
+        response = client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.scene.start.assert_not_called()
+
+        client.login(username='foo', password='secret')
+        response = client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.scene.start.assert_not_called()
 
 
 class UserTestCase(TestCase):
@@ -267,7 +356,7 @@ class UserTestCase(TestCase):
         force_authenticate(request, user=self.user_foo)
         response = view(request)
         response.render()
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.assertContains(response, "foo")
         self.assertContains(response, "Foo")

@@ -83,7 +83,7 @@ class SceneSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
 
     # Run update state on serialization
-    state = serializers.CharField(source='_update_state')
+    state = serializers.CharField(source='_update_state', read_only=True)
 
     class Meta:
         model = Scene
