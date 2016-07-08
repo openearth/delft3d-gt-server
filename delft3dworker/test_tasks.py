@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 import os
-
+from celery import current_app
 from django.conf import settings
 from django.test import TestCase
 
@@ -40,15 +40,12 @@ class TaskTest(TestCase):
     def getFalse(self):
         return False
 
-    @patch('celery.app.control.Control', autospec=False)
+    @patch('delft3dworker.tasks.chainedtask.app.control.inspect', autospec=False, create=True)
     @patch('delft3dworker.tasks.DockerClient', autospec=True)
     def test_chainedtask(self, mockDockerClient, mockControl):
         # Autospec cant do init
         mockDockerClient.return_value.id = '1238761287361'
         mockDockerClient.return_value.running = self.getFalse
-
-        # If we want to test revoke and aborts
-        # mockControl.return_value.inspect.revoked = []
 
         # No workflow given
         parameters = [{}, os.getcwd(), '']

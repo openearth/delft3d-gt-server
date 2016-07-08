@@ -285,8 +285,9 @@ class SceneTestCase(TestCase):
         mockchainedtask.return_value.state = "PROCESSING"
         started = self.scene.start()
 
+    @patch('delft3dworker.models.revoke_task', autospec=True)
     @patch('celery.contrib.abortable.AbortableAsyncResult', autospec=True)
-    def test_stop_scene(self, mockchainedtask):
+    def test_stop_scene(self, mockchainedtask, mockrevoke):
         mockchainedtask.return_value = {"info": {}, 'id': 22, 'state': ""}
         self.scene.state = "PROCESSING"
         aborted = self.scene.abort()
