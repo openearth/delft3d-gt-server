@@ -235,7 +235,7 @@ if 'test' in sys.argv:
         'delft3dworker.management$'
     ]
 
-    WORKER_FILEDIR = ''
+    WORKER_FILEDIR = 'test/'
 
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'

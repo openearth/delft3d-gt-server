@@ -27,6 +27,12 @@ class TaskTest(TestCase):
         settings.PROCESS_DUMMY_IMAGE_NAME = 'dummy_processing'
         settings.EXPORT_DUMMY_IMAGE_NAME = 'dummy_export'
 
+        settings.DELFT3D_IMAGE_NAME = 'dummy_simulation'
+        settings.POSTPROCESS_IMAGE_NAME = 'dummy_postprocessing'
+        settings.PREPROCESS_IMAGE_NAME = 'dummy_preprocessing'
+        settings.PROCESS_IMAGE_NAME = 'dummy_processing'
+        settings.EXPORT_IMAGE_NAME = 'dummy_export'
+
     def test_dummy(self):
         delay = dummy.delay()
         self.assertTrue(delay.result is None)
