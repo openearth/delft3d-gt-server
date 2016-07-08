@@ -21,8 +21,8 @@ from django.views.generic import CreateView
 from django.views.generic import DeleteView
 from django.views.generic import View
 
-from guardian.shortcuts import assign_perm, remove_perm
-from guardian.shortcuts import get_groups_with_perms, get_objects_for_user
+from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_objects_for_user
 from guardian.decorators import permission_required_or_403
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
@@ -271,7 +271,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    @detail_route(methods=["post"])
+    @detail_route(methods=["put"])  # denied after publish to company/world
     def start(self, request, pk=None):
         scene = self.get_object()
 
@@ -284,7 +284,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["post"])
+    @detail_route(methods=["put"])  # denied after publish to company/world
     def stop(self, request, pk=None):
         scene = self.get_object()
 
@@ -294,80 +294,31 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["post"])
+    @detail_route(methods=["post"])  # denied after publish to world
     def publish_company(self, request, pk=None):
-        scene = self.get_object()
-        groups = [
-            group for group in self.request.user.groups.all() if (
-                "world" not in group.name
-            )]
-
-        # If we can still edit, scene is not published
-        published = "p" != scene.shared
+        published = self.get_object().publish_company(request.user)
 
         if not published:
-
-            # Remove write permissions for user
-            remove_perm('change_scene', self.request.user, scene)
-            remove_perm('delete_scene', self.request.user, scene)
-
-            # Set permissions for group
-            for group in groups:
-                assign_perm('view_scene', group, scene)
-
-            scene.shared = "c"
-            scene.save()
-
-            return Response({'status': 'Published scene'})
-
-        else:
             return Response(
-                {'status': 'Already published at company or world level'},
+                {'status': 'Something went wrong publishing scene to company'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    # @permission_required_or_403('scene.change_scene')
-    @detail_route(methods=["post"])
+        return Response({'status': 'Published scene to company'})
+
+    @detail_route(methods=["post"])  # denied after publish to world
     def publish_world(self, request, pk=None):
-        scene = self.get_object()
-        world = Group.objects.get(name="access:world")
+        published = self.get_object().publish_world(request.user)
 
-        # Check if unpublished by checking if there are any groups
-        groups = get_groups_with_perms(scene)
-
-        # No groups
-        if len(groups) == 0:
-
-            # Remove write permissions for user
-            remove_perm('add_scene', self.request.user, scene)
-            remove_perm('change_scene', self.request.user, scene)
-            remove_perm('delete_scene', self.request.user, scene)
-
-            # Set permissions for group
-            assign_perm('view_scene', world, scene)
-
-            scene.shared = "w"
-            scene.save()
-
-            return Response({'status': 'Published scene'})
-
-        # If world group not yet in groups
-        elif world not in groups:
-            assign_perm('view_scene', world, scene)
-
-            scene.shared = "w"
-            scene.save()
-
-            return Response({'status': 'Published scene'})
-
-        else:
+        if not published:
             return Response(
-                {'status': "Already published at company or world level"},
+                {'status': 'Something went wrong publishing scene to world'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    # @permission_required_or_403('scene.change_scene')
-    @detail_route(methods=["get"])
+        return Response({'status': 'Published scene to world'})
+
+    @detail_route(methods=["post"])  # denied after publish to world
     def export(self, request, pk=None):
         scene = self.get_object()
 

@@ -18,12 +18,15 @@ from datetime import datetime
 from delft3dworker.tasks import chainedtask
 
 from django.conf import settings  # noqa
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_groups_with_perms
 from guardian.shortcuts import get_objects_for_user
+from guardian.shortcuts import remove_perm
 
 from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
@@ -201,7 +204,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     suid = models.CharField(max_length=256, editable=False)
 
-    scenario = models.ManyToManyField(Scenario)
+    scenario = models.ManyToManyField(Scenario, blank=True)
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
@@ -393,6 +396,49 @@ class Scene(models.Model):
             self._delete_datafolder()
         super(Scene, self).delete(*args, **kwargs)
 
+    def publish_company(self, user):
+        # revokes the right to change object with PUT
+        remove_perm('change_scene', user, self)
+        # revokes the right to delete object with DELETE
+        remove_perm('delete_scene', user, self)
+
+        # Set permissions for groups
+        groups = [
+            group for group in user.groups.all() if (
+                "world" not in group.name
+            )
+        ]
+        for group in groups:
+            assign_perm('view_scene', group, self)
+
+        # update scene
+        self.shared = "c"
+        self.save()
+
+        return True
+
+    def publish_world(self, user):
+        # Remove permissions
+
+        # revokes the right to change object with POST
+        remove_perm('add_scene', user, self)
+        # revokes the right to change object with PUT
+        remove_perm('change_scene', user, self)
+        # revokes the right to delete object with DELETE
+        remove_perm('delete_scene', user, self)
+
+        # Set permissions for groups
+        for group in get_groups_with_perms(self):
+            remove_perm('view_scene', group, self)
+        world = Group.objects.get(name="access:world")
+        assign_perm('view_scene', world, self)
+
+        # update scene
+        self.shared = "w"
+        self.save()
+
+        return True
+
     # INTERNALS
 
     def _create_datafolder(self):
@@ -449,6 +495,7 @@ class Scene(models.Model):
         )
 
     def _update_state(self):
+
         # only update state if it has a task_id (which means the task is
         # started)
         if self.task_id != '':
