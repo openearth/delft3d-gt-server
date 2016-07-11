@@ -106,22 +106,18 @@ class ListAccessTestCase(TestCase):
         """
 
         # User Foo can access own models
-        self.assertEqual(
-            len(self._request(ScenarioViewSet, self.user_foo)),
+        self.assertEqual(len(self._request(ScenarioViewSet, self.user_foo)),
             1
         )
-        self.assertEqual(
-            len(self._request(SceneViewSet, self.user_foo)),
+        self.assertEqual(len(self._request(SceneViewSet, self.user_foo)),
             2
         )
 
         # User Bar can access no models (because Bar owns none)
-        self.assertEqual(
-            len(self._request(ScenarioViewSet, self.user_bar)),
+        self.assertEqual(len(self._request(ScenarioViewSet, self.user_bar)),
             0
         )
-        self.assertEqual(
-            len(self._request(SceneViewSet, self.user_bar)),
+        self.assertEqual(len(self._request(SceneViewSet, self.user_bar)),
             0
         )
 
@@ -143,26 +139,35 @@ class ListAccessTestCase(TestCase):
 class SceneSearchTestCase(TestCase):
 
     def setUp(self):
-        self.user_bar = User.objects.create_user(username='bar')
-        scenario = Scenario.objects.create(
-            name='Test',
+        self.user_bar = User.objects.create_user(
+            username='bar',
+            password='secret'
+        )
+        self.scenario = Scenario.objects.create(
+            name='Testscenario',
             owner=self.user_bar,
         )
-        self.scene = Scene.objects.create(
-            name='Test',
+        self.scene_1 = Scene.objects.create(
+            name='Testscene 1',
             owner=self.user_bar,
             parameters={'a': {'value': 2}},
             state='SUCCESS',
             shared='p',
         )
-        self.scene.scenario.add(scenario)
-        # we do not want to test the model, only the views
-        self.scene.start = MagicMock()
+        self.scene_1.scenario.add(self.scenario)
+        self.scene_2 = Scene.objects.create(
+            name='Testscene 2',
+            owner=self.user_bar,
+            parameters={'a': {'value': 3}},
+            state='SUCCESS',
+            shared='p',
+        )
+        self.scene_2.scenario.add(self.scenario)
 
         # Object general
-        assign_perm('view_scene', self.user_bar, self.scene)
-        assign_perm('change_scene', self.user_bar, self.scene)
-        assign_perm('delete_scene', self.user_bar, self.scene)
+        assign_perm('view_scenario', self.user_bar, self.scenario)
+        assign_perm('view_scene', self.user_bar, self.scene_1)
+        assign_perm('view_scene', self.user_bar, self.scene_2)
 
         # Model general
         self.user_bar.user_permissions.add(
@@ -179,9 +184,9 @@ class SceneSearchTestCase(TestCase):
         """
 
         # Exact matches
-        search_query_exact_a = {'name': "Test"}
+        search_query_exact_a = {'name': "Testscene 1"}
         search_query_exact_b = {'state': "FINISHED"}
-        search_query_exact_c = {'scenario': "Test", 'name': "Test"}
+        search_query_exact_c = {'scenario': "Testscenario", 'name': "Testscene 1"}
 
         self.assertEqual(len(self._request(search_query_exact_a)), 1)
         self.assertEqual(len(self._request(search_query_exact_b)), 0)
@@ -194,9 +199,9 @@ class SceneSearchTestCase(TestCase):
             'search': "SUCC", 'search': "Te", 'search': "T"
         }
 
-        self.assertEqual(len(self._request(search_query_partial_a)), 1)
-        self.assertEqual(len(self._request(search_query_partial_b)), 1)
-        self.assertEqual(len(self._request(search_query_partial_c)), 1)
+        self.assertEqual(len(self._request(search_query_partial_a)), 2)
+        self.assertEqual(len(self._request(search_query_partial_b)), 2)
+        self.assertEqual(len(self._request(search_query_partial_c)), 2)
 
         # Parameter searches
         search_query_parameter_a = {'parameter': "a"}
@@ -205,21 +210,20 @@ class SceneSearchTestCase(TestCase):
         search_query_parameter_d = {'parameter': "a,1"}
         search_query_parameter_e = {'parameter': "a,1,2"}
         search_query_parameter_f = {'parameter': "a,2,3"}
+        search_query_parameter_g = {'parameter': "a,0,1"}
 
-        self.assertEqual(len(self._request(search_query_parameter_a)), 1)
+        self.assertEqual(len(self._request(search_query_parameter_a)), 2)
         self.assertEqual(len(self._request(search_query_parameter_b)), 0)
         self.assertEqual(len(self._request(search_query_parameter_c)), 1)
         self.assertEqual(len(self._request(search_query_parameter_d)), 0)
-        self.assertEqual(len(self._request(search_query_parameter_e)), 0)
-        self.assertEqual(len(self._request(search_query_parameter_f)), 1)
+        self.assertEqual(len(self._request(search_query_parameter_e)), 1)
+        self.assertEqual(len(self._request(search_query_parameter_f)), 2)
+        self.assertEqual(len(self._request(search_query_parameter_g)), 0)
 
     def _request(self, query):
-        factory = APIRequestFactory()
-        view = SceneViewSet.as_view({'get': 'list'})
-        request = factory.get('/scenes/', query)
-        force_authenticate(request, user=self.user_bar)
-        response = view(request)
-        response.render()
+        url = reverse('scene-list')
+        self.client.login(username='bar', password='secret')
+        response = self.client.get(url, query, format='json')
         return response.data
 
 
@@ -245,18 +249,18 @@ class SceneTestCase(APITestCase):
                     Permission.objects.get(codename=perm))
 
         # create Scene instance and assign permissions for user_foo
-        self.scene = Scene.objects.create(
+        self.scene_1 = Scene.objects.create(
             name="Test main workflow",
             owner=self.user_foo,
             shared='p',
         )
         for perm in ['view_scene', 'add_scene',
                      'change_scene', 'delete_scene']:
-            assign_perm(perm, self.user_foo, self.scene)
+            assign_perm(perm, self.user_foo, self.scene_1)
 
     def test_scene_get(self):
         # detail view
-        url = reverse('scene-detail', args=[self.scene.pk])
+        url = reverse('scene-detail', args=[self.scene_1.pk])
 
         # foo can see
         self.client.login(username='foo', password='secret')
@@ -298,7 +302,7 @@ class SceneTestCase(APITestCase):
 
     def test_scene_put(self):
         # detail view for PUT (udpate)
-        url = reverse('scene-detail', args=[self.scene.pk])
+        url = reverse('scene-detail', args=[self.scene_1.pk])
 
         # foo can update
         self.client.login(username='foo', password='secret')
@@ -326,10 +330,10 @@ class SceneTestCase(APITestCase):
 
     def test_scene_no_put_after_publish(self):
         # the scene is published
-        self.scene.publish_company(self.user_foo)
+        self.scene_1.publish_company(self.user_foo)
 
         # detail view for PUT (update)
-        url = reverse('scene-detail', args=[self.scene.pk])
+        url = reverse('scene-detail', args=[self.scene_1.pk])
 
         # foo cannot update
         self.client.login(username='foo', password='secret')
@@ -355,10 +359,10 @@ class SceneTestCase(APITestCase):
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    @patch('delft3dworker.models.Scene.start')
+    @patch('delft3dworker.models.Scene.start', autospec=True)
     def test_scene_start(self, mockedMethod):
         # start view
-        url = reverse('scene-start', args=[self.scene.pk])
+        url = reverse('scene-start', args=[self.scene_1.pk])
 
         # bar cannot see
         self.client.login(username='bar', password='secret')
@@ -375,13 +379,13 @@ class SceneTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         mockedMethod.assert_called_with(workflow="test")
 
-    @patch('delft3dworker.models.Scene.start')
+    @patch('delft3dworker.models.Scene.start', autospec=True)
     def test_scene_no_start_after_publish(self, mockedMethod):
         # the scene is published
-        self.scene.publish_company(self.user_foo)
+        self.scene_1.publish_company(self.user_foo)
 
         # start view
-        url = reverse('scene-start', args=[self.scene.pk])
+        url = reverse('scene-start', args=[self.scene_1.pk])
 
         # foo cannot start (forbidden)
         self.client.login(username='foo', password='secret')

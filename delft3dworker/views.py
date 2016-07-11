@@ -99,9 +99,10 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                 instance.load_settings(parameters)
                 instance.createscenes(self.request.user)
 
-            assign_perm('view_scenario', self.request.user, instance)
+            assign_perm('add_scenario', self.request.user, instance)
             assign_perm('change_scenario', self.request.user, instance)
             assign_perm('delete_scenario', self.request.user, instance)
+            assign_perm('view_scenario', self.request.user, instance)
 
             instance.save()
 
@@ -249,7 +250,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
                         for scene in queryset:
                             values = scene.parameters[key]['value']
-                            if minvalue <= values < maxvalue:
+                            if minvalue <= values <= maxvalue:
 
                                 wanted.append(scene.id)
 

@@ -121,10 +121,10 @@ class Scenario(models.Model):
                 scene.save()
                 scene.scenario.add(self)
 
-                assign_perm('view_scene', self.owner, scene)
                 assign_perm('add_scene', self.owner, scene)
                 assign_perm('change_scene', self.owner, scene)
                 assign_perm('delete_scene', self.owner, scene)
+                assign_perm('view_scene', self.owner, scene)
 
         self.save()
 
