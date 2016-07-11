@@ -5,7 +5,7 @@ from mock import patch
 import os
 import zipfile
 
-from celery.states import state, SUCCESS, PROCESSING
+from celery.states import state, SUCCESS, PENDING
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
@@ -130,20 +130,20 @@ class SceneTestCase(TestCase):
 
     def test_state_compare(self):
         # Aborted is higher than SUCCESS
-        self.state = "SUCCESS"
-        self.assertEqual(self._higher_state("ABORTED"), "ABORTED")
+        self.scene.state = "SUCCESS"
+        self.assertEqual(self.scene._higher_state("ABORTED"), "ABORTED")
 
         # Revoked is higher than SUCCESS
-        self.state = "REVOKED"
-        self.assertEqual(self._higher_state("SUCCESS"), "REVOKED")
+        self.scene.state = "REVOKED"
+        self.assertEqual(self.scene._higher_state("SUCCESS"), "REVOKED")
 
         # SUCCESS is higher than PENDING
-        self.state = "PENDING"
-        self.assertEqual(self._higher_state("SUCCESS"), "SUCCESS")
+        self.scene.state = PENDING
+        self.assertEqual(self.scene._higher_state("SUCCESS"), "SUCCESS")
 
         # SUCCESS is higher than PENDING
-        self.state = "SUCCESS"
-        self.assertEqual(self._higher_state("PENDING"), "SUCCESS")
+        self.scene.state = "SUCCESS"
+        self.assertEqual(self.scene._higher_state("PENDING"), "SUCCESS")
 
     def test_after_publishing_rights_are_revoked(self):
         self.assertEqual(self.scene.shared, 'p')
@@ -299,8 +299,8 @@ class SceneTestCase(TestCase):
 
     @patch('delft3dworker.tasks.chainedtask.delay', autospec=True)
     def test_start_scene(self, mockchainedtask):
-        # mockchainedtask.return_value = {"info": {}, 'id': 22, 'state': ""}
-        mockchainedtask.return_value.task_id = 22
+        # mockchainedtask.return_value = {"info": {}, 'id': '22', 'state': ""}
+        mockchainedtask.return_value.task_id = '22'
         mockchainedtask.return_value.state = "PROCESSING"
         started = self.scene.start()
 

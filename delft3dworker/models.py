@@ -372,7 +372,7 @@ class Scene(models.Model):
         # On first save
         if self.pk is None:
             self.workingdir = os.path.join(
-                settings.WORKER_FILEDIR, self.suid, '')
+                settings.WORKER_FILEDIR, str(self.suid), '')
             self._create_datafolder()
 
             # Hack to have the "dt:20" in the correct format
@@ -380,7 +380,7 @@ class Scene(models.Model):
                 self.parameters = {"delft3d": self.info}
 
             self._create_ini()
-            self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
+            self.fileurl = os.path.join(settings.WORKER_FILEURL, str(self.suid), '')
 
         super(Scene, self).save(*args, **kwargs)
 
