@@ -5,6 +5,8 @@ from mock import patch
 import os
 import zipfile
 
+from celery.states import state, SUCCESS, PROCESSING
+
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
@@ -125,6 +127,23 @@ class SceneTestCase(TestCase):
         self.simulation = ['simulation/a.sim', 'simulation/b.sim']
         self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
         self.export = ['export/export.something']
+
+    def test_state_compare(self):
+        # Aborted is higher than SUCCESS
+        self.state = "SUCCESS"
+        self.assertEqual(self._higher_state("ABORTED"), "ABORTED")
+
+        # Revoked is higher than SUCCESS
+        self.state = "REVOKED"
+        self.assertEqual(self._higher_state("SUCCESS"), "REVOKED")
+
+        # SUCCESS is higher than PENDING
+        self.state = "PENDING"
+        self.assertEqual(self._higher_state("SUCCESS"), "SUCCESS")
+
+        # SUCCESS is higher than PENDING
+        self.state = "SUCCESS"
+        self.assertEqual(self._higher_state("PENDING"), "SUCCESS")
 
     def test_after_publishing_rights_are_revoked(self):
         self.assertEqual(self.scene.shared, 'p')

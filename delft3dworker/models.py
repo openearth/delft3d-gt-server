@@ -12,6 +12,7 @@ from celery.contrib.abortable import AbortableAsyncResult
 from celery.result import AsyncResult
 from celery.exceptions import TimeoutError
 from celery.task.control import revoke as revoke_task
+from celery.states import state
 
 from datetime import datetime
 
@@ -202,7 +203,9 @@ class Scene(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    suid = models.CharField(max_length=256, editable=False)
+
+    # suid = models.CharField(max_length=256, editable=False)
+    suid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     scenario = models.ManyToManyField(Scenario, blank=True)
 
@@ -211,6 +214,8 @@ class Scene(models.Model):
     parameters = JSONField(blank=True)  # {"dt":20}
     state = models.CharField(max_length=256, blank=True)
     task_id = models.CharField(max_length=256)
+
+    # Please use FilePath Field
     workingdir = models.CharField(max_length=256)
     parameters_hash = models.CharField(max_length=64, blank=True)
 
@@ -250,53 +255,40 @@ class Scene(models.Model):
     # CONTROL METHODS
 
     def start(self, workflow="main"):
-        result = AbortableAsyncResult(self.task_id)
 
-        if self.task_id != "" and result.state == "PENDING":
-            return {"error": "task already PENDING", "task_id": self.task_id}
+        # Check if task is already start
+        if self.task_id != "":
+            result = AbortableAsyncResult(self.task_id)
 
-        if result.state == BUSYSTATE:
-            return {"error": "task already busy", "task_id": self.task_id}
+            # Find out state
+            if result.state == "PENDING":
+                return {"error": "task already PENDING", "task_id": self.task_id}
+            elif result.state == BUSYSTATE:
+                return {"error": "task already BUSY", "task_id": self.task_id}
+            else:
+                return {"error": "Chainedtask already started", "task_id": self.task_id}
 
-        result = chainedtask.delay(
-            self.parameters, self.workingdir, workflow)
-        self.task_id = result.task_id
-        self.state = result.state
-        self.save()
+        # Task has not yet been started
+        else:
+            result = chainedtask.delay(
+                self.parameters, self.workingdir, workflow)
+            self.task_id = result.task_id  # so we can't start again
 
-        return {"task_id": self.task_id, "scene_id": self.suid}
+            self._update_state()  # will save for us
+
+            return {"task_id": self.task_id, "scene_id": self.suid}
 
     def abort(self):
-
+        """Function called on stop in frontend, hence the json response."""
         result = AbortableAsyncResult(self.task_id)
 
         # If not running, revoke task
         if not result.state == BUSYSTATE:
-            return self.revoke()
+            revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
+        else:
+            result.abort()
 
-        result.abort()
-
-        self.info = result.info if isinstance(
-            result.info, dict) else {"info": str(result.info)}
-
-        self.state = result.state
-
-        self.save()
-
-        return {
-            "task_id": self.task_id,
-            "state": result.state,
-            "info": str(self.info)
-        }
-
-    def revoke(self):
-
-        result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(
-            result.info, dict) else {"info": str(result.info)}
-        revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
-        self.state = result.state
-        self.save()
+        self._update_state()  # will save for us
 
         return {
             "task_id": self.task_id,
@@ -377,17 +369,19 @@ class Scene(models.Model):
 
     def save(self, *args, **kwargs):
 
-        # if scene does not have a unique uuid, create it and create folder
-        if self.suid == '':
-            self.suid = str(uuid.uuid4())
+        # On first save
+        if self.pk is None:
             self.workingdir = os.path.join(
                 settings.WORKER_FILEDIR, self.suid, '')
             self._create_datafolder()
+
+            # Hack to have the "dt:20" in the correct format
             if self.parameters == "":
-                # Hack to have the "dt:20" in the correct format
                 self.parameters = {"delft3d": self.info}
+
             self._create_ini()
             self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
+
         super(Scene, self).save(*args, **kwargs)
 
     def delete(self, deletefiles=True, *args, **kwargs):
@@ -494,16 +488,33 @@ class Scene(models.Model):
                 self.workingdir, 'process/' 'input.ini'))
         )
 
+    def _higher_state(self, stateB):
+        stopped = ["ABORTED", "REVOKED"]
+        if self.state in stopped:
+            return self.state
+        elif stateB in stopped:
+            return stateB
+        elif state(self.state) > state(stateB):
+            return self.state
+        else:
+            return stateB
+
     def _update_state(self):
 
-        # only update state if it has a task_id (which means the task is
-        # started)
+        # only retrieve state if it has a task_id 
+        # (which means the task is started)
         if self.task_id != '':
             result = AbortableAsyncResult(self.task_id)
-            self.info = result.info if isinstance(
+            info = result.info if isinstance(
                 result.info, dict) else {"info": str(result.info)}
-            self.state = result.state
+            self.info.update(info)
+            self.state = self._higher_state(result.state)
+        else:
+            self.info = {}
+            self.state = "UNKNOWN"
+            self.save()
 
+        # Update image lists
         self.info["delta_fringe_images"] = {
             "images": [],
             "location": "process/"
@@ -520,7 +531,6 @@ class Scene(models.Model):
             "file": "",
             "location": "simulation/"
         }
-
         for root, dirs, files in os.walk(
             os.path.join(self.workingdir, 'process')
         ):
@@ -534,21 +544,20 @@ class Scene(models.Model):
                     elif "sediment_fraction" in name:
                         self.info["sediment_fraction_images"][
                             "images"].append(f)
-
                     else:
                         # Other images ?
-                        # Dummy images
-                        self.info["delta_fringe_images"]["images"].append(f)
                         pass
 
-        for root, dirs, files in os.walk(
-            os.path.join(self.workingdir, 'simulation')
-        ):
-            for f in files:
-                if f == 'delft3d.log':
-                    # No log is generated at the moment
-                    self.info["logfile"]["file"] = f
-                    break
+        # If no log path is yet known, set log
+        if self.info["logfile"]["file"] == "":
+            for root, dirs, files in os.walk(
+                os.path.join(self.workingdir, 'simulation')
+            ):
+                for f in files:
+                    if f == 'delft3d.log':
+                        # No log is generated at the moment
+                        self.info["logfile"]["file"] = f
+                        break
 
         self.save()
         return self.state
