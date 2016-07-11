@@ -155,11 +155,6 @@ CELERY_TRACK_STARTED = True
 # Default is to expire after 1 day.
 CELERY_TASK_RESULT_EXPIRES = None
 
-# Name of the file used to stores persistent worker state (like revoked tasks).
-# Can be a relative or absolute path, but be aware that the suffix .db
-# may be appended to the file name (depending on Python version).
-CELERYD_STATE_DB = 'celery_state'
-
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
