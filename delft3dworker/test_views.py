@@ -24,7 +24,12 @@ from delft3dworker.views import SceneViewSet
 from delft3dworker.views import UserViewSet
 
 
-class ListAccessTestCase(TestCase):
+class ApiAccessTestCase(TestCase):
+    """
+    ApiAccessTestCase
+    Tests the Django REST API in combination Django Guardian:
+    Do we protect our models correctly?
+    """
 
     def setUp(self):
 
@@ -105,10 +110,6 @@ class ListAccessTestCase(TestCase):
             Scenario.objects.get(name="New Scenario"))
 
     def test_search(self):
-        """
-        Tests GET access rights on list Views
-        """
-
         # User Foo can access own models
         self.assertEqual(
             len(self._request(ScenarioViewSet, self.user_foo)), 1)
@@ -122,7 +123,6 @@ class ListAccessTestCase(TestCase):
             len(self._request(SceneViewSet, self.user_bar)), 0)
 
     def _request(self, viewset, user):
-
         # create view and request
         view = viewset.as_view({'get': 'list'})
         request = self.factory.get('/scenes/')
@@ -136,101 +136,10 @@ class ListAccessTestCase(TestCase):
         return response.data
 
 
-class SceneSearchTestCase(TestCase):
-
-    def setUp(self):
-        self.user_bar = User.objects.create_user(
-            username='bar',
-            password='secret'
-        )
-        self.scenario = Scenario.objects.create(
-            name='Testscenario',
-            owner=self.user_bar,
-        )
-        self.scene_1 = Scene.objects.create(
-            name='Testscene 1',
-            owner=self.user_bar,
-            parameters={'a': {'value': 2}},
-            state='SUCCESS',
-            shared='p',
-        )
-        self.scene_1.scenario.add(self.scenario)
-        self.scene_2 = Scene.objects.create(
-            name='Testscene 2',
-            owner=self.user_bar,
-            parameters={'a': {'value': 3}},
-            state='SUCCESS',
-            shared='p',
-        )
-        self.scene_2.scenario.add(self.scenario)
-
-        # Object general
-        assign_perm('view_scenario', self.user_bar, self.scenario)
-        assign_perm('view_scene', self.user_bar, self.scene_1)
-        assign_perm('view_scene', self.user_bar, self.scene_2)
-
-        # Model general
-        self.user_bar.user_permissions.add(
-            Permission.objects.get(codename='view_scenario'))
-        self.user_bar.user_permissions.add(
-            Permission.objects.get(codename='view_scene'))
-
-        # Refetch to empty permissions cache
-        self.user_bar = User.objects.get(pk=self.user_bar.pk)
-
-    def test_search(self):
-        """
-        Test search options
-        """
-
-        # Exact matches
-        search_query_exact_a = {'name': "Testscene 1"}
-        search_query_exact_b = {'state': "FINISHED"}
-        search_query_exact_c = {
-            'scenario': "Testscenario", 'name': "Testscene 1"}
-
-        self.assertEqual(len(self._request(search_query_exact_a)), 1)
-        self.assertEqual(len(self._request(search_query_exact_b)), 0)
-        self.assertEqual(len(self._request(search_query_exact_c)), 1)
-
-        # Partial matches from beginning of line
-        search_query_partial_a = {'search': "Te"}
-        search_query_partial_b = {'search': "Tes"}
-        search_query_partial_c = {
-            'search': "SUCC", 'search': "Te", 'search': "T"
-        }
-
-        self.assertEqual(len(self._request(search_query_partial_a)), 2)
-        self.assertEqual(len(self._request(search_query_partial_b)), 2)
-        self.assertEqual(len(self._request(search_query_partial_c)), 2)
-
-        # Parameter searches
-        search_query_parameter_a = {'parameter': "a"}
-        search_query_parameter_b = {'parameter': "b"}
-        search_query_parameter_c = {'parameter': "a,2"}
-        search_query_parameter_d = {'parameter': "a,1"}
-        search_query_parameter_e = {'parameter': "a,1,2"}
-        search_query_parameter_f = {'parameter': "a,2,3"}
-        search_query_parameter_g = {'parameter': "a,0,1"}
-
-        self.assertEqual(len(self._request(search_query_parameter_a)), 2)
-        self.assertEqual(len(self._request(search_query_parameter_b)), 0)
-        self.assertEqual(len(self._request(search_query_parameter_c)), 1)
-        self.assertEqual(len(self._request(search_query_parameter_d)), 0)
-        self.assertEqual(len(self._request(search_query_parameter_e)), 1)
-        self.assertEqual(len(self._request(search_query_parameter_f)), 2)
-        self.assertEqual(len(self._request(search_query_parameter_g)), 0)
-
-    def _request(self, query):
-        url = reverse('scene-list')
-        self.client.login(username='bar', password='secret')
-        response = self.client.get(url, query, format='json')
-        return response.data
-
-
 class SceneTestCase(APITestCase):
     """
-    Test custom written function SceneViewSet
+    SceneTestCase
+    Tests the Scene Django REST API
     """
 
     def setUp(self):
@@ -393,6 +302,294 @@ class SceneTestCase(APITestCase):
         response = self.client.put(url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         mockedMethod.assert_not_called()
+
+
+class SceneSearchTestCase(TestCase):
+    """
+    SceneSearchTestCase
+    Tests the Scene search functionality using Django REST filters
+    """
+
+    def setUp(self):
+        self.user_bar = User.objects.create_user(
+            username='bar',
+            password='secret'
+        )
+        self.scenario = Scenario.objects.create(
+            name='Testscenario',
+            owner=self.user_bar,
+        )
+        self.scene_1 = Scene.objects.create(
+            name='Testscene 1',
+            owner=self.user_bar,
+            parameters={'a': {'value': 2}},
+            state='SUCCESS',
+            shared='p',
+        )
+        self.scene_1.scenario.add(self.scenario)
+        self.scene_2 = Scene.objects.create(
+            name='Testscene 2',
+            owner=self.user_bar,
+            parameters={'a': {'value': 3}},
+            state='SUCCESS',
+            shared='p',
+        )
+        self.scene_2.scenario.add(self.scenario)
+
+        # Object general
+        assign_perm('view_scenario', self.user_bar, self.scenario)
+        assign_perm('view_scene', self.user_bar, self.scene_1)
+        assign_perm('view_scene', self.user_bar, self.scene_2)
+
+        # Model general
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scenario'))
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scene'))
+
+        # Refetch to empty permissions cache
+        self.user_bar = User.objects.get(pk=self.user_bar.pk)
+
+    def test_search(self):
+        """
+        Test search options
+        """
+
+        # Exact matches
+        search_query_exact_a = {'name': "Testscene 1"}
+        search_query_exact_b = {'state': "FINISHED"}
+        search_query_exact_c = {
+            'scenario': "Testscenario", 'name': "Testscene 1"}
+
+        self.assertEqual(len(self._request(search_query_exact_a)), 1)
+        self.assertEqual(len(self._request(search_query_exact_b)), 0)
+        self.assertEqual(len(self._request(search_query_exact_c)), 1)
+
+        # Partial matches from beginning of line
+        search_query_partial_a = {'search': "Te"}
+        search_query_partial_b = {'search': "Tes"}
+        search_query_partial_c = {
+            'search': "SUCC", 'search': "Te", 'search': "T"
+        }
+
+        self.assertEqual(len(self._request(search_query_partial_a)), 2)
+        self.assertEqual(len(self._request(search_query_partial_b)), 2)
+        self.assertEqual(len(self._request(search_query_partial_c)), 2)
+
+        # Parameter searches
+        search_query_parameter_a = {'parameter': "a"}
+        search_query_parameter_b = {'parameter': "b"}
+        search_query_parameter_c = {'parameter': "a,2"}
+        search_query_parameter_d = {'parameter': "a,1"}
+        search_query_parameter_e = {'parameter': "a,1,2"}
+        search_query_parameter_f = {'parameter': "a,2,3"}
+        search_query_parameter_g = {'parameter': "a,0,1"}
+
+        self.assertEqual(len(self._request(search_query_parameter_a)), 2)
+        self.assertEqual(len(self._request(search_query_parameter_b)), 0)
+        self.assertEqual(len(self._request(search_query_parameter_c)), 1)
+        self.assertEqual(len(self._request(search_query_parameter_d)), 0)
+        self.assertEqual(len(self._request(search_query_parameter_e)), 1)
+        self.assertEqual(len(self._request(search_query_parameter_f)), 2)
+        self.assertEqual(len(self._request(search_query_parameter_g)), 0)
+
+    def _request(self, query):
+        url = reverse('scene-list')
+        self.client.login(username='bar', password='secret')
+        response = self.client.get(url, query, format='json')
+        return response.data
+
+
+class ScenarioTestCase(APITestCase):
+    """
+    ScenarioTestCase
+    Tests the Scenario Django REST API
+    """
+
+    def setUp(self):
+        # create Users and assign permissions
+        self.user_foo = User.objects.create_user(
+            username="foo",
+            password="secret"
+        )
+        self.user_bar = User.objects.create_user(
+            username="bar",
+            password="secret"
+        )
+        for user in [self.user_foo, self.user_bar]:
+            for perm in ['view_scenario', 'add_scenario',
+                         'change_scenario', 'delete_scenario']:
+                user.user_permissions.add(
+                    Permission.objects.get(codename=perm))
+
+        # create Scene instance and assign permissions for user_foo
+        self.scenario = Scenario.objects.create(
+            name="Test main workflow",
+            owner=self.user_foo,
+        )
+        for perm in ['view_scenario', 'add_scenario',
+                     'change_scenario', 'delete_scenario']:
+            assign_perm(perm, self.user_foo, self.scenario)
+
+    def test_scenario_get(self):
+        # detail view
+        url = reverse('scenario-detail', args=[self.scenario.pk])
+
+        # foo can see
+        self.client.login(username='foo', password='secret')
+        response = self.client.get(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # bar cannot see
+        self.client.login(username='bar', password='secret')
+        response = self.client.get(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_scenario_post(self):
+        # list view for POST (create new)
+        url = reverse('scenario-list')
+
+        # foo can create
+        self.client.login(username='foo', password='secret')
+        data = {
+            "name": "New Scenario 1",
+            "scene_set": [],
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # bar can create
+        self.client.login(username='bar', password='secret')
+        data = {
+            "name": "New Scenario 2",
+            "scene_set": [],
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_scenario_put(self):
+        # detail view for PUT (udpate)
+        url = reverse('scenario-detail', args=[self.scenario.pk])
+
+        # foo can update
+        self.client.login(username='foo', password='secret')
+        data = {
+            "name": "New Scenario (Updated)",
+            "scene_set": [],
+        }
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # bar cannot update
+        self.client.login(username='bar', password='secret')
+        data = {
+            "name": "New Scenario (Updated)",
+            "scene_set": [],
+        }
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class ScenarioSearchTestCase(TestCase):
+    """
+    SceneSearchTestCase
+    Tests the Scene search functionality using Django REST filters
+    """
+
+    def setUp(self):
+        self.user_bar = User.objects.create_user(
+            username='bar',
+            password='secret'
+        )
+
+        self.scenario_1 = Scenario.objects.create(
+            name='Testscenario',
+            owner=self.user_bar,
+            parameters={'a': {'values': [2, 3]}},
+            scenes_parameters=[{'a': {'value': 2}}, {'a': {'value': 3}}]
+        )
+        self.scenario_2 = Scenario.objects.create(
+            name='Testscenario',
+            owner=self.user_bar,
+            parameters={'a': {'values': [3, 4]}},
+            scenes_parameters=[{'a': {'value': 3}}, {'a': {'value': 4}}]
+        )
+
+        # Object general
+        assign_perm('view_scenario', self.user_bar, self.scenario_1)
+        assign_perm('view_scenario', self.user_bar, self.scenario_2)
+
+        # Model general
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scenario'))
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scene'))
+
+        # Refetch to empty permissions cache
+        self.user_bar = User.objects.get(pk=self.user_bar.pk)
+
+    def test_search_param(self):
+        """
+        Test search options
+        """
+
+        query = {'parameter': "a"}
+        self.assertEqual(len(self._request(query)), 2)
+
+        query = {'parameter': "b"}
+        self.assertEqual(len(self._request(query)), 0)
+
+    def test_search_param_val(self):
+        """
+        Test search options
+        """
+
+        query = {'parameter': "a,1"}
+        self.assertEqual(len(self._request(query)), 0)
+        query = {'parameter': "a,1.999"}
+        self.assertEqual(len(self._request(query)), 0)
+        query = {'parameter': "a,3.0001"}
+        self.assertEqual(len(self._request(query)), 0)
+
+        query = {'parameter': "a,2"}
+        self.assertEqual(len(self._request(query)), 1)
+
+        query = {'parameter': "a,3"}
+        self.assertEqual(len(self._request(query)), 2)
+        query = {'parameter': "a,3.0"}
+        self.assertEqual(len(self._request(query)), 2)
+
+    def test_search_param_valrange(self):
+        """
+        Test search options
+        """
+
+        query = {'parameter': "a,0,1"}
+        self.assertEqual(len(self._request(query)), 0)
+        query = {'parameter': "a,0,1.9999"}
+        self.assertEqual(len(self._request(query)), 0)
+        query = {'parameter': "a,5,6"}
+        self.assertEqual(len(self._request(query)), 0)
+
+        query = {'parameter': "a,1,2"}
+        self.assertEqual(len(self._request(query)), 1)
+        query = {'parameter': "a,1.0,2"}
+        self.assertEqual(len(self._request(query)), 1)
+        query = {'parameter': "a,1,2.01"}
+        self.assertEqual(len(self._request(query)), 1)
+        query = {'parameter': "a,1.00,2.01"}
+        self.assertEqual(len(self._request(query)), 1)
+        query = {'parameter': "a,4,5"}
+        self.assertEqual(len(self._request(query)), 1)
+
+        query = {'parameter': "a,1,5"}
+        self.assertEqual(len(self._request(query)), 2)
+
+    def _request(self, query):
+        url = reverse('scenario-list')
+        self.client.login(username='bar', password='secret')
+        response = self.client.get(url, query, format='json')
+        return response.data
 
 
 class UserTestCase(TestCase):

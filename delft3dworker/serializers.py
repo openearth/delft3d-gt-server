@@ -46,39 +46,11 @@ class GroupSerializer(serializers.ModelSerializer):
         )
 
 
-class ScenarioSerializer(serializers.ModelSerializer):
-    """
-    A default REST Framework ModelSerializer for the Scenario model
-    source: http://www.django-rest-framework.org/api-guide/serializers/
-    """
-
-    # here we will write custom serialization and validation methods
-
-    owner_url = serializers.HyperlinkedRelatedField(
-        read_only=True,
-        view_name='user-detail',
-        source='owner'
-    )
-
-    class Meta:
-        model = Scenario
-        fields = (
-            'id',
-            'name',
-            'owner_url',
-            'template',
-            'parameters',
-            'scene_set',
-        )
-
-
 class SceneSerializer(serializers.ModelSerializer):
     """
     A default REST Framework ModelSerializer for the Scene model
     source: http://www.django-rest-framework.org/api-guide/serializers/
     """
-
-    # here we will write custom serialization and validation methods
 
     owner = UserSerializer(read_only=True)
 
@@ -103,7 +75,7 @@ class SceneSerializer(serializers.ModelSerializer):
         )
 
 
-class FullScenarioSerializer(serializers.ModelSerializer):
+class ScenarioSerializer(serializers.ModelSerializer):
     """
     A default REST Framework ModelSerializer for the Scenario model
     source: http://www.django-rest-framework.org/api-guide/serializers/
@@ -112,12 +84,7 @@ class FullScenarioSerializer(serializers.ModelSerializer):
     # here we will write custom serialization and validation methods
 
     owner_url = serializers.HyperlinkedRelatedField(
-        read_only=True,
-        view_name='user-detail',
-        source='owner'
-    )
-
-    scene_set = SceneSerializer(many=True)
+        read_only=True, view_name='user-detail', source='owner')
 
     class Meta:
         model = Scenario
