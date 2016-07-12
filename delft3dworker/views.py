@@ -116,7 +116,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
         instance.delete(self.request.user)
 
     def get_serializer_class(self):
-        if self.request.GET.get('render_scene_set').lower() == 'true':
+        if self.request.GET.get('render_scene_set', '').lower() == 'true':
             return FullScenarioSerializer
         return ScenarioSerializer
 
