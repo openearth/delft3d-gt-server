@@ -19,6 +19,7 @@ from mock import patch
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
+from delft3dworker.models import Template
 from delft3dworker.views import ScenarioViewSet
 from delft3dworker.views import SceneViewSet
 from delft3dworker.views import UserViewSet
@@ -503,16 +504,18 @@ class ScenarioSearchTestCase(TestCase):
         )
 
         self.scenario_1 = Scenario.objects.create(
-            name='Testscenario',
+            name='Testscenario 1',
             owner=self.user_bar,
             parameters={'a': {'values': [2, 3]}},
-            scenes_parameters=[{'a': {'value': 2}}, {'a': {'value': 3}}]
+            scenes_parameters=[{'a': {'value': 2}}, {'a': {'value': 3}}],
+            template=Template.objects.create(name="Template 1"),
         )
         self.scenario_2 = Scenario.objects.create(
-            name='Testscenario',
+            name='Testscenario 2',
             owner=self.user_bar,
             parameters={'a': {'values': [3, 4]}},
-            scenes_parameters=[{'a': {'value': 3}}, {'a': {'value': 4}}]
+            scenes_parameters=[{'a': {'value': 3}}, {'a': {'value': 4}}],
+            template=Template.objects.create(name="Template 1"),
         )
 
         # Object general
@@ -527,6 +530,51 @@ class ScenarioSearchTestCase(TestCase):
 
         # Refetch to empty permissions cache
         self.user_bar = User.objects.get(pk=self.user_bar.pk)
+
+    def test_search_search(self):
+        """
+        Test search options
+        """
+
+        query = {'name': "DoesNotExist"}
+        self.assertEqual(len(self._request(query)), 0)
+        query = {'name': "estscenario"}
+        self.assertEqual(len(self._request(query)), 0)
+
+        query = {'name': "Testscenario 1"}
+        self.assertEqual(len(self._request(query)), 1)
+        query = {'name': "Testscenario 2"}
+        self.assertEqual(len(self._request(query)), 1)
+
+        query = {'search': "Tes"}
+        self.assertEqual(len(self._request(query)), 2)
+
+    def test_search_name(self):
+        """
+        Test search options
+        """
+
+        query = {'name': "Testscenario 0"}
+        self.assertEqual(len(self._request(query)), 0)
+
+        query = {'name': "Testscenario 1"}
+        self.assertEqual(len(self._request(query)), 1)
+        query = {'name': "Testscenario 2"}
+        self.assertEqual(len(self._request(query)), 1)
+
+        query = {'name': "Testscenario"}
+        self.assertEqual(len(self._request(query)), 0)
+
+    def test_search_template(self):
+        """
+        Test search options
+        """
+
+        query = {'template': "Template 1"}
+        self.assertEqual(len(self._request(query)), 2)
+
+        query = {'template': "Template 2"}
+        self.assertEqual(len(self._request(query)), 0)
 
     def test_search_param(self):
         """

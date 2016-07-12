@@ -53,13 +53,22 @@ from delft3dworker.serializers import UserSerializer
 
 # ### Filters
 
+class ScenarioFilter(filters.FilterSet):
+    """
+    FilterSet to filter Scenarios on complex queries
+    Needs an exact match (!)
+    """
+    class Meta:
+        model = Scenario
+        fields = ['name', ]
+
+
 class SceneFilter(filters.FilterSet):
     """
     FilterSet to filter Scenes on complex queries, such as
     template, traversing db relationships.
     Needs an exact match (!)
     """
-    # template = django_filters.CharFilter(name="scenario__template__name")
     scenario = django_filters.CharFilter(name="scenario__name")
 
     class Meta:
@@ -74,8 +83,12 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     API endpoint that allows scenarios to be viewed or edited.
     """
     serializer_class = ScenarioSerializer
-    filter_backends = (filters.DjangoObjectPermissionsFilter,
-                       filters.OrderingFilter)
+    filter_backends = (
+        filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+        filters.DjangoObjectPermissionsFilter,
+    )
     permission_classes = (permissions.IsAuthenticated,
                           ViewObjectPermissions,)
 
@@ -83,7 +96,12 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     # reverse by setting ('-id',)
     ordering = ('id',)
 
-    queryset = Scenario.objects.all()
+    # Our own custom filter to create custom search fields
+    # this creates &name= among others
+    filter_class = ScenarioFilter
+    search_fields = ('^name', )
+
+    queryset = Scenario.objects.none()
 
     def get_queryset(self):
         """
@@ -99,7 +117,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             - parameter="parameter,minvalue,maxvalue"
         """
         queryset = Scenario.objects.all()
-        # self.queryset = queryset
 
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
