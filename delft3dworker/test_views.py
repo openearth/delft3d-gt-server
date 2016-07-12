@@ -32,11 +32,13 @@ class ListAccessTestCase(TestCase):
         self.factory = APIRequestFactory()
 
         # create users and store for later access
-        self.user_foo = User.objects.create_user(username='foo', password="secret")
-        self.user_bar = User.objects.create_user(username='bar', password="secret")
+        self.user_foo = User.objects.create_user(
+            username='foo', password="secret")
+        self.user_bar = User.objects.create_user(
+            username='bar', password="secret")
 
         # create models in dB
-        scenario = Scenario.objects.create(
+        self.scenario = Scenario.objects.create(
             name='Test Scenario',
             owner=self.user_foo,
         )
@@ -47,7 +49,7 @@ class ListAccessTestCase(TestCase):
             state='SUCCESS',
             shared='p',
         )
-        a.scenario.add(scenario)
+        a.scenario.add(self.scenario)
         b = Scene.objects.create(
             name='Test Scene 2',
             owner=self.user_foo,
@@ -55,7 +57,7 @@ class ListAccessTestCase(TestCase):
             state='SUCCESS',
             shared='p',
         )
-        b.scenario.add(scenario)
+        b.scenario.add(self.scenario)
 
         # Model general
         self.user_foo.user_permissions.add(
@@ -72,9 +74,9 @@ class ListAccessTestCase(TestCase):
             Permission.objects.get(codename='view_scene'))
 
         # Object general
-        assign_perm('view_scenario', self.user_foo, scenario)
-        assign_perm('change_scenario', self.user_foo, scenario)
-        assign_perm('delete_scenario', self.user_foo, scenario)
+        assign_perm('view_scenario', self.user_foo, self.scenario)
+        assign_perm('change_scenario', self.user_foo, self.scenario)
+        assign_perm('delete_scenario', self.user_foo, self.scenario)
 
         assign_perm('view_scene', self.user_foo, a)
         assign_perm('change_scene', self.user_foo, a)
@@ -88,7 +90,7 @@ class ListAccessTestCase(TestCase):
         self.user_bar = User.objects.get(pk=self.user_bar.pk)
 
     @patch('delft3dworker.models.Scenario.start', autospec=True,)
-    def test_scenario_post(self, mockScenariostart):
+    def test_scenario_post(self, mockedStartMethod):
         # list view for POST (create new)
         url = reverse('scenario-list')
 
@@ -99,6 +101,8 @@ class ListAccessTestCase(TestCase):
         }
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        mockedStartMethod.assert_called_once_with(
+            Scenario.objects.get(name="New Scenario"))
 
     def test_search(self):
         """
@@ -106,20 +110,16 @@ class ListAccessTestCase(TestCase):
         """
 
         # User Foo can access own models
-        self.assertEqual(len(self._request(ScenarioViewSet, self.user_foo)),
-            1
-        )
-        self.assertEqual(len(self._request(SceneViewSet, self.user_foo)),
-            2
-        )
+        self.assertEqual(
+            len(self._request(ScenarioViewSet, self.user_foo)), 1)
+        self.assertEqual(
+            len(self._request(SceneViewSet, self.user_foo)), 2)
 
         # User Bar can access no models (because Bar owns none)
-        self.assertEqual(len(self._request(ScenarioViewSet, self.user_bar)),
-            0
-        )
-        self.assertEqual(len(self._request(SceneViewSet, self.user_bar)),
-            0
-        )
+        self.assertEqual(
+            len(self._request(ScenarioViewSet, self.user_bar)), 0)
+        self.assertEqual(
+            len(self._request(SceneViewSet, self.user_bar)), 0)
 
     def _request(self, viewset, user):
 
@@ -186,7 +186,8 @@ class SceneSearchTestCase(TestCase):
         # Exact matches
         search_query_exact_a = {'name': "Testscene 1"}
         search_query_exact_b = {'state': "FINISHED"}
-        search_query_exact_c = {'scenario': "Testscenario", 'name': "Testscene 1"}
+        search_query_exact_c = {
+            'scenario': "Testscenario", 'name': "Testscene 1"}
 
         self.assertEqual(len(self._request(search_query_exact_a)), 1)
         self.assertEqual(len(self._request(search_query_exact_b)), 0)

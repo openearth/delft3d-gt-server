@@ -39,13 +39,14 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
+from delft3dworker.permissions import ViewObjectPermissions
+from delft3dworker.serializers import FullScenarioSerializer
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneSerializer
 from delft3dworker.serializers import SearchFormSerializer
 from delft3dworker.serializers import TemplateSerializer
 from delft3dworker.serializers import UserSerializer
-from delft3dworker.permissions import ViewObjectPermissions
 
 
 # ################################### REST
@@ -114,12 +115,16 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         instance.delete(self.request.user)
 
+    def get_serializer_class(self):
+        if self.request.GET.get('render_scene_set').lower() == 'true':
+            return FullScenarioSerializer
+        return ScenarioSerializer
+
 
 class SceneViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows scenes to be viewed or edited.
     """
-
     serializer_class = SceneSerializer
     filter_backends = (
         filters.DjangoFilterBackend,
