@@ -191,7 +191,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                 return Scene.objects.none()
 
         if len(template) > 0:
-            queryset = queryset.filter(scenario__template__name__in=template)
+            queryset = queryset.filter(template__name__in=template)
 
         return queryset
 
