@@ -235,11 +235,60 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             # 25 april '16: Almar, Fedor & Tijn decided that
             # a scenario should be started server-side after creation
-            instance.start()
+            instance.start(instance.owner)
 
     # Pass on user to check permissions
     def perform_destroy(self, instance):
         instance.delete(self.request.user)
+
+    @detail_route(methods=["put"])  # denied after publish to company/world
+    def start(self, request, pk=None):
+        scenario = self.get_object()
+
+        if "workflow" in request.data:
+            scenario.start(request.user, workflow=request.data["workflow"])
+        else:
+            scenario.start(request.user, workflow="main")
+
+        serializer = self.get_serializer(scenario)
+
+        return Response(serializer.data)
+
+    @detail_route(methods=["put"])  # denied after publish to company/world
+    def stop(self, request, pk=None):
+        scenario = self.get_object()
+
+        scenario.abort()
+
+        serializer = self.get_serializer(scenario)
+
+        return Response(serializer.data)
+
+    @detail_route(methods=["post"])  # denied after publish to world
+    def publish_company(self, request, pk=None):
+        published = self.get_object().publish_company(request.user)
+
+        if not published:
+            return Response(
+                {'status':
+                    'Something went wrong publishing scenario to company'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response({'status': 'Published scenario to company'})
+
+    @detail_route(methods=["post"])  # denied after publish to world
+    def publish_world(self, request, pk=None):
+        published = self.get_object().publish_world(request.user)
+
+        if not published:
+            return Response(
+                {'status':
+                    'Something went wrong publishing scenario to world'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response({'status': 'Published scenario to world'})
 
 
 class SceneViewSet(viewsets.ModelViewSet):

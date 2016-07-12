@@ -108,7 +108,7 @@ class ApiAccessTestCase(TestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         mockedStartMethod.assert_called_once_with(
-            Scenario.objects.get(name="New Scenario"))
+            Scenario.objects.get(name="New Scenario"), self.user_foo)
 
     def test_search(self):
         # User Foo can access own models
@@ -489,6 +489,30 @@ class ScenarioTestCase(APITestCase):
         }
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @patch('delft3dworker.models.Scenario.start', autospec=True)
+    def test_scenario_start(self, mockedMethod):
+        # start view
+        url = reverse('scenario-start', args=[self.scenario.pk])
+
+        # bar cannot see
+        self.client.login(username='bar', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        # mockedMethod.assert_not_called()  # only in mock 3.5
+
+        # foo can start, both default and with arguments
+        self.client.login(username='foo', password='secret')
+
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mockedMethod.assert_called_with(
+            self.scenario, self.user_foo, workflow="main")
+
+        response = self.client.put(url, {"workflow": "test"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mockedMethod.assert_called_with(
+            self.scenario, self.user_foo, workflow="test")
 
 
 class ScenarioSearchTestCase(TestCase):

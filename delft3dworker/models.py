@@ -130,13 +130,19 @@ class Scenario(models.Model):
 
     # CONTROL METHODS
 
-    def start(self):
-        # Only start scenes that are really new
-        # not already existing in other scenarios
+    def start(self, user, workflow="main"):
         for scene in self.scene_set.all():
-            if len(scene.scenario.all()) == 1:
-                scene.start(workflow="main")
+            if user.has_perm('delft3dworker.change_scene', scene):
+                scene.start(workflow)
         return "started"
+
+    def abort(self, user):
+        for scene in self.scene_set.all():
+            if user.has_perm('delft3dworker.change_scene', scene):
+                scene.abort()
+        return "aborted"
+
+    # CRUD METHODS
 
     def delete(self, user, *args, **kwargs):
         for scene in self.scene_set.all():
@@ -144,6 +150,22 @@ class Scenario(models.Model):
                     'delft3dworker.delete_scene', scene):
                 scene.delete()
         super(Scenario, self).delete(*args, **kwargs)
+
+    # SHARING
+
+    def publish_company(self, user):
+        returnval = True
+        for scene in self.scene_set.all():
+            if user.has_perm('delft3dworker.add_scene', scene):
+                returnval = returnval and scene.publish_company(user)
+        return returnval
+
+    def publish_world(self, user):
+        returnval = True
+        for scene in self.scene_set.all():
+            if user.has_perm('delft3dworker.add_scene', scene):
+                returnval = returnval and scene.publish_world(user)
+        return returnval
 
     # INTERNALS
 
@@ -395,6 +417,8 @@ class Scene(models.Model):
         if deletefiles:
             self._delete_datafolder()
         super(Scene, self).delete(*args, **kwargs)
+
+    # SHARING
 
     def publish_company(self, user):
         # revokes the right to change object with PUT

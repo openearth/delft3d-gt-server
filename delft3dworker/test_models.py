@@ -84,6 +84,64 @@ class ScenarioTestCase(TestCase):
         self.assertIn(self.scenario_B, scene.scenario.all())
 
 
+class ScenarioControlTestCase(TestCase):
+
+    def setUp(self):
+        self.user_foo = User.objects.create_user(username='foo')
+
+        self.scenario_multi = Scenario.objects.create(
+            name="Test multiple scenes", owner=self.user_foo)
+        multi_input = {
+            "basinslope": {
+                "values": [0.0143, 0.0145, 0.0146]
+            },
+        }
+        self.scenario_multi.load_settings(multi_input)
+        self.scenario_multi.createscenes(self.user_foo)
+
+    @patch('delft3dworker.models.Scene.start', autospec=True)
+    def test_start(self, mockedSceneMethod):
+        """
+        Test if scenes are started when scenario is started
+        """
+        self.scenario_multi.start(self.user_foo)
+        self.assertTrue(mockedSceneMethod.call_count, 3)
+
+    @patch('delft3dworker.models.Scene.abort', autospec=True)
+    def test_abort(self, mockedSceneMethod):
+        """
+        Test if scenes are aborted when scenario is aborted
+        """
+        self.scenario_multi.abort(self.user_foo)
+        self.assertTrue(mockedSceneMethod.call_count, 3)
+
+    @patch('delft3dworker.models.Scene.delete', autospec=True)
+    def test_delete(self, mockedSceneMethod):
+        """
+        Test if scenes are deleted when scenario is deleted
+        """
+        self.scenario_multi.delete(self.user_foo)
+        self.assertTrue(mockedSceneMethod.call_count, 3)
+
+    @patch('delft3dworker.models.Scene.publish_company', autospec=True)
+    def test_publish_company(self, mockedSceneMethod):
+        """
+        Test if scenes are published to company when scenario is published
+        to company
+        """
+        self.scenario_multi.publish_company(self.user_foo)
+        self.assertTrue(mockedSceneMethod.call_count, 3)
+
+    @patch('delft3dworker.models.Scene.publish_world', autospec=True)
+    def test_publish_world(self, mockedSceneMethod):
+        """
+        Test if scenes are published to world when scenario is published
+        to world
+        """
+        self.scenario_multi.publish_world(self.user_foo)
+        self.assertTrue(mockedSceneMethod.call_count, 3)
+
+
 class SceneTestCase(TestCase):
 
     def setUp(self):
