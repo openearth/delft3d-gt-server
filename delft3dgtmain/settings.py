@@ -137,8 +137,8 @@ LOGIN_REDIRECT_URL = '/'
 # Celery
 # ######
 
-BROKER_URL = 'redis://localhost'
-CELERY_RESULT_BACKEND = 'redis://localhost'
+BROKER_URL = 'redis://52.209.46.191'
+CELERY_RESULT_BACKEND = 'redis://52.209.46.191'
 
 # Disabling rate limits altogether is recommended if you don't have any tasks using them.
 # This is because the rate limit subsystem introduces quite a lot of
@@ -152,13 +152,17 @@ CELERY_TRACK_STARTED = True
 # Time (in seconds, or a timedelta object) for when after stored task tombstones will be deleted.
 # A built-in periodic task will delete the results after this time (celery.task.backend_cleanup).
 # A value of None or 0 means results will never expire (depending on backend specifications).
-# Default is to expire after 1 day.
+# Default is to expire after 1 day. This resulted in losing task status.
 CELERY_TASK_RESULT_EXPIRES = None
 
-# Name of the file used to stores persistent worker state (like revoked tasks).
-# Can be a relative or absolute path, but be aware that the suffix .db
-# may be appended to the file name (depending on Python version).
-CELERYD_STATE_DB = 'celery_state'
+# Default options in new celery versions, migrated now
+BROKER_TRANSPORT_OPTIONS = {'fanout_patterns': True}
+BROKER_TRANSPORT_OPTIONS = {'fanout_prefix': True}
+
+# Timeout before task is retried. So when a task is queued but not executed
+# for half a day (standard) the task is send again. This explains
+# many identical tasks running, in turn keeping many other tasks pending.
+BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 2592000}  # 30 days
 
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

@@ -558,6 +558,8 @@ class Scene(models.Model):
                         # No log is generated at the moment
                         self.info["logfile"]["file"] = f
                         break
+        # if self.state == "":
+            # self.state = "UNKNOWN"
 
         self.save()
         return self.state
