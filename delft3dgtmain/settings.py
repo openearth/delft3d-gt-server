@@ -155,10 +155,6 @@ CELERY_TRACK_STARTED = True
 # Default is to expire after 1 day.
 CELERY_TASK_RESULT_EXPIRES = None
 
-# Default options in new celery versions, migrated now
-BROKER_TRANSPORT_OPTIONS = {'fanout_patterns': True}
-BROKER_TRANSPORT_OPTIONS = {'fanout_prefix': True}
-
 # Timeout before task is retried. So when a task is queued but not executed
 # for half a day (standard) the task is send again. This explains
 # many identical tasks running, in turn keeping many other tasks pending.
