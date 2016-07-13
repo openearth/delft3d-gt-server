@@ -271,7 +271,7 @@ class SceneTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     @patch('delft3dworker.models.Scene.start', autospec=True)
-    def test_scene_start(self, mockedMethod):
+    def test_scene_start(self, mocked_scene_method):
         # start view
         url = reverse('scene-start', args=[self.scene_1.pk])
 
@@ -279,19 +279,19 @@ class SceneTestCase(APITestCase):
         self.client.login(username='bar', password='secret')
         response = self.client.put(url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        # mockedMethod.assert_not_called()  # only in mock 3.5
+        self.assertEqual(mocked_scene_method.call_count, 0)
 
         # foo can start, both default and with arguments
         self.client.login(username='foo', password='secret')
         response = self.client.put(url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mockedMethod.assert_called_with(self.scene_1, workflow="main")
+        mocked_scene_method.assert_called_with(self.scene_1, workflow="main")
         response = self.client.put(url, {"workflow": "test"}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mockedMethod.assert_called_with(self.scene_1, workflow="test")
+        mocked_scene_method.assert_called_with(self.scene_1, workflow="test")
 
     @patch('delft3dworker.models.Scene.start', autospec=True)
-    def test_scene_no_start_after_publish(self, mockedMethod):
+    def test_scene_no_start_after_publish(self, mocked_scene_method):
         # the scene is published
         self.scene_1.publish_company(self.user_foo)
 
@@ -302,7 +302,7 @@ class SceneTestCase(APITestCase):
         self.client.login(username='foo', password='secret')
         response = self.client.put(url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        # mockedMethod.assert_not_called()  # only in mock 3.5
+        self.assertEqual(mocked_scene_method.call_count, 0)
 
 
 class SceneSearchTestCase(TestCase):
@@ -491,7 +491,7 @@ class ScenarioTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     @patch('delft3dworker.models.Scenario.start', autospec=True)
-    def test_scenario_start(self, mockedMethod):
+    def test_scenario_start(self, mocked_scene_method):
         # start view
         url = reverse('scenario-start', args=[self.scenario.pk])
 
@@ -499,19 +499,19 @@ class ScenarioTestCase(APITestCase):
         self.client.login(username='bar', password='secret')
         response = self.client.put(url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        # mockedMethod.assert_not_called()  # only in mock 3.5
+        self.assertEqual(mocked_scene_method.call_count, 0)
 
         # foo can start, both default and with arguments
         self.client.login(username='foo', password='secret')
 
         response = self.client.put(url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mockedMethod.assert_called_with(
+        mocked_scene_method.assert_called_with(
             self.scenario, self.user_foo, workflow="main")
 
         response = self.client.put(url, {"workflow": "test"}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mockedMethod.assert_called_with(
+        mocked_scene_method.assert_called_with(
             self.scenario, self.user_foo, workflow="test")
 
 
@@ -527,24 +527,42 @@ class ScenarioSearchTestCase(TestCase):
             password='secret'
         )
 
+        self.template = Template.objects.create(name="Template 1")
+
         self.scenario_1 = Scenario.objects.create(
             name='Testscenario 1',
             owner=self.user_bar,
             parameters={'a': {'values': [2, 3]}},
             scenes_parameters=[{'a': {'value': 2}}, {'a': {'value': 3}}],
-            template=Template.objects.create(name="Template 1"),
+            template=self.template,
         )
         self.scenario_2 = Scenario.objects.create(
             name='Testscenario 2',
             owner=self.user_bar,
             parameters={'a': {'values': [3, 4]}},
             scenes_parameters=[{'a': {'value': 3}}, {'a': {'value': 4}}],
-            template=Template.objects.create(name="Template 1"),
+            template=self.template,
+        )
+        self.scenario_3 = Scenario.objects.create(
+            name='Empty',
+            owner=self.user_bar,
+            parameters={},
+            scenes_parameters=[],
+            template=Template.objects.create(name="Template Empty"),
+        )
+        self.scenario_4 = Scenario.objects.create(
+            name='Wrong',
+            owner=self.user_bar,
+            parameters={'a': {'info': 'something_wrong'}},
+            scenes_parameters=[],
+            template=Template.objects.create(name="Template Empty"),
         )
 
         # Object general
         assign_perm('view_scenario', self.user_bar, self.scenario_1)
         assign_perm('view_scenario', self.user_bar, self.scenario_2)
+        assign_perm('view_scenario', self.user_bar, self.scenario_3)
+        assign_perm('view_scenario', self.user_bar, self.scenario_4)
 
         # Model general
         self.user_bar.user_permissions.add(
@@ -605,11 +623,11 @@ class ScenarioSearchTestCase(TestCase):
         Test search options
         """
 
-        query = {'parameter': "a"}
-        self.assertEqual(len(self._request(query)), 2)
-
         query = {'parameter': "b"}
         self.assertEqual(len(self._request(query)), 0)
+
+        query = {'parameter': "a"}
+        self.assertEqual(len(self._request(query)), 3)
 
     def test_search_param_val(self):
         """

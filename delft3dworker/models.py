@@ -154,18 +154,16 @@ class Scenario(models.Model):
     # SHARING
 
     def publish_company(self, user):
-        returnval = True
+        # Loop over all scenes and publish where possible
         for scene in self.scene_set.all():
             if user.has_perm('delft3dworker.add_scene', scene):
-                returnval = returnval and scene.publish_company(user)
-        return returnval
+                scene.publish_company(user)
 
     def publish_world(self, user):
-        returnval = True
+        # Loop over all scenes and publish where possible
         for scene in self.scene_set.all():
             if user.has_perm('delft3dworker.add_scene', scene):
-                returnval = returnval and scene.publish_world(user)
-        return returnval
+                scene.publish_world(user)
 
     # INTERNALS
 
@@ -421,17 +419,13 @@ class Scene(models.Model):
     # SHARING
 
     def publish_company(self, user):
-        # revokes the right to change object with PUT
-        remove_perm('change_scene', user, self)
-        # revokes the right to delete object with DELETE
-        remove_perm('delete_scene', user, self)
+        remove_perm('change_scene', user, self)  # revoke PUT rights
+        remove_perm('delete_scene', user, self)  # revoke POST rights
 
         # Set permissions for groups
-        groups = [
-            group for group in user.groups.all() if (
-                "world" not in group.name
-            )
-        ]
+        groups = [group for group in user.groups.all() if (
+            "access" in group.name and "world" not in group.name
+        )]
         for group in groups:
             assign_perm('view_scene', group, self)
 
@@ -439,17 +433,10 @@ class Scene(models.Model):
         self.shared = "c"
         self.save()
 
-        return True
-
     def publish_world(self, user):
-        # Remove permissions
-
-        # revokes the right to change object with POST
-        remove_perm('add_scene', user, self)
-        # revokes the right to change object with PUT
-        remove_perm('change_scene', user, self)
-        # revokes the right to delete object with DELETE
-        remove_perm('delete_scene', user, self)
+        remove_perm('add_scene', user, self)  # revoke POST rights
+        remove_perm('change_scene', user, self)  # revoke PUT rights
+        remove_perm('delete_scene', user, self)  # revoke DELETE rights
 
         # Set permissions for groups
         for group in get_groups_with_perms(self):
@@ -460,8 +447,6 @@ class Scene(models.Model):
         # update scene
         self.shared = "w"
         self.save()
-
-        return True
 
     # INTERNALS
 

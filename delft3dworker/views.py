@@ -159,12 +159,10 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                         wanted = []
                         queryset = queryset.filter(parameters__icontains=key)
                         for scenario in queryset:
-                            try:
-                                for pval in scenario.parameters[key]['values']:
-                                    if value == pval:
-                                        wanted.append(scenario.id)
-                            except ValueError:
-                                pass  # appearantly "values" does not exist, np
+                            for pval in scenario.parameters[key].get(
+                                    'values', []):
+                                if value == pval:
+                                    wanted.append(scenario.id)
 
                         queryset = queryset.filter(pk__in=wanted)
 
@@ -194,17 +192,18 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                         wanted = []
                         queryset = queryset.filter(parameters__icontains=key)
                         for scenario in queryset:
-                            try:
-                                for pval in scenario.parameters[key]['values']:
-                                    if minvalue <= pval <= maxvalue:
-                                        wanted.append(scenario.id)
-                            except ValueError:
-                                pass  # appearantly "values" does not exist, np
+                            for pval in scenario.parameters[key].get(
+                                    'values', []):
+                                if minvalue <= pval <= maxvalue:
+                                    wanted.append(scenario.id)
 
                         queryset = queryset.filter(pk__in=wanted)
 
-            except:
-                logging.error("Something failed in search")
+            except Exception as e:
+                logging.exception(
+                    "Search with params {} and template {} failed".format(
+                        parameters, template)
+                )
                 return Scene.objects.none()
 
         if len(template) > 0:
@@ -266,28 +265,12 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
     @detail_route(methods=["post"])  # denied after publish to world
     def publish_company(self, request, pk=None):
-        published = self.get_object().publish_company(request.user)
-
-        if not published:
-            return Response(
-                {'status':
-                    'Something went wrong publishing scenario to company'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+        self.get_object().publish_company(request.user)
         return Response({'status': 'Published scenario to company'})
 
     @detail_route(methods=["post"])  # denied after publish to world
     def publish_world(self, request, pk=None):
-        published = self.get_object().publish_world(request.user)
-
-        if not published:
-            return Response(
-                {'status':
-                    'Something went wrong publishing scenario to world'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+        self.get_object().publish_world(request.user)
         return Response({'status': 'Published scenario to world'})
 
 
@@ -431,8 +414,11 @@ class SceneViewSet(viewsets.ModelViewSet):
 
                         queryset = queryset.filter(pk__in=wanted)
 
-            except:
-                logging.error("Something failed in search")
+            except Exception as e:
+                logging.exception(
+                    "Search with params {} and template {} failed".format(
+                        parameters, template)
+                )
                 return Scene.objects.none()
 
         if len(template) > 0:
