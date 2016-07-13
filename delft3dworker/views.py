@@ -39,13 +39,13 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
+from delft3dworker.permissions import ViewObjectPermissions
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneSerializer
 from delft3dworker.serializers import SearchFormSerializer
 from delft3dworker.serializers import TemplateSerializer
 from delft3dworker.serializers import UserSerializer
-from delft3dworker.permissions import ViewObjectPermissions
 
 
 # ################################### REST
@@ -53,13 +53,22 @@ from delft3dworker.permissions import ViewObjectPermissions
 
 # ### Filters
 
+class ScenarioFilter(filters.FilterSet):
+    """
+    FilterSet to filter Scenarios on complex queries
+    Needs an exact match (!)
+    """
+    class Meta:
+        model = Scenario
+        fields = ['name', ]
+
+
 class SceneFilter(filters.FilterSet):
     """
     FilterSet to filter Scenes on complex queries, such as
     template, traversing db relationships.
     Needs an exact match (!)
     """
-    # template = django_filters.CharFilter(name="scenario__template__name")
     scenario = django_filters.CharFilter(name="scenario__name")
 
     class Meta:
@@ -74,8 +83,12 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     API endpoint that allows scenarios to be viewed or edited.
     """
     serializer_class = ScenarioSerializer
-    filter_backends = (filters.DjangoObjectPermissionsFilter,
-                       filters.OrderingFilter)
+    filter_backends = (
+        filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+        filters.DjangoObjectPermissionsFilter,
+    )
     permission_classes = (permissions.IsAuthenticated,
                           ViewObjectPermissions,)
 
@@ -83,7 +96,120 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     # reverse by setting ('-id',)
     ordering = ('id',)
 
-    queryset = Scenario.objects.all()
+    # Our own custom filter to create custom search fields
+    # this creates &name= among others
+    filter_class = ScenarioFilter
+    search_fields = ('^name', )
+
+    queryset = Scenario.objects.none()
+
+    def get_queryset(self):
+        """
+        Optionally restricts the returned purchases to a given parameter,
+        by filtering against a `parameter` query parameter in the URL.
+
+        Possible values:
+            # filters on key occurance
+            - parameter="parameter
+            # filters on key occurance and value
+            - parameter="parameter,value"
+            # filters on key occurance and value between min & max
+            - parameter="parameter,minvalue,maxvalue"
+        """
+        queryset = Scenario.objects.all()
+
+        # Filter on parameter
+        parameters = self.request.query_params.getlist('parameter', [])
+        template = self.request.query_params.getlist('template', [])
+
+        if len(parameters) > 0:
+            # Processing user input
+            # will sometimes fail
+            try:
+                for parameter in parameters:
+
+                    p = parameter.split(',')
+
+                    # Key exist lookup
+                    if len(p) == 1:
+
+                        key = parameter
+                        logging.info("Lookup parameter {}".format(key))
+                        queryset = queryset.filter(parameters__icontains=key)
+
+                    # Key, value lookup
+                    elif len(p) == 2:
+
+                        key, value = p
+                        logging.info(
+                            "Lookup value for parameter {}".format(key))
+
+                        # Find integers or floats
+                        try:
+                            value = float(value)
+                        except ValueError:
+                            pass  # no float? no problem
+
+                        # Create json lookup
+                        # q = {key: {'value': value}}
+
+                        # Not yet possible to do json queries directly
+                        # Requires JSONField from Postgresql 9.4 and Django 1.9
+                        # So we loop manually (bad performance!)
+                        wanted = []
+                        queryset = queryset.filter(parameters__icontains=key)
+                        for scenario in queryset:
+                            for pval in scenario.parameters[key].get(
+                                    'values', []):
+                                if value == pval:
+                                    wanted.append(scenario.id)
+
+                        queryset = queryset.filter(pk__in=wanted)
+
+                    # Key, min, max lookup
+                    elif len(p) == 3:
+
+                        key, minvalue, maxvalue = p
+                        logging.info(
+                            "Lookup value [{} - {}] for parameter {}".format(
+                                minvalue,
+                                maxvalue,
+                                key
+                            )
+                        )
+
+                        # Make into integers or floats
+                        # (no float values should throw exception)
+                        minvalue = float(minvalue)
+                        maxvalue = float(maxvalue)
+
+                        # Create json lookup
+                        # q = {key: {'value': value}}
+
+                        # Not yet possible to do json queries directly
+                        # Requires JSONField from Postgresql 9.4 and Django 1.9
+                        # So we loop manually (bad performance!)
+                        wanted = []
+                        queryset = queryset.filter(parameters__icontains=key)
+                        for scenario in queryset:
+                            for pval in scenario.parameters[key].get(
+                                    'values', []):
+                                if minvalue <= pval <= maxvalue:
+                                    wanted.append(scenario.id)
+
+                        queryset = queryset.filter(pk__in=wanted)
+
+            except Exception as e:
+                logging.exception(
+                    "Search with params {} and template {} failed".format(
+                        parameters, template)
+                )
+                return Scene.objects.none()
+
+        if len(template) > 0:
+            queryset = queryset.filter(template__name__in=template)
+
+        return queryset
 
     def perform_create(self, serializer):
         if serializer.is_valid():
@@ -99,26 +225,59 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                 instance.load_settings(parameters)
                 instance.createscenes(self.request.user)
 
-            assign_perm('view_scenario', self.request.user, instance)
+            assign_perm('add_scenario', self.request.user, instance)
             assign_perm('change_scenario', self.request.user, instance)
             assign_perm('delete_scenario', self.request.user, instance)
+            assign_perm('view_scenario', self.request.user, instance)
 
             instance.save()
 
             # 25 april '16: Almar, Fedor & Tijn decided that
             # a scenario should be started server-side after creation
-            instance.start()
+            instance.start(instance.owner)
 
     # Pass on user to check permissions
     def perform_destroy(self, instance):
         instance.delete(self.request.user)
+
+    @detail_route(methods=["put"])  # denied after publish to company/world
+    def start(self, request, pk=None):
+        scenario = self.get_object()
+
+        if "workflow" in request.data:
+            scenario.start(request.user, workflow=request.data["workflow"])
+        else:
+            scenario.start(request.user, workflow="main")
+
+        serializer = self.get_serializer(scenario)
+
+        return Response(serializer.data)
+
+    @detail_route(methods=["put"])  # denied after publish to company/world
+    def stop(self, request, pk=None):
+        scenario = self.get_object()
+
+        scenario.abort()
+
+        serializer = self.get_serializer(scenario)
+
+        return Response(serializer.data)
+
+    @detail_route(methods=["post"])  # denied after publish to world
+    def publish_company(self, request, pk=None):
+        self.get_object().publish_company(request.user)
+        return Response({'status': 'Published scenario to company'})
+
+    @detail_route(methods=["post"])  # denied after publish to world
+    def publish_world(self, request, pk=None):
+        self.get_object().publish_world(request.user)
+        return Response({'status': 'Published scenario to world'})
 
 
 class SceneViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows scenes to be viewed or edited.
     """
-
     serializer_class = SceneSerializer
     filter_backends = (
         filters.DjangoFilterBackend,
@@ -249,14 +408,17 @@ class SceneViewSet(viewsets.ModelViewSet):
 
                         for scene in queryset:
                             values = scene.parameters[key]['value']
-                            if minvalue <= values < maxvalue:
+                            if minvalue <= values <= maxvalue:
 
                                 wanted.append(scene.id)
 
                         queryset = queryset.filter(pk__in=wanted)
 
-            except:
-                logging.error("Something failed in search")
+            except Exception as e:
+                logging.exception(
+                    "Search with params {} and template {} failed".format(
+                        parameters, template)
+                )
                 return Scene.objects.none()
 
         if len(template) > 0:

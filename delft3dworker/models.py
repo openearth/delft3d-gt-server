@@ -121,22 +121,28 @@ class Scenario(models.Model):
                 scene.save()
                 scene.scenario.add(self)
 
-                assign_perm('view_scene', self.owner, scene)
                 assign_perm('add_scene', self.owner, scene)
                 assign_perm('change_scene', self.owner, scene)
                 assign_perm('delete_scene', self.owner, scene)
+                assign_perm('view_scene', self.owner, scene)
 
         self.save()
 
     # CONTROL METHODS
 
-    def start(self):
-        # Only start scenes that are really new
-        # not already existing in other scenarios
+    def start(self, user, workflow="main"):
         for scene in self.scene_set.all():
-            if len(scene.scenario.all()) == 1:
-                scene.start(workflow="main")
+            if user.has_perm('delft3dworker.change_scene', scene):
+                scene.start(workflow)
         return "started"
+
+    def abort(self, user):
+        for scene in self.scene_set.all():
+            if user.has_perm('delft3dworker.change_scene', scene):
+                scene.abort()
+        return "aborted"
+
+    # CRUD METHODS
 
     def delete(self, user, *args, **kwargs):
         for scene in self.scene_set.all():
@@ -144,6 +150,20 @@ class Scenario(models.Model):
                     'delft3dworker.delete_scene', scene):
                 scene.delete()
         super(Scenario, self).delete(*args, **kwargs)
+
+    # SHARING
+
+    def publish_company(self, user):
+        # Loop over all scenes and publish where possible
+        for scene in self.scene_set.all():
+            if user.has_perm('delft3dworker.add_scene', scene):
+                scene.publish_company(user)
+
+    def publish_world(self, user):
+        # Loop over all scenes and publish where possible
+        for scene in self.scene_set.all():
+            if user.has_perm('delft3dworker.add_scene', scene):
+                scene.publish_world(user)
 
     # INTERNALS
 
@@ -396,18 +416,16 @@ class Scene(models.Model):
             self._delete_datafolder()
         super(Scene, self).delete(*args, **kwargs)
 
+    # SHARING
+
     def publish_company(self, user):
-        # revokes the right to change object with PUT
-        remove_perm('change_scene', user, self)
-        # revokes the right to delete object with DELETE
-        remove_perm('delete_scene', user, self)
+        remove_perm('change_scene', user, self)  # revoke PUT rights
+        remove_perm('delete_scene', user, self)  # revoke POST rights
 
         # Set permissions for groups
-        groups = [
-            group for group in user.groups.all() if (
-                "world" not in group.name
-            )
-        ]
+        groups = [group for group in user.groups.all() if (
+            "access" in group.name and "world" not in group.name
+        )]
         for group in groups:
             assign_perm('view_scene', group, self)
 
@@ -415,17 +433,10 @@ class Scene(models.Model):
         self.shared = "c"
         self.save()
 
-        return True
-
     def publish_world(self, user):
-        # Remove permissions
-
-        # revokes the right to change object with POST
-        remove_perm('add_scene', user, self)
-        # revokes the right to change object with PUT
-        remove_perm('change_scene', user, self)
-        # revokes the right to delete object with DELETE
-        remove_perm('delete_scene', user, self)
+        remove_perm('add_scene', user, self)  # revoke POST rights
+        remove_perm('change_scene', user, self)  # revoke PUT rights
+        remove_perm('delete_scene', user, self)  # revoke DELETE rights
 
         # Set permissions for groups
         for group in get_groups_with_perms(self):
@@ -436,8 +447,6 @@ class Scene(models.Model):
         # update scene
         self.shared = "w"
         self.save()
-
-        return True
 
     # INTERNALS
 
