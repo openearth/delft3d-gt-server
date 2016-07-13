@@ -159,12 +159,10 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                         wanted = []
                         queryset = queryset.filter(parameters__icontains=key)
                         for scenario in queryset:
-                            try:
-                                for pval in scenario.parameters[key]['values']:
-                                    if value == pval:
-                                        wanted.append(scenario.id)
-                            except ValueError:
-                                pass  # appearantly "values" does not exist, np
+                            for pval in scenario.parameters[key].get(
+                                    'values', []):
+                                if value == pval:
+                                    wanted.append(scenario.id)
 
                         queryset = queryset.filter(pk__in=wanted)
 
@@ -194,17 +192,18 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                         wanted = []
                         queryset = queryset.filter(parameters__icontains=key)
                         for scenario in queryset:
-                            try:
-                                for pval in scenario.parameters[key]['values']:
-                                    if minvalue <= pval <= maxvalue:
-                                        wanted.append(scenario.id)
-                            except ValueError:
-                                pass  # appearantly "values" does not exist, np
+                            for pval in scenario.parameters[key].get(
+                                    'values', []):
+                                if minvalue <= pval <= maxvalue:
+                                    wanted.append(scenario.id)
 
                         queryset = queryset.filter(pk__in=wanted)
 
-            except:
-                logging.error("Something failed in search")
+            except Exception as e:
+                logging.exception(
+                    "Search with params {} and template {} failed".format(
+                        parameters, template)
+                )
                 return Scene.objects.none()
 
         if len(template) > 0:
@@ -235,11 +234,44 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             # 25 april '16: Almar, Fedor & Tijn decided that
             # a scenario should be started server-side after creation
-            instance.start()
+            instance.start(instance.owner)
 
     # Pass on user to check permissions
     def perform_destroy(self, instance):
         instance.delete(self.request.user)
+
+    @detail_route(methods=["put"])  # denied after publish to company/world
+    def start(self, request, pk=None):
+        scenario = self.get_object()
+
+        if "workflow" in request.data:
+            scenario.start(request.user, workflow=request.data["workflow"])
+        else:
+            scenario.start(request.user, workflow="main")
+
+        serializer = self.get_serializer(scenario)
+
+        return Response(serializer.data)
+
+    @detail_route(methods=["put"])  # denied after publish to company/world
+    def stop(self, request, pk=None):
+        scenario = self.get_object()
+
+        scenario.abort()
+
+        serializer = self.get_serializer(scenario)
+
+        return Response(serializer.data)
+
+    @detail_route(methods=["post"])  # denied after publish to world
+    def publish_company(self, request, pk=None):
+        self.get_object().publish_company(request.user)
+        return Response({'status': 'Published scenario to company'})
+
+    @detail_route(methods=["post"])  # denied after publish to world
+    def publish_world(self, request, pk=None):
+        self.get_object().publish_world(request.user)
+        return Response({'status': 'Published scenario to world'})
 
 
 class SceneViewSet(viewsets.ModelViewSet):
@@ -382,8 +414,11 @@ class SceneViewSet(viewsets.ModelViewSet):
 
                         queryset = queryset.filter(pk__in=wanted)
 
-            except:
-                logging.error("Something failed in search")
+            except Exception as e:
+                logging.exception(
+                    "Search with params {} and template {} failed".format(
+                        parameters, template)
+                )
                 return Scene.objects.none()
 
         if len(template) > 0:
