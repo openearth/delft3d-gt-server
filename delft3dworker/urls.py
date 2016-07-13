@@ -13,6 +13,7 @@ router = routers.DefaultRouter()
 router.register(r'groups', views.GroupViewSet, 'group')
 router.register(r'scenarios', views.ScenarioViewSet, 'scenario')
 router.register(r'scenes', views.SceneViewSet, 'scene')
+router.register(r'searchforms', views.SearchFormViewSet, 'searchform')
 router.register(r'templates', views.TemplateViewSet, 'template')
 router.register(r'users', views.UserViewSet, 'user')
 
@@ -27,6 +28,4 @@ urlpatterns = (
 
     # DATA
     url(r'^data(?P<path>.*)$', login_required(serve), {
-        'document_root': '/data/',
-    }),
-    )
+        'document_root': '/data/', }))

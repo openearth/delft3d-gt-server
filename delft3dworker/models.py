@@ -18,12 +18,15 @@ from datetime import datetime
 from delft3dworker.tasks import chainedtask
 
 from django.conf import settings  # noqa
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 
 from guardian.shortcuts import assign_perm
+from guardian.shortcuts import get_groups_with_perms
 from guardian.shortcuts import get_objects_for_user
+from guardian.shortcuts import remove_perm
 
 from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
@@ -137,7 +140,8 @@ class Scenario(models.Model):
 
     def delete(self, user, *args, **kwargs):
         for scene in self.scene_set.all():
-            if len(scene.scenario.all()) == 1 and user.has_perm('delft3dworker.delete_scene', scene):
+            if len(scene.scenario.all()) == 1 and user.has_perm(
+                    'delft3dworker.delete_scene', scene):
                 scene.delete()
         super(Scenario, self).delete(*args, **kwargs)
 
@@ -200,7 +204,7 @@ class Scene(models.Model):
     name = models.CharField(max_length=256)
     suid = models.CharField(max_length=256, editable=False)
 
-    scenario = models.ManyToManyField(Scenario)
+    scenario = models.ManyToManyField(Scenario, blank=True)
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
@@ -301,7 +305,6 @@ class Scene(models.Model):
         }
 
     def export(self, options):
-
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
         # - django-filebrowser (filtering and more elegant browsing)
@@ -331,7 +334,7 @@ class Scene(models.Model):
                 if (
                     'export_images' in options
                 ) and (
-                    ext in '.png', '.jpg', '.gif'
+                    ext in ['.png', '.jpg', '.gif']
                 ):
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
@@ -349,16 +352,19 @@ class Scene(models.Model):
                     zf.write(abs_path, rel_path)
 
                 if 'export_thirdparty' in options and (
-                    'export' in root):
-
+                        'export' in root):
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
 
                 # Zip movie
-                if 'export_movie' in options and (
-                        ext in '.mp4'):
-
+                if (
+                    'export_movie' in options
+                ) and (
+                    ext in ['.mp4']
+                ) and (
+                    os.path.getsize(os.path.join(root, f)) > 0
+                ):
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
@@ -389,6 +395,49 @@ class Scene(models.Model):
         if deletefiles:
             self._delete_datafolder()
         super(Scene, self).delete(*args, **kwargs)
+
+    def publish_company(self, user):
+        # revokes the right to change object with PUT
+        remove_perm('change_scene', user, self)
+        # revokes the right to delete object with DELETE
+        remove_perm('delete_scene', user, self)
+
+        # Set permissions for groups
+        groups = [
+            group for group in user.groups.all() if (
+                "world" not in group.name
+            )
+        ]
+        for group in groups:
+            assign_perm('view_scene', group, self)
+
+        # update scene
+        self.shared = "c"
+        self.save()
+
+        return True
+
+    def publish_world(self, user):
+        # Remove permissions
+
+        # revokes the right to change object with POST
+        remove_perm('add_scene', user, self)
+        # revokes the right to change object with PUT
+        remove_perm('change_scene', user, self)
+        # revokes the right to delete object with DELETE
+        remove_perm('delete_scene', user, self)
+
+        # Set permissions for groups
+        for group in get_groups_with_perms(self):
+            remove_perm('view_scene', group, self)
+        world = Group.objects.get(name="access:world")
+        assign_perm('view_scene', world, self)
+
+        # update scene
+        self.shared = "w"
+        self.save()
+
+        return True
 
     # INTERNALS
 
@@ -510,6 +559,124 @@ class Scene(models.Model):
 
 # ################################### Template
 
+class SearchForm(models.Model):
+
+    """
+    SearchForm model:
+    This model is used to make a search form similar to the Template model.
+    The idea was to provide a json to the front-end similar to how we deliver
+    the Templates: via the API.
+    Possible improvements: Becuase we only have one SearchForm, we could
+    implement a 'view' on all Templates, which automatically generates the
+    json at each request.
+    """
+
+    name = models.CharField(max_length=256)
+    templates = JSONField(default='[]')
+    sections = JSONField(default='[]')
+
+    def update(self):
+        self.templates = "[]"
+        self.sections = "[]"
+        for template in Template.objects.all():
+            self._update_templates(template.name, template.id)
+            self._update_sections(template.sections)
+        return
+
+    def _update_templates(self, tmpl_name, tmpl_id):
+        self.templates.append({
+            'name': tmpl_name,
+            'id': tmpl_id,
+        })
+
+    def _update_sections(self, tmpl_sections):
+
+        # for each section
+        for tmpl_section in tmpl_sections:
+
+            # find matching (i.e. name && type equal) sections
+            # in this search form
+            matching_sections = [section for section in self.sections if (
+                section["name"] == tmpl_section["name"]
+            )]
+
+            # add or update
+            if not matching_sections:
+
+                # remove non-required fields from variables
+                for variable in tmpl_section["variables"]:
+                    try:
+                        del variable["default"]
+                    except KeyError:
+                        pass  # if no default is in the dict, no worries
+                    try:
+                        del variable["validators"]["required"]
+                    except KeyError:
+                        pass  # if no required is in the dict, no worries
+
+                self.sections.append(tmpl_section)
+
+            else:
+
+                srch_section = matching_sections[0]
+
+                # for each variable
+                for tmpl_variable in tmpl_section["variables"]:
+
+                    # find matching (i.e. name equal) sections
+                    # in this search form
+                    matching_variables = [
+                        variable for variable in srch_section["variables"] if (
+                            variable["name"] == tmpl_variable["name"]
+                        )
+                    ]
+
+                    # add or update
+                    if not matching_variables:
+
+                        # remove non-required fields from variables
+                        try:
+                            del tmpl_variable["default"]
+                        except KeyError:
+                            pass  # if no default is in the dict, no worries
+                        try:
+                            del tmpl_variable["validators"]["required"]
+                        except KeyError:
+                            pass  # if no required is in the dict, no worries
+                        srch_section["variables"].append(tmpl_variable)
+
+                    else:
+
+                        srch_variable = matching_variables[0]
+
+                        # only update min and max validators if numeric
+                        if (
+                            srch_variable["type"] == "numeric" and
+                            tmpl_variable["type"] == "numeric"
+                        ):
+
+                            tmpl_validators = tmpl_variable["validators"]
+                            srch_validators = srch_variable["validators"]
+
+                            if (
+                                float(tmpl_validators["min"]) < float(
+                                    srch_validators["min"])
+                            ):
+                                srch_validators["min"] = tmpl_validators["min"]
+
+                            if (
+                                float(tmpl_validators["max"]) > float(
+                                    srch_validators["max"])
+                            ):
+                                srch_validators["max"] = tmpl_validators["max"]
+
+        self.save()
+        return
+
+    def __unicode__(self):
+        return self.name
+
+
 class Template(models.Model):
 
     """
@@ -520,8 +687,17 @@ class Template(models.Model):
     meta = JSONField(blank=True)
     sections = JSONField(blank=True)
 
+    def save(self, *args, **kwargs):
+        returnval = super(Template, self).save(*args, **kwargs)
+
+        # update the MAIN search form after any template save
+        searchform, created = SearchForm.objects.get_or_create(name="MAIN")
+        searchform.update()
+
+        return returnval
+
     def get_absolute_url(self):
-        return "{0}?id={1}".format(reverse_lazy('template_detail'), self.id)
+        return "{0}?id={1}".format(reverse_lazy('tmpl_detail'), self.id)
 
     def __unicode__(self):
         return self.name

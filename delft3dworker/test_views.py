@@ -1,9 +1,21 @@
+from __future__ import absolute_import
+
 from django.contrib.auth.models import Group
+from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
 from django.test import TestCase
 
+from rest_framework import status
+from rest_framework.test import APIClient
+from rest_framework.test import APITestCase
 from rest_framework.test import APIRequestFactory
 from rest_framework.test import force_authenticate
+
+from guardian.shortcuts import assign_perm
+
+from mock import MagicMock
+from mock import patch
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
@@ -20,28 +32,73 @@ class ListAccessTestCase(TestCase):
         self.factory = APIRequestFactory()
 
         # create users and store for later access
-        self.user_foo = User.objects.create(username='foo')
-        self.user_bar = User.objects.create(username='bar')
+        self.user_foo = User.objects.create_user(username='foo', password="secret")
+        self.user_bar = User.objects.create_user(username='bar', password="secret")
 
         # create models in dB
         scenario = Scenario.objects.create(
             name='Test Scenario',
             owner=self.user_foo,
         )
-        Scene.objects.create(
+        a = Scene.objects.create(
             name='Test Scene 1',
             owner=self.user_foo,
             parameters={'a': {'values': 2}},
-            scenario=scenario,
             state='SUCCESS',
+            shared='p',
         )
-        Scene.objects.create(
+        a.scenario.add(scenario)
+        b = Scene.objects.create(
             name='Test Scene 2',
             owner=self.user_foo,
             parameters={'a': {'values': 3}},
-            scenario=scenario,
             state='SUCCESS',
+            shared='p',
         )
+        b.scenario.add(scenario)
+
+        # Model general
+        self.user_foo.user_permissions.add(
+            Permission.objects.get(codename='view_scenario'))
+        self.user_foo.user_permissions.add(
+            Permission.objects.get(codename='add_scenario'))
+        self.user_foo.user_permissions.add(
+            Permission.objects.get(codename='delete_scenario'))
+        self.user_foo.user_permissions.add(
+            Permission.objects.get(codename='view_scene'))
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scenario'))
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scene'))
+
+        # Object general
+        assign_perm('view_scenario', self.user_foo, scenario)
+        assign_perm('change_scenario', self.user_foo, scenario)
+        assign_perm('delete_scenario', self.user_foo, scenario)
+
+        assign_perm('view_scene', self.user_foo, a)
+        assign_perm('change_scene', self.user_foo, a)
+        assign_perm('delete_scene', self.user_foo, a)
+        assign_perm('view_scene', self.user_foo, b)
+        assign_perm('change_scene', self.user_foo, b)
+        assign_perm('delete_scene', self.user_foo, b)
+
+        # Refetch to empty permissions cache
+        self.user_foo = User.objects.get(pk=self.user_foo.pk)
+        self.user_bar = User.objects.get(pk=self.user_bar.pk)
+
+    @patch('delft3dworker.models.Scenario.start', autospec=True,)
+    def test_scenario_post(self, mockScenariostart):
+        # list view for POST (create new)
+        url = reverse('scenario-list')
+
+        self.client.login(username='foo', password='secret')
+        data = {
+            "name": "New Scenario",
+            "parameter": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_search(self):
         """
@@ -78,7 +135,7 @@ class ListAccessTestCase(TestCase):
         # send request to view and render response
         response = view(request)
         response.render()
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         return response.data
 
@@ -86,18 +143,35 @@ class ListAccessTestCase(TestCase):
 class SceneSearchTestCase(TestCase):
 
     def setUp(self):
-        self.user_bar = User.objects.create(username='bar')
+        self.user_bar = User.objects.create_user(username='bar')
         scenario = Scenario.objects.create(
             name='Test',
             owner=self.user_bar,
         )
-        Scene.objects.create(
+        self.scene = Scene.objects.create(
             name='Test',
             owner=self.user_bar,
-            parameters={'a': {'values': 2}},
-            scenario=scenario,
+            parameters={'a': {'value': 2}},
             state='SUCCESS',
+            shared='p',
         )
+        self.scene.scenario.add(scenario)
+        # we do not want to test the model, only the views
+        self.scene.start = MagicMock()
+
+        # Object general
+        assign_perm('view_scene', self.user_bar, self.scene)
+        assign_perm('change_scene', self.user_bar, self.scene)
+        assign_perm('delete_scene', self.user_bar, self.scene)
+
+        # Model general
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scenario'))
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='view_scene'))
+
+        # Refetch to empty permissions cache
+        self.user_bar = User.objects.get(pk=self.user_bar.pk)
 
     def test_search(self):
         """
@@ -106,7 +180,7 @@ class SceneSearchTestCase(TestCase):
 
         # Exact matches
         search_query_exact_a = {'name': "Test"}
-        search_query_exact_b = {'name': "Test2"}
+        search_query_exact_b = {'state': "FINISHED"}
         search_query_exact_c = {'scenario': "Test", 'name': "Test"}
 
         self.assertEqual(len(self._request(search_query_exact_a)), 1)
@@ -149,27 +223,171 @@ class SceneSearchTestCase(TestCase):
         return response.data
 
 
-class SceneTestCase(TestCase):
+class SceneTestCase(APITestCase):
     """
     Test custom written function SceneViewSet
     """
 
     def setUp(self):
-        self.user_foo = User.objects.create(username="foo")
-        Scene.objects.create(
+        # create Users and assign permissions
+        self.user_foo = User.objects.create_user(
+            username="foo",
+            password="secret"
+        )
+        self.user_bar = User.objects.create_user(
+            username="bar",
+            password="secret"
+        )
+        for user in [self.user_foo, self.user_bar]:
+            for perm in ['view_scene', 'add_scene',
+                         'change_scene', 'delete_scene']:
+                user.user_permissions.add(
+                    Permission.objects.get(codename=perm))
+
+        # create Scene instance and assign permissions for user_foo
+        self.scene = Scene.objects.create(
             name="Test main workflow",
             owner=self.user_foo,
+            shared='p',
         )
+        for perm in ['view_scene', 'add_scene',
+                     'change_scene', 'delete_scene']:
+            assign_perm(perm, self.user_foo, self.scene)
 
-    def test_scene_accepts_start(self):
-        # call /scene/{pk}/start and test if 200 response is returned
-        factory = APIRequestFactory()
-        view = SceneViewSet.as_view({'get': 'retrieve'})
-        request = factory.get('/scenes/1/start')
-        force_authenticate(request, user=self.user_foo)
-        response = view(request, pk='1')
-        response.render()
-        self.assertEqual(response.status_code, 200)
+    def test_scene_get(self):
+        # detail view
+        url = reverse('scene-detail', args=[self.scene.pk])
+
+        # foo can see
+        self.client.login(username='foo', password='secret')
+        response = self.client.get(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # bar cannot see
+        self.client.login(username='bar', password='secret')
+        response = self.client.get(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_scene_post(self):
+        # list view for POST (create new)
+        url = reverse('scene-list')
+
+        # foo can create
+        self.client.login(username='foo', password='secret')
+        data = {
+            "name": "New Scene",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # bar can create
+        self.client.login(username='bar', password='secret')
+        data = {
+            "name": "New Scene",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_scene_put(self):
+        # detail view for PUT (udpate)
+        url = reverse('scene-detail', args=[self.scene.pk])
+
+        # foo can update
+        self.client.login(username='foo', password='secret')
+        data = {
+            "name": "New Scene (updated)",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # bar cannot update
+        self.client.login(username='bar', password='secret')
+        data = {
+            "name": "New Scene (updated)",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_scene_no_put_after_publish(self):
+        # the scene is published
+        self.scene.publish_company(self.user_foo)
+
+        # detail view for PUT (update)
+        url = reverse('scene-detail', args=[self.scene.pk])
+
+        # foo cannot update
+        self.client.login(username='foo', password='secret')
+        data = {
+            "name": "New Scene (updated)",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # bar cannot update
+        self.client.login(username='bar', password='secret')
+        data = {
+            "name": "New Scene (updated)",
+            "task_id": "78a38bbd-4041-4b34-a889-054d2dee3ea4",
+            "workingdir": "/data/1be8dcc1-cf00-418c-9920-efa07b4fbeca/",
+            "shared": "p",
+            "fileurl": "/files/1be8dcc1-cf00-418c-9920-efa07b4fbeca/"
+        }
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @patch('delft3dworker.models.Scene.start')
+    def test_scene_start(self, mockedMethod):
+        # start view
+        url = reverse('scene-start', args=[self.scene.pk])
+
+        # bar cannot see
+        self.client.login(username='bar', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        mockedMethod.assert_not_called()
+
+        # foo can start, both default and with arguments
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mockedMethod.assert_called_with(workflow="main")
+        response = self.client.put(url, {"workflow": "test"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mockedMethod.assert_called_with(workflow="test")
+
+    @patch('delft3dworker.models.Scene.start')
+    def test_scene_no_start_after_publish(self, mockedMethod):
+        # the scene is published
+        self.scene.publish_company(self.user_foo)
+
+        # start view
+        url = reverse('scene-start', args=[self.scene.pk])
+
+        # foo cannot start (forbidden)
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        mockedMethod.assert_not_called()
 
 
 class UserTestCase(TestCase):
@@ -180,7 +398,7 @@ class UserTestCase(TestCase):
     def setUp(self):
 
         # create user in dB
-        self.user_foo = User.objects.create(
+        self.user_foo = User.objects.create_user(
             username="foo",
             first_name="Foo",
             last_name="Oof",
@@ -197,7 +415,7 @@ class UserTestCase(TestCase):
         force_authenticate(request, user=self.user_foo)
         response = view(request)
         response.render()
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.assertContains(response, "foo")
         self.assertContains(response, "Foo")

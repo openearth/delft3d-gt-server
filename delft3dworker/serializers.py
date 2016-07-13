@@ -3,6 +3,7 @@ from rest_framework.renderers import JSONRenderer
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
+from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 
 from django.contrib.auth.models import Group
@@ -82,7 +83,7 @@ class SceneSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
 
     # Run update state on serialization
-    state = serializers.CharField(source='_update_state')
+    state = serializers.CharField(source='_update_state', read_only=True)
 
     class Meta:
         model = Scene
@@ -99,6 +100,24 @@ class SceneSerializer(serializers.ModelSerializer):
             'state',
             'task_id',
             'workingdir',
+        )
+
+
+class SearchFormSerializer(serializers.HyperlinkedModelSerializer):
+    """
+    A default REST Framework HyperlinkedModelSerializer for the Template model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    # here we will write custom serialization and validation methods
+
+    class Meta:
+        model = SearchForm
+        fields = (
+            'id',
+            'name',
+            'sections',
+            'templates',
         )
 
 

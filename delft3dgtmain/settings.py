@@ -140,11 +140,13 @@ LOGIN_REDIRECT_URL = '/'
 BROKER_URL = 'redis://localhost'
 CELERY_RESULT_BACKEND = 'redis://localhost'
 
-# Disabling rate limits altogether is recommended if you don't have any tasks using them. 
-# This is because the rate limit subsystem introduces quite a lot of complexity.
+# Disabling rate limits altogether is recommended if you don't have any tasks using them.
+# This is because the rate limit subsystem introduces quite a lot of
+# complexity.
 CELERY_DISABLE_RATE_LIMITS = True
 
-# If True the task will report its status as started when the task is executed by a worker. 
+# If True the task will report its status as started when the task is
+# executed by a worker.
 CELERY_TRACK_STARTED = True
 
 # Time (in seconds, or a timedelta object) for when after stored task tombstones will be deleted.
@@ -170,7 +172,7 @@ CELERY_TIMEZONE = 'Europe/Amsterdam'
 CELERY_ENABLE_UTC = True
 
 # Worker specific settings, becomes important
-# with cloud workers, when there are multiple 
+# with cloud workers, when there are multiple
 # workers for each queue.
 CELERY_ACKS_LATE = False
 CELERYD_PREFETCH_MULTIPLIER = 1
@@ -216,33 +218,30 @@ if 'test' in sys.argv:
         }
     }
 
+    # Debug on running tests
+    DEBUG = True
+
     # BROKER_BACKEND='memory'
     CELERY_RESULT_BACKEND = 'cache'
     CELERY_CACHE_BACKEND = 'memory'
 
-    COVERAGE_REPORT_HTML_OUTPUT_DIR = 'test/coverage'
-    COVERAGE_PATH_EXCLUDES = [
-        r'.*migrations.*'
-    ]
-    COVERAGE_MODULE_EXCLUDES = [
-        '__init__',
-        'common.views.test',
-        'django',
-        'djcelery',
-        'locale$',
-        'migrations'
-        'settings$',
-        'tests$',
-        'urls$',
-        'rest_framework$',
-        'crispy_forms$',
-        'guardian$',
-        'delft3dworker.management$'
-    ]
-
-    WORKER_FILEDIR = ''
+    WORKER_FILEDIR = 'test/'
 
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'
     TEST_RUNNER = TEAMCITYDELFT3DGTRUNNER if is_running_under_teamcity(
     ) else DELFT3DGTRUNNER
+
+    CELERY_ALWAYS_EAGER = True
+
+    DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'
+    POSTPROCESS_DUMMY_IMAGE_NAME = 'dummy_postprocessing'
+    PREPROCESS_DUMMY_IMAGE_NAME = 'dummy_preprocessing'
+    PROCESS_DUMMY_IMAGE_NAME = 'dummy_processing'
+    EXPORT_DUMMY_IMAGE_NAME = 'dummy_export'
+
+    DELFT3D_IMAGE_NAME = 'dummy_simulation'
+    POSTPROCESS_IMAGE_NAME = 'dummy_postprocessing'
+    PREPROCESS_IMAGE_NAME = 'dummy_preprocessing'
+    PROCESS_IMAGE_NAME = 'dummy_processing'
+    EXPORT_IMAGE_NAME = 'dummy_export'
