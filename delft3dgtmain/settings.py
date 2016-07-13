@@ -153,10 +153,15 @@ CELERY_TRACK_STARTED = True
 # Default is to expire after 1 day.
 CELERY_TASK_RESULT_EXPIRES = None
 
-# Name of the file used to stores persistent worker state (like revoked tasks). 
-# Can be a relative or absolute path, but be aware that the suffix .db 
-# may be appended to the file name (depending on Python version).
-CELERYD_STATE_DB = 'celery_state'
+# Default options in new celery versions, migrated now
+BROKER_TRANSPORT_OPTIONS = {'fanout_patterns': True}
+BROKER_TRANSPORT_OPTIONS = {'fanout_prefix': True}
+
+# Timeout before task is retried. So when a task is queued but not executed
+# for half a day (standard) the task is send again. This explains
+# many identical tasks running, in turn keeping many other tasks pending.
+# Timeout should be set to (at least) twice the maximum runtime of task
+BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 5184000}  # 60 days
 
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
