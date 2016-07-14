@@ -130,7 +130,8 @@ class Scenario(models.Model):
         for scene in self.scene_set.all():
             if user.has_perm('delft3dworker.change_scene', scene):
                 scene.abort()
-        return "aborted"
+        self.state = "ABORTED"
+        return self.state
 
     # CRUD METHODS
 
@@ -284,8 +285,10 @@ class Scene(models.Model):
         # If not running, revoke task
         if not result.state == BUSYSTATE:
             revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
+            self.state = "REVOKED"
         else:
             result.abort()
+            self.state = "ABORTED"
 
         self._update_state()  # will save for us
 
