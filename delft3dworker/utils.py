@@ -1,7 +1,7 @@
 import re
 import sys
 
-PRECEDENCE = ['ABORTED'
+PRECEDENCE = ['ABORTED',
               'REVOKED',
               'SUCCESS',
               'FAILURE',
@@ -16,6 +16,7 @@ PRECEDENCE = ['ABORTED'
 
 #: Hash lookup of PRECEDENCE to index
 PRECEDENCE_LOOKUP = dict(zip(PRECEDENCE, range(0, len(PRECEDENCE))))
+print(PRECEDENCE_LOOKUP)
 NONE_PRECEDENCE = PRECEDENCE_LOOKUP['UNKNOWN']
 
 
@@ -90,13 +91,14 @@ def compare_states(*args, **kwargs):
     """Compare state and return highest state."""
     if len(args) == 0:
         return "UNKNOWN"
-
+    print(args)
     precs = [precedence(state) for state in args]
+    print(precs)
     if 'high' in kwargs:
         state = args[precs.index(min(precs))]
     else:
         state = args[precs.index(max(precs))]
-    # print(" ".join(args) + " becomes {}".format(state))
+    print(" ".join(args) + " becomes {}".format(state))
     return state
 
 

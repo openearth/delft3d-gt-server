@@ -1,7 +1,10 @@
 from __future__ import absolute_import
 
+# from celery.states import SUCCESS, PENDING
+
 from delft3dworker.utils import delft3d_logparser
 from delft3dworker.utils import PersistentLogger
+from delft3dworker.utils import compare_states
 
 from django.test import TestCase
 
@@ -40,3 +43,30 @@ INFO:root:Finished
             any(True for progress in progresses if float(progress) > 0.99))
         self.assertTrue(
             any(True for message in messages if message is not None))
+
+
+class StateTests(TestCase):
+
+    def test_state_compare(self):
+        # Aborted is higher than SUCCESS
+        state_a = "SUCCESS"
+        state_b = "ABORTED"
+        self.assertEqual(compare_states(state_a, state_b, high=True), "ABORTED")
+
+        # Revoked is higher than SUCCESS
+        state_a = "SUCCES"
+        state_b = "REVOKED"
+        self.assertEqual(compare_states(state_a, state_b, high=True), "REVOKED")
+
+        # SUCCESS is higher than PENDING
+        state_a = "PENDING"
+        state_b = "SUCCESS"
+        self.assertEqual(compare_states(state_a, state_b, high=True), "SUCCESS")
+
+        # SUCCESS is higher than PENDING, but we want lowest
+        state_a = "PENDING"
+        state_b = "SUCCESS"
+        self.assertEqual(compare_states(state_a, state_b), "PENDING")
+
+        # No input gives us UNKNOWN
+        self.assertEqual(compare_states(), "UNKNOWN")
