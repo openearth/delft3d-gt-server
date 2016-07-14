@@ -379,6 +379,25 @@ class Scene(models.Model):
                 self.parameters = {"delft3d": self.info}
 
             self._create_ini()
+
+            self.info["delta_fringe_images"] = {
+                "images": [],
+                "location": "process/"
+            }
+            self.info["channel_network_images"] = {
+                "images": [],
+                "location": "process/"
+            }
+            self.info["sediment_fraction_images"] = {
+                "images": [],
+                "location": "process/"
+            }
+            self.info["logfile"] = {
+                "file": "",
+                "location": "simulation/"
+            }
+            self.info["procruns"] = 0
+
             self.fileurl = os.path.join(settings.WORKER_FILEURL, str(self.suid), '')
 
         super(Scene, self).save(*args, **kwargs)
@@ -495,7 +514,7 @@ class Scene(models.Model):
                 processed = False
             self.state = compare_states(self.state, state, high=True)
             self.progress = progress
-            self.info = info
+            self.info.update(info)
         else:
             return self.state
 

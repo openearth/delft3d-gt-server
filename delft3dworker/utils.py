@@ -39,23 +39,6 @@ def parse_info(info):
     level, such as images. But many 
     """
     new_info = {}
-    new_info["delta_fringe_images"] = {
-        "images": [],
-        "location": "process/"
-    }
-    new_info["channel_network_images"] = {
-        "images": [],
-        "location": "process/"
-    }
-    new_info["sediment_fraction_images"] = {
-        "images": [],
-        "location": "process/"
-    }
-    new_info["logfile"] = {
-        "file": "",
-        "location": "simulation/"
-    }
-    new_info["procruns"] = 0
 
     states = ['PENDING']
     progress = 0.0
