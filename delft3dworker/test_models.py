@@ -86,6 +86,64 @@ class ScenarioTestCase(TestCase):
         self.assertIn(self.scenario_B, scene.scenario.all())
 
 
+class ScenarioControlTestCase(TestCase):
+
+    def setUp(self):
+        self.user_foo = User.objects.create_user(username='foo')
+
+        self.scenario_multi = Scenario.objects.create(
+            name="Test multiple scenes", owner=self.user_foo)
+        multi_input = {
+            "basinslope": {
+                "values": [0.0143, 0.0145, 0.0146]
+            },
+        }
+        self.scenario_multi.load_settings(multi_input)
+        self.scenario_multi.createscenes(self.user_foo)
+
+    @patch('delft3dworker.models.Scene.start', autospec=True)
+    def test_start(self, mocked_scene_method):
+        """
+        Test if scenes are started when scenario is started
+        """
+        self.scenario_multi.start(self.user_foo)
+        self.assertTrue(mocked_scene_method.call_count, 3)
+
+    @patch('delft3dworker.models.Scene.abort', autospec=True)
+    def test_abort(self, mocked_scene_method):
+        """
+        Test if scenes are aborted when scenario is aborted
+        """
+        self.scenario_multi.abort(self.user_foo)
+        self.assertTrue(mocked_scene_method.call_count, 3)
+
+    @patch('delft3dworker.models.Scene.delete', autospec=True)
+    def test_delete(self, mocked_scene_method):
+        """
+        Test if scenes are deleted when scenario is deleted
+        """
+        self.scenario_multi.delete(self.user_foo)
+        self.assertTrue(mocked_scene_method.call_count, 3)
+
+    @patch('delft3dworker.models.Scene.publish_company', autospec=True)
+    def test_publish_company(self, mocked_scene_method):
+        """
+        Test if scenes are published to company when scenario is published
+        to company
+        """
+        self.scenario_multi.publish_company(self.user_foo)
+        self.assertTrue(mocked_scene_method.call_count, 3)
+
+    @patch('delft3dworker.models.Scene.publish_world', autospec=True)
+    def test_publish_world(self, mocked_scene_method):
+        """
+        Test if scenes are published to world when scenario is published
+        to world
+        """
+        self.scenario_multi.publish_world(self.user_foo)
+        self.assertTrue(mocked_scene_method.call_count, 3)
+
+
 class SceneTestCase(TestCase):
 
     def setUp(self):
@@ -152,14 +210,16 @@ class SceneTestCase(TestCase):
         self.assertTrue(self.user_a.has_perm('change_scene', self.scene))
         self.assertTrue(self.user_a.has_perm('delete_scene', self.scene))
 
-        self.assertTrue(self.scene.publish_company(self.user_a))
+        self.scene.publish_company(self.user_a)
+
         self.assertEqual(self.scene.shared, 'c')
         self.assertTrue(self.user_a.has_perm('view_scene', self.scene))
         self.assertTrue(self.user_a.has_perm('add_scene', self.scene))
         self.assertTrue(not self.user_a.has_perm('change_scene', self.scene))
         self.assertTrue(not self.user_a.has_perm('delete_scene', self.scene))
 
-        self.assertTrue(self.scene.publish_world(self.user_a))
+        self.scene.publish_world(self.user_a)
+
         self.assertEqual(self.scene.shared, 'w')
         self.assertTrue(self.user_a.has_perm('view_scene', self.scene))
         self.assertTrue(not self.user_a.has_perm('add_scene', self.scene))
@@ -204,7 +264,7 @@ class SceneTestCase(TestCase):
         )), 0)
 
         # publish world
-        self.assertTrue(scene.publish_world(self.user_a))
+        scene.publish_world(self.user_a)
 
         self.assertEqual(len(get_objects_for_user(
             self.user_b,
@@ -241,7 +301,7 @@ class SceneTestCase(TestCase):
         )), 0)
 
         # publish world
-        self.assertTrue(scene.publish_world(self.user_a))
+        scene.publish_world(self.user_a)
 
         self.assertEqual(len(get_objects_for_user(
             self.user_b,
@@ -302,12 +362,13 @@ class SceneTestCase(TestCase):
         # mockchainedtask.return_value = {"info": {}, 'id': '22', 'state': ""}
         mockchainedtask.return_value.task_id = '22'
         mockchainedtask.return_value.state = "PROCESSING"
+
         started = self.scene.start()
 
     @patch('delft3dworker.models.revoke_task', autospec=True)
     @patch('celery.contrib.abortable.AbortableAsyncResult', autospec=True)
-    def test_stop_scene(self, mockchainedtask, mockrevoke):
-        mockchainedtask.return_value = {"info": {}, 'id': 22, 'state': ""}
+    def test_stop_scene(self, mocked_task_delay, mockedResult):
+        mocked_task_delay.return_value = {"info": {}, 'id': 22, 'state': ""}
         self.scene.state = "PROCESSING"
         aborted = self.scene.abort()
 

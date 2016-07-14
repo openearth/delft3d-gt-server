@@ -10,9 +10,9 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 
 
-class UserSerializer(serializers.HyperlinkedModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     """
-    A default REST Framework HyperlinkedModelSerializer for the User model
+    A default REST Framework ModelSerializer for the User model
     source: http://www.django-rest-framework.org/api-guide/serializers/
     """
 
@@ -30,9 +30,9 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         )
 
 
-class GroupSerializer(serializers.HyperlinkedModelSerializer):
+class GroupSerializer(serializers.ModelSerializer):
     """
-    A default REST Framework HyperlinkedModelSerializer for the Group model
+    A default REST Framework ModelSerializer for the Group model
     source: http://www.django-rest-framework.org/api-guide/serializers/
     """
 
@@ -46,47 +46,17 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
         )
 
 
-class ScenarioSerializer(serializers.ModelSerializer):
-    """
-    A default REST Framework HyperlinkedModelSerializer for the Scenario model
-    source: http://www.django-rest-framework.org/api-guide/serializers/
-    """
-
-    # here we will write custom serialization and validation methods
-
-    owner_url = serializers.HyperlinkedRelatedField(
-        read_only=True,
-        view_name='user-detail',
-        source='owner'
-    )
-
-    state = serializers.CharField(source='_update_state', read_only=True)
-
-    class Meta:
-        model = Scenario
-        fields = (
-            'id',
-            'name',
-            'state',
-            'progress',
-            'owner_url',
-            'template',
-            'parameters',
-            'scene_set',
-        )
-
-
 class SceneSerializer(serializers.ModelSerializer):
     """
-    A default REST Framework HyperlinkedModelSerializer for the Scene model
+    A default REST Framework ModelSerializer for the Scene model
     source: http://www.django-rest-framework.org/api-guide/serializers/
     """
-
-    # here we will write custom serialization and validation methods
 
     owner = UserSerializer(read_only=True)
 
     # Run update state on serialization
+    state = serializers.CharField(source='_update_state', read_only=True)
+
     state = serializers.CharField(source='_update_state', read_only=True)
 
     class Meta:
@@ -94,6 +64,10 @@ class SceneSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'name',
+            'state',
+            'progress',
+            'owner_url',
+            'template',
             'owner',
             'shared',
             'suid',
@@ -101,16 +75,41 @@ class SceneSerializer(serializers.ModelSerializer):
             'fileurl',
             'info',
             'parameters',
-            'state',
-            'progress',
             'task_id',
             'workingdir',
         )
 
 
-class SearchFormSerializer(serializers.HyperlinkedModelSerializer):
+class ScenarioSerializer(serializers.ModelSerializer):
     """
-    A default REST Framework HyperlinkedModelSerializer for the Template model
+    A default REST Framework ModelSerializer for the Scenario model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    # here we will write custom serialization and validation methods
+
+    owner_url = serializers.HyperlinkedRelatedField(
+        read_only=True, view_name='user-detail', source='owner')
+
+    class Meta:
+        model = Scenario
+        fields = (
+            'id',
+            'name',
+            'owner_url',
+            'template',
+            'parameters',
+            'state',
+            'progress',
+            'task_id',
+            'workingdir',
+            'scene_set',
+        )
+
+
+class SearchFormSerializer(serializers.ModelSerializer):
+    """
+    A default REST Framework ModelSerializer for the Template model
     source: http://www.django-rest-framework.org/api-guide/serializers/
     """
 
@@ -126,9 +125,9 @@ class SearchFormSerializer(serializers.HyperlinkedModelSerializer):
         )
 
 
-class TemplateSerializer(serializers.HyperlinkedModelSerializer):
+class TemplateSerializer(serializers.ModelSerializer):
     """
-    A default REST Framework HyperlinkedModelSerializer for the Template model
+    A default REST Framework ModelSerializer for the Template model
     source: http://www.django-rest-framework.org/api-guide/serializers/
     """
 

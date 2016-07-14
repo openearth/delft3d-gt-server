@@ -158,7 +158,8 @@ CELERY_TASK_RESULT_EXPIRES = None
 # Timeout before task is retried. So when a task is queued but not executed
 # for half a day (standard) the task is send again. This explains
 # many identical tasks running, in turn keeping many other tasks pending.
-BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 2592000}  # 60 days
+# Timeout should be set to (at least) twice the maximum runtime of task
+BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 5184000}  # 60 days
 
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
