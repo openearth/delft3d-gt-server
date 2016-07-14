@@ -3,9 +3,9 @@ import sys
 
 PRECEDENCE = ['ABORTED'
               'REVOKED',
-              'PROCESSING'
               'SUCCESS',
               'FAILURE',
+              'PROCESSING',
               'UNKNOWN',
               'STARTED',
               'RECEIVED',
@@ -40,7 +40,7 @@ def parse_info(info):
     """
     new_info = {}
 
-    states = ['PENDING']
+    states = ['']
     progress = 0.0
     for item, value in info.items():
         if isinstance(value, dict):
@@ -63,6 +63,7 @@ def parse_info(info):
                                 prog = log_['progress']
                                 prog = float(prog)
                             except:
+                                print("Parse exception.")
                                 prog = 0.0
                             if prog > progress:
                                 progress = prog
@@ -75,9 +76,11 @@ def parse_info(info):
                         if prog > progress:
                             progress = prog
 
-            # State parsing
-            if 'state' in value:
-                states.append(value['state'])
+        # State parsing
+        for task, taskinfo in new_info.items():
+            if isinstance(taskinfo, dict):
+                if 'state' in taskinfo and task != "preprocess":
+                    states.append(value['state'])
 
     state = compare_states(*states, high=True)
     return int(progress * 100), state, new_info
@@ -94,7 +97,7 @@ def compare_states(*args, **kwargs):
         state = args[precs.index(min(precs))]
     else:
         state = args[precs.index(max(precs))]
-
+    # print(" ".join(args) + " becomes {}".format(state))
     return state
 
 
