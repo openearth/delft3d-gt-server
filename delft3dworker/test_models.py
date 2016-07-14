@@ -207,7 +207,11 @@ class SceneTestCase(TestCase):
         self.assertTrue(not self.user_a.has_perm('change_scene', self.scene))
         self.assertTrue(not self.user_a.has_perm('delete_scene', self.scene))
 
-    def test_after_publishing_more_can_see(self):
+    def test_publish_company_and_publish_world(self):
+        """
+        Test if we can publish to company, and test if we can then publish
+        to World (after publishing to company)
+        """
         scene = get_objects_for_user(
             self.user_a,
             "view_scene",
@@ -229,7 +233,7 @@ class SceneTestCase(TestCase):
         )), 0)
 
         # publish company
-        self.assertTrue(scene.publish_company(self.user_a))
+        scene.publish_company(self.user_a)
 
         self.assertEqual(len(get_objects_for_user(
             self.user_b,
@@ -260,7 +264,10 @@ class SceneTestCase(TestCase):
             accept_global_perms=False
         )), 1)
 
-    def test_after_publishing_more_can_see(self):
+    def test_publish_world(self):
+        """
+        Test if we can publish to world (before publishing to dtcompany)
+        """
         scene = get_objects_for_user(
             self.user_a,
             "view_scene",
