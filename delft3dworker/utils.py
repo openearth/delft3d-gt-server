@@ -6,12 +6,12 @@ PRECEDENCE = ['ABORTED'
               'SUCCESS',
               'FAILURE',
               'PROCESSING',
-              'UNKNOWN',
               'STARTED',
               'RECEIVED',
               'RETRY',
               'PENDING',
               'CREATED',
+              'UNKNOWN',
               '']
 
 #: Hash lookup of PRECEDENCE to index
@@ -40,7 +40,7 @@ def parse_info(info):
     """
     new_info = {}
 
-    states = ['']
+    states = []
     progress = 0.0
     for item, value in info.items():
         if isinstance(value, dict):
@@ -79,10 +79,10 @@ def parse_info(info):
         # State parsing
         for task, taskinfo in new_info.items():
             if isinstance(taskinfo, dict):
-                if 'state' in taskinfo and task != "preprocess":
-                    states.append(value['state'])
+                if 'state' in taskinfo:
+                    states.append(taskinfo['state'])
 
-    state = compare_states(*states, high=True)
+    state = compare_states(*states)
     return int(progress * 100), state, new_info
 
 
@@ -92,7 +92,6 @@ def compare_states(*args, **kwargs):
         return "UNKNOWN"
 
     precs = [precedence(state) for state in args]
-
     if 'high' in kwargs:
         state = args[precs.index(min(precs))]
     else:

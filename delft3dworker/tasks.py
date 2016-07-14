@@ -153,7 +153,7 @@ def chainedtask(self, parameters, workingdir, workflow):
     if workflow == 'export' and os.path.exists(os.path.join(workingdir, 'export', 'trim-a.grdecl')):
         results['export'] = True
     results['result'] = "Finished"
-    self.update_state(state="FINISHING", meta=results)
+    self.update_state(state="SUCCESS", meta=results)
 
     return results
 
@@ -212,6 +212,7 @@ def preprocess(self, workingdir, _):
         # abort handling
         if self.is_aborted():
             preprocess_container.stop()
+            self.update_state(state='ABORTED', meta=state_meta)
             break
 
         # if no abort or revoke: update state
@@ -352,6 +353,7 @@ def simulation(self, _, workingdir):
         if self.is_aborted():
             processing_container.stop()
             simulation_container.stop()
+            self.update_state(state="ABORTED", meta=state_meta)
             break
 
         # if no abort or revoke: update state
