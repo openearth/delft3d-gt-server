@@ -139,6 +139,8 @@ LOGIN_REDIRECT_URL = '/'
 
 BROKER_URL = 'redis://52.209.46.191'
 CELERY_RESULT_BACKEND = 'redis://52.209.46.191'
+BROKER_URL = 'redis://'
+CELERY_RESULT_BACKEND = 'redis://'
 
 # Disabling rate limits altogether is recommended if you don't have any tasks using them.
 # This is because the rate limit subsystem introduces quite a lot of
@@ -162,7 +164,7 @@ BROKER_TRANSPORT_OPTIONS = {'fanout_prefix': True}
 # Timeout before task is retried. So when a task is queued but not executed
 # for half a day (standard) the task is send again. This explains
 # many identical tasks running, in turn keeping many other tasks pending.
-BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 2592000}  # 30 days
+BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 2592000}  # 60 days
 
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

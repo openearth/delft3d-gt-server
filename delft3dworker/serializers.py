@@ -60,11 +60,15 @@ class ScenarioSerializer(serializers.ModelSerializer):
         source='owner'
     )
 
+    state = serializers.CharField(source='_update_state', read_only=True)
+
     class Meta:
         model = Scenario
         fields = (
             'id',
             'name',
+            'state',
+            'progress',
             'owner_url',
             'template',
             'parameters',
@@ -98,6 +102,7 @@ class SceneSerializer(serializers.ModelSerializer):
             'info',
             'parameters',
             'state',
+            'progress',
             'task_id',
             'workingdir',
         )

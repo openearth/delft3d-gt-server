@@ -1,8 +1,122 @@
 import re
 import sys
 
+PRECEDENCE = ['ABORTED'
+              'REVOKED',
+              'PROCESSING'
+              'SUCCESS',
+              'FAILURE',
+              'UNKNOWN',
+              'STARTED',
+              'RECEIVED',
+              'RETRY',
+              'PENDING',
+              'CREATED',
+              '']
 
-class PersistentLogger():
+#: Hash lookup of PRECEDENCE to index
+PRECEDENCE_LOOKUP = dict(zip(PRECEDENCE, range(0, len(PRECEDENCE))))
+NONE_PRECEDENCE = PRECEDENCE_LOOKUP['UNKNOWN']
+
+
+def precedence(state):
+    """Get the precedence index for state.
+
+    Lower index means higher precedence.
+    Taken from celery.
+    """
+    try:
+        return PRECEDENCE_LOOKUP[state]
+    except KeyError:
+        return NONE_PRECEDENCE
+
+
+def parse_info(info):
+    """Parse info from chainedtask and return
+    progress, state and clean info
+
+    Typical info object has some info at the root
+    level, such as images. But many 
+    """
+    new_info = {}
+    new_info["delta_fringe_images"] = {
+        "images": [],
+        "location": "process/"
+    }
+    new_info["channel_network_images"] = {
+        "images": [],
+        "location": "process/"
+    }
+    new_info["sediment_fraction_images"] = {
+        "images": [],
+        "location": "process/"
+    }
+    new_info["logfile"] = {
+        "file": "",
+        "location": "simulation/"
+    }
+    new_info["procruns"] = 0
+
+    states = ['PENDING']
+    progress = 0.0
+    for item, value in info.items():
+        if isinstance(value, dict):
+            if 'info' in value and isinstance(value['info'], dict):
+
+                # Task name parsing
+                if 'task' in value['info']:
+                    new_info[value['info']['task']] = value
+
+                # Number of processing runs parsing
+                if 'procruns' in value['info']:
+                    new_info['procruns'] = value['info']['procruns']
+
+                # Progress parsing
+                if 'log' in value['info']:
+                    log = value['info']['log']
+                    if isinstance(log, list):
+                        for log_ in log:
+                            try:
+                                prog = log_['progress']
+                                prog = float(prog)
+                            except:
+                                prog = 0.0
+                            if prog > progress:
+                                progress = prog
+                    elif isinstance(log, dict):
+                        try:
+                            prog = log['progress']
+                            prog = float(log)
+                        except:
+                            prog = 0.0
+                        if prog > progress:
+                            progress = prog
+
+            # State parsing
+            if 'state' in value:
+                states.append(value['state'])
+
+    # print(progress)
+    state = compare_states(*states, high=True)
+    return int(progress*100), state, new_info
+
+
+def compare_states(*args, **kwargs):
+    """Compare state and return highest state."""
+    if len(args) == 0:
+        return "UNKNOWN"
+
+    precs = [precedence(state) for state in args]
+
+    if 'high' in kwargs:
+        state = args[precs.index(min(precs))]
+    else:
+        state = args[precs.index(max(precs))]
+    print(state)
+    return state
+
+
+class PersistentLogger(object):
 
     """ Class to keep track of docker
     container logging, keeping relevant

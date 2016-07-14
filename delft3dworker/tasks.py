@@ -217,7 +217,7 @@ def preprocess(self, workingdir, _):
         # if no abort or revoke: update state
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["log"] = log.parse(preprocess_container.get_log())
             state_meta["container_id"] = preprocess_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -274,7 +274,7 @@ def dummy_preprocess(self, workingdir, _):
         # if no abort or revoke: update state
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["log"] = log.parse(preprocess_container.get_log())
             state_meta["container_id"] = preprocess_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -342,6 +342,8 @@ def simulation(self, _, workingdir):
     simlog = PersistentLogger(parser="delft3d")
     proclog = PersistentLogger(parser="python")
 
+    proc_runs = 0
+
     # loop task
     running = True
     while running:
@@ -395,11 +397,13 @@ def simulation(self, _, workingdir):
 
                 logger.info("Started processing, sim progress changed.")
                 processing_container.start()
-                logger.info(state_meta["output"])
+                proc_runs += 1
+                logger.info(state_meta["log"])
 
             # update state
+            state_meta["procruns"] = proc_runs
             state_meta["task"] = self.__name__
-            state_meta["output"] = [
+            state_meta["log"] = [
                 simlog.parse(simulation_container.get_log()),
                 proclog.parse(processing_container.get_log())
             ]
@@ -408,7 +412,7 @@ def simulation(self, _, workingdir):
                 "processing": processing_container.id
             }
 
-            # logger.info(state_meta["output"])
+            # logger.info(state_meta["log"])
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
@@ -485,11 +489,11 @@ def dummy_simulation(self, _, workingdir):
             if simlog.changed() and not processing_container.running():
                 logger.info("Started processing, sim progress changed.")
                 processing_container.start()
-                logger.info(state_meta["output"])
+                logger.info(state_meta["log"])
 
             # update state
             state_meta["task"] = self.__name__
-            state_meta["output"] = [
+            state_meta["log"] = [
                 simlog.parse(simulation_container.get_log()),
                 proclog.parse(processing_container.get_log())
             ]
@@ -498,7 +502,7 @@ def dummy_simulation(self, _, workingdir):
                 "processing": processing_container.id
             }
 
-            # logger.info(state_meta["output"])
+            # logger.info(state_meta["log"])
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
@@ -555,7 +559,7 @@ def postprocess(self, _, workingdir):
             break
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(
+            state_meta["log"] = log.parse(
                 postprocessing_container.get_log()
             )
             state_meta["container_id"] = postprocessing_container.id
@@ -616,7 +620,7 @@ def export(self, _, workingdir):
         # if no abort or revoke: update state
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["log"] = log.parse(preprocess_container.get_log())
             state_meta["container_id"] = preprocess_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -673,7 +677,7 @@ def dummy_export(self, _, workingdir):
         # if no abort or revoke: update state
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["log"] = log.parse(preprocess_container.get_log())
             state_meta["container_id"] = preprocess_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost

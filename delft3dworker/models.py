@@ -12,11 +12,11 @@ from celery.contrib.abortable import AbortableAsyncResult
 from celery.result import AsyncResult
 from celery.exceptions import TimeoutError
 from celery.task.control import revoke as revoke_task
-from celery.states import state
 
 from datetime import datetime
 
 from delft3dworker.tasks import chainedtask
+from delft3dworker.utils import compare_states, parse_info
 
 from django.conf import settings  # noqa
 from django.contrib.auth.models import Group
@@ -62,26 +62,15 @@ class Scenario(models.Model):
 
     owner = models.ForeignKey(User, null=True)
 
+    state = models.CharField(max_length=64, default="CREATED")
+    progress = models.IntegerField(default=0)  # 0-100
+
     # PROPERTY METHODS
 
     class Meta:
         permissions = (
             ('view_scenario', 'View Scenario'),
         )
-
-    def get_absolute_url(self):
-
-        return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
-
-    def serialize(self):
-        return {
-            "template": self.template,
-            "name": self.name,
-            "parameters": self.parameters,
-            "scenes_parameters": self.scenes_parameters,
-            "scenes": self.scene_set.all(),
-            "id": self.id
-        }
 
     def load_settings(self, settings):
         self.parameters = settings
@@ -147,6 +136,18 @@ class Scenario(models.Model):
         super(Scenario, self).delete(*args, **kwargs)
 
     # INTERNALS
+    def _update_state(self):
+        # All states from its scenes
+        states = [scene.state for scene in self.scene_set.all()]
+        self.state = compare_states(*states)
+
+        # All progress from its scenes
+        progs = [scene.progress for scene in self.scene_set.all()]
+        self.progress = sum(progs) / len(progs) if len(progs) != 0 else 0
+
+        self.save()
+
+        return self.state
 
     def _parse_setting(self, key, setting):
         if not ('values' in setting):
@@ -212,7 +213,8 @@ class Scene(models.Model):
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
     parameters = JSONField(blank=True)  # {"dt":20}
-    state = models.CharField(max_length=256, blank=True)
+    state = models.CharField(max_length=256, default="CREATED")
+    progress = models.IntegerField(default=0)
     task_id = models.CharField(max_length=256)
 
     # Please use FilePath Field
@@ -229,29 +231,6 @@ class Scene(models.Model):
             ('view_scene', 'View Scene'),
         )
 
-    def get_absolute_url(self):
-
-        return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
-
-    def serialize(self):
-
-        self._update_state()
-
-        return {
-            "id": self.id,
-            "name": self.name,
-            "suid": self.suid,
-            # could be one id (cannot be -1), or list of ids
-            "scenario": self.scenario.values('id') if self.scenario else None,
-            "fileurl": self.fileurl,
-            "info": self.info,
-            "parameters": self.parameters,
-            "state": self.state,
-            "task_id": self.task_id,
-            "owner": self.owner,
-            "shared": self.shared,
-        }
-
     # CONTROL METHODS
 
     def start(self, workflow="main"):
@@ -266,7 +245,7 @@ class Scene(models.Model):
             elif result.state == BUSYSTATE:
                 return {"error": "task already BUSY", "task_id": self.task_id}
             else:
-                return {"error": "Chainedtask already started", "task_id": self.task_id}
+                return {"error": "task already STARTED", "task_id": self.task_id}
 
         # Task has not yet been started
         else:
@@ -488,67 +467,58 @@ class Scene(models.Model):
                 self.workingdir, 'process/' 'input.ini'))
         )
 
-    def _higher_state(self, stateB):
-        stopped = ["ABORTED", "REVOKED"]
-        if self.state in stopped:
-            return self.state
-        elif stateB in stopped:
-            return stateB
-        elif state(self.state) > state(stateB):
-            return self.state
-        else:
-            return stateB
-
     def _update_state(self):
 
         # only retrieve state if it has a task_id 
         # (which means the task is started)
         if self.task_id != '':
             result = AbortableAsyncResult(self.task_id)
+
+            # parse result and compare with current stored info
             info = result.info if isinstance(
                 result.info, dict) else {"info": str(result.info)}
-            self.info.update(info)
-            self.state = self._higher_state(result.state)
+            # Parse info from chainedtask
+            progress, state, info = parse_info(info)
+
+            # Update model
+            if 'procruns' in self.info and 'procruns' in info:
+                processed = info['procruns'] > self.info['procruns']
+            else:
+                processed = False
+            print(state)
+            print(self.state)
+            self.state = compare_states(self.state, state, high=True)
+            print(self.state)
+            self.progress = progress
+            self.info = info
         else:
             self.info = {}
             self.state = "UNKNOWN"
             self.save()
+            return
 
-        # Update image lists
-        self.info["delta_fringe_images"] = {
-            "images": [],
-            "location": "process/"
-        }
-        self.info["channel_network_images"] = {
-            "images": [],
-            "location": "process/"
-        }
-        self.info["sediment_fraction_images"] = {
-            "images": [],
-            "location": "process/"
-        }
-        self.info["logfile"] = {
-            "file": "",
-            "location": "simulation/"
-        }
-        for root, dirs, files in os.walk(
-            os.path.join(self.workingdir, 'process')
-        ):
-            for f in sorted(files):
-                name, ext = os.path.splitext(f)
-                if ext in ('.png', '.jpg', '.gif'):
-                    if "delta_fringe" in name:
-                        self.info["delta_fringe_images"]["images"].append(f)
-                    elif "channel_network" in name:
-                        self.info["channel_network_images"]["images"].append(f)
-                    elif "sediment_fraction" in name:
-                        self.info["sediment_fraction_images"][
-                            "images"].append(f)
-                    else:
-                        # Other images ?
-                        pass
+        # Only check for new images
+        # when new processing has run
+        if processed:
+            for root, dirs, files in os.walk(
+                os.path.join(self.workingdir, 'process')
+            ):
+                for f in sorted(files):
+                    name, ext = os.path.splitext(f)
+                    if ext in ('.png', '.jpg', '.gif'):
+                        if "delta_fringe" in name:
+                            self.info["delta_fringe_images"]["images"].append(f)
+                        elif "channel_network" in name:
+                            self.info["channel_network_images"]["images"].append(f)
+                        elif "sediment_fraction" in name:
+                            self.info["sediment_fraction_images"][
+                                "images"].append(f)
+                        else:
+                            # Other images ?
+                            pass
 
         # If no log path is yet known, set log
+        # so don't update this everytime
         if self.info["logfile"]["file"] == "":
             for root, dirs, files in os.walk(
                 os.path.join(self.workingdir, 'simulation')
@@ -558,8 +528,6 @@ class Scene(models.Model):
                         # No log is generated at the moment
                         self.info["logfile"]["file"] = f
                         break
-        # if self.state == "":
-            # self.state = "UNKNOWN"
 
         self.save()
         return self.state
@@ -706,9 +674,6 @@ class Template(models.Model):
         searchform.update()
 
         return returnval
-
-    def get_absolute_url(self):
-        return "{0}?id={1}".format(reverse_lazy('tmpl_detail'), self.id)
 
     def __unicode__(self):
         return self.name
