@@ -96,9 +96,8 @@ def parse_info(info):
             if 'state' in value:
                 states.append(value['state'])
 
-    # print(progress)
     state = compare_states(*states, high=True)
-    return int(progress*100), state, new_info
+    return int(progress * 100), state, new_info
 
 
 def compare_states(*args, **kwargs):
@@ -112,7 +111,7 @@ def compare_states(*args, **kwargs):
         state = args[precs.index(min(precs))]
     else:
         state = args[precs.index(max(precs))]
-    print(state)
+
     return state
 
 
@@ -241,13 +240,13 @@ def delft3d_logparser(line):
                 match["progress"] is not None and
                 match["progress"] != ""
             ):
-                match['progress'] = format(float(match['progress'])/100, '.2f')
+                match['progress'] = format(float(match['progress']) / 100, '.2f')
             # add default log level
             match['level'] = 'INFO'
             # add state
             match['state'] = None
         else:
-            match = {"message": None, "level":  "INFO",
+            match = {"message": None, "level": "INFO",
                      "state": None, "progress": None}
         return match
 
@@ -300,7 +299,7 @@ def python_logparser(line):
                 match["progress"] is not None and
                 match["progress"] != ""
             ):
-                match['progress'] = format(float(match['progress'])/100, '.2f')
+                match['progress'] = format(float(match['progress']) / 100, '.2f')
         else:
             match = {"message": line, "level": "INFO",
                      "state": None, "progress": None}
@@ -316,11 +315,3 @@ def python_logparser(line):
             "state": None,
             "progress": None
         }
-
-
-if __name__ == '__main__':
-    line = 'INFO:root:Time to finish 70.0, 22.2222222222% '
-    'completed, time steps  left 7.0'
-    log = PersistentLogger()
-    info = PersistentLogger.parse(log, line)
-    print info

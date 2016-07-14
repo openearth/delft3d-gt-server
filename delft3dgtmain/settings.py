@@ -137,8 +137,6 @@ LOGIN_REDIRECT_URL = '/'
 # Celery
 # ######
 
-BROKER_URL = 'redis://52.209.46.191'
-CELERY_RESULT_BACKEND = 'redis://52.209.46.191'
 BROKER_URL = 'redis://'
 CELERY_RESULT_BACKEND = 'redis://'
 
@@ -156,10 +154,6 @@ CELERY_TRACK_STARTED = True
 # A value of None or 0 means results will never expire (depending on backend specifications).
 # Default is to expire after 1 day. This resulted in losing task status.
 CELERY_TASK_RESULT_EXPIRES = None
-
-# Default options in new celery versions, migrated now
-BROKER_TRANSPORT_OPTIONS = {'fanout_patterns': True}
-BROKER_TRANSPORT_OPTIONS = {'fanout_prefix': True}
 
 # Timeout before task is retried. So when a task is queued but not executed
 # for half a day (standard) the task is send again. This explains

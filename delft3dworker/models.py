@@ -468,7 +468,6 @@ class Scene(models.Model):
         )
 
     def _update_state(self):
-
         # only retrieve state if it has a task_id 
         # (which means the task is started)
         if self.task_id != '':
@@ -485,17 +484,11 @@ class Scene(models.Model):
                 processed = info['procruns'] > self.info['procruns']
             else:
                 processed = False
-            print(state)
-            print(self.state)
             self.state = compare_states(self.state, state, high=True)
-            print(self.state)
             self.progress = progress
             self.info = info
         else:
-            self.info = {}
-            self.state = "UNKNOWN"
-            self.save()
-            return
+            return self.state
 
         # Only check for new images
         # when new processing has run
