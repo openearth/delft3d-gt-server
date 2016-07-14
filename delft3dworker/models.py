@@ -614,11 +614,6 @@ class SearchForm(models.Model):
 
                 # remove non-required fields from variables
                 for variable in tmpl_section["variables"]:
-
-                    if variable["id"] == "name":
-                        # name input should be a search
-                        variable["id"] = "search"
-
                     try:
                         del variable["default"]
                     except KeyError:
@@ -647,10 +642,6 @@ class SearchForm(models.Model):
 
                     # add or update
                     if not matching_variables:
-
-                        if tmpl_variable["id"] == "name":
-                            # name input should be a search
-                            tmpl_variable["id"] = "search"
 
                         # remove non-required fields from variables
                         try:
