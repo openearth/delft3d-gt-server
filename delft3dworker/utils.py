@@ -23,7 +23,7 @@ def precedence(state):
     """Get the precedence index for state.
 
     Lower index means higher precedence.
-    Taken from celery.
+    Taken from celery.states.
     """
     try:
         return PRECEDENCE_LOOKUP[state]

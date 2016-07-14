@@ -66,8 +66,6 @@ class SceneSerializer(serializers.ModelSerializer):
             'name',
             'state',
             'progress',
-            'owner_url',
-            'template',
             'owner',
             'shared',
             'suid',
@@ -101,8 +99,6 @@ class ScenarioSerializer(serializers.ModelSerializer):
             'parameters',
             'state',
             'progress',
-            'task_id',
-            'workingdir',
             'scene_set',
         )
 
