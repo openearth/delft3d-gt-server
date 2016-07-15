@@ -510,15 +510,13 @@ class Scene(models.Model):
             info = result.info if isinstance(
                 result.info, dict) else {"info": str(result.info)}
             # Parse info from chainedtask
-            progress, state, info = parse_info(info)
+            self.progress, self.state, info = parse_info(info)
 
             # Update model
             if 'procruns' in self.info and 'procruns' in info:
                 processed = info['procruns'] > self.info['procruns']
             else:
                 processed = False
-            self.state = compare_states(self.state, state)
-            self.progress = progress
             self.info.update(info)
         else:
             return self.state
