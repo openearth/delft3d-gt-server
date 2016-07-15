@@ -16,6 +16,7 @@ from celery.task.control import revoke as revoke_task
 from datetime import datetime
 
 from delft3dworker.tasks import chainedtask
+from delft3dworker.utils import compare_states, parse_info
 
 from django.conf import settings  # noqa
 from django.contrib.auth.models import Group
@@ -61,26 +62,15 @@ class Scenario(models.Model):
 
     owner = models.ForeignKey(User, null=True)
 
+    state = models.CharField(max_length=64, default="CREATED")
+    progress = models.IntegerField(default=0)  # 0-100
+
     # PROPERTY METHODS
 
     class Meta:
         permissions = (
             ('view_scenario', 'View Scenario'),
         )
-
-    def get_absolute_url(self):
-
-        return "{0}?id={1}".format(reverse_lazy('scenario_detail'), self.id)
-
-    def serialize(self):
-        return {
-            "template": self.template,
-            "name": self.name,
-            "parameters": self.parameters,
-            "scenes_parameters": self.scenes_parameters,
-            "scenes": self.scene_set.all(),
-            "id": self.id
-        }
 
     def load_settings(self, settings):
         self.parameters = settings
@@ -140,7 +130,8 @@ class Scenario(models.Model):
         for scene in self.scene_set.all():
             if user.has_perm('delft3dworker.change_scene', scene):
                 scene.abort()
-        return "aborted"
+        self.state = "ABORTED"
+        return self.state
 
     # CRUD METHODS
 
@@ -166,6 +157,18 @@ class Scenario(models.Model):
                 scene.publish_world(user)
 
     # INTERNALS
+    def _update_state(self):
+        # All states from its scenes
+        states = [scene.state for scene in self.scene_set.all()]
+        self.state = compare_states(*states)
+
+        # All progress from its scenes
+        progs = [scene.progress for scene in self.scene_set.all()]
+        self.progress = sum(progs) / len(progs) if len(progs) != 0 else 0
+
+        self.save()
+
+        return self.state
 
     def _parse_setting(self, key, setting):
         if not ('values' in setting):
@@ -222,15 +225,20 @@ class Scene(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    suid = models.CharField(max_length=256, editable=False)
+
+    # suid = models.CharField(max_length=256, editable=False)
+    suid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     scenario = models.ManyToManyField(Scenario, blank=True)
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
     parameters = JSONField(blank=True)  # {"dt":20}
-    state = models.CharField(max_length=256, blank=True)
+    state = models.CharField(max_length=256, default="CREATED")
+    progress = models.IntegerField(default=0)
     task_id = models.CharField(max_length=256)
+
+    # Please use FilePath Field
     workingdir = models.CharField(max_length=256)
     parameters_hash = models.CharField(max_length=64, blank=True)
 
@@ -244,79 +252,45 @@ class Scene(models.Model):
             ('view_scene', 'View Scene'),
         )
 
-    def get_absolute_url(self):
-
-        return "{0}?id={1}".format(reverse_lazy('scene_detail'), self.id)
-
-    def serialize(self):
-
-        self._update_state()
-
-        return {
-            "id": self.id,
-            "name": self.name,
-            "suid": self.suid,
-            # could be one id (cannot be -1), or list of ids
-            "scenario": self.scenario.values('id') if self.scenario else None,
-            "fileurl": self.fileurl,
-            "info": self.info,
-            "parameters": self.parameters,
-            "state": self.state,
-            "task_id": self.task_id,
-            "owner": self.owner,
-            "shared": self.shared,
-        }
-
     # CONTROL METHODS
 
     def start(self, workflow="main"):
-        result = AbortableAsyncResult(self.task_id)
 
-        if self.task_id != "" and result.state == "PENDING":
-            return {"error": "task already PENDING", "task_id": self.task_id}
+        # Check if task is already start
+        if self.task_id != "":
+            result = AbortableAsyncResult(self.task_id)
 
-        if result.state == BUSYSTATE:
-            return {"error": "task already busy", "task_id": self.task_id}
+            # Find out state
+            if result.state == "PENDING":
+                return {"error": "task already PENDING", "task_id": self.task_id}
+            elif result.state == BUSYSTATE:
+                return {"error": "task already BUSY", "task_id": self.task_id}
+            else:
+                return {"error": "task already STARTED", "task_id": self.task_id}
 
-        result = chainedtask.delay(
-            self.parameters, self.workingdir, workflow)
-        self.task_id = result.task_id
-        self.state = result.state
-        self.save()
+        # Task has not yet been started
+        else:
+            result = chainedtask.delay(
+                self.parameters, self.workingdir, workflow)
+            self.task_id = result.task_id  # so we can't start again
 
-        return {"task_id": self.task_id, "scene_id": self.suid}
+            self._update_state()  # will save for us
+
+            return {"task_id": self.task_id, "scene_id": self.suid}
 
     def abort(self):
-
+        """Function called on stop in frontend, hence the json response."""
         result = AbortableAsyncResult(self.task_id)
 
         # If not running, revoke task
         if not result.state == BUSYSTATE:
-            return self.revoke()
+            revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
+            self.state = "REVOKED"
+        else:
+            result.abort()
+            self.state = "ABORTED"
 
-        result.abort()
-
-        self.info = result.info if isinstance(
-            result.info, dict) else {"info": str(result.info)}
-
-        self.state = result.state
-
-        self.save()
-
-        return {
-            "task_id": self.task_id,
-            "state": result.state,
-            "info": str(self.info)
-        }
-
-    def revoke(self):
-
-        result = AbortableAsyncResult(self.task_id)
-        self.info = result.info if isinstance(
-            result.info, dict) else {"info": str(result.info)}
-        revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
-        self.state = result.state
-        self.save()
+        self._update_state()  # will save for us
 
         return {
             "task_id": self.task_id,
@@ -397,17 +371,38 @@ class Scene(models.Model):
 
     def save(self, *args, **kwargs):
 
-        # if scene does not have a unique uuid, create it and create folder
-        if self.suid == '':
-            self.suid = str(uuid.uuid4())
+        # On first save
+        if self.pk is None:
             self.workingdir = os.path.join(
-                settings.WORKER_FILEDIR, self.suid, '')
+                settings.WORKER_FILEDIR, str(self.suid), '')
             self._create_datafolder()
+
+            # Hack to have the "dt:20" in the correct format
             if self.parameters == "":
-                # Hack to have the "dt:20" in the correct format
                 self.parameters = {"delft3d": self.info}
+
             self._create_ini()
-            self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
+
+            self.info["delta_fringe_images"] = {
+                "images": [],
+                "location": "process/"
+            }
+            self.info["channel_network_images"] = {
+                "images": [],
+                "location": "process/"
+            }
+            self.info["sediment_fraction_images"] = {
+                "images": [],
+                "location": "process/"
+            }
+            self.info["logfile"] = {
+                "file": "",
+                "location": "simulation/"
+            }
+            self.info["procruns"] = 0
+
+            self.fileurl = os.path.join(settings.WORKER_FILEURL, str(self.suid), '')
+
         super(Scene, self).save(*args, **kwargs)
 
     def delete(self, deletefiles=True, *args, **kwargs):
@@ -504,60 +499,59 @@ class Scene(models.Model):
         )
 
     def _update_state(self):
-
-        # only update state if it has a task_id (which means the task is
-        # started)
+        # only retrieve state if it has a task_id 
+        # (which means the task is started)
         if self.task_id != '':
             result = AbortableAsyncResult(self.task_id)
-            self.info = result.info if isinstance(
+
+            # parse result and compare with current stored info
+            info = result.info if isinstance(
                 result.info, dict) else {"info": str(result.info)}
-            self.state = result.state
+            # Parse info from chainedtask
+            progress, state, info = parse_info(info)
 
-        self.info["delta_fringe_images"] = {
-            "images": [],
-            "location": "process/"
-        }
-        self.info["channel_network_images"] = {
-            "images": [],
-            "location": "process/"
-        }
-        self.info["sediment_fraction_images"] = {
-            "images": [],
-            "location": "process/"
-        }
-        self.info["logfile"] = {
-            "file": "",
-            "location": "simulation/"
-        }
+            # Update model
+            if 'procruns' in self.info and 'procruns' in info:
+                processed = info['procruns'] > self.info['procruns']
+            else:
+                processed = False
+            self.state = compare_states(self.state, state, high=True)
+            self.progress = progress
+            self.info.update(info)
+        else:
+            return self.state
 
-        for root, dirs, files in os.walk(
-            os.path.join(self.workingdir, 'process')
-        ):
-            for f in sorted(files):
-                name, ext = os.path.splitext(f)
-                if ext in ('.png', '.jpg', '.gif'):
-                    if "delta_fringe" in name:
-                        self.info["delta_fringe_images"]["images"].append(f)
-                    elif "channel_network" in name:
-                        self.info["channel_network_images"]["images"].append(f)
-                    elif "sediment_fraction" in name:
-                        self.info["sediment_fraction_images"][
-                            "images"].append(f)
+        # Only check for new images
+        # when new processing has run
+        if processed:
+            for root, dirs, files in os.walk(
+                os.path.join(self.workingdir, 'process')
+            ):
+                for f in sorted(files):
+                    name, ext = os.path.splitext(f)
+                    if ext in ('.png', '.jpg', '.gif'):
+                        if "delta_fringe" in name:
+                            self.info["delta_fringe_images"]["images"].append(f)
+                        elif "channel_network" in name:
+                            self.info["channel_network_images"]["images"].append(f)
+                        elif "sediment_fraction" in name:
+                            self.info["sediment_fraction_images"][
+                                "images"].append(f)
+                        else:
+                            # Other images ?
+                            pass
 
-                    else:
-                        # Other images ?
-                        # Dummy images
-                        self.info["delta_fringe_images"]["images"].append(f)
-                        pass
-
-        for root, dirs, files in os.walk(
-            os.path.join(self.workingdir, 'simulation')
-        ):
-            for f in files:
-                if f == 'delft3d.log':
-                    # No log is generated at the moment
-                    self.info["logfile"]["file"] = f
-                    break
+        # If no log path is yet known, set log
+        # so don't update this everytime
+        if self.info["logfile"]["file"] == "":
+            for root, dirs, files in os.walk(
+                os.path.join(self.workingdir, 'simulation')
+            ):
+                for f in files:
+                    if f == 'delft3d.log':
+                        # No log is generated at the moment
+                        self.info["logfile"]["file"] = f
+                        break
 
         self.save()
         return self.state
@@ -704,9 +698,6 @@ class Template(models.Model):
         searchform.update()
 
         return returnval
-
-    def get_absolute_url(self):
-        return "{0}?id={1}".format(reverse_lazy('tmpl_detail'), self.id)
 
     def __unicode__(self):
         return self.name

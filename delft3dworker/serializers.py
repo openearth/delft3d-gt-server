@@ -57,11 +57,14 @@ class SceneSerializer(serializers.ModelSerializer):
     # Run update state on serialization
     state = serializers.CharField(source='_update_state', read_only=True)
 
+
     class Meta:
         model = Scene
         fields = (
             'id',
             'name',
+            'state',
+            'progress',
             'owner',
             'shared',
             'suid',
@@ -69,7 +72,6 @@ class SceneSerializer(serializers.ModelSerializer):
             'fileurl',
             'info',
             'parameters',
-            'state',
             'task_id',
             'workingdir',
         )
@@ -82,6 +84,7 @@ class ScenarioSerializer(serializers.ModelSerializer):
     """
 
     # here we will write custom serialization and validation methods
+    state = serializers.CharField(source='_update_state', read_only=True)
 
     owner_url = serializers.HyperlinkedRelatedField(
         read_only=True, view_name='user-detail', source='owner')
@@ -94,6 +97,8 @@ class ScenarioSerializer(serializers.ModelSerializer):
             'owner_url',
             'template',
             'parameters',
+            'state',
+            'progress',
             'scene_set',
         )
 
