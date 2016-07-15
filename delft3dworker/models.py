@@ -284,7 +284,8 @@ class Scene(models.Model):
 
         # If not running, revoke task
         if not result.state == BUSYSTATE:
-            revoke_task(self.task_id, terminate=False)  # thou shalt not terminate
+            # thou shalt not terminate
+            revoke_task(self.task_id, terminate=False)
             self.state = "REVOKED"
         else:
             result.abort()
@@ -401,7 +402,8 @@ class Scene(models.Model):
             }
             self.info["procruns"] = 0
 
-            self.fileurl = os.path.join(settings.WORKER_FILEURL, str(self.suid), '')
+            self.fileurl = os.path.join(
+                settings.WORKER_FILEURL, str(self.suid), '')
 
         super(Scene, self).save(*args, **kwargs)
 
@@ -499,7 +501,7 @@ class Scene(models.Model):
         )
 
     def _update_state(self):
-        # only retrieve state if it has a task_id 
+        # only retrieve state if it has a task_id
         # (which means the task is started)
         if self.task_id != '':
             result = AbortableAsyncResult(self.task_id)
@@ -515,7 +517,7 @@ class Scene(models.Model):
                 processed = info['procruns'] > self.info['procruns']
             else:
                 processed = False
-            self.state = compare_states(self.state, state, high=True)
+            self.state = compare_states(self.state, state)
             self.progress = progress
             self.info.update(info)
         else:
@@ -531,9 +533,11 @@ class Scene(models.Model):
                     name, ext = os.path.splitext(f)
                     if ext in ('.png', '.jpg', '.gif'):
                         if "delta_fringe" in name:
-                            self.info["delta_fringe_images"]["images"].append(f)
+                            self.info["delta_fringe_images"][
+                                "images"].append(f)
                         elif "channel_network" in name:
-                            self.info["channel_network_images"]["images"].append(f)
+                            self.info["channel_network_images"][
+                                "images"].append(f)
                         elif "sediment_fraction" in name:
                             self.info["sediment_fraction_images"][
                                 "images"].append(f)
