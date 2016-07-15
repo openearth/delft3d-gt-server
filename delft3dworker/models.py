@@ -1,19 +1,16 @@
 from __future__ import absolute_import
 
-import ConfigParser
 import copy
+import hashlib
 import io
 import logging
 import os
+import shutil
 import uuid
 import zipfile
 
 from celery.contrib.abortable import AbortableAsyncResult
-from celery.result import AsyncResult
-from celery.exceptions import TimeoutError
 from celery.task.control import revoke as revoke_task
-
-from datetime import datetime
 
 from delft3dworker.tasks import chainedtask
 
@@ -32,14 +29,6 @@ from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
 # Postgresql 9.4
 
-from mako.template import Template as MakoTemplate
-
-from shutil import copystat
-from shutil import copytree
-from shutil import copyfile
-from shutil import rmtree
-
-import hashlib
 
 BUSYSTATE = "PROCESSING"
 
@@ -402,11 +391,9 @@ class Scene(models.Model):
             self.suid = str(uuid.uuid4())
             self.workingdir = os.path.join(
                 settings.WORKER_FILEDIR, self.suid, '')
-            self._create_datafolder()
             if self.parameters == "":
                 # Hack to have the "dt:20" in the correct format
                 self.parameters = {"delft3d": self.info}
-            self._create_ini()
             self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
         super(Scene, self).save(*args, **kwargs)
 
@@ -450,58 +437,14 @@ class Scene(models.Model):
 
     # INTERNALS
 
-    def _create_datafolder(self):
-        # create directory for scene
-        if not os.path.exists(self.workingdir):
-            os.makedirs(self.workingdir, 02775)
-
-            folders = ['process', 'preprocess', 'simulation', 'export']
-
-            for f in folders:
-                os.makedirs(os.path.join(self.workingdir, f))
-
     def _delete_datafolder(self):
         # delete directory for scene
         if os.path.exists(self.workingdir):
             try:
-                rmtree(self.workingdir)
+                shutil.rmtree(self.workingdir)
             except:
                 # Files written by root can't be deleted by django
                 logging.error("Failed to delete working directory")
-
-    def _create_ini(self):
-        # create ini file for containers
-        # in 2.7 ConfigParser is a bit stupid
-        # in 3.x configparser has .read_dict()
-        config = ConfigParser.SafeConfigParser()
-        for section in self.parameters:
-            if not config.has_section(section):
-                config.add_section(section)
-            for key, value in self.parameters[section].items():
-
-                # TODO: find more elegant solution for this! ugh!
-                if not key == 'units':
-                    if not config.has_option(section, key):
-                        config.set(*map(str, [section, key, value]))
-
-        with open(os.path.join(self.workingdir, 'input.ini'), 'w') as f:
-            config.write(f)  # Yes, the ConfigParser writes to f
-
-        copyfile(
-            os.path.join(self.workingdir, 'input.ini'),
-            os.path.join(os.path.join(
-                self.workingdir, 'preprocess/' 'input.ini'))
-        )
-        copyfile(
-            os.path.join(self.workingdir, 'input.ini'),
-            os.path.join(os.path.join(
-                self.workingdir, 'simulation/' 'input.ini'))
-        )
-        copyfile(
-            os.path.join(self.workingdir, 'input.ini'),
-            os.path.join(os.path.join(
-                self.workingdir, 'process/' 'input.ini'))
-        )
 
     def _update_state(self):
 

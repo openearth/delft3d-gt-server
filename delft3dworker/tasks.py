@@ -4,8 +4,11 @@ import json
 import logging
 import os
 import shlex
+import shutil
 import subprocess
 import time
+
+from six.moves import configparser
 
 from delft3dworker.utils import PersistentLogger
 
@@ -61,17 +64,26 @@ def chainedtask(self, parameters, workingdir, workflow):
 
     # real chains:
     if workflow == "export":
-        chain = dummy.s() | export.s(workingdir)
+        chain = (
+            dummy.s() |
+            export.s(workingdir)
+        )
     elif workflow == "main":
-        chain = preprocess.s(workingdir, "") | simulation.s(workingdir)
+        chain = (
+            create_directory_layout.s(workingdir, parameters) |
+            preprocess.s(workingdir, "") |
+            simulation.s(workingdir)
+        )
     elif workflow == "dummy":
         chain = (
-            dummy_preprocess.s(workingdir, "")
-        ) | (
+            dummy_preprocess.s(workingdir, "") |
             dummy_simulation.s(workingdir)
         )
     elif workflow == "dummy_export":
-        chain = dummy.s() | dummy_export.s(workingdir)
+        chain = (
+            dummy.s() |
+            dummy_export.s(workingdir)
+        )
     else:
         logging.error("workflow not available")
         return
@@ -157,6 +169,57 @@ def chainedtask(self, parameters, workingdir, workflow):
 
     return results
 
+@shared_task(bind=True, base=AbortableTask)
+def create_directory_layout(self, workingdir, parameters):
+    # create directory for scene
+    if not os.path.exists(workingdir):
+        os.makedirs(workingdir, 0o2775)
+
+        folders = ['process', 'preprocess', 'simulation', 'export']
+
+        for f in folders:
+            os.makedirs(os.path.join(workingdir, f))
+
+    # create ini file for containers
+    # in 2.7 ConfigParser is a bit stupid
+    # in 3.x configparser has .read_dict()
+    config = configparser.SafeConfigParser()
+    for section in parameters:
+        if not config.has_section(section):
+            config.add_section(section)
+        for key, value in parameters[section].items():
+
+            # TODO: find more elegant solution for this! ugh!
+            if not key == 'units':
+                if not config.has_option(section, key):
+                    config.set(*map(str, [section, key, value]))
+
+    with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
+        config.write(f)  # Yes, the ConfigParser writes to f
+
+    shutil.copyfile(
+        os.path.join(workingdir, 'input.ini'),
+        os.path.join(os.path.join(
+            workingdir, 'preprocess/' 'input.ini'))
+    )
+    shutil.copyfile(
+        os.path.join(workingdir, 'input.ini'),
+        os.path.join(os.path.join(
+            workingdir, 'simulation/' 'input.ini'))
+    )
+    shutil.copyfile(
+        os.path.join(workingdir, 'input.ini'),
+        os.path.join(os.path.join(
+            workingdir, 'process/' 'input.ini'))
+    )
+    # update state with info
+    state_meta = {
+        "workingdir": workingdir,
+        "directory_layout_created": True
+    }
+    self.update_state(meta=state_meta)
+
+
 
 @shared_task(bind=True, base=AbortableTask)
 def preprocess(self, workingdir, _):
@@ -183,8 +246,10 @@ def preprocess(self, workingdir, _):
     # )
 
     # create Preprocess container
-    volumes = ['{0}:/data/output:z'.format(outputfolder),
-               '{0}:/data/input:ro'.format(inputfolder)]
+    volumes = [
+        '{0}:/data/output:z'.format(outputfolder),
+        '{0}:/data/input:ro'.format(inputfolder)
+    ]
 
     # command = "python dummy_create_config.py {}".format(10)  # old dummy
     command = "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"
@@ -321,17 +386,19 @@ def simulation(self, _, workingdir):
     # create Process container
     volumes = ['{0}:/data/input:ro'.format(inputfolder),
                '{0}:/data/output:z'.format(outputfolder)]
-    command = ' '.join(
-        ["/data/run.sh ",
-         "/data/svn/scripts/postprocessing/channel_network_proc.py",
-         "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
-         "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
-         "/data/svn/scripts/visualisation/channel_network_viz.py",
-         "/data/svn/scripts/visualisation/delta_fringe_viz.py",
-         "/data/svn/scripts/visualisation/sediment_fraction_viz.py"]
-    )
+    command = ' '.join([
+        "/data/run.sh ",
+        "/data/svn/scripts/postprocessing/channel_network_proc.py",
+        "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
+        "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
+        "/data/svn/scripts/visualisation/channel_network_viz.py",
+        "/data/svn/scripts/visualisation/delta_fringe_viz.py",
+        "/data/svn/scripts/visualisation/sediment_fraction_viz.py"
+    ])
+
     processing_container = DockerClient(
-        settings.PROCESS_IMAGE_NAME, volumes, '', command)
+        settings.PROCESS_IMAGE_NAME, volumes, '', command
+    )
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
