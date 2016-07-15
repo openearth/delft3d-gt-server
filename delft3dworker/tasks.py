@@ -65,24 +65,24 @@ def chainedtask(self, parameters, workingdir, workflow):
     # real chains:
     if workflow == "export":
         chain = (
-            dummy.s() |
-            export.s(workingdir)
+            dummy.s(workingdir, parameters) |
+            export.s(workingdir, parameters)
         )
     elif workflow == "main":
         chain = (
             create_directory_layout.s(workingdir, parameters) |
-            preprocess.s(workingdir, "") |
-            simulation.s(workingdir)
+            preprocess.s(workingdir, parameters) |
+            simulation.s(workingdir, parameters)
         )
     elif workflow == "dummy":
         chain = (
-            dummy_preprocess.s(workingdir, "") |
-            dummy_simulation.s(workingdir)
+            dummy_preprocess.s(workingdir, parameters) |
+            dummy_simulation.s(workingdir, parameters)
         )
     elif workflow == "dummy_export":
         chain = (
-            dummy.s() |
-            dummy_export.s(workingdir)
+            dummy.s(workingdir, parameters) |
+            dummy_export.s(workingdir, parameters)
         )
     else:
         logging.error("workflow not available")
@@ -222,7 +222,7 @@ def create_directory_layout(self, workingdir, parameters):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def preprocess(self, workingdir, _):
+def preprocess(self, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -298,7 +298,7 @@ def preprocess(self, workingdir, _):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy_preprocess(self, workingdir, _):
+def dummy_preprocess(self, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -355,7 +355,7 @@ def dummy_preprocess(self, workingdir, _):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def simulation(self, _, workingdir):
+def simulation(self, workingdir, parameters):
     """
     TODO Check if processing is still running
     before starting another one.
@@ -397,7 +397,13 @@ def simulation(self, _, workingdir):
     ])
 
     processing_container = DockerClient(
-        settings.PROCESS_IMAGE_NAME, volumes, '', command
+        settings.PROCESS_IMAGE_NAME,
+        volumes,
+        '',
+        command,
+        environment = {
+            "uuid": parameters["uuid"]
+        }
     )
 
     # start simulation
@@ -524,7 +530,8 @@ def dummy_simulation(self, _, workingdir):
         volumes,
         '',
         command,
-        tail=5)
+        tail=5
+    )
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -582,7 +589,7 @@ def dummy_simulation(self, _, workingdir):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def postprocess(self, _, workingdir):
+def postprocess(self, workingdir, parameters):
     # create folders
     outputfolder = os.path.join(workingdir, 'postprocess')
     # os.makedirs(outputfolder)
@@ -641,7 +648,7 @@ def postprocess(self, _, workingdir):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def export(self, _, workingdir):
+def export(self, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -699,7 +706,7 @@ def export(self, _, workingdir):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy_export(self, _, workingdir):
+def dummy_export(self, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -756,7 +763,7 @@ def dummy_export(self, _, workingdir):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy(self):
+def dummy(self, workingdir, parameters):
     """
     Chained task which can be aborted. This task is a dummy task to maintain chain functionality.
     An export chain with a single task is not allowed.
@@ -774,18 +781,25 @@ class DockerClient():
     """
 
     def __init__(self, name, volumebinds, outputfile, command,
-                 base_url='unix://var/run/docker.sock', tail=1):
+                 base_url='unix://var/run/docker.sock',
+                 environment=None, tail=1):
         self.name = name
         self.volumebinds = volumebinds
         self.outputfile = outputfile
         self.base_url = base_url
         self.command = command
+        self.environment = environment
+        self.tail = tail
 
         self.client = Client(base_url=self.base_url)
         self.config = self.client.create_host_config(binds=self.volumebinds)
+
         self.container = self.client.create_container(
-            self.name, host_config=self.config, command=self.command)
-        self.tail = tail
+            self.name,
+            host_config=self.config,
+            command=self.command,
+            environment=self.environment
+        )
 
         self.id = self.container.get('Id')
 
