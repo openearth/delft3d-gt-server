@@ -1,7 +1,8 @@
 import re
 import sys
 
-PRECEDENCE = ['ABORTED',
+PRECEDENCE = ['INACTIVE',
+              'ABORTED',
               'REVOKED',
               'SUCCESS',
               'FAILURE',
@@ -10,13 +11,11 @@ PRECEDENCE = ['ABORTED',
               'RECEIVED',
               'RETRY',
               'PENDING',
-              'CREATED',
-              'UNKNOWN',
-              '']
+              'CREATED']
 
 #: Hash lookup of PRECEDENCE to index
 PRECEDENCE_LOOKUP = dict(zip(PRECEDENCE, range(0, len(PRECEDENCE))))
-NONE_PRECEDENCE = PRECEDENCE_LOOKUP['UNKNOWN']
+NONE_PRECEDENCE = PRECEDENCE_LOOKUP['INACTIVE']
 
 
 def precedence(state):
@@ -36,7 +35,7 @@ def parse_info(info):
     progress, state and clean info
 
     Typical info object has some info at the root
-    level, such as images. But many 
+    level, such as images. But many
     """
     new_info = {}
 
@@ -88,7 +87,7 @@ def parse_info(info):
 def compare_states(*args, **kwargs):
     """Compare state and return highest state."""
     if len(args) == 0:
-        return "UNKNOWN"
+        return "INACTIVE"
     precs = [precedence(state) for state in args]
     if 'high' in kwargs:
         state = args[precs.index(min(precs))]
@@ -222,7 +221,8 @@ def delft3d_logparser(line):
                 match["progress"] is not None and
                 match["progress"] != ""
             ):
-                match['progress'] = format(float(match['progress']) / 100, '.2f')
+                match['progress'] = format(
+                    float(match['progress']) / 100, '.2f')
             # add default log level
             match['level'] = 'INFO'
             # add state
@@ -281,7 +281,8 @@ def python_logparser(line):
                 match["progress"] is not None and
                 match["progress"] != ""
             ):
-                match['progress'] = format(float(match['progress']) / 100, '.2f')
+                match['progress'] = format(
+                    float(match['progress']) / 100, '.2f')
         else:
             match = {"message": line, "level": "INFO",
                      "state": None, "progress": None}

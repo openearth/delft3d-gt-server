@@ -51,22 +51,25 @@ class StateTests(TestCase):
         # Aborted is higher than SUCCESS
         state_a = "SUCCESS"
         state_b = "ABORTED"
-        self.assertEqual(compare_states(state_a, state_b, high=True), "ABORTED")
+        self.assertEqual(
+            compare_states(state_a, state_b, high=True), "ABORTED")
 
-        # Revoked is higher than SUCCESS
-        state_a = "SUCCES"
+        # REVOKED is higher than SUCCESS
+        state_a = "SUCCESS"
         state_b = "REVOKED"
-        self.assertEqual(compare_states(state_a, state_b, high=True), "REVOKED")
+        self.assertEqual(
+            compare_states(state_a, state_b, high=True), "REVOKED")
 
         # SUCCESS is higher than PENDING
         state_a = "PENDING"
         state_b = "SUCCESS"
-        self.assertEqual(compare_states(state_a, state_b, high=True), "SUCCESS")
+        self.assertEqual(
+            compare_states(state_a, state_b, high=True), "SUCCESS")
 
         # SUCCESS is higher than PENDING, but we want lowest
         state_a = "PENDING"
         state_b = "SUCCESS"
         self.assertEqual(compare_states(state_a, state_b), "PENDING")
 
-        # No input gives us UNKNOWN
-        self.assertEqual(compare_states(), "UNKNOWN")
+        # No input gives us INACTIVE
+        self.assertEqual(compare_states(), "INACTIVE")
