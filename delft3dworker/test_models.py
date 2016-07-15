@@ -5,6 +5,7 @@ from mock import patch
 import os
 import zipfile
 
+
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
@@ -184,6 +185,8 @@ class SceneTestCase(TestCase):
         self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
         self.export = ['export/export.something']
 
+
+
     def test_after_publishing_rights_are_revoked(self):
         self.assertEqual(self.scene.shared, 'p')
         self.assertTrue(self.user_a.has_perm('view_scene', self.scene))
@@ -346,16 +349,17 @@ class SceneTestCase(TestCase):
         self.assertEqual(len(zf.namelist()), 1)
 
     @patch('delft3dworker.tasks.chainedtask.delay', autospec=True)
-    def test_start_scene(self, mocked_task_delay):
-        # mocked_task_delay.return_value = {"info": {}, 'id': 22, 'state': ""}
-        mocked_task_delay.return_value.task_id = 22
-        mocked_task_delay.return_value.state = "PROCESSING"
+    def test_start_scene(self, mocked_chainedtask):
+        # mockchainedtask.return_value = {"info": {}, 'id': '22', 'state': ""}
+        mocked_chainedtask.return_value.task_id = '22'
+        mocked_chainedtask.return_value.state = "PROCESSING"
+
         started = self.scene.start()
 
     @patch('delft3dworker.models.revoke_task', autospec=True)
     @patch('celery.contrib.abortable.AbortableAsyncResult', autospec=True)
-    def test_stop_scene(self, mocked_task_delay, mockedResult):
-        mocked_task_delay.return_value = {"info": {}, 'id': 22, 'state': ""}
+    def test_stop_scene(self, mocked_task_delay, MockedAbortableResult):
+        mocked_task_delay.return_value = {"info": {}, 'id': '22', 'state': ""}
         self.scene.state = "PROCESSING"
         aborted = self.scene.abort()
 

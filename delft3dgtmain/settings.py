@@ -137,8 +137,8 @@ LOGIN_REDIRECT_URL = '/'
 # Celery
 # ######
 
-BROKER_URL = 'redis://localhost'
-CELERY_RESULT_BACKEND = 'redis://localhost'
+BROKER_URL = 'redis://'
+CELERY_RESULT_BACKEND = 'redis://'
 
 # Disabling rate limits altogether is recommended if you don't have any tasks using them.
 # This is because the rate limit subsystem introduces quite a lot of
@@ -152,7 +152,7 @@ CELERY_TRACK_STARTED = True
 # Time (in seconds, or a timedelta object) for when after stored task tombstones will be deleted.
 # A built-in periodic task will delete the results after this time (celery.task.backend_cleanup).
 # A value of None or 0 means results will never expire (depending on backend specifications).
-# Default is to expire after 1 day.
+# Default is to expire after 1 day. This resulted in losing task status.
 CELERY_TASK_RESULT_EXPIRES = None
 
 # Timeout before task is retried. So when a task is queued but not executed
