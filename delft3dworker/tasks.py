@@ -504,7 +504,7 @@ def simulation(self, workingdir, parameters):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy_simulation(self, _, workingdir):
+def dummy_simulation(self, workingdir, parameters):
     """
     TODO Check if processing is still running
     before starting another one.
