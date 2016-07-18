@@ -578,17 +578,15 @@ class ScenarioSearchTestCase(TestCase):
         Test search options
         """
 
-        query = {'name': "DoesNotExist"}
-        self.assertEqual(len(self._request(query)), 0)
-        query = {'name': "estscenario"}
+        query = {'search': "DoesNotExist"}
         self.assertEqual(len(self._request(query)), 0)
 
-        query = {'name': "Testscenario 1"}
+        query = {'search': "1"}
         self.assertEqual(len(self._request(query)), 1)
-        query = {'name': "Testscenario 2"}
+        query = {'search': "2"}
         self.assertEqual(len(self._request(query)), 1)
 
-        query = {'search': "Tes"}
+        query = {'search': "es"}
         self.assertEqual(len(self._request(query)), 2)
 
     def test_search_name(self):

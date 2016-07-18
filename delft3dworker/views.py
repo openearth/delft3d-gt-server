@@ -51,6 +51,31 @@ from delft3dworker.serializers import UserSerializer
 # ################################### REST
 
 
+# ### Filters
+
+class ScenarioFilter(filters.FilterSet):
+    """
+    FilterSet to filter Scenarios on complex queries
+    Needs an exact match (!)
+    """
+    class Meta:
+        model = Scenario
+        fields = ['name', ]
+
+
+class SceneFilter(filters.FilterSet):
+    """
+    FilterSet to filter Scenes on complex queries, such as
+    template, traversing db relationships.
+    Needs an exact match (!)
+    """
+    scenario = django_filters.CharFilter(name="scenario__name")
+
+    class Meta:
+        model = Scene
+        fields = ['name', 'state', 'scenario']
+
+
 # ### ViewSets
 
 class ScenarioViewSet(viewsets.ModelViewSet):
@@ -73,7 +98,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
     # Our own custom filter to create custom search fields
     # this creates &name= among others
-    filter_backends = (filters.SearchFilter,)
+    filter_class = ScenarioFilter
     search_fields = ('$name', )
 
     queryset = Scenario.objects.none()
@@ -184,7 +209,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
         if len(template) > 0:
             queryset = queryset.filter(template__name__in=template)
 
-        return queryset
+        return queryset.order_by('name')
 
     def perform_create(self, serializer):
         if serializer.is_valid():
@@ -263,9 +288,13 @@ class SceneViewSet(viewsets.ModelViewSet):
     # Default order by name, so runs don't jump around
     ordering = ('id',)
 
+    # Our own custom filter to create custom search fields
+    # this creates &template= among others
+    filter_class = SceneFilter
+
     # Searchfilter backend for field &search=
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('$name', )
+    # Filters on fields below beginning with value (^)
+    search_fields = ('$name',)
 
     # Permissions backend which we could use in filter
     permission_classes = (permissions.IsAuthenticated,
@@ -401,7 +430,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         # self.queryset = queryset
 
-        return queryset
+        return queryset.order_by('name')
 
     @detail_route(methods=["put"])  # denied after publish to company/world
     def start(self, request, pk=None):
