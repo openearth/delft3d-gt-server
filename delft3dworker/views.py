@@ -480,7 +480,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scene to world'})
 
-    @detail_route(methods=["post"])  # denied after publish to world
+    @detail_route(methods=["get"])
     def export(self, request, pk=None):
         scene = self.get_object()
 

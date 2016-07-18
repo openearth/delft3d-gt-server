@@ -255,18 +255,26 @@ class Scene(models.Model):
     # CONTROL METHODS
 
     def start(self, workflow="main"):
-
-        # Check if task is already start
-        if self.task_id != "":
+        # Check if task is already started (unless we're exporting)
+        if self.task_id != "" and workflow != "export":
             result = AbortableAsyncResult(self.task_id)
 
             # Find out state
             if result.state == "PENDING":
-                return {"error": "task already PENDING", "task_id": self.task_id}
+                return {
+                    "error": "task already PENDING",
+                    "task_id": self.task_id
+                }
             elif result.state == BUSYSTATE:
-                return {"error": "task already BUSY", "task_id": self.task_id}
+                return {
+                    "error": "task already BUSY",
+                    "task_id": self.task_id
+                }
             else:
-                return {"error": "task already STARTED", "task_id": self.task_id}
+                return {
+                    "error": "task already STARTED",
+                    "task_id": self.task_id
+                }
 
         # Task has not yet been started
         else:
