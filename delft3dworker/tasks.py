@@ -19,45 +19,30 @@ from docker import Client
 
 logger = get_task_logger(__name__)
 
+COMMAND_FRINGE = """/bin/ffmpeg -framerate 13 -pattern_type glob -i
+ '{}/delta_fringe_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2"
+ -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k
+ -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')'
+ -y {}/delta_fringe.mp4"""
+
+COMMAND_CHANNEL = """/bin/ffmpeg -framerate 13 -pattern_type glob -i
+ '{}/channel_network_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2"
+ -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k
+ -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')'
+ -y {}/channel_network.mp4"""
+
+COMMAND_SEDIMENT = """/bin/ffmpeg -framerate 13 -pattern_type glob -i
+ '{}/sediment_fraction_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2"
+ -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k
+ -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')'
+ -y {}/sediment_fraction.mp4"""
+
 
 @shared_task(bind=True, base=AbortableTask)
 def chainedtask(self, parameters, workingdir, workflow):
-    """ Chained task which can be aborted. Contains model logic. """
-
-    # create folder
-    # uid = pwd.getpwnam('django')[2]
-    # gid = grp.getgrnam('docker')[2]
-    # if not os.path.exists(workingdir):
-    #     os.makedirs(workingdir, 2775)
-    #     os.chown(workingdir, uid, gid)
-    #     print("Made workingdir")
-
-    # create ini file for containers
-    # in 2.7 ConfigParser is a bit stupid
-    # in 3.x configparser has .read_dict()
-    # config = ConfigParser.SafeConfigParser()
-    # for section in parameters:
-    #     if not config.has_section(section):
-    #         config.add_section(section)
-    #     for key, value in parameters[section].items():
-    #         if not config.has_option(section, key):
-    #             config.set(*map(str, [section, key, value]))
-
-    # with open(os.path.join(workingdir, 'input.ini'), z'w') as f:
-    #     config.write(f)  # Yes, the ConfigParser writes to f
-
-    # define chain and results
-    # # dummy chains:
-    # if workflow == "export":
-    #     chain = dummy.s() | dummy_export.s(workingdir)
-    # elif workflow == "main":
-    #     chain = (
-    #         dummy_preprocess.s(workingdir, "")
-    #     ) | (
-    #         dummy_simulation.s(workingdir)
-    #     )
-    # else:
-    #     logging.info("workflow not available")
+    """
+    Chained task which can be aborted. Contains model logic.
+    """
 
     # real chains:
     if workflow == "export":
@@ -150,7 +135,9 @@ def chainedtask(self, parameters, workingdir, workflow):
         running = not chain_result.ready()
 
     logger.info("Finishing chain")
-    if workflow == 'export' and os.path.exists(os.path.join(workingdir, 'export', 'trim-a.grdecl')):
+    if workflow == 'export' and os.path.exists(
+        os.path.join(workingdir, 'export', 'trim-a.grdecl')
+    ):
         results['export'] = True
     results['result'] = "Finished"
     self.update_state(state="SUCCESS", meta=results)
@@ -165,28 +152,11 @@ def preprocess(self, workingdir, _):
     # # create folders
     inputfolder = os.path.join(workingdir, 'preprocess')
     outputfolder = os.path.join(workingdir, 'simulation')
-    # os.makedirs(inputfolder)
-    # os.makedirs(outputfolder)
-
-    # uid = grp.getgrnam('docker')[2]
-    # gid = grp.getgrnam('django')[2]
-    # os.chown(inputfolder, uid, gid)
-    # os.chown(outputfolder, uid, gid)
-
-    # os.chmod(inputfolder, 02775)
-    # os.chmod(outputfolder, 02775)
-
-    # copy input.ini
-    # copyfile(
-    #     os.path.join(workingdir, 'input.ini'),
-    #     os.path.join(inputfolder, 'input.ini')
-    # )
 
     # create Preprocess container
     volumes = ['{0}:/data/output:z'.format(outputfolder),
                '{0}:/data/input:ro'.format(inputfolder)]
 
-    # command = "python dummy_create_config.py {}".format(10)  # old dummy
     command = "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"
 
     preprocess_container = DockerClient(
@@ -300,13 +270,6 @@ def simulation(self, _, workingdir):
     # create folders
     inputfolder = os.path.join(workingdir, 'simulation')
     outputfolder = os.path.join(workingdir, 'process')
-    # os.makedirs(outputfolder)
-
-    # uid = grp.getgrnam('docker')[2]
-    # gid = grp.getgrnam('django')[2]
-    # os.chown(outputfolder, uid, gid)
-
-    # os.chmod(outputfolder, 02775)
 
     # create Sim container
     volumes = ['{0}:/data'.format(inputfolder)]
@@ -363,15 +326,13 @@ def simulation(self, _, workingdir):
             if simlog.changed() and not processing_container.running():
                 # Create movie which can be zipped later
                 directory = os.path.join(workingdir, 'process')
-                command_fringe = """/bin/ffmpeg -framerate 13 -pattern_type glob -i '{}/delta_fringe_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/delta_fringe.mp4""".format(
-                    directory, directory
-                )
-                command_channel = """/bin/ffmpeg -framerate 13 -pattern_type glob -i '{}/channel_network_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/channel_network.mp4""".format(
-                    directory, directory
-                )
-                command_sediment = """/bin/ffmpeg -framerate 13 -pattern_type glob -i '{}/sediment_fraction_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/sediment_fraction.mp4""".format(
-                    directory, directory
-                )
+
+                command_fringe = COMMAND_FRINGE.format(
+                    directory, directory)
+                command_channel = COMMAND_CHANNEL.format(
+                    directory, directory)
+                command_sediment = COMMAND_SEDIMENT.format(
+                    directory, directory)
 
                 command_line_process = subprocess.Popen(
                     shlex.split(command_fringe),
@@ -436,7 +397,8 @@ def dummy_simulation(self, _, workingdir):
     TODO Check if processing is still running
     before starting another one.
     TODO Check how we want to log processing
-    docker run -v /data/container/files/ea8b3912-dedc-4da5-aff8-2a9f3591586e/simulation/:/data -t dummy_preprocessing python dummy_netcdf_output.py
+    docker run -v /data/container/files/ea8b3912-dedc-4da5-aff8-2a9f3591586e
+     /simulation/:/data -t dummy_preprocessing python dummy_netcdf_output.py
     """
     # create folders
     inputfolder = os.path.join(workingdir, 'simulation')
@@ -524,13 +486,6 @@ def dummy_simulation(self, _, workingdir):
 def postprocess(self, _, workingdir):
     # create folders
     outputfolder = os.path.join(workingdir, 'postprocess')
-    # os.makedirs(outputfolder)
-
-    # uid = grp.getgrnam('docker')[2]
-    # gid = grp.getgrnam('django')[2]
-    # os.chown(outputfolder, uid, gid)
-
-    # os.chmod(outputfolder, 02775)
 
     # create Postprocess container
     volumes = ['{0}:/data/input:ro'.format(workingdir),
@@ -697,9 +652,8 @@ def dummy_export(self, _, workingdir):
 @shared_task(bind=True, base=AbortableTask)
 def dummy(self):
     """
-    Chained task which can be aborted. This task is a dummy task to maintain chain functionality.
-    An export chain with a single task is not allowed.
-
+    Chained task which can be aborted. This task is a dummy task to maintain
+    chain functionality. An export chain with a single task is not allowed.
     """
     return
 
