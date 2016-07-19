@@ -51,7 +51,9 @@ class ApiAccessTestCase(TestCase):
         a = Scene.objects.create(
             name='Test Scene 1',
             owner=self.user_foo,
-            parameters={'a': {'values': 2}},
+            parameters={
+                'a': {'values': 2},
+            },
             state='SUCCESS',
             shared='p',
         )
@@ -59,7 +61,9 @@ class ApiAccessTestCase(TestCase):
         b = Scene.objects.create(
             name='Test Scene 2',
             owner=self.user_foo,
-            parameters={'a': {'values': 3}},
+            parameters={
+                'a': {'values': 3},
+            },
             state='SUCCESS',
             shared='p',
         )
@@ -323,7 +327,10 @@ class SceneSearchTestCase(TestCase):
         self.scene_1 = Scene.objects.create(
             name='Testscene 1',
             owner=self.user_bar,
-            parameters={'a': {'value': 2}},
+            parameters={
+                'a': {'value': 2},
+                'hack': {'value': 'mud'},
+            },
             state='SUCCESS',
             shared='p',
         )
@@ -331,7 +338,10 @@ class SceneSearchTestCase(TestCase):
         self.scene_2 = Scene.objects.create(
             name='Testscene 2',
             owner=self.user_bar,
-            parameters={'a': {'value': 3}},
+            parameters={
+                'a': {'value': 3},
+                'hack': {'value': 'grease'},
+            },
             state='SUCCESS',
             shared='p',
         )
@@ -393,6 +403,28 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_parameter_e)), 1)
         self.assertEqual(len(self._request(search_query_parameter_f)), 2)
         self.assertEqual(len(self._request(search_query_parameter_g)), 0)
+
+    def test_search_hack(self):
+        """
+        Test search options
+        """
+
+        query = {'parameter': "hack,no-dice"}
+        self.assertEqual(len(self._request(query)), 0)
+
+        query = {'parameter': "hack,mud"}
+        self.assertEqual(len(self._request(query)), 1)
+        query = {'parameter': "hack,grease"}
+        self.assertEqual(len(self._request(query)), 1)
+
+        query = {'parameter': "hack"}
+        self.assertEqual(len(self._request(query)), 2)
+
+        query = {'parameter': "hack,mud,grease"}
+        self.assertEqual(len(self._request(query)), 2)
+
+        query = {'parameter': "hack,mud,grease,more"}
+        self.assertEqual(len(self._request(query)), 2)
 
     def _request(self, query):
         url = reverse('scene-list')
@@ -532,15 +564,21 @@ class ScenarioSearchTestCase(TestCase):
         self.scenario_1 = Scenario.objects.create(
             name='Testscenario 1',
             owner=self.user_bar,
-            parameters={'a': {'values': [2, 3]}},
-            scenes_parameters=[{'a': {'value': 2}}, {'a': {'value': 3}}],
+            parameters={
+                'a': {'values': [2, 3]},
+                'hack': {'values': ['sand-clay', 'mud']},
+            },
+            scenes_parameters=[],
             template=self.template,
         )
         self.scenario_2 = Scenario.objects.create(
             name='Testscenario 2',
             owner=self.user_bar,
-            parameters={'a': {'values': [3, 4]}},
-            scenes_parameters=[{'a': {'value': 3}}, {'a': {'value': 4}}],
+            parameters={
+                'a': {'values': [3, 4]},
+                'hack': {'values': ['sand-clay', 'grease']},
+            },
+            scenes_parameters=[],
             template=self.template,
         )
         self.scenario_3 = Scenario.objects.create(
@@ -626,6 +664,8 @@ class ScenarioSearchTestCase(TestCase):
 
         query = {'parameter': "a"}
         self.assertEqual(len(self._request(query)), 3)
+        query = {'parameter': "ha"}
+        self.assertEqual(len(self._request(query)), 3)
 
     def test_search_param_val(self):
         """
@@ -671,6 +711,30 @@ class ScenarioSearchTestCase(TestCase):
         self.assertEqual(len(self._request(query)), 1)
 
         query = {'parameter': "a,1,5"}
+        self.assertEqual(len(self._request(query)), 2)
+
+    def test_search_hack(self):
+        """
+        Test search options
+        """
+
+        query = {'parameter': "hack,no-dice"}
+        self.assertEqual(len(self._request(query)), 0)
+
+        query = {'parameter': "hack,mud"}
+        self.assertEqual(len(self._request(query)), 1)
+        query = {'parameter': "hack,grease"}
+        self.assertEqual(len(self._request(query)), 1)
+
+        query = {'parameter': "hack"}
+        self.assertEqual(len(self._request(query)), 2)
+        query = {'parameter': "hack,sand-clay"}
+        self.assertEqual(len(self._request(query)), 2)
+
+        query = {'parameter': "hack,mud,grease"}
+        self.assertEqual(len(self._request(query)), 2)
+
+        query = {'parameter': "hack,mud,grease,more"}
         self.assertEqual(len(self._request(query)), 2)
 
     def _request(self, query):

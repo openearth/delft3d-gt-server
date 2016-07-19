@@ -115,6 +115,8 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             - parameter="parameter,value"
             # filters on key occurance and value between min & max
             - parameter="parameter,minvalue,maxvalue"
+
+            TODO: This method needs to be rewritten, badly
         """
         queryset = Scenario.objects.all()
 
@@ -224,37 +226,25 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                     if hack or len(p) > 3:
                         key = p[0]
                         values = p[1:]
+                        wanted = []
+
+                        queryset = queryset.filter(parameters__icontains=key)
+
                         for value in values:
 
                             # a blatant copy-paste of the above, because I
                             # cannot be bothered
 
-                            key, value = p
                             logging.info(
                                 "Lookup value for parameter {}".format(key))
 
-                            # Find integers or floats
-                            try:
-                                value = float(value)
-                            except ValueError:
-                                pass  # no float? no problem
-
-                            # Create json lookup
-                            # q = {key: {'value': value}}
-
-                            # Not yet possible to do json queries directly
-                            # Requires JSONField from Postgresql 9.4 and Django
-                            # 1.9 So we loop manually (bad performance!)
-                            wanted = []
-                            queryset = queryset.filter(
-                                parameters__icontains=key)
                             for scenario in queryset:
                                 for pval in scenario.parameters.get(
                                         key, {}).get('values', []):
                                     if value == pval:
                                         wanted.append(scenario.id)
 
-                            queryset = queryset.filter(pk__in=wanted)
+                        queryset = queryset.filter(pk__in=wanted)
 
             except Exception as e:
                 logging.exception(
@@ -384,6 +374,8 @@ class SceneViewSet(viewsets.ModelViewSet):
             - parameter="parameter,value"
             # filters on key occurance and value between min & max
             - parameter="parameter,minvalue,maxvalue"
+
+            TODO: This method needs to be rewritten, badly
         """
         queryset = Scene.objects.all()
         # self.queryset = queryset
@@ -392,6 +384,9 @@ class SceneViewSet(viewsets.ModelViewSet):
         parameters = self.request.query_params.getlist('parameter', [])
         template = self.request.query_params.getlist('template', [])
         shared = self.request.query_params.getlist('shared', [])
+
+        # explained later
+        hack = False
 
         if len(parameters) > 0:
             # Processing user input
@@ -449,24 +444,63 @@ class SceneViewSet(viewsets.ModelViewSet):
                             )
                         )
 
-                        # Find integers or floats
-                        minvalue = float(minvalue)
-                        maxvalue = float(maxvalue)
+                        try:
+                            # Find integers or floats
+                            minvalue = float(minvalue)
+                            maxvalue = float(maxvalue)
 
-                        # Create json lookup
-                        # q = {key: {'value': value}}
+                            # Create json lookup
+                            # q = {key: {'value': value}}
 
-                        # Not yet possible to do json queries directly
-                        # Requires JSONField from Postgresql 9.4 and Django 1.9
-                        # So we loop manually (bad performance!)
+                            # Not yet possible to do json queries directly
+                            # Requires JSONField from Postgresql 9.4 and Django
+                            # 1.9 So we loop manually (bad performance!)
+                            wanted = []
+                            queryset = queryset.filter(
+                                parameters__icontains=key)
+
+                            for scene in queryset:
+                                values = scene.parameters[key]['value']
+                                if minvalue <= values <= maxvalue:
+
+                                    wanted.append(scene.id)
+
+                            queryset = queryset.filter(pk__in=wanted)
+                        except ValueError:
+                            pass  # no floats? no results
+                            hack = True
+
+                    # The front-end is supposed to provide sediment
+                    # compositions as follows:
+                    #
+                    # ...?parameter=composition,sand-clay&parameter=composition,mud
+                    #
+                    # however, now it provides it as follows:
+                    #
+                    # ...?parameter=composition,sand-clay,mud
+                    #
+                    # which is not according to agreed API search calls, but
+                    # appearantly is very hard to implement without hardcoding
+                    # catches on the 'composition' parameter, and (sounds like)
+                    # hard to do in general, hence this hack:
+                    if hack or len(p) > 3:
+                        key = p[0]
+                        values = p[1:]
                         wanted = []
+
                         queryset = queryset.filter(parameters__icontains=key)
 
-                        for scene in queryset:
-                            values = scene.parameters[key]['value']
-                            if minvalue <= values <= maxvalue:
+                        for value in values:
 
-                                wanted.append(scene.id)
+                            # a blatant copy-paste of the above, because I
+                            # cannot be bothered
+
+                            logging.info(
+                                "Lookup value for parameter {}".format(key))
+
+                            for scene in queryset:
+                                if scene.parameters[key]['value'] == value:
+                                    wanted.append(scene.id)
 
                         queryset = queryset.filter(pk__in=wanted)
 
