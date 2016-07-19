@@ -42,7 +42,7 @@ COMMAND_SEDIMENT = """/bin/ffmpeg -framerate 13 -pattern_type glob -i
 
 
 @shared_task(bind=True, base=AbortableTask)
-def chainedtask(self, parameters, workingdir, workflow):
+def chainedtask(self, uuid, parameters, workingdir, workflow):
     """
     Chained task which can be aborted. Contains model logic.
     """
@@ -50,24 +50,25 @@ def chainedtask(self, parameters, workingdir, workflow):
     # real chains:
     if workflow == "export":
         chain = (
-            dummy.s(workingdir, parameters) |
-            export.s(workingdir, parameters)
+            dummy.s(uuid, workingdir, parameters) |
+            export.s(uuid, workingdir, parameters)
         )
     elif workflow == "main":
+
         chain = (
-            create_directory_layout.s(workingdir, parameters) |
-            preprocess.s(workingdir, parameters) |
-            simulation.s(workingdir, parameters)
+            create_directory_layout.s(uuid, workingdir, parameters) |
+            preprocess.s(uuid, workingdir, parameters) |
+            simulation.s(uuid, workingdir, parameters)
         )
     elif workflow == "dummy":
         chain = (
-            dummy_preprocess.s(workingdir, parameters) |
-            dummy_simulation.s(workingdir, parameters)
+            dummy_preprocess.s(uuid, workingdir, parameters) |
+            dummy_simulation.s(uuid, workingdir, parameters)
         )
     elif workflow == "dummy_export":
         chain = (
-            dummy.s(workingdir, parameters) |
-            dummy_export.s(workingdir, parameters)
+            dummy.s(uuid, workingdir, parameters) |
+            dummy_export.s(uuid, workingdir, parameters)
         )
     else:
         logging.error("workflow not available")
@@ -156,8 +157,10 @@ def chainedtask(self, parameters, workingdir, workflow):
 
     return results
 
+
 @shared_task(bind=True, base=AbortableTask)
-def create_directory_layout(self, workingdir, parameters):
+def create_directory_layout(self, uuid, workingdir, parameters):
+
     # create directory for scene
     if not os.path.exists(workingdir):
         os.makedirs(workingdir, 0o2775)
@@ -207,9 +210,8 @@ def create_directory_layout(self, workingdir, parameters):
     self.update_state(meta=state_meta)
 
 
-
 @shared_task(bind=True, base=AbortableTask)
-def preprocess(self, workingdir, parameters):
+def preprocess(self, _result_prev_chain_task, uuid, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -269,7 +271,7 @@ def preprocess(self, workingdir, parameters):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy_preprocess(self, workingdir, parameters):
+def dummy_preprocess(self, uuid, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -326,7 +328,7 @@ def dummy_preprocess(self, workingdir, parameters):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def simulation(self, workingdir, parameters):
+def simulation(self, _result_prev_chain_task, uuid, workingdir, parameters):
     """
     TODO Check if processing is still running
     before starting another one.
@@ -360,14 +362,14 @@ def simulation(self, workingdir, parameters):
         "/data/svn/scripts/visualisation/sediment_fraction_viz.py"
     ])
 
+    env = {"uuid": uuid}
+
     processing_container = DockerClient(
         settings.PROCESS_IMAGE_NAME,
         volumes,
         '',
         command,
-        environment = {
-            "uuid": parameters["uuid"]
-        }
+        environment=env
     )
 
     # start simulation
@@ -465,7 +467,8 @@ def simulation(self, workingdir, parameters):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy_simulation(self, workingdir, parameters):
+def dummy_simulation(
+        self, _result_prev_chain_task, uuid, workingdir, parameters):
     """
     TODO Check if processing is still running
     before starting another one.
@@ -557,7 +560,7 @@ def dummy_simulation(self, workingdir, parameters):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def postprocess(self, workingdir, parameters):
+def postprocess(self, _result_prev_chain_task, uuid, workingdir, parameters):
     # create folders
     outputfolder = os.path.join(workingdir, 'postprocess')
 
@@ -609,7 +612,7 @@ def postprocess(self, workingdir, parameters):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def export(self, workingdir, parameters):
+def export(self, _result_prev_chain_task, uuid, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -667,7 +670,7 @@ def export(self, workingdir, parameters):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy_export(self, workingdir, parameters):
+def dummy_export(self, _result_prev_chain_task, uuid, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -724,7 +727,7 @@ def dummy_export(self, workingdir, parameters):
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy(self, workingdir, parameters):
+def dummy(self, uuid, workingdir, parameters):
     """
     Chained task which can be aborted. This task is a dummy task to maintain
     chain functionality. An export chain with a single task is not allowed.

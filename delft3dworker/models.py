@@ -271,7 +271,7 @@ class Scene(models.Model):
         # Task has not yet been started
         else:
             result = chainedtask.delay(
-                self.parameters, self.workingdir, workflow)
+                str(self.suid), self.parameters, self.workingdir, workflow)
             self.task_id = result.task_id  # so we can't start again
 
             self._update_state_and_save()  # will save for us
