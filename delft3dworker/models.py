@@ -385,7 +385,8 @@ class Scene(models.Model):
             if self.parameters == "":
                 self.parameters = {"delft3d": self.info}
 
-            self.fileurl = os.path.join(settings.WORKER_FILEURL, self.suid, '')
+            self.fileurl = os.path.join(
+                settings.WORKER_FILEURL, str(self.suid), '')
 
             self.info["delta_fringe_images"] = {
                 "images": [],
@@ -459,7 +460,7 @@ class Scene(models.Model):
                 # Files written by root can't be deleted by django
                 logging.error("Failed to delete working directory")
 
-    def _update_state(self):
+    def _update_state_and_save(self):
         # only retrieve state if it has a task_id
         # (which means the task is started)
         if self.task_id != '':
