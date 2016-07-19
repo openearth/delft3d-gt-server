@@ -159,7 +159,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                         wanted = []
                         queryset = queryset.filter(parameters__icontains=key)
                         for scenario in queryset:
-                            for pval in scenario.parameters[key].get(
+                            for pval in scenario.parameters.get(key, {}).get(
                                     'values', []):
                                 if value == pval:
                                     wanted.append(scenario.id)
@@ -180,22 +180,28 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
                         # Make into integers or floats
                         # (no float values should throw exception)
-                        minvalue = float(minvalue)
-                        maxvalue = float(maxvalue)
+                        try:
+                            minvalue = float(minvalue)
+                            maxvalue = float(maxvalue)
 
-                        # Create json lookup
-                        # q = {key: {'value': value}}
+                            # Create json lookup
+                            # q = {key: {'value': value}}
 
-                        # Not yet possible to do json queries directly
-                        # Requires JSONField from Postgresql 9.4 and Django 1.9
-                        # So we loop manually (bad performance!)
-                        wanted = []
-                        queryset = queryset.filter(parameters__icontains=key)
-                        for scenario in queryset:
-                            for pval in scenario.parameters[key].get(
-                                    'values', []):
-                                if minvalue <= pval <= maxvalue:
-                                    wanted.append(scenario.id)
+                            # Not yet possible to do json queries directly
+                            # Requires JSONField from Postgresql 9.4 and Django
+                            # 1.9, So we loop manually (bad performance!)
+                            wanted = []
+                            queryset = queryset.filter(
+                                parameters__icontains=key)
+                            for scenario in queryset:
+                                for pval in scenario.parameters[key].get(
+                                        'values', []):
+                                    if minvalue <= pval <= maxvalue:
+                                        wanted.append(scenario.id)
+
+                        except ValueError:
+                            pass  # no floats? no results
+                            wanted = []
 
                         queryset = queryset.filter(pk__in=wanted)
 
