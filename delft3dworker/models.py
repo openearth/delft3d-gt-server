@@ -23,6 +23,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
+from django.utils.text import slugify
 
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_groups_with_perms
@@ -157,7 +158,7 @@ class Scenario(models.Model):
                 scene.publish_world(user)
 
     # INTERNALS
-    def _update_state(self):
+    def _update_state_and_save(self):
         # All states from its scenes
         states = [scene.state for scene in self.scene_set.all()]
         self.state = compare_states(*states)
@@ -236,7 +237,7 @@ class Scene(models.Model):
     parameters = JSONField(blank=True)  # {"dt":20}
     state = models.CharField(max_length=256, default="CREATED")
     progress = models.IntegerField(default=0)
-    task_id = models.CharField(max_length=256)
+    task_id = models.CharField(max_length=256, blank=True)
 
     # Please use FilePath Field
     workingdir = models.CharField(max_length=256)
@@ -255,8 +256,10 @@ class Scene(models.Model):
     # CONTROL METHODS
 
     def start(self, workflow="main"):
+
         # Check if task is already started (unless we're exporting)
         if self.task_id != "" and workflow != "export":
+
             result = AbortableAsyncResult(self.task_id)
 
             # Find out state
@@ -282,7 +285,7 @@ class Scene(models.Model):
                 self.parameters, self.workingdir, workflow)
             self.task_id = result.task_id  # so we can't start again
 
-            self._update_state()  # will save for us
+            self._update_state_and_save()  # will save for us
 
             return {"task_id": self.task_id, "scene_id": self.suid}
 
@@ -299,7 +302,8 @@ class Scene(models.Model):
             result.abort()
             self.state = "ABORTED"
 
-        self._update_state()  # will save for us
+        self.task_id = ""  # so we can start again
+        self._update_state_and_save()  # will save for us
 
         return {
             "task_id": self.task_id,
@@ -315,7 +319,7 @@ class Scene(models.Model):
         # from:
         # http://stackoverflow.com/questions/67454/serving-dynamically-generated-zip-archives-in-django
 
-        zip_filename = 'export.zip'
+        zip_filename = '{}.zip'.format(slugify(self.name))
 
         # Open BytesIO to grab in-memory ZIP contents
         # (be explicit about bytes)
@@ -508,7 +512,7 @@ class Scene(models.Model):
                 self.workingdir, 'process/' 'input.ini'))
         )
 
-    def _update_state(self):
+    def _update_state_and_save(self):
         # only retrieve state if it has a task_id
         # (which means the task is started)
         if self.task_id != '':
@@ -527,6 +531,7 @@ class Scene(models.Model):
                 processed = False
             self.info.update(info)
         else:
+            self.save()
             return self.state
 
         # Only check for new images

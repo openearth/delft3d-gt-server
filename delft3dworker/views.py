@@ -434,6 +434,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @detail_route(methods=["put"])  # denied after publish to company/world
     def start(self, request, pk=None):
+
         scene = self.get_object()
 
         if "workflow" in request.data:
