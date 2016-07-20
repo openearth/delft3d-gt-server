@@ -50,16 +50,6 @@
               }
             },
             {
-              "units": "min",
-              "id": "dt",
-              "type": "numeric",
-              "name": "Timestep",
-              "validators": {
-                "max": 20,
-                "min": 0.5
-              }
-            },
-            {
               "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
               "validators": {
                 "max": 2,
@@ -226,18 +216,6 @@
               "units": "days",
               "type": "numeric",
               "id": "simstoptime"
-            },
-            {
-              "name": "Timestep",
-              "default": 1,
-              "validators": {
-                "max": 20,
-                "required": true,
-                "min": 0.5
-              },
-              "units": "min",
-              "type": "numeric",
-              "id": "dt"
             },
             {
               "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
@@ -419,18 +397,6 @@
               "id": "simstoptime"
             },
             {
-              "name": "Timestep",
-              "default": 1,
-              "validators": {
-                "max": 20,
-                "required": true,
-                "min": 0.5
-              },
-              "units": "min",
-              "type": "numeric",
-              "id": "dt"
-            },
-            {
               "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
               "default": 1,
               "validators": {
@@ -553,5 +519,196 @@
     },
     "model": "delft3dworker.template",
     "pk": 51
+  },
+  {
+    "fields": {
+      "meta": {
+        "description": "A river dominated and tidal influenced delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
+        "creator": "fedor.baart@deltares.nl"
+      },
+      "sections": [
+        {
+          "variables": [
+            {
+              "default": "Test Basin Fill Scenario",
+              "type": "text",
+              "id": "name",
+              "name": "Name",
+              "validators": {
+                "required": true
+              }
+            },
+            {
+              "name": "Timestep",
+              "default": 2,
+              "validators": {
+                "max": 20,
+                "required": true,
+                "min": 0.5
+              },
+              "units": "min",
+              "type": "numeric",
+              "id": "dt"
+            },
+            {
+              "name": "Model Engine",
+              "default": "Delft3D Curvilinear",
+              "disabled": true,
+              "validators": {
+                "required": true
+              },
+              "type": "text",
+              "id": "engine"
+            },
+            {
+              "name": "Version",
+              "default": "v0.1",
+              "disabled": true,
+              "validators": {
+                "required": true
+              },
+              "type": "semver",
+              "id": "version"
+            }
+          ],
+          "name": "Scenario"
+        },
+        {
+          "variables": [
+            {
+              "name": "Stop time",
+              "default": 60,
+              "validators": {
+                "max": 160,
+                "required": true,
+                "min": 0
+              },
+              "units": "days",
+              "type": "numeric",
+              "id": "simstoptime"
+            },
+            {
+              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+              "default": 1,
+              "validators": {
+                "max": 2,
+                "required": true,
+                "min": 0.5
+              },
+              "units": "days",
+              "type": "numeric",
+              "id": "outputinterval",
+              "name": "Output timestep"
+            }
+          ],
+          "name": "Parameters"
+        },
+        {
+          "variables": [
+            {
+              "name": "Basin slope",
+              "default": 0.0143,
+              "validators": {
+                "max": 0.3,
+                "required": true,
+                "min": 0.01
+              },
+              "factor": true,
+              "units": "deg",
+              "type": "numeric",
+              "id": "basinslope"
+            },
+            {
+              "name": "River width",
+              "default": 300,
+              "validators": {
+                "max": 1000,
+                "required": true,
+                "min": 100
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "riverwidth"
+            }
+          ],
+          "name": "Geometry"
+        },
+        {
+          "variables": [
+            {
+              "name": "River discharge",
+              "default": 1000,
+              "validators": {
+                "max": 2000,
+                "required": true,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m³/s",
+              "type": "numeric",
+              "id": "riverdischarge"
+            },
+            {
+              "name": "Tidal amplitude",
+              "default": 1,
+              "validators": {
+                "max": 3,
+                "required": true,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "tidalamplitude"
+            }
+          ],
+          "name": "Forces"
+        },
+        {
+          "variables": [
+            {
+              "description": "Read <a href='more'>more</a> about the sediment composition clasess.",
+              "default": "medium-sand",
+              "id": "composition",
+              "validators": {},
+              "type": "select",
+              "options": [
+                {
+                  "text": "coarse-sand",
+                  "value": "coarse-sand"
+                },
+                {
+                  "text": "medium-sand",
+                  "value": "medium-sand"
+                },
+                {
+                  "text": "fine-sand",
+                  "value": "fine-sanday"
+                },
+                {
+                  "text": "coarse-silt",
+                  "value": "coarse-silt"
+                },
+                {
+                  "text": "medium-silt",
+                  "value": "medium-silt"
+                },
+                {
+                  "text": "fine-silt",
+                  "value": "fine-silt"
+                }
+              ],
+              "name": "Sediment classes"
+            }
+          ],
+          "name": "Sediment composition",
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='more'>more</a> about the sediment composition clasess."
+        }
+      ],
+      "name": "Basin fill"
+    },
+    "model": "delft3dworker.template",
+    "pk": 52
   }
 ]
