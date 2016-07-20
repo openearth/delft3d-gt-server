@@ -269,6 +269,8 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             ) else None
 
             if parameters:
+                # we're adding the template to the parameters
+                parameters['template'] = {'values': [instance.template.name]}
                 instance.load_settings(parameters)
                 instance.createscenes(self.request.user)
 
