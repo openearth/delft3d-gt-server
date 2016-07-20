@@ -118,6 +118,39 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             TODO: This method needs to be rewritten, badly
         """
+
+        template = Template.objects.all()[0]
+
+        # creates a scenario for grouping published runs under
+        company_scenario, created = Scenario.objects.get_or_create(
+            owner=self.request.user,
+            name="Shared with company",
+            defaults={'template': template},
+        )
+        if created:
+            assign_perm('add_scenario', self.request.user, company_scenario)
+            assign_perm('change_scenario', self.request.user, company_scenario)
+            assign_perm('delete_scenario', self.request.user, company_scenario)
+            assign_perm('view_scenario', self.request.user, company_scenario)
+        for scene in get_objects_for_user(
+                self.request.user, 'view_scene', Scene).filter(shared='c'):
+            scene.scenario.add(company_scenario)
+
+        # creates a scenario for grouping published runs under
+        world_scenario, created = Scenario.objects.get_or_create(
+            owner=self.request.user,
+            name="Shared with world",
+            defaults={'template': template},
+        )
+        if created:
+            assign_perm('add_scenario', self.request.user, world_scenario)
+            assign_perm('change_scenario', self.request.user, world_scenario)
+            assign_perm('delete_scenario', self.request.user, world_scenario)
+            assign_perm('view_scenario', self.request.user, world_scenario)
+        for scene in get_objects_for_user(
+                self.request.user, 'view_scene', Scene).filter(shared='w'):
+            scene.scenario.add(world_scenario)
+
         queryset = Scenario.objects.all()
 
         # Filter on parameter
@@ -125,7 +158,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
         template = self.request.query_params.getlist('template', [])
 
         # explained later
-        hack = False
+        temp_workaraound = False
 
         if len(parameters) > 0:
             # Processing user input
@@ -135,44 +168,8 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
                     p = parameter.split(',')
 
-                    # Key exist lookup
-                    if len(p) == 1:
-
-                        key = parameter
-                        logging.info("Lookup parameter {}".format(key))
-                        queryset = queryset.filter(parameters__icontains=key)
-
-                    # Key, value lookup
-                    elif len(p) == 2:
-
-                        key, value = p
-                        logging.info(
-                            "Lookup value for parameter {}".format(key))
-
-                        # Find integers or floats
-                        try:
-                            value = float(value)
-                        except ValueError:
-                            pass  # no float? no problem
-
-                        # Create json lookup
-                        # q = {key: {'value': value}}
-
-                        # Not yet possible to do json queries directly
-                        # Requires JSONField from Postgresql 9.4 and Django 1.9
-                        # So we loop manually (bad performance!)
-                        wanted = []
-                        queryset = queryset.filter(parameters__icontains=key)
-                        for scenario in queryset:
-                            for pval in scenario.parameters.get(key, {}).get(
-                                    'values', []):
-                                if value == pval:
-                                    wanted.append(scenario.id)
-
-                        queryset = queryset.filter(pk__in=wanted)
-
                     # Key, min, max lookup
-                    elif len(p) == 3:
+                    if len(p) == 3:
 
                         key, minvalue, maxvalue = p
                         logging.info(
@@ -196,19 +193,18 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                             # Requires JSONField from Postgresql 9.4 and Django
                             # 1.9, So we loop manually (bad performance!)
                             wanted = []
-                            queryset = queryset.filter(
-                                parameters__icontains=key)
                             for scenario in queryset:
-                                for pval in scenario.parameters[key].get(
-                                        'values', []):
-                                    if minvalue <= pval <= maxvalue:
+                                for pval in scenario.parameters.get(
+                                        key, {}).get('values', ['None']):
+                                    if (minvalue <= pval <= maxvalue) or (
+                                            pval == 'None'):
                                         wanted.append(scenario.id)
 
                             queryset = queryset.filter(pk__in=wanted)
 
                         except ValueError:
                             pass  # no floats? no results
-                            hack = True
+                            temp_workaraound = True
 
                     # The front-end is supposed to provide sediment
                     # compositions as follows:
@@ -219,16 +215,11 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                     #
                     # ...?parameter=composition,sand-clay,mud
                     #
-                    # which is not according to agreed API search calls, but
-                    # appearantly is very hard to implement without hardcoding
-                    # catches on the 'composition' parameter, and (sounds like)
-                    # hard to do in general, hence this hack:
-                    if hack or len(p) > 3:
+                    # hence this temp_workaraound:
+                    if temp_workaraound or len(p) > 3:
                         key = p[0]
                         values = p[1:]
                         wanted = []
-
-                        queryset = queryset.filter(parameters__icontains=key)
 
                         for value in values:
 
@@ -240,8 +231,8 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
                             for scenario in queryset:
                                 for pval in scenario.parameters.get(
-                                        key, {}).get('values', []):
-                                    if value == pval:
+                                        key, {}).get('values', ['None']):
+                                    if value == pval or pval == 'None':
                                         wanted.append(scenario.id)
 
                         queryset = queryset.filter(pk__in=wanted)
@@ -388,7 +379,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         shared = self.request.query_params.getlist('shared', [])
 
         # explained later
-        hack = False
+        temp_workaraound = False
 
         if len(parameters) > 0:
             # Processing user input
@@ -398,44 +389,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
                     p = parameter.split(',')
 
-                    # Key exist lookup
-                    if len(p) == 1:
-
-                        key = parameter
-                        logging.info("Lookup parameter {}".format(key))
-                        queryset = queryset.filter(parameters__icontains=key)
-
-                    # Key, value lookup
-                    elif len(p) == 2:
-
-                        key, value = p
-                        logging.info(
-                            "Lookup value for parameter {}".format(key))
-
-                        # Find integers or floats
-                        try:
-                            value = float(value)
-                        except:
-                            # could filter on string such as parameter = engine
-                            pass
-
-                        # Create json lookup
-                        # q = {key: {'value': value}}
-
-                        # Not yet possible to do json queries directly
-                        # Requires JSONField from Postgresql 9.4 and Django 1.9
-                        # So we loop manually (bad performance!)
-                        wanted = []
-                        queryset = queryset.filter(parameters__icontains=key)
-
-                        for scene in queryset:
-                            if scene.parameters[key]['value'] == value:
-                                wanted.append(scene.id)
-
-                        queryset = queryset.filter(pk__in=wanted)
-
                     # Key, min, max lookup
-                    elif len(p) == 3:
+                    if len(p) == 3:
 
                         key, minvalue, maxvalue = p
                         logging.info(
@@ -458,19 +413,17 @@ class SceneViewSet(viewsets.ModelViewSet):
                             # Requires JSONField from Postgresql 9.4 and Django
                             # 1.9 So we loop manually (bad performance!)
                             wanted = []
-                            queryset = queryset.filter(
-                                parameters__icontains=key)
-
                             for scene in queryset:
-                                values = scene.parameters[key]['value']
-                                if minvalue <= values <= maxvalue:
-
+                                value = scene.parameters.get(
+                                    key, {}).get('value', 'None')
+                                if (minvalue <= value <= maxvalue) or (
+                                        value == 'None'):
                                     wanted.append(scene.id)
 
                             queryset = queryset.filter(pk__in=wanted)
                         except ValueError:
                             pass  # no floats? no results
-                            hack = True
+                            temp_workaraound = True
 
                     # The front-end is supposed to provide sediment
                     # compositions as follows:
@@ -481,11 +434,8 @@ class SceneViewSet(viewsets.ModelViewSet):
                     #
                     # ...?parameter=composition,sand-clay,mud
                     #
-                    # which is not according to agreed API search calls, but
-                    # appearantly is very hard to implement without hardcoding
-                    # catches on the 'composition' parameter, and (sounds like)
-                    # hard to do in general, hence this hack:
-                    if hack or len(p) > 3:
+                    # hence this temp_workaraound:
+                    if temp_workaraound or len(p) > 3:
                         key = p[0]
                         values = p[1:]
                         wanted = []
@@ -501,7 +451,8 @@ class SceneViewSet(viewsets.ModelViewSet):
                                 "Lookup value for parameter {}".format(key))
 
                             for scene in queryset:
-                                if scene.parameters[key]['value'] == value:
+                                if scene.parameters.get(
+                                        key, {}).get('value', '') == value:
                                     wanted.append(scene.id)
 
                         queryset = queryset.filter(pk__in=wanted)
