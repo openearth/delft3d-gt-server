@@ -706,7 +706,7 @@
           "description": "Sediment can consist of a mixture of different classes. Read <a href='more'>more</a> about the sediment composition clasess."
         }
       ],
-      "name": "Basin fill"
+      "name": "Testing template"
     },
     "model": "delft3dworker.template",
     "pk": 52
