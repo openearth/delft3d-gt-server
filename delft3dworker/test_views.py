@@ -662,9 +662,10 @@ class ScenarioSearchTestCase(TestCase):
         query = {'parameter': "b"}
         self.assertEqual(len(self._request(query)), 0)
 
-        query = {'parameter': "a"}
-        self.assertEqual(len(self._request(query)), 3)
         query = {'parameter': "ha"}
+        self.assertEqual(len(self._request(query)), 2)
+
+        query = {'parameter': "a"}
         self.assertEqual(len(self._request(query)), 3)
 
     def test_search_param_val(self):
