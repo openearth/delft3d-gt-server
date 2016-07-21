@@ -121,12 +121,24 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
         template = Template.objects.all()[0]
 
-        # creates a scenario for grouping published runs under
-        company_scenario, created = Scenario.objects.get_or_create(
-            owner=self.request.user,
-            name="Shared with company",
-            defaults={'template': template},
-        )
+        # make scenario's to store shared scene's under
+        # TODO: make a better solution for this (this is obvious VIEW logic
+        # which is now solved in the MODEL)
+
+        try:
+            company_scenario, created = Scenario.objects.get_or_create(
+                owner=self.request.user,
+                name="Shared with company",
+                defaults={'template': template},
+            )
+        except Scenario.MultipleObjectsReturned:
+            multiple = Scenario.objects.filter(
+                owner=self.request.user, name="Shared with company")
+            company_scenario = multiple[0]
+            for superfluos in multiple[1:]:
+                superfluos.delete(True)
+            created = False
+
         if created:
             assign_perm('add_scenario', self.request.user, company_scenario)
             assign_perm('change_scenario', self.request.user, company_scenario)
@@ -136,12 +148,20 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                 self.request.user, 'view_scene', Scene).filter(shared='c'):
             scene.scenario.add(company_scenario)
 
-        # creates a scenario for grouping published runs under
-        world_scenario, created = Scenario.objects.get_or_create(
-            owner=self.request.user,
-            name="Shared with world",
-            defaults={'template': template},
-        )
+        try:
+            world_scenario, created = Scenario.objects.get_or_create(
+                owner=self.request.user,
+                name="Shared with world",
+                defaults={'template': template},
+            )
+        except Scenario.MultipleObjectsReturned:
+            multiple = Scenario.objects.filter(
+                owner=self.request.user, name="Shared with world")
+            world_scenario = multiple[0]
+            for superfluos in multiple[1:]:
+                superfluos.delete(True)
+            created = False
+
         if created:
             assign_perm('add_scenario', self.request.user, world_scenario)
             assign_perm('change_scenario', self.request.user, world_scenario)
@@ -150,6 +170,8 @@ class ScenarioViewSet(viewsets.ModelViewSet):
         for scene in get_objects_for_user(
                 self.request.user, 'view_scene', Scene).filter(shared='w'):
             scene.scenario.add(world_scenario)
+
+        # build queryset
 
         queryset = Scenario.objects.all()
 
