@@ -326,32 +326,45 @@ class Scene(models.Model):
             for f in files:
                 name, ext = os.path.splitext(f)
 
+                add = False
+
+                # Could be dynamic or tuple of extensions
+                if (
+                    'export_d3dinput' in options
+                ) and (
+                    root.endswith('simulation')
+                ) and (
+                    not f.startswith('TMP')
+                ) and (
+                    ext in ['.bcc', '.bch', '.bct', '.bnd', '.dep', '.enc',
+                            '.fil', '.grd', '.ini', '.mdf', '.mdw', '.mor',
+                            '.obs', '.sed', '.sh', '.tr1', '.url', '.xml']
+                ):
+                    add = True
+
+                # Could be dynamic or tuple of extensions
+                if (
+                    'export_d3doutput' in options
+                ) and (
+                    root.endswith('simulation')
+                ) and (
+                    not f.startswith('TMP')
+                ) and (
+                    ext in ['.dat', '.def', '.nc']
+                ):
+                    add = True
+
                 # Could be dynamic or tuple of extensions
                 if (
                     'export_images' in options
                 ) and (
                     ext in ['.png', '.jpg', '.gif']
                 ):
-                    abs_path = os.path.join(root, f)
-                    rel_path = os.path.relpath(abs_path, self.workingdir)
-                    zf.write(abs_path, rel_path)
-
-                if (
-                    'export_input' in options
-                ) and (
-                    "simulation" in root
-                ) and (
-                    name == 'a'
-                ):
-                    abs_path = os.path.join(root, f)
-                    rel_path = os.path.relpath(abs_path, self.workingdir)
-                    zf.write(abs_path, rel_path)
+                    add = True
 
                 if 'export_thirdparty' in options and (
                         'export' in root):
-                    abs_path = os.path.join(root, f)
-                    rel_path = os.path.relpath(abs_path, self.workingdir)
-                    zf.write(abs_path, rel_path)
+                    add = True
 
                 # Zip movie
                 if (
@@ -361,6 +374,9 @@ class Scene(models.Model):
                 ) and (
                     os.path.getsize(os.path.join(root, f)) > 0
                 ):
+                    add = True
+
+                if add:
                     abs_path = os.path.join(root, f)
                     rel_path = os.path.relpath(abs_path, self.workingdir)
                     zf.write(abs_path, rel_path)
