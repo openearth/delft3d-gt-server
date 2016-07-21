@@ -35,50 +35,69 @@ class DockerTest(TestCase):
 
 class TaskTest(TestCase):
 
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_dummy(self):
-    #     delay = dummy.delay()
-    #     self.assertTrue(delay.result is None)
+    def test_dummy(self):
+        parameters = ["a", os.getcwd(), {}]
+        delay = dummy.delay(*parameters)
+        self.assertTrue(delay.result is None)
 
     def getFalse(self):
         return False
 
     # Broken: Models don't create directories anymore, so this test fails
     # TODO: Fix these tests
-    # @patch('delft3dworker.tasks.chainedtask.app.control.inspect',
-    #        autospec=False, create=True)
-    # @patch('delft3dworker.tasks.DockerClient', autospec=True)
-    # def test_chainedtask(self, mockDockerClient, mockControl):
-    #     # Autospec cant do init
-    #     mockDockerClient.return_value.id = '1238761287361'
-    #     mockDockerClient.return_value.running = self.getFalse
+    @patch('delft3dworker.tasks.chainedtask.app.control.inspect',
+           autospec=False, create=True)
+    @patch('delft3dworker.tasks.DockerClient', autospec=True)
+    def test_chainedtask(self, mockDockerClient, mockControl):
+        # Autospec cant do init
+        mockDockerClient.return_value.id = '1238761287361'
+        mockDockerClient.return_value.running = self.getFalse
 
-    #     # No workflow given
-    #     parameters = ["a", {}, os.getcwd(), '']
-    #     delay = chainedtask.delay(*parameters)
-    #     self.assertTrue(delay.result is None)
+        # No workflow given
+        ini_parameters = {u'test':
+                              {u'1': u'a', u'2': u'b'}
+                          }
+        workdir = os.path.join(os.getcwd(), 'test_task')
+        parameters = ["a", ini_parameters, workdir, '']
+        delay = chainedtask.delay(*parameters)
+        self.assertTrue(delay.result is None)
 
-    #     # Export workflow
-    #     parameters = ["a", {}, os.getcwd(), 'export']
-    #     delay = chainedtask.delay(*parameters)
-    #     self.assertTrue("result" in delay.result)
-    #     self.assertTrue(delay.result['result'] == "Finished")
+        # Export workflow
+        ini_parameters = {u'test':
+                              {u'1': u'a', u'2': u'b'}
+                          }
+        workdir = os.path.join(os.getcwd(), 'test_task')
+        parameters = ["a", ini_parameters, workdir, 'main']
+        delay = chainedtask.delay(*parameters)
+        self.assertTrue("result" in delay.result)
+        self.assertTrue(delay.result['result'] == "Finished")
 
-    #     # Main workflow
-    #     parameters = ["a", {}, os.getcwd(), 'main']
-    #     delay = chainedtask.delay(*parameters)
-    #     self.assertTrue("result" in delay.result)
-    #     self.assertTrue(delay.result['result'] == "Finished")
+        # Main workflow
+        ini_parameters = {u'test':
+                              {u'1': u'a', u'2': u'b'}
+                          }
+        workdir = os.path.join(os.getcwd(), 'test_task')
+        parameters = ["a", ini_parameters, workdir, 'main']
+        delay = chainedtask.delay(*parameters)
+        self.assertTrue("result" in delay.result)
+        self.assertTrue(delay.result['result'] == "Finished")
 
-    #     # Dummy workflow
-    #     parameters = ["a", {}, os.getcwd(), 'dummy']
-    #     delay = chainedtask.delay(*parameters)
-    #     self.assertTrue("result" in delay.result)
-    #     self.assertTrue(delay.result['result'] == "Finished")
+        # Dummy workflow
+        ini_parameters = {u'test':
+                              {u'1': u'a', u'2': u'b'}
+                          }
+        workdir = os.path.join(os.getcwd(), 'test_task')
+        parameters = ["a", ini_parameters, workdir, 'main']
+        delay = chainedtask.delay(*parameters)
+        self.assertTrue("result" in delay.result)
+        self.assertTrue(delay.result['result'] == "Finished")
 
-    #     # Dummy export workflow
-    #     parameters = ["a", {}, os.getcwd(), 'dummy_export']
-    #     delay = chainedtask.delay(*parameters)
-    #     self.assertTrue("result" in delay.result)
-    #     self.assertTrue(delay.result['result'] == "Finished")
+        # Dummy export workflow
+        ini_parameters = {u'test':
+                              {u'1': u'a', u'2': u'b'}
+                          }
+        workdir = os.path.join(os.getcwd(), 'test_task')
+        parameters = ["a", ini_parameters, workdir, 'main']
+        delay = chainedtask.delay(*parameters)
+        self.assertTrue("result" in delay.result)
+        self.assertTrue(delay.result['result'] == "Finished")
