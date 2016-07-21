@@ -75,7 +75,7 @@ def chainedtask(self, uuid, parameters, workingdir, workflow):
         return
 
     chain_result = chain()
-    results = {'export': False}
+    state_meta = {'export': False}
 
     # main task loop
     running = True
@@ -95,14 +95,14 @@ def chainedtask(self, uuid, parameters, workingdir, workflow):
             leaf = chain_result
             while leaf:
                 leaf.revoke()
-                results[leaf.id] = {
+                state_meta[leaf.id] = {
                     "state": leaf.state,
                     "info": leaf.info
                 }
                 leaf = leaf.parent
-            results['result'] = "Revoked"
-            self.update_state(state="REVOKED", meta=results)
-            return results
+            state_meta['result'] = "Revoked"
+            self.update_state(state="REVOKED", meta=state_meta)
+            return state_meta
 
         # abort handling
         elif self.is_aborted():
@@ -112,27 +112,27 @@ def chainedtask(self, uuid, parameters, workingdir, workflow):
             while leaf:
                 if leaf.status == "PENDING":
                     leaf.revoke()
-                    results[leaf.id] = {
+                    state_meta[leaf.id] = {
                         "state": leaf.state,
                         "info": leaf.info
                     }
                 else:
                     AbortableAsyncResult(leaf.id).abort()
-                    results[leaf.id] = {
+                    state_meta[leaf.id] = {
                         "state": leaf.state,
                         "info": leaf.info
                     }
                 leaf = leaf.parent
-            results['result'] = "Aborted"
-            self.update_state(state="ABORTED", meta=results)
-            return results
+            state_meta['result'] = "Aborted"
+            self.update_state(state="ABORTED", meta=state_meta)
+            return state_meta
 
         # if no abort or revoke: update state
         else:
 
             leaf = chain_result
             while leaf:
-                results[leaf.id] = {
+                state_meta[leaf.id] = {
                     "state": leaf.state,
                     "info": leaf.info
                 }
@@ -140,7 +140,7 @@ def chainedtask(self, uuid, parameters, workingdir, workflow):
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
-                self.update_state(state="PROCESSING", meta=results)
+                self.update_state(state="PROCESSING", meta=state_meta)
 
         time.sleep(0.5)
 
@@ -151,11 +151,11 @@ def chainedtask(self, uuid, parameters, workingdir, workflow):
     if workflow == 'export' and os.path.exists(
         os.path.join(workingdir, 'export', 'trim-a.grdecl')
     ):
-        results['export'] = True
-    results['result'] = "Finished"
-    self.update_state(state="SUCCESS", meta=results)
+        state_meta['export'] = True
+    state_meta['result'] = "Finished"
 
-    return results
+    self.update_state(state="SUCCESS", meta=state_meta)
+    return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
@@ -207,7 +207,9 @@ def create_directory_layout(self, uuid, workingdir, parameters):
         "workingdir": workingdir,
         "directory_layout_created": True
     }
-    self.update_state(meta=state_meta)
+
+    self.update_state(state="SUCCESS", meta=state_meta)
+    return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
@@ -267,6 +269,7 @@ def preprocess(self, _result_prev_chain_task, uuid, workingdir, parameters):
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
@@ -324,6 +327,7 @@ def dummy_preprocess(self, uuid, workingdir, parameters):
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
@@ -463,6 +467,7 @@ def simulation(self, _result_prev_chain_task, uuid, workingdir, parameters):
     # simulation_container.delete()  # Doesn't work on NFS fs
     # processing_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
@@ -556,6 +561,7 @@ def dummy_simulation(
     # simulation_container.delete()  # Doesn't work on NFS fs
     # processing_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
@@ -608,6 +614,7 @@ def postprocess(self, _result_prev_chain_task, uuid, workingdir, parameters):
 
     # postprocessing_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
@@ -666,6 +673,7 @@ def export(self, _result_prev_chain_task, uuid, workingdir, parameters):
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
@@ -723,6 +731,7 @@ def dummy_export(self, _result_prev_chain_task, uuid, workingdir, parameters):
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
