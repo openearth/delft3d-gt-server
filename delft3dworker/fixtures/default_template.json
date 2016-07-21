@@ -1,14 +1,18 @@
 [
-   {
+  {
     "fields": {
       "templates": [
         {
           "name": "Basin fill",
-          "id": 3
+          "id": 50
         },
         {
           "name": "Basin fill with marine reworking",
-          "id": 4
+          "id": 51
+        },
+        {
+          "name": "Testing template",
+          "id": 52
         }
       ],
       "sections": [
@@ -21,18 +25,14 @@
               "name": "Name"
             },
             {
-              "disabled": true,
-              "id": "engine",
-              "type": "text",
-              "name": "Model Engine",
-              "validators": {}
-            },
-            {
-              "disabled": true,
-              "id": "version",
-              "type": "semver",
-              "name": "Version",
-              "validators": {}
+              "units": "min",
+              "id": "dt",
+              "type": "numeric",
+              "name": "Timestep",
+              "validators": {
+                "max": 20,
+                "min": 0.5
+              }
             }
           ],
           "name": "Scenario"
@@ -179,26 +179,6 @@
               "validators": {
                 "required": true
               }
-            },
-            {
-              "name": "Model Engine",
-              "default": "Delft3D Curvilinear",
-              "disabled": true,
-              "validators": {
-                "required": true
-              },
-              "type": "text",
-              "id": "engine"
-            },
-            {
-              "name": "Version",
-              "default": "v0.1",
-              "disabled": true,
-              "validators": {
-                "required": true
-              },
-              "type": "semver",
-              "id": "version"
             }
           ],
           "name": "Scenario"
@@ -358,26 +338,6 @@
               "validators": {
                 "required": true
               }
-            },
-            {
-              "name": "Model Engine",
-              "default": "Delft3D Curvilinear",
-              "disabled": true,
-              "validators": {
-                "required": true
-              },
-              "type": "text",
-              "id": "engine"
-            },
-            {
-              "name": "Version",
-              "default": "v0.1",
-              "disabled": true,
-              "validators": {
-                "required": true
-              },
-              "type": "semver",
-              "id": "version"
             }
           ],
           "name": "Scenario"
@@ -549,26 +509,6 @@
               "units": "min",
               "type": "numeric",
               "id": "dt"
-            },
-            {
-              "name": "Model Engine",
-              "default": "Delft3D Curvilinear",
-              "disabled": true,
-              "validators": {
-                "required": true
-              },
-              "type": "text",
-              "id": "engine"
-            },
-            {
-              "name": "Version",
-              "default": "v0.1",
-              "disabled": true,
-              "validators": {
-                "required": true
-              },
-              "type": "semver",
-              "id": "version"
             }
           ],
           "name": "Scenario"
