@@ -120,7 +120,7 @@
         {
           "variables": [
             {
-              "description": "Read <a href='more'>more</a> about the sediment composition clasess.",
+              "description": "Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
               "id": "composition",
               "validators": {},
               "type": "select",
@@ -154,7 +154,7 @@
             }
           ],
           "name": "Sediment composition",
-          "description": "Sediment can consist of a mixture of different classes. Read <a href='more'>more</a> about the sediment composition clasess."
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
         }
       ],
       "name": "MAIN"
@@ -278,7 +278,7 @@
         {
           "variables": [
             {
-              "description": "Read <a href='more'>more</a> about the sediment composition clasess.",
+              "description": "Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
               "default": "medium-sand",
               "id": "composition",
               "validators": {},
@@ -313,7 +313,7 @@
             }
           ],
           "name": "Sediment composition",
-          "description": "Sediment can consist of a mixture of different classes. Read <a href='more'>more</a> about the sediment composition clasess."
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
         }
       ],
       "name": "Basin fill"
@@ -437,7 +437,7 @@
         {
           "variables": [
             {
-              "description": "Read <a href='more'>more</a> about the sediment composition clasess.",
+              "description": "Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
               "default": "medium-sand",
               "id": "composition",
               "validators": {},
@@ -472,7 +472,7 @@
             }
           ],
           "name": "Sediment composition",
-          "description": "Sediment can consist of a mixture of different classes. Read <a href='more'>more</a> about the sediment composition clasess."
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
         }
       ],
       "name": "Basin fill with marine reworking"
@@ -608,7 +608,7 @@
         {
           "variables": [
             {
-              "description": "Read <a href='more'>more</a> about the sediment composition clasess.",
+              "description": "Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
               "default": "medium-sand",
               "id": "composition",
               "validators": {},
@@ -643,7 +643,7 @@
             }
           ],
           "name": "Sediment composition",
-          "description": "Sediment can consist of a mixture of different classes. Read <a href='more'>more</a> about the sediment composition clasess."
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
         }
       ],
       "name": "Testing template"

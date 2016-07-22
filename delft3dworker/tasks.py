@@ -152,9 +152,19 @@ def chainedtask(self, uuid, parameters, workingdir, workflow):
         os.path.join(workingdir, 'export', 'trim-a.grdecl')
     ):
         state_meta['export'] = True
-    state_meta['result'] = "Finished"
 
+    # update status one last time
+    leaf = chain_result
+    while leaf:
+        state_meta[leaf.id] = {
+            "state": leaf.state,
+            "info": leaf.info
+        }
+        leaf = leaf.parent
+    state_meta['result'] = "Finished"
     self.update_state(state="SUCCESS", meta=state_meta)
+
+    logger.info("Task 'chainedtask' finished (state=SUCCESS)")
     return state_meta
 
 
@@ -209,6 +219,7 @@ def create_directory_layout(self, uuid, workingdir, parameters):
     }
 
     self.update_state(state="SUCCESS", meta=state_meta)
+    logger.info("Task 'create_directory_layout' finished (state=SUCCESS)")
     return state_meta
 
 
@@ -270,6 +281,7 @@ def preprocess(self, _result_prev_chain_task, uuid, workingdir, parameters):
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
     self.update_state(state="SUCCESS", meta=state_meta)
+    logger.info("Task 'preprocess' finished (state=SUCCESS)")
     return state_meta
 
 
@@ -328,6 +340,7 @@ def dummy_preprocess(self, uuid, workingdir, parameters):
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
     self.update_state(state="SUCCESS", meta=state_meta)
+    logger.info("Task 'dummy_preprocess' finished (state=SUCCESS)")
     return state_meta
 
 
@@ -468,6 +481,7 @@ def simulation(self, _result_prev_chain_task, uuid, workingdir, parameters):
     # processing_container.delete()  # Doesn't work on NFS fs
 
     self.update_state(state="SUCCESS", meta=state_meta)
+    logger.info("Task 'simulation' finished (state=SUCCESS)")
     return state_meta
 
 
@@ -562,6 +576,7 @@ def dummy_simulation(
     # processing_container.delete()  # Doesn't work on NFS fs
 
     self.update_state(state="SUCCESS", meta=state_meta)
+    logger.info("Task 'dummy_simulation' finished (state=SUCCESS)")
     return state_meta
 
 
@@ -615,6 +630,7 @@ def postprocess(self, _result_prev_chain_task, uuid, workingdir, parameters):
     # postprocessing_container.delete()  # Doesn't work on NFS fs
 
     self.update_state(state="SUCCESS", meta=state_meta)
+    logger.info("Task 'postprocess' finished (state=SUCCESS)")
     return state_meta
 
 
@@ -674,6 +690,7 @@ def export(self, _result_prev_chain_task, uuid, workingdir, parameters):
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
     self.update_state(state="SUCCESS", meta=state_meta)
+    logger.info("Task 'export' finished (state=SUCCESS)")
     return state_meta
 
 
@@ -732,6 +749,7 @@ def dummy_export(self, _result_prev_chain_task, uuid, workingdir, parameters):
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
     self.update_state(state="SUCCESS", meta=state_meta)
+    logger.info("Task 'dummy_export' finished (state=SUCCESS)")
     return state_meta
 
 
@@ -741,10 +759,12 @@ def dummy(self, uuid, workingdir, parameters):
     Chained task which can be aborted. This task is a dummy task to maintain
     chain functionality. An export chain with a single task is not allowed.
     """
-    return
+    self.update_state(state="SUCCESS", meta={})
+    logger.info("Task 'dummy' finished (state=SUCCESS)")
+    return {}
+
 
 # DockerClient
-
 
 class DockerClient():
 
