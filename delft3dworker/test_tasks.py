@@ -67,7 +67,7 @@ class TaskTest(TestCase):
                               {u'1': u'a', u'2': u'b'}
                           }
         workdir = os.path.join(os.getcwd(), 'test_task')
-        parameters = ["a", ini_parameters, workdir, 'main']
+        parameters = ["a", ini_parameters, workdir, 'export']
         delay = chainedtask.delay(*parameters)
         self.assertTrue("result" in delay.result)
         self.assertTrue(delay.result['result'] == "Finished")
@@ -87,7 +87,7 @@ class TaskTest(TestCase):
                               {u'1': u'a', u'2': u'b'}
                           }
         workdir = os.path.join(os.getcwd(), 'test_task')
-        parameters = ["a", ini_parameters, workdir, 'main']
+        parameters = ["a", ini_parameters, workdir, 'dummy']
         delay = chainedtask.delay(*parameters)
         self.assertTrue("result" in delay.result)
         self.assertTrue(delay.result['result'] == "Finished")
@@ -97,7 +97,7 @@ class TaskTest(TestCase):
                               {u'1': u'a', u'2': u'b'}
                           }
         workdir = os.path.join(os.getcwd(), 'test_task')
-        parameters = ["a", ini_parameters, workdir, 'main']
+        parameters = ["a", ini_parameters, workdir, 'dummy_export']
         delay = chainedtask.delay(*parameters)
         self.assertTrue("result" in delay.result)
         self.assertTrue(delay.result['result'] == "Finished")
