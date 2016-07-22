@@ -84,7 +84,8 @@ class ScenarioSerializer(serializers.ModelSerializer):
     """
 
     # here we will write custom serialization and validation methods
-    state = serializers.CharField(source='_update_state', read_only=True)
+    state = serializers.CharField(
+        source='_update_state_and_save', read_only=True)
 
     owner_url = serializers.HyperlinkedRelatedField(
         read_only=True, view_name='user-detail', source='owner')
