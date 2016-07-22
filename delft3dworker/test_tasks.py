@@ -38,7 +38,7 @@ class TaskTest(TestCase):
     def test_dummy(self):
         parameters = ["a", os.getcwd(), {}]
         delay = dummy.delay(*parameters)
-        self.assertTrue(delay.result is None)
+        self.assertEqual(delay.result, {})
 
     def getFalse(self):
         return False
@@ -55,7 +55,7 @@ class TaskTest(TestCase):
 
         # No workflow given
         ini_parameters = {u'test':
-                              {u'1': u'a', u'2': u'b'}
+                          {u'1': u'a', u'2': u'b'}
                           }
         workdir = os.path.join(os.getcwd(), 'test_task')
         parameters = ["a", ini_parameters, workdir, '']
@@ -64,7 +64,7 @@ class TaskTest(TestCase):
 
         # Export workflow
         ini_parameters = {u'test':
-                              {u'1': u'a', u'2': u'b'}
+                          {u'1': u'a', u'2': u'b'}
                           }
         workdir = os.path.join(os.getcwd(), 'test_task')
         parameters = ["a", ini_parameters, workdir, 'export']
@@ -74,7 +74,7 @@ class TaskTest(TestCase):
 
         # Main workflow
         ini_parameters = {u'test':
-                              {u'1': u'a', u'2': u'b'}
+                          {u'1': u'a', u'2': u'b'}
                           }
         workdir = os.path.join(os.getcwd(), 'test_task')
         parameters = ["a", ini_parameters, workdir, 'main']
@@ -84,7 +84,7 @@ class TaskTest(TestCase):
 
         # Dummy workflow
         ini_parameters = {u'test':
-                              {u'1': u'a', u'2': u'b'}
+                          {u'1': u'a', u'2': u'b'}
                           }
         workdir = os.path.join(os.getcwd(), 'test_task')
         parameters = ["a", ini_parameters, workdir, 'dummy']
@@ -94,7 +94,7 @@ class TaskTest(TestCase):
 
         # Dummy export workflow
         ini_parameters = {u'test':
-                              {u'1': u'a', u'2': u'b'}
+                          {u'1': u'a', u'2': u'b'}
                           }
         workdir = os.path.join(os.getcwd(), 'test_task')
         parameters = ["a", ini_parameters, workdir, 'dummy_export']
