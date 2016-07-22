@@ -315,7 +315,7 @@ class Scene(models.Model):
         stream = io.BytesIO()
 
         # The zip compressor
-        zf = zipfile.ZipFile(stream, "w")
+        zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
 
         # Add files here.
         # If you run out of memory you have 2 options:
