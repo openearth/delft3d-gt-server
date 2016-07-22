@@ -1,41 +1,184 @@
 [
   {
     "fields": {
+      "templates": [
+        {
+          "name": "Basin fill",
+          "id": 50
+        },
+        {
+          "name": "Basin fill with marine reworking",
+          "id": 51
+        },
+        {
+          "name": "Testing template",
+          "id": 52
+        }
+      ],
+      "sections": [
+        {
+          "variables": [
+            {
+              "validators": {},
+              "type": "text",
+              "id": "name",
+              "name": "Name"
+            },
+            {
+              "units": "min",
+              "id": "dt",
+              "type": "numeric",
+              "name": "Timestep",
+              "validators": {
+                "max": 20,
+                "min": 0.5
+              }
+            }
+          ],
+          "name": "Scenario"
+        },
+        {
+          "variables": [
+            {
+              "units": "days",
+              "id": "simstoptime",
+              "type": "numeric",
+              "name": "Stop time",
+              "validators": {
+                "max": 160,
+                "min": 0
+              }
+            },
+            {
+              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+              "validators": {
+                "max": 2,
+                "min": 0.5
+              },
+              "units": "days",
+              "type": "numeric",
+              "id": "outputinterval",
+              "name": "Output timestep"
+            }
+          ],
+          "name": "Parameters"
+        },
+        {
+          "variables": [
+            {
+              "name": "Basin slope",
+              "validators": {
+                "max": 0.3,
+                "min": 0.01
+              },
+              "factor": true,
+              "units": "deg",
+              "type": "numeric",
+              "id": "basinslope"
+            },
+            {
+              "name": "River width",
+              "validators": {
+                "max": 1000,
+                "min": 100
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "riverwidth"
+            }
+          ],
+          "name": "Geometry"
+        },
+        {
+          "variables": [
+            {
+              "name": "River discharge",
+              "validators": {
+                "max": 2000,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m³/s",
+              "type": "numeric",
+              "id": "riverdischarge"
+            },
+            {
+              "name": "Tidal amplitude",
+              "validators": {
+                "max": 3,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "tidalamplitude"
+            }
+          ],
+          "name": "Forces"
+        },
+        {
+          "variables": [
+            {
+              "description": "Read <a href='more'>more</a> about the sediment composition clasess.",
+              "id": "composition",
+              "validators": {},
+              "type": "select",
+              "options": [
+                {
+                  "text": "coarse-sand",
+                  "value": "coarse-sand"
+                },
+                {
+                  "text": "medium-sand",
+                  "value": "medium-sand"
+                },
+                {
+                  "text": "fine-sand",
+                  "value": "fine-sanday"
+                },
+                {
+                  "text": "coarse-silt",
+                  "value": "coarse-silt"
+                },
+                {
+                  "text": "medium-silt",
+                  "value": "medium-silt"
+                },
+                {
+                  "text": "fine-silt",
+                  "value": "fine-silt"
+                }
+              ],
+              "name": "Sediment classes"
+            }
+          ],
+          "name": "Sediment composition",
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='more'>more</a> about the sediment composition clasess."
+        }
+      ],
+      "name": "MAIN"
+    },
+    "model": "delft3dworker.searchform",
+    "pk": 1
+  },
+  {
+    "fields": {
       "meta": {
-        "description": "A river or tide dominated delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
+        "description": "A river dominated and tidal influenced delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
         "creator": "fedor.baart@deltares.nl"
       },
       "sections": [
         {
           "variables": [
             {
-              "default": "New Delta Plain Scenario ",
+              "default": "Basin Fill Scenario",
               "type": "text",
               "id": "name",
               "name": "Name",
               "validators": {
                 "required": true
               }
-            },
-            {
-              "name": "Model Engine",
-              "default": "Delft3D Curvilinear",
-              "disabled": true,
-              "validators": {
-                "required": true
-              },
-              "type": "text",
-              "id": "engine"
-            },
-            {
-              "name": "Version",
-              "default": "v0.1",
-              "disabled": true,
-              "validators": {
-                "required": true
-              },
-              "type": "semver",
-              "id": "version"
             }
           ],
           "name": "Scenario"
@@ -53,18 +196,6 @@
               "units": "days",
               "type": "numeric",
               "id": "simstoptime"
-            },
-            {
-              "name": "Timestep",
-              "default": 1,
-              "validators": {
-                "max": 20,
-                "required": true,
-                "min": 0.5
-              },
-              "units": "min",
-              "type": "numeric",
-              "id": "dt"
             },
             {
               "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
@@ -145,76 +276,68 @@
           "name": "Forces"
         },
         {
-          "slider": {
-            "sum": 100,
-            "valid": true,
-            "steps": 10
-          },
           "variables": [
             {
-              "name": "Sand volumetric composition",
-              "default": 1,
+              "description": "Read <a href='more'>more</a> about the sediment composition clasess.",
+              "default": "medium-sand",
+              "id": "composition",
               "validators": {},
-              "units": "%",
-              "type": "slider",
-              "id": "sandvolcomposition"
-            },
-            {
-              "name": "Clay volumetric composition",
-              "default": 1,
-              "disabled": false,
-              "validators": {},
-              "units": "%",
-              "type": "slider",
-              "id": "clayvolcomposition"
+              "type": "select",
+              "options": [
+                {
+                  "text": "coarse-sand",
+                  "value": "coarse-sand"
+                },
+                {
+                  "text": "medium-sand",
+                  "value": "medium-sand"
+                },
+                {
+                  "text": "fine-sand",
+                  "value": "fine-sanday"
+                },
+                {
+                  "text": "coarse-silt",
+                  "value": "coarse-silt"
+                },
+                {
+                  "text": "medium-silt",
+                  "value": "medium-silt"
+                },
+                {
+                  "text": "fine-silt",
+                  "value": "fine-silt"
+                }
+              ],
+              "name": "Sediment classes"
             }
           ],
-          "name": "Initial substrate sediment composition"
+          "name": "Sediment composition",
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='more'>more</a> about the sediment composition clasess."
         }
       ],
-      "name": "Default (delta plain)"
+      "name": "Basin fill"
     },
     "model": "delft3dworker.template",
-    "pk": 1
+    "pk": 50
   },
   {
     "fields": {
       "meta": {
-        "description": "This scenario allows exploration of extreme values. This can be used to explore the limits of our boundary forcings.",
-        "authors": "Liang Li, Andrea Forzoni, Tijn Schmits",
-        "note": "This scenario creates 16 runs. Do not expect all of them to succeed because the combination of the forcing can be unrealistic."
+        "description": "A river or tide dominated delta with wind waves as a marine reworking force",
+        "creator": "liang.li@tudelft.nl"
       },
       "sections": [
         {
           "variables": [
             {
-              "default": "New Extremes Scenario",
+              "default": "Basin Fill with Marine Reworking Scenario",
               "type": "text",
               "id": "name",
               "name": "Name",
               "validators": {
                 "required": true
               }
-            },
-            {
-              "name": "Model Engine",
-              "default": "Delft3D Curvilinear",
-              "disabled": true,
-              "validators": {
-                "required": true
-              },
-              "type": "text",
-              "id": "engine"
-            },
-            {
-              "name": "Version",
-              "default": "v0.1",
-              "disabled": true,
-              "validators": {
-                "required": true
-              },
-              "type": "semver",
-              "id": "version"
             }
           ],
           "name": "Scenario"
@@ -232,18 +355,6 @@
               "units": "days",
               "type": "numeric",
               "id": "simstoptime"
-            },
-            {
-              "name": "Timestep",
-              "default": 1,
-              "validators": {
-                "max": 20,
-                "required": true,
-                "min": 0.5
-              },
-              "units": "min",
-              "type": "numeric",
-              "id": "dt"
             },
             {
               "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
@@ -265,7 +376,7 @@
           "variables": [
             {
               "name": "Basin slope",
-              "default": "0.01,0.3",
+              "default": 0.0143,
               "validators": {
                 "max": 0.3,
                 "required": true,
@@ -278,7 +389,7 @@
             },
             {
               "name": "River width",
-              "default": "100,1000",
+              "default": 300,
               "validators": {
                 "max": 1000,
                 "required": true,
@@ -296,7 +407,7 @@
           "variables": [
             {
               "name": "River discharge",
-              "default": "100,2000",
+              "default": 1000,
               "validators": {
                 "max": 2000,
                 "required": true,
@@ -309,7 +420,7 @@
             },
             {
               "name": "Tidal amplitude",
-              "default": "0,3",
+              "default": 1,
               "validators": {
                 "max": 3,
                 "required": true,
@@ -324,36 +435,220 @@
           "name": "Forces"
         },
         {
-          "slider": {
-            "sum": 100,
-            "valid": true,
-            "steps": 10
-          },
           "variables": [
             {
-              "name": "Sand volumetric composition",
-              "default": 1,
+              "description": "Read <a href='more'>more</a> about the sediment composition clasess.",
+              "default": "medium-sand",
+              "id": "composition",
               "validators": {},
-              "units": "%",
-              "type": "slider",
-              "id": "sandvolcomposition"
-            },
-            {
-              "name": "Clay volumetric composition",
-              "default": 1,
-              "disabled": false,
-              "validators": {},
-              "units": "%",
-              "type": "slider",
-              "id": "clayvolcomposition"
+              "type": "select",
+              "options": [
+                {
+                  "text": "coarse-sand",
+                  "value": "coarse-sand"
+                },
+                {
+                  "text": "medium-sand",
+                  "value": "medium-sand"
+                },
+                {
+                  "text": "fine-sand",
+                  "value": "fine-sanday"
+                },
+                {
+                  "text": "coarse-silt",
+                  "value": "coarse-silt"
+                },
+                {
+                  "text": "medium-silt",
+                  "value": "medium-silt"
+                },
+                {
+                  "text": "fine-silt",
+                  "value": "fine-silt"
+                }
+              ],
+              "name": "Sediment classes"
             }
           ],
-          "name": "Initial substrate sediment composition"
+          "name": "Sediment composition",
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='more'>more</a> about the sediment composition clasess."
         }
       ],
-      "name": "Extremes in Range Exploration Scenario"
+      "name": "Basin fill with marine reworking"
     },
     "model": "delft3dworker.template",
-    "pk": 2
+    "pk": 51
+  },
+  {
+    "fields": {
+      "meta": {
+        "description": "A river dominated and tidal influenced delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
+        "creator": "fedor.baart@deltares.nl"
+      },
+      "sections": [
+        {
+          "variables": [
+            {
+              "default": "Test Basin Fill Scenario",
+              "type": "text",
+              "id": "name",
+              "name": "Name",
+              "validators": {
+                "required": true
+              }
+            },
+            {
+              "name": "Timestep",
+              "default": 2,
+              "validators": {
+                "max": 20,
+                "required": true,
+                "min": 0.5
+              },
+              "units": "min",
+              "type": "numeric",
+              "id": "dt"
+            }
+          ],
+          "name": "Scenario"
+        },
+        {
+          "variables": [
+            {
+              "name": "Stop time",
+              "default": 60,
+              "validators": {
+                "max": 160,
+                "required": true,
+                "min": 0
+              },
+              "units": "days",
+              "type": "numeric",
+              "id": "simstoptime"
+            },
+            {
+              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+              "default": 1,
+              "validators": {
+                "max": 2,
+                "required": true,
+                "min": 0.5
+              },
+              "units": "days",
+              "type": "numeric",
+              "id": "outputinterval",
+              "name": "Output timestep"
+            }
+          ],
+          "name": "Parameters"
+        },
+        {
+          "variables": [
+            {
+              "name": "Basin slope",
+              "default": 0.0143,
+              "validators": {
+                "max": 0.3,
+                "required": true,
+                "min": 0.01
+              },
+              "factor": true,
+              "units": "deg",
+              "type": "numeric",
+              "id": "basinslope"
+            },
+            {
+              "name": "River width",
+              "default": 300,
+              "validators": {
+                "max": 1000,
+                "required": true,
+                "min": 100
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "riverwidth"
+            }
+          ],
+          "name": "Geometry"
+        },
+        {
+          "variables": [
+            {
+              "name": "River discharge",
+              "default": 1000,
+              "validators": {
+                "max": 2000,
+                "required": true,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m³/s",
+              "type": "numeric",
+              "id": "riverdischarge"
+            },
+            {
+              "name": "Tidal amplitude",
+              "default": 1,
+              "validators": {
+                "max": 3,
+                "required": true,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "tidalamplitude"
+            }
+          ],
+          "name": "Forces"
+        },
+        {
+          "variables": [
+            {
+              "description": "Read <a href='more'>more</a> about the sediment composition clasess.",
+              "default": "medium-sand",
+              "id": "composition",
+              "validators": {},
+              "type": "select",
+              "options": [
+                {
+                  "text": "coarse-sand",
+                  "value": "coarse-sand"
+                },
+                {
+                  "text": "medium-sand",
+                  "value": "medium-sand"
+                },
+                {
+                  "text": "fine-sand",
+                  "value": "fine-sanday"
+                },
+                {
+                  "text": "coarse-silt",
+                  "value": "coarse-silt"
+                },
+                {
+                  "text": "medium-silt",
+                  "value": "medium-silt"
+                },
+                {
+                  "text": "fine-silt",
+                  "value": "fine-silt"
+                }
+              ],
+              "name": "Sediment classes"
+            }
+          ],
+          "name": "Sediment composition",
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='more'>more</a> about the sediment composition clasess."
+        }
+      ],
+      "name": "Testing template"
+    },
+    "model": "delft3dworker.template",
+    "pk": 52
   }
 ]

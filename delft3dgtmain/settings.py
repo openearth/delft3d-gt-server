@@ -133,15 +133,46 @@ USE_TZ = True
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 
+# ######
 # Celery
+# ######
 
-BROKER_URL = 'redis://localhost'
-CELERY_RESULT_BACKEND = 'redis://localhost'
+BROKER_URL = 'redis://'
+CELERY_RESULT_BACKEND = 'redis://'
+
+# Disabling rate limits altogether is recommended if you don't have any tasks
+# using them. This is because the rate limit subsystem introduces quite a lot
+# of complexity.
+CELERY_DISABLE_RATE_LIMITS = True
+
+# If True the task will report its status as started when the task is
+# executed by a worker.
+CELERY_TRACK_STARTED = True
+
+# Time (in seconds, or a timedelta object) for when after stored task
+# tombstones will be deleted. A built-in periodic task will delete the results
+# after this time (celery.task.backend_cleanup). A value of None or 0 means
+# results will never expire (depending on backend specifications). Default is
+# to expire after 1 day. This resulted in losing task status.
+CELERY_TASK_RESULT_EXPIRES = None
+
+# Timeout before task is retried. So when a task is queued but not executed
+# for half a day (standard) the task is send again. This explains
+# many identical tasks running, in turn keeping many other tasks pending.
+# Timeout should be set to (at least) twice the maximum runtime of task
+BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 5184000}  # 60 days
+
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TIMEZONE = 'Europe/Amsterdam'
 CELERY_ENABLE_UTC = True
+
+# Worker specific settings, becomes important
+# with cloud workers, when there are multiple
+# workers for each queue.
+CELERY_ACKS_LATE = False
+CELERYD_PREFETCH_MULTIPLIER = 1
 
 WORKER_FILEURL = '/files'
 
@@ -184,33 +215,30 @@ if 'test' in sys.argv:
         }
     }
 
+    # Debug on running tests
+    DEBUG = True
+
     # BROKER_BACKEND='memory'
     CELERY_RESULT_BACKEND = 'cache'
     CELERY_CACHE_BACKEND = 'memory'
 
-    COVERAGE_REPORT_HTML_OUTPUT_DIR = 'test/coverage'
-    COVERAGE_PATH_EXCLUDES = [
-        r'.*migrations.*'
-    ]
-    COVERAGE_MODULE_EXCLUDES = [
-        '__init__',
-        'common.views.test',
-        'django',
-        'djcelery',
-        'locale$',
-        'migrations'
-        'settings$',
-        'tests$',
-        'urls$',
-        'rest_framework$',
-        'crispy_forms$',
-        'guardian$',
-        'delft3dworker.management$'
-    ]
-
-    WORKER_FILEDIR = ''
+    WORKER_FILEDIR = 'test/'
 
     DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
     TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'
     TEST_RUNNER = TEAMCITYDELFT3DGTRUNNER if is_running_under_teamcity(
     ) else DELFT3DGTRUNNER
+
+    CELERY_ALWAYS_EAGER = True
+
+    DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'
+    POSTPROCESS_DUMMY_IMAGE_NAME = 'dummy_postprocessing'
+    PREPROCESS_DUMMY_IMAGE_NAME = 'dummy_preprocessing'
+    PROCESS_DUMMY_IMAGE_NAME = 'dummy_processing'
+    EXPORT_DUMMY_IMAGE_NAME = 'dummy_export'
+
+    DELFT3D_IMAGE_NAME = 'dummy_simulation'
+    POSTPROCESS_IMAGE_NAME = 'dummy_postprocessing'
+    PREPROCESS_IMAGE_NAME = 'dummy_preprocessing'
+    PROCESS_IMAGE_NAME = 'dummy_processing'
+    EXPORT_IMAGE_NAME = 'dummy_export'

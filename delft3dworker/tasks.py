@@ -4,8 +4,11 @@ import json
 import logging
 import os
 import shlex
+import shutil
 import subprocess
 import time
+
+from six.moves import configparser
 
 from delft3dworker.utils import PersistentLogger
 
@@ -19,56 +22,60 @@ from docker import Client
 
 logger = get_task_logger(__name__)
 
+COMMAND_FRINGE = """/bin/ffmpeg -framerate 13 -pattern_type glob -i
+ '{}/delta_fringe_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2"
+ -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k
+ -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')'
+ -y {}/delta_fringe.mp4"""
+
+COMMAND_CHANNEL = """/bin/ffmpeg -framerate 13 -pattern_type glob -i
+ '{}/channel_network_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2"
+ -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k
+ -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')'
+ -y {}/channel_network.mp4"""
+
+COMMAND_SEDIMENT = """/bin/ffmpeg -framerate 13 -pattern_type glob -i
+ '{}/sediment_fraction_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2"
+ -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k
+ -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')'
+ -y {}/sediment_fraction.mp4"""
+
 
 @shared_task(bind=True, base=AbortableTask)
-def chainedtask(self, parameters, workingdir, workflow):
-    """ Chained task which can be aborted. Contains model logic. """
-
-    # create folder
-    # uid = pwd.getpwnam('django')[2]
-    # gid = grp.getgrnam('docker')[2]
-    # if not os.path.exists(workingdir):
-    #     os.makedirs(workingdir, 2775)
-    #     os.chown(workingdir, uid, gid)
-    #     print("Made workingdir")
-
-    # create ini file for containers
-    # in 2.7 ConfigParser is a bit stupid
-    # in 3.x configparser has .read_dict()
-    # config = ConfigParser.SafeConfigParser()
-    # for section in parameters:
-    #     if not config.has_section(section):
-    #         config.add_section(section)
-    #     for key, value in parameters[section].items():
-    #         if not config.has_option(section, key):
-    #             config.set(*map(str, [section, key, value]))
-
-    # with open(os.path.join(workingdir, 'input.ini'), z'w') as f:
-    #     config.write(f)  # Yes, the ConfigParser writes to f
-
-    # define chain and results
-    # # dummy chains:
-    # if workflow == "export":
-    #     chain = dummy.s() | dummy_export.s(workingdir)
-    # elif workflow == "main":
-    #     chain = (
-    #         dummy_preprocess.s(workingdir, "")
-    #     ) | (
-    #         dummy_simulation.s(workingdir)
-    #     )
-    # else:
-    #     logging.info("workflow not available")
+def chainedtask(self, uuid, parameters, workingdir, workflow):
+    """
+    Chained task which can be aborted. Contains model logic.
+    """
 
     # real chains:
     if workflow == "export":
-        chain = dummy.s() | export.s(workingdir)
+        chain = (
+            dummy.s(uuid, workingdir, parameters) |
+            export.s(uuid, workingdir, parameters)
+        )
     elif workflow == "main":
-        chain = preprocess.s(workingdir, "") | simulation.s(workingdir)
+
+        chain = (
+            create_directory_layout.s(uuid, workingdir, parameters) |
+            preprocess.s(uuid, workingdir, parameters) |
+            simulation.s(uuid, workingdir, parameters)
+        )
+    elif workflow == "dummy":
+        chain = (
+            dummy_preprocess.s(uuid, workingdir, parameters) |
+            dummy_simulation.s(uuid, workingdir, parameters)
+        )
+    elif workflow == "dummy_export":
+        chain = (
+            dummy.s(uuid, workingdir, parameters) |
+            dummy_export.s(uuid, workingdir, parameters)
+        )
     else:
-        logging.info("workflow not available")
+        logging.error("workflow not available")
+        return
 
     chain_result = chain()
-    results = {'export': False}
+    state_meta = {'export': False}
 
     # main task loop
     running = True
@@ -88,14 +95,14 @@ def chainedtask(self, parameters, workingdir, workflow):
             leaf = chain_result
             while leaf:
                 leaf.revoke()
-                results[leaf.id] = {
+                state_meta[leaf.id] = {
                     "state": leaf.state,
                     "info": leaf.info
                 }
                 leaf = leaf.parent
-            results['result'] = "Revoked"
-            self.update_state(state="REVOKED", meta=results)
-            return results
+            state_meta['result'] = "Revoked"
+            self.update_state(state="REVOKED", meta=state_meta)
+            return state_meta
 
         # abort handling
         elif self.is_aborted():
@@ -105,27 +112,27 @@ def chainedtask(self, parameters, workingdir, workflow):
             while leaf:
                 if leaf.status == "PENDING":
                     leaf.revoke()
-                    results[leaf.id] = {
+                    state_meta[leaf.id] = {
                         "state": leaf.state,
                         "info": leaf.info
                     }
                 else:
                     AbortableAsyncResult(leaf.id).abort()
-                    results[leaf.id] = {
+                    state_meta[leaf.id] = {
                         "state": leaf.state,
                         "info": leaf.info
                     }
                 leaf = leaf.parent
-            results['result'] = "Aborted"
-            self.update_state(state="ABORTED", meta=results)
-            return results
+            state_meta['result'] = "Aborted"
+            self.update_state(state="ABORTED", meta=state_meta)
+            return state_meta
 
         # if no abort or revoke: update state
         else:
 
             leaf = chain_result
             while leaf:
-                results[leaf.id] = {
+                state_meta[leaf.id] = {
                     "state": leaf.state,
                     "info": leaf.info
                 }
@@ -133,7 +140,7 @@ def chainedtask(self, parameters, workingdir, workflow):
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
-                self.update_state(state="PROCESSING", meta=results)
+                self.update_state(state="PROCESSING", meta=state_meta)
 
         time.sleep(0.5)
 
@@ -141,43 +148,84 @@ def chainedtask(self, parameters, workingdir, workflow):
         running = not chain_result.ready()
 
     logger.info("Finishing chain")
-    if workflow == 'export' and os.path.exists(os.path.join(workingdir, 'export', 'trim-a.grdecl')):
-        results['export'] = True
-    results['result'] = "Finished"
-    self.update_state(state="FINISHING", meta=results)
+    if workflow == 'export' and os.path.exists(
+        os.path.join(workingdir, 'export', 'trim-a.grdecl')
+    ):
+        state_meta['export'] = True
+    state_meta['result'] = "Finished"
 
-    return results
+    self.update_state(state="SUCCESS", meta=state_meta)
+    return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
-def preprocess(self, workingdir, _):
+def create_directory_layout(self, uuid, workingdir, parameters):
+
+    # create directory for scene
+    if not os.path.exists(workingdir):
+        os.makedirs(workingdir, 0o2775)
+
+        folders = ['process', 'preprocess', 'simulation', 'export']
+
+        for f in folders:
+            os.makedirs(os.path.join(workingdir, f))
+
+    # create ini file for containers
+    # in 2.7 ConfigParser is a bit stupid
+    # in 3.x configparser has .read_dict()
+    config = configparser.SafeConfigParser()
+    for section in parameters:
+        if not config.has_section(section):
+            config.add_section(section)
+        for key, value in parameters[section].items():
+
+            # TODO: find more elegant solution for this! ugh!
+            if not key == 'units':
+                if not config.has_option(section, key):
+                    config.set(*map(str, [section, key, value]))
+
+    with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
+        config.write(f)  # Yes, the ConfigParser writes to f
+
+    shutil.copyfile(
+        os.path.join(workingdir, 'input.ini'),
+        os.path.join(os.path.join(
+            workingdir, 'preprocess/' 'input.ini'))
+    )
+    shutil.copyfile(
+        os.path.join(workingdir, 'input.ini'),
+        os.path.join(os.path.join(
+            workingdir, 'simulation/' 'input.ini'))
+    )
+    shutil.copyfile(
+        os.path.join(workingdir, 'input.ini'),
+        os.path.join(os.path.join(
+            workingdir, 'process/' 'input.ini'))
+    )
+    # update state with info
+    state_meta = {
+        "workingdir": workingdir,
+        "directory_layout_created": True
+    }
+
+    self.update_state(state="SUCCESS", meta=state_meta)
+    return state_meta
+
+
+@shared_task(bind=True, base=AbortableTask)
+def preprocess(self, _result_prev_chain_task, uuid, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
     inputfolder = os.path.join(workingdir, 'preprocess')
     outputfolder = os.path.join(workingdir, 'simulation')
-    # os.makedirs(inputfolder)
-    # os.makedirs(outputfolder)
-
-    # uid = grp.getgrnam('docker')[2]
-    # gid = grp.getgrnam('django')[2]
-    # os.chown(inputfolder, uid, gid)
-    # os.chown(outputfolder, uid, gid)
-
-    # os.chmod(inputfolder, 02775)
-    # os.chmod(outputfolder, 02775)
-
-    # copy input.ini
-    # copyfile(
-    #     os.path.join(workingdir, 'input.ini'),
-    #     os.path.join(inputfolder, 'input.ini')
-    # )
 
     # create Preprocess container
-    volumes = ['{0}:/data/output:z'.format(outputfolder),
-               '{0}:/data/input:ro'.format(inputfolder)]
+    volumes = [
+        '{0}:/data/output:z'.format(outputfolder),
+        '{0}:/data/input:ro'.format(inputfolder)
+    ]
 
-    # command = "python dummy_create_config.py {}".format(10)  # old dummy
     command = "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"
 
     preprocess_container = DockerClient(
@@ -203,12 +251,13 @@ def preprocess(self, workingdir, _):
         # abort handling
         if self.is_aborted():
             preprocess_container.stop()
+            self.update_state(state='ABORTED', meta=state_meta)
             break
 
         # if no abort or revoke: update state
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["log"] = log.parse(preprocess_container.get_log())
             state_meta["container_id"] = preprocess_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -220,11 +269,12 @@ def preprocess(self, workingdir, _):
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy_preprocess(self, workingdir, _):
+def dummy_preprocess(self, uuid, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -265,7 +315,7 @@ def dummy_preprocess(self, workingdir, _):
         # if no abort or revoke: update state
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["log"] = log.parse(preprocess_container.get_log())
             state_meta["container_id"] = preprocess_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -277,11 +327,12 @@ def dummy_preprocess(self, workingdir, _):
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
-def simulation(self, _, workingdir):
+def simulation(self, _result_prev_chain_task, uuid, workingdir, parameters):
     """
     TODO Check if processing is still running
     before starting another one.
@@ -290,13 +341,6 @@ def simulation(self, _, workingdir):
     # create folders
     inputfolder = os.path.join(workingdir, 'simulation')
     outputfolder = os.path.join(workingdir, 'process')
-    # os.makedirs(outputfolder)
-
-    # uid = grp.getgrnam('docker')[2]
-    # gid = grp.getgrnam('django')[2]
-    # os.chown(outputfolder, uid, gid)
-
-    # os.chmod(outputfolder, 02775)
 
     # create Sim container
     volumes = ['{0}:/data'.format(inputfolder)]
@@ -312,17 +356,25 @@ def simulation(self, _, workingdir):
     # create Process container
     volumes = ['{0}:/data/input:ro'.format(inputfolder),
                '{0}:/data/output:z'.format(outputfolder)]
-    command = ' '.join(
-        ["/data/run.sh ",
-         "/data/svn/scripts/postprocessing/channel_network_proc.py",
-         "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
-         "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
-         "/data/svn/scripts/visualisation/channel_network_viz.py",
-         "/data/svn/scripts/visualisation/delta_fringe_viz.py",
-         "/data/svn/scripts/visualisation/sediment_fraction_viz.py"]
-    )
+    command = ' '.join([
+        "/data/run.sh ",
+        "/data/svn/scripts/postprocessing/channel_network_proc.py",
+        "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
+        "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
+        "/data/svn/scripts/visualisation/channel_network_viz.py",
+        "/data/svn/scripts/visualisation/delta_fringe_viz.py",
+        "/data/svn/scripts/visualisation/sediment_fraction_viz.py"
+    ])
+
+    env = {"uuid": uuid}
+
     processing_container = DockerClient(
-        settings.PROCESS_IMAGE_NAME, volumes, '', command)
+        settings.PROCESS_IMAGE_NAME,
+        volumes,
+        '',
+        command,
+        environment=env
+    )
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -333,6 +385,8 @@ def simulation(self, _, workingdir):
     simlog = PersistentLogger(parser="delft3d")
     proclog = PersistentLogger(parser="python")
 
+    proc_runs = 0
+
     # loop task
     running = True
     while running:
@@ -341,6 +395,7 @@ def simulation(self, _, workingdir):
         if self.is_aborted():
             processing_container.stop()
             simulation_container.stop()
+            self.update_state(state="ABORTED", meta=state_meta)
             break
 
         # if no abort or revoke: update state
@@ -350,15 +405,13 @@ def simulation(self, _, workingdir):
             if simlog.changed() and not processing_container.running():
                 # Create movie which can be zipped later
                 directory = os.path.join(workingdir, 'process')
-                command_fringe = """/bin/ffmpeg -framerate 13 -pattern_type glob -i '{}/delta_fringe_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/delta_fringe.mp4""".format(
-                    directory, directory
-                )
-                command_channel = """/bin/ffmpeg -framerate 13 -pattern_type glob -i '{}/channel_network_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/channel_network.mp4""".format(
-                    directory, directory
-                )
-                command_sediment = """/bin/ffmpeg -framerate 13 -pattern_type glob -i '{}/sediment_fraction_*.png' -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -preset slower -b:v 1000k -maxrate 1000k -bufsize 2000k -an -force_key_frames expr:gte'('t,n_forced/4')' -y {}/sediment_fraction.mp4""".format(
-                    directory, directory
-                )
+
+                command_fringe = COMMAND_FRINGE.format(
+                    directory, directory)
+                command_channel = COMMAND_CHANNEL.format(
+                    directory, directory)
+                command_sediment = COMMAND_SEDIMENT.format(
+                    directory, directory)
 
                 command_line_process = subprocess.Popen(
                     shlex.split(command_fringe),
@@ -386,11 +439,13 @@ def simulation(self, _, workingdir):
 
                 logger.info("Started processing, sim progress changed.")
                 processing_container.start()
-                logger.info(state_meta["output"])
+                proc_runs += 1
+                logger.info(state_meta["log"])
 
             # update state
+            state_meta["procruns"] = proc_runs
             state_meta["task"] = self.__name__
-            state_meta["output"] = [
+            state_meta["log"] = [
                 simlog.parse(simulation_container.get_log()),
                 proclog.parse(processing_container.get_log())
             ]
@@ -399,7 +454,7 @@ def simulation(self, _, workingdir):
                 "processing": processing_container.id
             }
 
-            # logger.info(state_meta["output"])
+            # logger.info(state_meta["log"])
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
@@ -412,16 +467,19 @@ def simulation(self, _, workingdir):
     # simulation_container.delete()  # Doesn't work on NFS fs
     # processing_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy_simulation(self, _, workingdir):
+def dummy_simulation(
+        self, _result_prev_chain_task, uuid, workingdir, parameters):
     """
     TODO Check if processing is still running
     before starting another one.
     TODO Check how we want to log processing
-    docker run -v /data/container/files/ea8b3912-dedc-4da5-aff8-2a9f3591586e/simulation/:/data -t dummy_preprocessing python dummy_netcdf_output.py
+    docker run -v /data/container/files/ea8b3912-dedc-4da5-aff8-2a9f3591586e
+     /simulation/:/data -t dummy_preprocessing python dummy_netcdf_output.py
     """
     # create folders
     inputfolder = os.path.join(workingdir, 'simulation')
@@ -448,7 +506,8 @@ def dummy_simulation(self, _, workingdir):
         volumes,
         '',
         command,
-        tail=5)
+        tail=5
+    )
 
     # start simulation
     state_meta = {"model_id": self.request.id, "output": ""}
@@ -476,11 +535,11 @@ def dummy_simulation(self, _, workingdir):
             if simlog.changed() and not processing_container.running():
                 logger.info("Started processing, sim progress changed.")
                 processing_container.start()
-                logger.info(state_meta["output"])
+                logger.info(state_meta["log"])
 
             # update state
             state_meta["task"] = self.__name__
-            state_meta["output"] = [
+            state_meta["log"] = [
                 simlog.parse(simulation_container.get_log()),
                 proclog.parse(processing_container.get_log())
             ]
@@ -489,7 +548,7 @@ def dummy_simulation(self, _, workingdir):
                 "processing": processing_container.id
             }
 
-            # logger.info(state_meta["output"])
+            # logger.info(state_meta["log"])
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
@@ -502,20 +561,14 @@ def dummy_simulation(self, _, workingdir):
     # simulation_container.delete()  # Doesn't work on NFS fs
     # processing_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
-def postprocess(self, _, workingdir):
+def postprocess(self, _result_prev_chain_task, uuid, workingdir, parameters):
     # create folders
     outputfolder = os.path.join(workingdir, 'postprocess')
-    # os.makedirs(outputfolder)
-
-    # uid = grp.getgrnam('docker')[2]
-    # gid = grp.getgrnam('django')[2]
-    # os.chown(outputfolder, uid, gid)
-
-    # os.chmod(outputfolder, 02775)
 
     # create Postprocess container
     volumes = ['{0}:/data/input:ro'.format(workingdir),
@@ -546,7 +599,7 @@ def postprocess(self, _, workingdir):
             break
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(
+            state_meta["log"] = log.parse(
                 postprocessing_container.get_log()
             )
             state_meta["container_id"] = postprocessing_container.id
@@ -561,11 +614,12 @@ def postprocess(self, _, workingdir):
 
     # postprocessing_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
-def export(self, _, workingdir):
+def export(self, _result_prev_chain_task, uuid, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -607,7 +661,7 @@ def export(self, _, workingdir):
         # if no abort or revoke: update state
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["log"] = log.parse(preprocess_container.get_log())
             state_meta["container_id"] = preprocess_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -619,11 +673,12 @@ def export(self, _, workingdir):
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy_export(self, _, workingdir):
+def dummy_export(self, _result_prev_chain_task, uuid, workingdir, parameters):
     """ Chained task which can be aborted. Contains model logic. """
 
     # # create folders
@@ -664,7 +719,7 @@ def dummy_export(self, _, workingdir):
         # if no abort or revoke: update state
         else:
             state_meta["task"] = self.__name__
-            state_meta["output"] = log.parse(preprocess_container.get_log())
+            state_meta["log"] = log.parse(preprocess_container.get_log())
             state_meta["container_id"] = preprocess_container.id
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
@@ -676,15 +731,15 @@ def dummy_export(self, _, workingdir):
 
     # preprocess_container.delete()  # Doesn't work on NFS fs
 
+    self.update_state(state="SUCCESS", meta=state_meta)
     return state_meta
 
 
 @shared_task(bind=True, base=AbortableTask)
-def dummy(self):
+def dummy(self, uuid, workingdir, parameters):
     """
-    Chained task which can be aborted. This task is a dummy task to maintain chain functionality.
-    An export chain with a single task is not allowed.
-
+    Chained task which can be aborted. This task is a dummy task to maintain
+    chain functionality. An export chain with a single task is not allowed.
     """
     return
 
@@ -698,18 +753,25 @@ class DockerClient():
     """
 
     def __init__(self, name, volumebinds, outputfile, command,
-                 base_url='unix://var/run/docker.sock', tail=1):
+                 base_url='unix://var/run/docker.sock',
+                 environment=None, tail=1):
         self.name = name
         self.volumebinds = volumebinds
         self.outputfile = outputfile
         self.base_url = base_url
         self.command = command
+        self.environment = environment
+        self.tail = tail
 
         self.client = Client(base_url=self.base_url)
         self.config = self.client.create_host_config(binds=self.volumebinds)
+
         self.container = self.client.create_container(
-            self.name, host_config=self.config, command=self.command)
-        self.tail = tail
+            self.name,
+            host_config=self.config,
+            command=self.command,
+            environment=self.environment
+        )
 
         self.id = self.container.get('Id')
 

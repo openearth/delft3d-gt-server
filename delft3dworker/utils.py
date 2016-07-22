@@ -1,8 +1,102 @@
 import re
 import sys
 
+PRECEDENCE = ['INACTIVE',
+              'ABORTED',
+              'REVOKED',
+              'SUCCESS',
+              'FAILURE',
+              'PROCESSING',
+              'STARTED',
+              'RECEIVED',
+              'RETRY',
+              'PENDING',
+              'CREATED']
 
-class PersistentLogger():
+#: Hash lookup of PRECEDENCE to index
+PRECEDENCE_LOOKUP = dict(zip(PRECEDENCE, range(0, len(PRECEDENCE))))
+NONE_PRECEDENCE = PRECEDENCE_LOOKUP['INACTIVE']
+
+
+def precedence(state):
+    """Get the precedence index for state.
+
+    Lower index means higher precedence.
+    Taken from celery.states.
+    """
+    try:
+        return PRECEDENCE_LOOKUP[state]
+    except KeyError:
+        return NONE_PRECEDENCE
+
+
+def parse_info(info):
+    """Parse info from chainedtask and return
+    progress, state and clean info
+
+    Typical info object has some info at the root
+    level, such as images. But many
+    """
+    new_info = {}
+
+    states = []
+    progress = 0.0
+    for item, value in info.items():
+        if isinstance(value, dict):
+            if 'info' in value and isinstance(value['info'], dict):
+
+                # Task name parsing
+                if 'task' in value['info']:
+                    new_info[value['info']['task']] = value
+
+                # Number of processing runs parsing
+                if 'procruns' in value['info']:
+                    new_info['procruns'] = value['info']['procruns']
+
+                # Progress parsing
+                if 'log' in value['info']:
+                    log = value['info']['log']
+                    if isinstance(log, list):
+                        for log_ in log:
+                            try:
+                                prog = log_['progress']
+                                prog = float(prog)
+                            except:
+                                prog = 0.0
+                            if prog > progress:
+                                progress = prog
+                    elif isinstance(log, dict):
+                        try:
+                            prog = log['progress']
+                            prog = float(log)
+                        except:
+                            prog = 0.0
+                        if prog > progress:
+                            progress = prog
+
+        # State parsing
+        for task, taskinfo in new_info.items():
+            if isinstance(taskinfo, dict):
+                if 'state' in taskinfo:
+                    states.append(taskinfo['state'])
+
+    state = compare_states(*states)
+    return int(progress * 100), state, new_info
+
+
+def compare_states(*args, **kwargs):
+    """Compare state and return highest state."""
+    if len(args) == 0:
+        return "INACTIVE"
+    precs = [precedence(state) for state in args]
+    if 'high' in kwargs:
+        state = args[precs.index(min(precs))]
+    else:
+        state = args[precs.index(max(precs))]
+    return state
+
+
+class PersistentLogger(object):
 
     """ Class to keep track of docker
     container logging, keeping relevant
@@ -127,13 +221,14 @@ def delft3d_logparser(line):
                 match["progress"] is not None and
                 match["progress"] != ""
             ):
-                match['progress'] = format(float(match['progress'])/100, '.2f')
+                match['progress'] = format(
+                    float(match['progress']) / 100, '.2f')
             # add default log level
             match['level'] = 'INFO'
             # add state
             match['state'] = None
         else:
-            match = {"message": None, "level":  "INFO",
+            match = {"message": None, "level": "INFO",
                      "state": None, "progress": None}
         return match
 
@@ -186,7 +281,8 @@ def python_logparser(line):
                 match["progress"] is not None and
                 match["progress"] != ""
             ):
-                match['progress'] = format(float(match['progress'])/100, '.2f')
+                match['progress'] = format(
+                    float(match['progress']) / 100, '.2f')
         else:
             match = {"message": line, "level": "INFO",
                      "state": None, "progress": None}
@@ -202,11 +298,3 @@ def python_logparser(line):
             "state": None,
             "progress": None
         }
-
-
-if __name__ == '__main__':
-    line = 'INFO:root:Time to finish 70.0, 22.2222222222% '
-    'completed, time steps  left 7.0'
-    log = PersistentLogger()
-    info = PersistentLogger.parse(log, line)
-    print info
