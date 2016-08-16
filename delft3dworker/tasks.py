@@ -5,6 +5,7 @@ import logging
 import os
 import shlex
 import shutil
+import sys
 import subprocess
 import time
 
@@ -140,6 +141,7 @@ def chainedtask(self, uuid, parameters, workingdir, workflow):
             # race condition: although we check it in this if/else statement,
             # aborted state is sometimes lost
             if not self.is_aborted():
+                # TODO Crashes here (not json serializable)
                 self.update_state(state="PROCESSING", meta=state_meta)
 
         time.sleep(0.5)
@@ -460,6 +462,7 @@ def simulation(self, _result_prev_chain_task, uuid, workingdir, parameters):
             state_meta["task"] = self.__name__
             state_meta["log"] = [
                 simlog.parse(simulation_container.get_log()),
+                # TODO This crashes on the get_log part (404)
                 proclog.parse(processing_container.get_log())
             ]
             state_meta["container_id"] = {
@@ -808,23 +811,29 @@ class DockerClient():
         return self.client.inspect_container(self.id)['State']
 
     def get_log(self):
-        self.log = self.client.logs(
-            container=self.id,
-            stream=False,
-            stdout=True,
-            stderr=True,
-            tail=1
-        ).replace('\n', '')
+        try:
+            self.log = self.client.logs(
+                container=self.id,
+                stream=False,
+                stdout=True,
+                stderr=True,
+                tail=1
+            ).replace('\n', '')
+        except:
+            self.errlog = "ERROR: Docker client problem: {}.".format(sys.exc_info()[0])
         return self.log
 
     def get_stderr(self):
-        self.errlog = self.client.logs(
-            container=self.id,
-            stream=False,
-            stdout=False,
-            stderr=True,
-            tail=self.tail
-        ).replace('\n', '')
+        try:
+            self.errlog = self.client.logs(
+                container=self.id,
+                stream=False,
+                stdout=False,
+                stderr=True,
+                tail=self.tail
+            ).replace('\n', '')
+        except:
+            self.errlog = "ERROR: Docker client problem: {}.".format(sys.exc_info()[0])
         return self.errlog
 
     # Deprecated (wrapper should enable this)
