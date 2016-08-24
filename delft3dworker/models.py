@@ -35,7 +35,7 @@ from jsonfield import JSONField
 BUSYSTATE = "PROCESSING"
 
 
-# ################################### SCENARIO
+# ################################### SCENARIO & SCENE
 
 class Scenario(models.Model):
 
@@ -147,16 +147,10 @@ class Scenario(models.Model):
                 scene.publish_world(user)
 
     # INTERNALS
+
     def _update_state_and_save(self):
-        # All states from its scenes
-        states = [scene.state for scene in self.scene_set.all()]
-        self.state = compare_states(*states)
 
-        # All progress from its scenes
-        progs = [scene.progress for scene in self.scene_set.all()]
-        self.progress = sum(progs) / len(progs) if len(progs) != 0 else 0
-
-        self.save()
+        # TODO rewrite _update_state_and_save method+
 
         return self.state
 
@@ -205,9 +199,6 @@ class Scenario(models.Model):
         return self.name
 
 
-# SCENE
-
-
 class Scene(models.Model):
 
     """
@@ -216,7 +207,6 @@ class Scene(models.Model):
 
     name = models.CharField(max_length=256)
 
-    # suid = models.CharField(max_length=256, editable=False)
     suid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     scenario = models.ManyToManyField(Scenario, blank=True)
@@ -228,7 +218,7 @@ class Scene(models.Model):
     progress = models.IntegerField(default=0)
     task_id = models.CharField(max_length=256, blank=True)
 
-    # Please use FilePath Field
+    # TODO: use FilePath Field
     workingdir = models.CharField(max_length=256)
     parameters_hash = models.CharField(max_length=64, blank=True)
 
@@ -237,6 +227,7 @@ class Scene(models.Model):
     owner = models.ForeignKey(User, null=True)
 
     # PROPERTY METHODS
+
     class Meta:
         permissions = (
             ('view_scene', 'View Scene'),
@@ -246,58 +237,18 @@ class Scene(models.Model):
 
     def start(self, workflow="main"):
 
-        # Check if task is already started (unless we're exporting)
-        if self.task_id != "" and workflow != "export":
+        # TODO: write start method
 
-            result = AbortableAsyncResult(self.task_id)
-
-            # Find out state
-            if result.state == "PENDING":
-                return {
-                    "error": "task already PENDING",
-                    "task_id": self.task_id
-                }
-            elif result.state == BUSYSTATE:
-                return {
-                    "error": "task already BUSY",
-                    "task_id": self.task_id
-                }
-            else:
-                return {
-                    "error": "task already STARTED",
-                    "task_id": self.task_id
-                }
-
-        # Task has not yet been started
-        else:
-            result = chainedtask.delay(
-                str(self.suid), self.parameters, self.workingdir, workflow)
-            self.task_id = result.task_id  # so we can't start again
-
-            self._update_state_and_save()  # will save for us
-
-            return {"task_id": self.task_id, "scene_id": self.suid}
+        return {"task_id": None, "scene_id": None}
 
     def abort(self):
-        """Function called on stop in frontend, hence the json response."""
-        result = AbortableAsyncResult(self.task_id)
 
-        # If not running, revoke task
-        if not result.state == BUSYSTATE:
-            # thou shalt not terminate
-            revoke_task(self.task_id, terminate=False)
-            self.state = "REVOKED"
-        else:
-            result.abort()
-            self.state = "ABORTED"
-
-        self.task_id = ""  # so we can start again
-        self._update_state_and_save()  # will save for us
+        # TODO: write abort method
 
         return {
-            "task_id": self.task_id,
-            "state": result.state,
-            "info": str(self.info)
+            "task_id": None,
+            "state": None,
+            "info": None
         }
 
     def export(self, options):
@@ -477,75 +428,16 @@ class Scene(models.Model):
                 logging.error("Failed to delete working directory")
 
     def _update_state_and_save(self):
-        # only retrieve state if it has a task_id
-        # (which means the task is started)
-        if self.task_id != '':
-            result = AbortableAsyncResult(self.task_id)
 
-            # parse result and compare with current stored info
-            info = result.info if isinstance(
-                result.info, dict) else {"info": str(result.info)}
-            # Parse info from chainedtask
-            self.progress, self.state, info = parse_info(info)
+        # TODO: write _update_state_and_save method
 
-            # Update model
-            if 'procruns' in self.info and 'procruns' in info:
-                processed = info['procruns'] > self.info['procruns']
-            else:
-                processed = False
-            self.info.update(info)
-        else:
-            self.save()
-            return self.state
-
-        # Only check for new images
-        # when new processing has run
-        if processed:
-            for root, dirs, files in os.walk(
-                os.path.join(self.workingdir, 'process')
-            ):
-                for f in sorted(files):
-                    name, ext = os.path.splitext(f)
-                    if ext in ('.png', '.jpg', '.gif'):
-                        # TODO use get to check image list and
-                        # make this code less deep in if/for statements
-                        if ("delta_fringe" in name and f not in self.info[
-                                "delta_fringe_images"]["images"]):
-                            self.info["delta_fringe_images"][
-                                "images"].append(f)
-                        elif ("channel_network" in name and f not in self.info[
-                                "channel_network_images"]["images"]):
-                            self.info["channel_network_images"][
-                                "images"].append(f)
-                        elif ("sediment_fraction" in name and
-                              f not in self.info[
-                                "sediment_fraction_images"]["images"]):
-                            self.info["sediment_fraction_images"][
-                                "images"].append(f)
-                        else:
-                            # Other images ?
-                            pass
-
-        # If no log path is yet known, set log
-        # so don't update this everytime
-        if self.info["logfile"]["file"] == "":
-            for root, dirs, files in os.walk(
-                os.path.join(self.workingdir, 'simulation')
-            ):
-                for f in files:
-                    if f == 'delft3d.log':
-                        # No log is generated at the moment
-                        self.info["logfile"]["file"] = f
-                        break
-
-        self.save()
         return self.state
 
     def __unicode__(self):
         return self.name
 
 
-# ################################### Template
+# ################################### SEARCHFORM & TEMPLATE
 
 class SearchForm(models.Model):
 
