@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from django.test import TestCase
 
+from delft3dcontainermanager.tasks import delft3dgt_pulse
 from delft3dcontainermanager.tasks import get_docker_ps
 from delft3dcontainermanager.tasks import get_docker_log
 from delft3dcontainermanager.tasks import do_docker_create
@@ -12,6 +13,13 @@ from delft3dcontainermanager.tasks import do_docker_sync_filesystem
 
 
 class TaskTest(TestCase):
+
+    def test_delft3dgt_pulse(self):
+        """
+        TODO: write test
+        """
+        delay = delft3dgt_pulse.delay()
+        self.assertEqual(delay.result, {})
 
     def test_get_docker_ps(self):
         """

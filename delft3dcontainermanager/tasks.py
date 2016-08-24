@@ -5,6 +5,15 @@ from celery.utils.log import get_task_logger
 
 logger = get_task_logger(__name__)
 
+@shared_task(bind=True)
+def delft3dgt_pulse(self):
+    """
+    TODO: call actual management command
+    This task should run the management sync command to keep the django
+    database and docker containers in sync.
+    """
+
+    return
 
 @shared_task(bind=True)
 def get_docker_ps(self):
@@ -75,3 +84,4 @@ def do_docker_sync_filesystem(self, container_id):
     return whether the filesystem is synced
     """
     return False
+
