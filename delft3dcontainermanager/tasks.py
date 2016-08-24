@@ -11,8 +11,8 @@ logger = get_task_logger(__name__)
 @shared_task(bind=True, throws=(HTTPError))
 def get_docker_ps(self):
     """
-    This task retrieves all running docker containers and return them in
-    an array of dictionaries. Array looks like this:
+    This task retrieves all running docker containers and returns them in
+    an array of dictionaries. The array looks like this:
 
     [
         {'Command': '/bin/sleep 30',
