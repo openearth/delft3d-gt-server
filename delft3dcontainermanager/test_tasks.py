@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from django.test import TestCase
+from mock import patch
 
 from delft3dcontainermanager.tasks import get_docker_ps
 from delft3dcontainermanager.tasks import get_docker_log
@@ -12,13 +13,20 @@ from delft3dcontainermanager.tasks import do_docker_sync_filesystem
 
 
 class TaskTest(TestCase):
+    mock_options = {
+        'autospec': True,
+        # 'containers.return_value': [{'a': 'test'}]
+    }
 
-    def test_get_docker_ps(self):
+    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
+    def test_get_docker_ps(self, mockClient):
         """
-        TODO: write test
+        Assert that docker ps returns
+        a list of dictionaries, with each 
+        dictionary at least containing an Id.
         """
-        delay = get_docker_ps.delay()
-        self.assertEqual(delay.result, {})
+        get_docker_ps.delay()
+        mockClient.return_value.containers.assert_called_with(all=True)
 
     def test_get_docker_log(self):
         """
