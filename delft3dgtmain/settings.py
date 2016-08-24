@@ -12,8 +12,6 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 import sys
-import djcelery
-djcelery.setup_loader()
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -218,18 +216,7 @@ if 'test' in sys.argv:
     # Debug on running tests
     DEBUG = True
 
-    # BROKER_BACKEND='memory'
-    CELERY_RESULT_BACKEND = 'cache'
-    CELERY_CACHE_BACKEND = 'memory'
-
     WORKER_FILEDIR = 'test/'
-
-    DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
-    TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'
-    TEST_RUNNER = TEAMCITYDELFT3DGTRUNNER if is_running_under_teamcity(
-    ) else DELFT3DGTRUNNER
-
-    CELERY_ALWAYS_EAGER = True
 
     DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'
     POSTPROCESS_DUMMY_IMAGE_NAME = 'dummy_postprocessing'

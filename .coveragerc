@@ -7,11 +7,10 @@ exclude_lines =
     pragma: no cover
     if __name__ == .__main__.:
 
-omit = 
+omit =
     *__init__*
     common.views.test
     django
-    djcelery
     locale
     *migrations*
     *settings*
