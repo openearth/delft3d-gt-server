@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import sys
 
+from datetime import timedelta
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -172,7 +174,17 @@ CELERY_ENABLE_UTC = True
 CELERY_ACKS_LATE = False
 CELERYD_PREFETCH_MULTIPLIER = 1
 
+# Celerybeat
+CELERYBEAT_SCHEDULE = {
+    'sync': {
+        'task': 'sync.add',
+        'schedule': timedelta(seconds=30),
+    },
+}
+
 WORKER_FILEURL = '/files'
+
+
 
 # REST Framework
 
