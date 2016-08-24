@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'crispy_forms',
     'guardian',
+    'delft3dcontainermanager',
     'delft3dworker',
     'delft3dgtfrontend',
 ]

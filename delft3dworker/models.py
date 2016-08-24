@@ -12,7 +12,6 @@ import zipfile
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.task.control import revoke as revoke_task
 
-from delft3dworker.tasks import chainedtask
 from delft3dworker.utils import compare_states, parse_info
 
 from django.conf import settings  # noqa
