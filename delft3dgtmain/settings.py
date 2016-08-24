@@ -162,11 +162,11 @@ CELERYBEAT_SCHEDULE = {
     'sync': {
         'task': 'delft3dcontainermanager.tasks.delft3dgt_pulse',
         'schedule': timedelta(seconds=60),
+        'options': {'queue' : 'beat'}
     },
 }
 
 WORKER_FILEURL = '/files'
-
 
 
 # REST Framework
