@@ -354,23 +354,17 @@ class SceneTestCase(TestCase):
     #     zf = zipfile.ZipFile(stream)
     #     self.assertEqual(len(zf.namelist()), 1)
 
-    @patch('delft3dworker.tasks.chainedtask.delay', autospec=True)
-    def test_start_scene(self, mocked_chainedtask):
-        # mockchainedtask.return_value = {"info": {}, 'id': '22', 'state': ""}
-        mocked_chainedtask.return_value.task_id = '22'
-        mocked_chainedtask.return_value.state = "PROCESSING"
+    def test_start_scene(self):
 
-        started = self.scene.start()
+        # TODO: write these tests
 
-    @patch('delft3dworker.models.revoke_task', autospec=True)
-    @patch('celery.contrib.abortable.AbortableAsyncResult', autospec=True)
-    def test_stop_scene(self, mocked_task_delay, MockedAbortableResult):
-        mocked_task_delay.return_value = {"info": {}, 'id': '22', 'state': ""}
-        self.scene.state = "PROCESSING"
-        aborted = self.scene.abort()
+        pass
 
-        self.scene.state = "BUSY"
-        revoked = self.scene.abort()
+    def test_stop_scene(self):
+
+        # TODO: write these tests
+
+        pass
 
 
 class SearchFormTestCase(TestCase):
