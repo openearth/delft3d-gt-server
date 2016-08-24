@@ -143,23 +143,6 @@ CELERY_RESULT_BACKEND = 'redis://'
 # of complexity.
 CELERY_DISABLE_RATE_LIMITS = True
 
-# If True the task will report its status as started when the task is
-# executed by a worker.
-CELERY_TRACK_STARTED = True
-
-# Time (in seconds, or a timedelta object) for when after stored task
-# tombstones will be deleted. A built-in periodic task will delete the results
-# after this time (celery.task.backend_cleanup). A value of None or 0 means
-# results will never expire (depending on backend specifications). Default is
-# to expire after 1 day. This resulted in losing task status.
-CELERY_TASK_RESULT_EXPIRES = None
-
-# Timeout before task is retried. So when a task is queued but not executed
-# for half a day (standard) the task is send again. This explains
-# many identical tasks running, in turn keeping many other tasks pending.
-# Timeout should be set to (at least) twice the maximum runtime of task
-BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 5184000}  # 60 days
-
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
