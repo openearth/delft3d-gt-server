@@ -21,7 +21,7 @@ class TaskTest(TestCase):
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_get_docker_ps(self, mockClient):
         """
-        Assert that the docker_ps task 
+        Assert that the docker_ps task
         calls the docker client.containers() function.
         """
         get_docker_ps.delay()
