@@ -21,9 +21,8 @@ class TaskTest(TestCase):
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_get_docker_ps(self, mockClient):
         """
-        Assert that docker ps returns
-        a list of dictionaries, with each 
-        dictionary at least containing an Id.
+        Assert that the docker_ps task 
+        calls the docker client.containers() function.
         """
         get_docker_ps.delay()
         mockClient.return_value.containers.assert_called_with(all=True)
