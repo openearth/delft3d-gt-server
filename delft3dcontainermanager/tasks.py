@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 from celery import shared_task
 from celery.utils.log import get_task_logger
+from docker import Client
+from requests.exceptions import HTTPError
 
 logger = get_task_logger(__name__)
 
@@ -15,14 +17,27 @@ def delft3dgt_pulse(self):
 
     return
 
-@shared_task(bind=True)
+@shared_task(bind=True, throws=(HTTPError))
 def get_docker_ps(self):
     """
-    TODO: implement task get_docker_ps
-    This task should retrieve all running docker containers and return them in
-    an object
+    This task retrieves all running docker containers and returns them in
+    an array of dictionaries. The array looks like this:
+
+    [
+      {'Command': '/bin/sleep 30',
+      'Created': 1412574844,
+      'Id': '6e276c9e6e5759e12a6a9214efec6439f80b4f37618e1a6547f28a3da34db07a',
+      'Image': 'busybox:buildroot-2014.02',
+      'Names': ['/grave_mayer'],
+      'Ports': [],
+      'Status': 'Up 1 seconds'},
+
+      {...},
+    ]
     """
-    return {}
+    client = Client(base_url='unix://var/run/docker.sock')
+    containers = client.containers(all=True)
+    return containers
 
 
 @shared_task(bind=True)
