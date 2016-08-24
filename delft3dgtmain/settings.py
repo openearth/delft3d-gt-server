@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'crispy_forms',
     'guardian',
+    'delft3dcontainermanager',
     'delft3dworker',
     'delft3dgtfrontend',
 ]
@@ -204,6 +205,7 @@ except ImportError:
 if 'test' in sys.argv:
 
     from teamcity import is_running_under_teamcity
+    from teamcity.django import TeamcityDjangoRunner
 
     DATABASES = {
         'default': {
@@ -215,14 +217,25 @@ if 'test' in sys.argv:
     # Debug on running tests
     DEBUG = True
 
+    # use a subdir for testing output
     WORKER_FILEDIR = 'test/'
 
+    if is_running_under_teamcity():
+        TEST_RUNNER = TeamcityDjangoRunner
+
+    # make sure celery delayed tasks are executed immediately
+    CELERY_RESULT_BACKEND = 'cache'
+    CELERY_CACHE_BACKEND = 'memory'
+    CELERY_ALWAYS_EAGER = True
+
+    # set dummy container image names to dummy images
     DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'
     POSTPROCESS_DUMMY_IMAGE_NAME = 'dummy_postprocessing'
     PREPROCESS_DUMMY_IMAGE_NAME = 'dummy_preprocessing'
     PROCESS_DUMMY_IMAGE_NAME = 'dummy_processing'
     EXPORT_DUMMY_IMAGE_NAME = 'dummy_export'
 
+    # set container image names to dummy images
     DELFT3D_IMAGE_NAME = 'dummy_simulation'
     POSTPROCESS_IMAGE_NAME = 'dummy_postprocessing'
     PREPROCESS_IMAGE_NAME = 'dummy_preprocessing'
