@@ -16,6 +16,7 @@ from guardian.shortcuts import get_objects_for_user
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
+from delft3dworker.models import Container
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 from delft3dworker.models import User
@@ -370,11 +371,101 @@ class SceneTestCase(TestCase):
 class ContainerTestCase(TestCase):
 
     def setUp(self):
+
+        self.up_docker_ps_dict = {
+            'Status': 'Up 4 minutes',
+            'Id':
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnop'
+        }
+
+        self.exited_docker_ps_dict = {
+            'Status': 'Exited (0) 2 hours ago',
+            'Id':
+            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvwxyz1'
+        }
+
+        self.error_docker_ps_dict = {
+            'Status': 'nvkeirwtynvowi',
+            'Id':
+            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvwxyz1'
+        }
+
+        self.scene = Scene.objects.create()
+
+        self.container_a = Container.objects.create(
+            scene=self.scene,
+            container_type='preprocess',
+            desired_state='created',
+            docker_state='unknown',
+            docker_id=''
+        )
+
+        self.container_b = Container.objects.create(
+            scene=self.scene,
+            container_type='preprocess',
+            desired_state='running',
+            docker_state='unknown',
+            docker_id=''
+        )
+
+        self.container_c = Container.objects.create(
+            scene=self.scene,
+            container_type='preprocess',
+            desired_state='exited',
+            docker_state='unknown',
+            docker_id=''
+        )
+
+        self.container_d = Container.objects.create(
+            scene=self.scene,
+            container_type='preprocess',
+            desired_state='non-existent',
+            docker_state='unknown',
+            docker_id=''
+        )
+
+        pass
+
+    def test_get_container(self):
+
+        # TODO: write this test
+
         pass
 
     def test_update_state_and_save(self):
 
-        # TODO: write these tests
+        # This test will test the behavior of a Container
+        # when it receives snapshot
+
+        self.container_a._update_state_and_save(
+            None)
+        self.assertEqual(
+            self.container_a.docker_state, 'non-existent')
+
+        self.container_b._update_state_and_save(
+            self.up_docker_ps_dict)
+        self.assertEqual(
+            self.container_b.docker_state, 'running')
+
+        self.container_c._update_state_and_save(
+            self.exited_docker_ps_dict)
+        self.assertEqual(
+            self.container_c.docker_state, 'exited')
+
+        self.container_d._update_state_and_save(
+            self.error_docker_ps_dict)
+        self.assertEqual(
+            self.container_d.docker_state, 'unknown')
+
+    def test_fix_state_mismatch(self):
+
+        # TODO: write this test
+
+        pass
+
+    def update_from_docker_snapshot(self):
+
+        # TODO: write this test
 
         pass
 

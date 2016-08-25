@@ -447,6 +447,9 @@ class Container(models.Model):
 
     scene = models.ForeignKey(Scene)
 
+    task_uuid = models.UUIDField(
+        default=uuid.uuid4, editable=False, blank=True)
+
     # delft3dgtmain.provisionedsettings
     CONTAINER_TYPE_CHOICES = (
         ('preprocess', 'preprocess'),
@@ -467,7 +470,8 @@ class Container(models.Model):
         ('running', 'running'),
         ('paused', 'paused'),
         ('exited', 'exited'),
-        ('dead', 'dead')
+        ('dead', 'dead'),
+        ('unknown', 'unknown'),
     )
 
     desired_state = models.CharField(
@@ -479,11 +483,110 @@ class Container(models.Model):
     # docker container ids are sha256 hashes
     docker_id = models.CharField(max_length=64, blank=True, default='')
 
-    def _update_state_and_save(self):
+    def update_task_result(self):
+        """
+        This method will get the result from the last task it executed, given
+        that there is a result.
+        """
 
-        # TODO: write _update_state_and_save method
+        if self.task_uuid == '':
+            return
 
-        return self.docker_state
+        pass
+
+    def update_from_docker_snapshot(self, snapshot):
+        """
+        This method updates the Container based on a given snapshot
+        of a docker container which was retrieved with docker-py's
+        client.containers(all=True) (equivalent to 'docker ps').
+
+        The container will not only update its docker_state, but will also
+        compare this state to the its desired_state, which is defined by the
+        Scene to which this Container belongs. If (for any reason) the
+        docker_state is different from the desired_state, this Container will
+        act: it will start a task to get both states matched.
+        """
+
+        self._update_state_and_save(snapshot)
+
+        self._fix_state_mismatch()
+
+    def _update_state_and_save(self, snapshot):
+        """
+        Var snapshot can be either dictionary or None.
+        If None: docker container does not exist
+        If dictionary: snapshot['Status'] is a string describing status
+        """
+
+        if snapshot is None:
+            self.docker_state = 'non-existent'
+
+        elif isinstance(snapshot, dict) and ('Status' in snapshot):
+
+            if snapshot['Status'].startswith('Up'):
+                self.docker_state = 'running'
+
+            elif snapshot['Status'].startswith('Exited'):
+                self.docker_state = 'exited'
+
+            else:
+                self.docker_state = 'unknown'
+
+        else:
+            self.docker_state = 'unknown'
+
+        self.save()
+
+    def _fix_state_mismatch(self):
+        """
+        If the docker_state differs from the desired_state, an task should be
+        executed to fix this mismatch
+        """
+
+        if self.desired_state == self.docker_state:
+            return  # these are not the droids we're looking for, move along
+
+        if self.desired_state == 'created':
+            self._create_container()
+
+        if self.desired_state == 'running':
+            self._start_container()
+
+        if self.desired_state == 'exited':
+            self._stop_container()
+
+        if self.desired_state == 'non-existent':
+            self._delete_container()
+
+    def _create_container(self):
+        if self.docker_state != 'non-existent':
+            return  # container already created
+
+        # fire create container task
+
+    def _start_container(self):
+        if self.docker_state != 'created' and self.docker_state != 'exited':
+            return  # container not ready for start
+
+        # fire start container task
+
+    def _stop_container(self):
+        if self.docker_state != 'running':
+            return  # container not ready for stop
+
+        # fire stop container task
+
+    def _delete_container(self):
+        if self.docker_state != 'created' and self.docker_state != 'exited':
+            return  # container not ready for delete
+
+        # fire delete container task
+
+    def _get_container(self, id):
+
+        # TODO: write Container._get_container method
+
+        return None
 
     def __unicode__(self):
         return "{} ({}): {}".format(
