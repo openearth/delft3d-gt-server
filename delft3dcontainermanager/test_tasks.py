@@ -115,5 +115,6 @@ class TaskTest(TestCase):
         self.assertIn('export', folders)
 
         for folder in folders:
-            ini = os.path.join(workingdir, folder, 'input.ini')
-            self.assertTrue(os.path.isfile(ini))
+            if os.path.isdir(os.path.join(workingdir, folder)):
+                ini = os.path.join(workingdir, folder, 'input.ini')
+                self.assertTrue(os.path.isfile(ini))
