@@ -24,7 +24,7 @@ def delft3dgt_pulse(self):
 @shared_task(bind=True, throws=(HTTPError))
 def get_docker_ps(self):
     """
-    This task retrieves all running docker containers and returns them in
+    Retrieve all running docker containers and return them in
     an array of dictionaries. The array looks like this:
 
     [
@@ -44,13 +44,21 @@ def get_docker_ps(self):
     return containers
 
 
-@shared_task(bind=True)
-def get_docker_log(self, container_id):
+@shared_task(bind=True, throws=(HTTPError))
+def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
     """
-    TODO: implement task get_docker_log
-    This task should retrieve the log of a container and return it in an object
+    Retrieve the log of a container and return it in a string
     """
-    return {}
+    client = Client(base_url='unix://var/run/docker.sock')
+    log = client.logs(
+        container=container_id,
+        stream=False,
+        stdout=stdout,
+        stderr=stderr,
+        tail=tail,
+        timestamps=True,
+    ).replace('\n', '')
+    return log
 
 
 @shared_task(bind=True)
@@ -65,34 +73,37 @@ def do_docker_create(self, image):
     return container_id
 
 
-@shared_task(bind=True)
+@shared_task(bind=True, throws=(HTTPError))
 def do_docker_start(self, container_id):
     """
-    TODO: implement task do_docker_start
-    This task should start a container with a specific id and return whether
+    Start a container with a specific id and return whether
     the container is started
     """
-    return False
+    client = Client(base_url='unix://var/run/docker.sock')
+    client.start(container=container_id)
+    return True
 
 
-@shared_task(bind=True)
-def do_docker_stop(self, container_id):
+@shared_task(bind=True, throws=(HTTPError))
+def do_docker_stop(self, container_id, timeout=10):
     """
-    TODO: implement task do_docker_stop
-    This task should stop a container with a specific id and return whether
+    Stop a container with a specific id and return whether
     the container is stopped
     """
-    return False
+    client = Client(base_url='unix://var/run/docker.sock')
+    client.stop(container=container_id, timeout=timeout)
+    return True
 
 
-@shared_task(bind=True)
-def do_docker_remove(self, container_id):
+@shared_task(bind=True, throws=(HTTPError))
+def do_docker_remove(self, container_id, force=False):
     """
-    TODO: implement task do_docker_remove
-    This task should remove a container with a specific id and return whether
+    Remove a container with a specific id and return whether
     the container is removed
     """
-    return False
+    client = Client(base_url='unix://var/run/docker.sock')
+    client.remove_container(container=container_id, force=force)
+    return True
 
 
 @shared_task(bind=True)
