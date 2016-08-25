@@ -136,7 +136,6 @@ def create_directory_layout(self, uuid, workingdir, parameters):
     if not os.path.exists(workingdir):
         os.makedirs(workingdir, 0o2775)
 
-
         for f in folders:
             os.makedirs(os.path.join(workingdir, f))
 
