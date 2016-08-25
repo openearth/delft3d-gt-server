@@ -78,8 +78,8 @@ def do_docker_stop(self, container_id, timeout=10):
     the container is stopped
     """
     client = Client(base_url='unix://var/run/docker.sock')
-    started = client.stop(container=container_id, timeout=timeout)
-    return True if started is None else False
+    stopped = client.stop(container=container_id, timeout=timeout)
+    return True if stopped is None else False
 
 
 @shared_task(bind=True, throws=(HTTPError))
