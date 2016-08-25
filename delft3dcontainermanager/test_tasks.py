@@ -16,7 +16,6 @@ from delft3dcontainermanager.tasks import do_docker_sync_filesystem
 class TaskTest(TestCase):
     mock_options = {
         'autospec': True,
-        # 'containers.return_value': [{'a': 'test'}]
     }
 
     @patch('delft3dcontainermanager.tasks.call_command')
@@ -38,12 +37,16 @@ class TaskTest(TestCase):
         get_docker_ps.delay()
         mockClient.return_value.containers.assert_called_with(all=True)
 
-    def test_get_docker_log(self):
+    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
+    def test_get_docker_log(self, mockClient):
         """
-        TODO: write test
+        Assert that the docker_log task
+        calls the docker client.logs() function.
         """
-        delay = get_docker_log.delay("id")
-        self.assertEqual(delay.result, {})
+        get_docker_log.delay("id", stdout=False, stderr=True, tail=5)
+        mockClient.return_value.logs.assert_called_with(
+            container="id", stdout=False, stderr=True, tail=5, stream=False,
+            timestamps=True)
 
     def test_do_docker_create(self):
         """
@@ -52,26 +55,35 @@ class TaskTest(TestCase):
         delay = do_docker_create.delay("image")
         self.assertEqual(delay.result, None)
 
-    def test_do_docker_start(self):
+    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
+    def test_do_docker_start(self, mockClient):
         """
-        TODO: write test
+        Assert that the docker_start task
+        calls the docker client.start() function
         """
-        delay = do_docker_start.delay("id")
-        self.assertEqual(delay.result, False)
+        do_docker_start.delay("id")
+        mockClient.return_value.start.assert_called_with(container="id")
 
-    def test_do_docker_stop(self):
+    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
+    def test_do_docker_stop(self, mockClient):
         """
-        TODO: write test
+        Assert that the docker_stop task
+        calls the docker client.stop() function
         """
-        delay = do_docker_stop.delay("id")
-        self.assertEqual(delay.result, False)
+        do_docker_stop.delay("id", timeout=5)
+        mockClient.return_value.stop.assert_called_with(
+            container="id", timeout=5)
 
-    def test_do_docker_remove(self):
+    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
+    def test_do_docker_remove(self, mockClient):
         """
-        TODO: write test
+        Assert that the docker_remove task
+        calls the docker client.remove_container() function
         """
         delay = do_docker_remove.delay("id")
-        self.assertEqual(delay.result, False)
+        mockClient.return_value.remove_container.assert_called_with(
+            container="id", force=False)
+        self.assertEqual(delay.result, True)
 
     def test_do_docker_sync_filesystem(self):
         """
