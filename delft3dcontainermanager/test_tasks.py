@@ -58,7 +58,7 @@ class TaskTest(TestCase):
                    '/:/data/input:ro']
         command = "echo test"
         do_docker_create.delay(image=image, volumes=volumes, command=command)
-        mockClient.return_value.containers.assert_called_with(
+        mockClient.return_value.create_container.assert_called_with(
             image=image, volumes=volumes, command=command)
 
     def test_do_docker_start(self):
