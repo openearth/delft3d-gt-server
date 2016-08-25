@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from django.test import TestCase
 from mock import patch
 
+from delft3dcontainermanager.tasks import delft3dgt_pulse
 from delft3dcontainermanager.tasks import get_docker_ps
 from delft3dcontainermanager.tasks import get_docker_log
 from delft3dcontainermanager.tasks import do_docker_create
@@ -17,6 +18,16 @@ class TaskTest(TestCase):
         'autospec': True,
         # 'containers.return_value': [{'a': 'test'}]
     }
+
+    @patch('delft3dcontainermanager.tasks.call_command')
+    def test_delft3dgt_pulse(self, mock):
+        """
+        Assert that de delft3dgt_pulse task
+        calls the containersync_sceneupdate() function.
+        """
+        delft3dgt_pulse.delay()
+        mock.assert_called_with('containersync_sceneupdate')
+
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_get_docker_ps(self, mockClient):
