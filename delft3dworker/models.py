@@ -9,7 +9,7 @@ import shutil
 import uuid
 import zipfile
 
-from celery.contrib.abortable import AbortableAsyncResult
+from celery.contrib.abortable import AsyncResult
 from celery.task.control import revoke as revoke_task
 
 from delft3dworker.utils import compare_states, parse_info
@@ -486,13 +486,20 @@ class Container(models.Model):
     def update_task_result(self):
         """
         This method will get the result from the last task it executed, given
-        that there is a result.
+        that there is a result. If the task is not ready, this will not do
+        anything.
         """
 
         if self.task_uuid == '':
             return
 
-        pass
+        result = AsyncResult(id=self.task_uuid)
+
+        if result.ready():
+
+            self.docker_id, log = result.get()
+            self.task_uuid = ''
+            self.save()
 
     def update_from_docker_snapshot(self, snapshot):
         """
@@ -500,16 +507,22 @@ class Container(models.Model):
         of a docker container which was retrieved with docker-py's
         client.containers(all=True) (equivalent to 'docker ps').
 
-        The container will not only update its docker_state, but will also
-        compare this state to the its desired_state, which is defined by the
-        Scene to which this Container belongs. If (for any reason) the
-        docker_state is different from the desired_state, this Container will
-        act: it will start a task to get both states matched.
+        Given that the container has no pending tasks, it will also compare
+        this state to the its desired_state, which is defined by the Scene to
+        which this Container belongs. If (for any reason) the docker_state is
+        different from the desired_state, this Container will act: it will
+        start a task to get both states matched.
+
+        At the end the Container will request a log update.
         """
 
         self._update_state_and_save(snapshot)
 
-        self._fix_state_mismatch()
+        if self.task_uuid == '':
+
+            self._fix_state_mismatch()
+
+            self._update_log()
 
     def _update_state_and_save(self, snapshot):
         """
@@ -526,6 +539,9 @@ class Container(models.Model):
             if snapshot['Status'].startswith('Up'):
                 self.docker_state = 'running'
 
+            elif snapshot['Status'].startswith('Created'):
+                self.docker_state = 'created'
+
             elif snapshot['Status'].startswith('Exited'):
                 self.docker_state = 'exited'
 
@@ -539,11 +555,12 @@ class Container(models.Model):
 
     def _fix_state_mismatch(self):
         """
-        If the docker_state differs from the desired_state, an task should be
-        executed to fix this mismatch
+        If the docker_state differs from the desired_state, and Container is
+        not waiting for a task result, a task should be executed to fix this
+        mismatch.
         """
 
-        if self.desired_state == self.docker_state:
+        if self.desired_state == self.docker_state or self.task_uuid != '':
             return  # these are not the droids we're looking for, move along
 
         if self.desired_state == 'created':
@@ -581,6 +598,12 @@ class Container(models.Model):
             return  # container not ready for delete
 
         # fire delete container task
+
+    def _update_log(self):
+        if self.docker_state != 'running' or self.task_uuid != '':
+            return  # container will not have log updates
+
+        # fire update log task
 
     def _get_container(self, id):
 

@@ -58,7 +58,7 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
         tail=tail,
         timestamps=True,
     ).replace('\n', '')
-    return log
+    return container_id, log
 
 
 @shared_task(bind=True)
@@ -70,7 +70,7 @@ def do_docker_create(self, image):
     """
     container_id = None
 
-    return container_id
+    return container_id, ""
 
 
 @shared_task(bind=True, throws=(HTTPError))
@@ -81,7 +81,7 @@ def do_docker_start(self, container_id):
     """
     client = Client(base_url='unix://var/run/docker.sock')
     client.start(container=container_id)
-    return True
+    return container_id, ""
 
 
 @shared_task(bind=True, throws=(HTTPError))
@@ -92,7 +92,7 @@ def do_docker_stop(self, container_id, timeout=10):
     """
     client = Client(base_url='unix://var/run/docker.sock')
     client.stop(container=container_id, timeout=timeout)
-    return True
+    return container_id, ""
 
 
 @shared_task(bind=True, throws=(HTTPError))
@@ -103,7 +103,7 @@ def do_docker_remove(self, container_id, force=False):
     """
     client = Client(base_url='unix://var/run/docker.sock')
     client.remove_container(container=container_id, force=force)
-    return True
+    return container_id, ""
 
 
 @shared_task(bind=True)
@@ -113,4 +113,4 @@ def do_docker_sync_filesystem(self, container_id):
     This task should sync the filesystem of a container with a specific id and
     return whether the filesystem is synced
     """
-    return False
+    return container_id, ""

@@ -372,6 +372,12 @@ class ContainerTestCase(TestCase):
 
     def setUp(self):
 
+        self.created_docker_ps_dict = {
+            'Status': 'Created 4 minutes ago',
+            'Id':
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnop'
+        }
+
         self.up_docker_ps_dict = {
             'Status': 'Up 4 minutes',
             'Id':
@@ -426,6 +432,12 @@ class ContainerTestCase(TestCase):
 
         pass
 
+    def test_update_task_result(self):
+
+        # TODO: write this test
+
+        pass
+
     def test_get_container(self):
 
         # TODO: write this test
@@ -442,20 +454,25 @@ class ContainerTestCase(TestCase):
         self.assertEqual(
             self.container_a.docker_state, 'non-existent')
 
-        self.container_b._update_state_and_save(
+        self.container_a._update_state_and_save(
+            self.created_docker_ps_dict)
+        self.assertEqual(
+            self.container_a.docker_state, 'created')
+
+        self.container_a._update_state_and_save(
             self.up_docker_ps_dict)
         self.assertEqual(
-            self.container_b.docker_state, 'running')
+            self.container_a.docker_state, 'running')
 
-        self.container_c._update_state_and_save(
+        self.container_a._update_state_and_save(
             self.exited_docker_ps_dict)
         self.assertEqual(
-            self.container_c.docker_state, 'exited')
+            self.container_a.docker_state, 'exited')
 
-        self.container_d._update_state_and_save(
+        self.container_a._update_state_and_save(
             self.error_docker_ps_dict)
         self.assertEqual(
-            self.container_d.docker_state, 'unknown')
+            self.container_a.docker_state, 'unknown')
 
     def test_fix_state_mismatch(self):
 
