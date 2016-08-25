@@ -34,7 +34,7 @@ from jsonfield import JSONField
 BUSYSTATE = "PROCESSING"
 
 
-# ################################### SCENARIO & SCENE
+# ################################### SCENARIO, SCENE & CONTAINER
 
 class Scenario(models.Model):
 
@@ -434,6 +434,60 @@ class Scene(models.Model):
 
     def __unicode__(self):
         return self.name
+
+
+class Container(models.Model):
+    """
+    Container Model
+    This model is used to manage docker containers from the Django environment.
+    When a Scene creates Container models, it uses these containers to define
+    which containers it requires, and in which states these containers are
+    desired to be.
+    """
+
+    scene = models.ForeignKey(Scene)
+
+    # delft3dgtmain.provisionedsettings
+    CONTAINER_TYPE_CHOICES = (
+        ('preprocess', 'preprocess'),
+        ('delft3d', 'delft3d'),
+        ('process', 'process'),
+        ('postprocess', 'postprocess'),
+        ('export', 'export'),
+    )
+
+    container_type = models.CharField(
+        max_length=16, choices=CONTAINER_TYPE_CHOICES, blank=True)
+
+    # https://docs.docker.com/engine/reference/commandline/ps/
+    CONTAINER_STATE_CHOICES = (
+        ('non-existent', 'non-existent'),
+        ('created', 'created'),
+        ('restarting', 'restarting'),
+        ('running', 'running'),
+        ('paused', 'paused'),
+        ('exited', 'exited'),
+        ('dead', 'dead')
+    )
+
+    desired_state = models.CharField(
+        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
+
+    docker_state = models.CharField(
+        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
+
+    # docker container ids are sha256 hashes
+    docker_id = models.CharField(max_length=64, blank=True, default='')
+
+    def _update_state_and_save(self):
+
+        # TODO: write _update_state_and_save method
+
+        return self.docker_state
+
+    def __unicode__(self):
+        return "{} ({}): {}".format(
+            self.container_type, self.docker_state, self.docker_id)
 
 
 # ################################### SEARCHFORM & TEMPLATE
