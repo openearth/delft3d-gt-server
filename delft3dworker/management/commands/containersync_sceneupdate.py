@@ -22,6 +22,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         # Loop over non empty celery_task_ids in containers
+        # celery_set = set(
+            # Container.objects.exclude(celery_id__exact='').values_list('celery_id', flat=True))
 
         # retrieve containers from docker
         containers_docker = get_docker_ps()
