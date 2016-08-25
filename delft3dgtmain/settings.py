@@ -200,7 +200,6 @@ except ImportError:
 if 'test' in sys.argv:
 
     from teamcity import is_running_under_teamcity
-    from teamcity.django import TeamcityDjangoRunner
 
     DATABASES = {
         'default': {
@@ -216,7 +215,7 @@ if 'test' in sys.argv:
     WORKER_FILEDIR = 'test/'
 
     if is_running_under_teamcity():
-        TEST_RUNNER = TeamcityDjangoRunner
+        TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 
     # make sure celery delayed tasks are executed immediately
     CELERY_RESULT_BACKEND = 'cache'
