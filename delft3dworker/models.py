@@ -471,13 +471,13 @@ class Container(models.Model):
     )
 
     desired_state = models.CharField(
-        max_length=16, choices=CONTAINER_STATE_CHOICES, blank=True)
+        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
 
     docker_state = models.CharField(
-        max_length=16, choices=CONTAINER_STATE_CHOICES, blank=True)
+        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
 
     # docker container ids are sha256 hashes
-    docker_id = models.CharField(max_length=64, unique=True, blank=True)
+    docker_id = models.CharField(max_length=64, blank=True, default='')
 
     def _update_state_and_save(self):
 
