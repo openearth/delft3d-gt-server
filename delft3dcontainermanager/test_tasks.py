@@ -59,14 +59,18 @@ class TaskTest(TestCase):
         command = "echo test"
         config = {}
         environment = None
+        label = {"type": "delft3d"}
         mockClient.return_value.create_host_config.return_value = config
 
-        do_docker_create.delay(image=image, volumes=volumes, command=command)
+        do_docker_create.delay(
+            image=image, volumes=volumes, command=command, label=label)
         mockClient.return_value.create_container.assert_called_with(
             image,
             host_config=config,
             command=command,
-            environment=environment)
+            environment=environment,
+            labels=label
+        )
 
     def test_do_docker_start(self):
         """

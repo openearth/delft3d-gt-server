@@ -57,7 +57,7 @@ def get_docker_log(self, container_id):
 
 
 @shared_task(bind=True, throws=(HTTPError))
-def do_docker_create(self, image, volumes, command, environment=None):
+def do_docker_create(self, image, volumes, command, label, environment=None):
     """
     Create a new docker container from a given image and
     return the id of the container
@@ -75,7 +75,8 @@ def do_docker_create(self, image, volumes, command, environment=None):
         image,
         host_config=config,
         command=command,
-        environment=environment
+        environment=environment,
+        labels=label
     )
     container_id = container.get('Id')
     return container_id
