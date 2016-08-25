@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import sys
 
+from datetime import timedelta
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -155,7 +157,17 @@ CELERY_ENABLE_UTC = True
 CELERY_ACKS_LATE = False
 CELERYD_PREFETCH_MULTIPLIER = 1
 
+# Celerybeat
+CELERYBEAT_SCHEDULE = {
+    'sync': {
+        'task': 'delft3dcontainermanager.tasks.delft3dgt_pulse',
+        'schedule': timedelta(seconds=60),
+        'options': {'queue' : 'beat'}
+    },
+}
+
 WORKER_FILEURL = '/files'
+
 
 # REST Framework
 

@@ -5,8 +5,19 @@ from celery.utils.log import get_task_logger
 from docker import Client
 from requests.exceptions import HTTPError
 
+from delft3dworker.management.commands import containersync_sceneupdate
+
 logger = get_task_logger(__name__)
 
+@shared_task(bind=True)
+def delft3dgt_pulse(self):
+    """
+    This taks runs the containersync_sceneupdate management command.
+    This command updates the states in container and scene model
+    """
+    containersync_sceneupdate()
+
+    return
 
 @shared_task(bind=True, throws=(HTTPError))
 def get_docker_ps(self):
@@ -90,3 +101,4 @@ def do_docker_sync_filesystem(self, container_id):
     return whether the filesystem is synced
     """
     return False
+
