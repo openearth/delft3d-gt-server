@@ -20,8 +20,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         # Loop over non empty celery_task_ids in containers
-        container_set = set(
-            Container.objects.values_list('docker_id', flat=True).filter(blank=False))
+        # celery_set = set(
+        #     Container.objects.exclude(celery_id__exact='').values_list('celery_id', flat=True))
 
         # retrieve containers from docker
         containers_docker = get_docker_ps()
@@ -48,9 +48,9 @@ class Command(BaseCommand):
 
         # Call error for mismatch
         container_mismatch = m_0_1 | m_0_0
-
-        for container in container_match:
-            Container(id=container)._update_state_and_save()
+        #
+        # for container in container_match:
+        #     Container(id=container)._update_state_and_save()
 
         # loop over scene and call update_state()
         
