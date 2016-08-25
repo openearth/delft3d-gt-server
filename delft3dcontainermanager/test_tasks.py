@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import os
+
 from django.test import TestCase
 from mock import patch
 
@@ -11,6 +13,7 @@ from delft3dcontainermanager.tasks import do_docker_start
 from delft3dcontainermanager.tasks import do_docker_stop
 from delft3dcontainermanager.tasks import do_docker_remove
 from delft3dcontainermanager.tasks import do_docker_sync_filesystem
+from delft3dcontainermanager.tasks import create_directory_layout
 
 
 class TaskTest(TestCase):
@@ -28,7 +31,6 @@ class TaskTest(TestCase):
         delft3dgt_pulse.delay()
         mock.assert_called_with('containersync_sceneupdate')
 
-
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_get_docker_ps(self, mockClient):
         """
@@ -45,12 +47,19 @@ class TaskTest(TestCase):
         delay = get_docker_log.delay("id")
         self.assertEqual(delay.result, {})
 
-    def test_do_docker_create(self):
+    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
+    def test_do_docker_create(self, mockClient):
         """
-        TODO: write test
+        Assert that the docker_create task
+        calls the docker client.create_container() function.
         """
-        delay = do_docker_create.delay("image")
-        self.assertEqual(delay.result, None)
+        image = "IMAGENAME"
+        volumes = ['/:/data/output:z',
+                   '/:/data/input:ro']
+        command = "echo test"
+        do_docker_create.delay(image=image, volumes=volumes, command=command)
+        mockClient.return_value.containers.assert_called_with(
+            image=image, volumes=volumes, command=command)
 
     def test_do_docker_start(self):
         """
@@ -79,3 +88,25 @@ class TaskTest(TestCase):
         """
         delay = do_docker_sync_filesystem.delay("id")
         self.assertEqual(delay.result, False)
+
+    def test_create_directory_layout(self):
+        """
+        Assert that the create_directory_layout task
+        creates folders with filled .ini files.
+        """
+        uuid = "abcdef123"
+        workingdir = os.path.join(os.getcwd(), 'test')
+        parameters = {u'test':
+                      {u'1': u'a', u'2': u'b'}
+                      }
+        create_directory_layout(uuid, workingdir, parameters)
+
+        folders = os.listdir(workingdir)
+        self.assertIn('process', folders)
+        self.assertIn('preprocess', folders)
+        self.assertIn('simulation', folders)
+        self.assertIn('export', folders)
+
+        for folder in folders:
+            ini = os.path.join(workingdir, folder, 'input.ini')
+            self.assertTrue(os.path.isfile(ini))
