@@ -16,4 +16,3 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write("containersync_sceneupdate skeleton")
-        
