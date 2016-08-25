@@ -19,14 +19,14 @@ class TaskTest(TestCase):
         # 'containers.return_value': [{'a': 'test'}]
     }
 
-    @patch('delft3dcontainermanager.tasks.containersync_sceneupdate')
+    @patch('delft3dcontainermanager.tasks.call_command')
     def test_delft3dgt_pulse(self, mock):
         """
         Assert that de delft3dgt_pulse task
         calls the containersync_sceneupdate() function.
         """
         delft3dgt_pulse.delay()
-        self.assertTrue(mock.called)
+        mock.assert_called_with('containersync_sceneupdate')
 
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)

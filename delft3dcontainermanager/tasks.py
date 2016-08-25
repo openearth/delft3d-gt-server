@@ -5,7 +5,7 @@ from celery.utils.log import get_task_logger
 from docker import Client
 from requests.exceptions import HTTPError
 
-from delft3dworker.management.commands import containersync_sceneupdate
+from django.core.management import call_command
 
 logger = get_task_logger(__name__)
 
@@ -15,7 +15,7 @@ def delft3dgt_pulse(self):
     This taks runs the containersync_sceneupdate management command.
     This command updates the states in container and scene model
     """
-    containersync_sceneupdate()
+    call_command('containersync_sceneupdate')
 
     return
 
