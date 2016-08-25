@@ -367,6 +367,18 @@ class SceneTestCase(TestCase):
         pass
 
 
+class ContainerTestCase(TestCase):
+
+    def setUp(self):
+        pass
+
+    def test_update_state_and_save(self):
+
+        # TODO: write these tests
+
+        pass
+
+
 class SearchFormTestCase(TestCase):
 
     def setUp(self):
