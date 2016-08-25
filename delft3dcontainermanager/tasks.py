@@ -2,7 +2,8 @@ from __future__ import absolute_import
 
 from celery import shared_task
 from celery.utils.log import get_task_logger
-from docker import Client, errors
+from docker import Client
+from docker import errors
 from requests.exceptions import HTTPError
 
 logger = get_task_logger(__name__)
@@ -67,8 +68,8 @@ def do_docker_start(self, container_id):
     the container is started
     """
     client = Client(base_url='unix://var/run/docker.sock')
-    started = client.start(container=container_id)
-    return True if started is None else False
+    client.start(container=container_id)
+    return True
 
 
 @shared_task(bind=True, throws=(HTTPError))
@@ -78,22 +79,19 @@ def do_docker_stop(self, container_id, timeout=10):
     the container is stopped
     """
     client = Client(base_url='unix://var/run/docker.sock')
-    stopped = client.stop(container=container_id, timeout=timeout)
-    return True if stopped is None else False
+    client.stop(container=container_id, timeout=timeout)
+    return True
 
 
 @shared_task(bind=True, throws=(HTTPError))
-def do_docker_remove(self, container_id):
+def do_docker_remove(self, container_id, force=False):
     """
     Remove a container with a specific id and return whether
     the container is removed
     """
     client = Client(base_url='unix://var/run/docker.sock')
-    if not client.inspect_container(container_id)['State']['Running']:
-        client.remove_container(container=container_id)
-        return True
-    else:
-        return False  # Container still running
+    client.remove_container(container=container_id, force=force)
+    return True
 
 
 @shared_task(bind=True)

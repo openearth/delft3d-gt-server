@@ -69,19 +69,10 @@ class TaskTest(TestCase):
         Assert that the docker_remove task
         calls the docker client.remove_container() function
         """
-        # Non running container
-        mockClient.return_value.inspect_container.return_value = {
-            "State": {"Running": False}}
         delay = do_docker_remove.delay("id")
         mockClient.return_value.remove_container.assert_called_with(
-            container="id")
+            container="id", force=False)
         self.assertEqual(delay.result, True)
-
-        # Running container
-        mockClient.return_value.inspect_container.return_value = {
-            "State": {"Running": True}}
-        delay = do_docker_remove.delay("id")
-        self.assertEqual(delay.result, False)
 
     def test_do_docker_sync_filesystem(self):
         """
