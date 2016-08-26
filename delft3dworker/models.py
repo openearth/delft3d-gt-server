@@ -621,8 +621,8 @@ class Container(models.Model):
         # a container can only be started if it is in 'created' or 'exited'
         # state, any other state we will not allow a start
         if self.docker_state != 'created' and self.docker_state != 'exited':
-            logger.warn('Trying to start a container in "{}" state: ignoring '
-                        'command.'.format(self.docker_state))
+            logging.info('Trying to start a container in "{}" state: ignoring '
+                         'command.'.format(self.docker_state))
             return  # container is not ready for start
 
         result = do_docker_start.delay(self.docker_id)
@@ -632,8 +632,8 @@ class Container(models.Model):
         # a container can only be started if it is in 'running' state, any
         # state we will not allow a stop
         if self.docker_state != 'running':
-            logger.warn('Trying to stop a container in "{}" state: ignoring '
-                        'command.'.format(self.docker_state))
+            logging.info('Trying to stop a container in "{}" state: ignoring '
+                         'command.'.format(self.docker_state))
             return  # container is not running, so it can't be stopped
 
         # I just discovered how to make myself unstoppable: don't move.
@@ -645,8 +645,8 @@ class Container(models.Model):
         # a container can only be removed if it is in 'created' or 'exited'
         # state, any other state we will not allow a remove
         if self.docker_state != 'created' and self.docker_state != 'exited':
-            logger.warn('Trying to remove a container in "{}" state: ignoring '
-                        'command.'.format(self.docker_state))
+            logging.info('Trying to remove a container in "{}" state: ignoring'
+                         ' command.'.format(self.docker_state))
             return  # container not ready for delete
 
         result = do_docker_remove.delay(self.docker_id)
@@ -658,8 +658,8 @@ class Container(models.Model):
             return
 
         if self.docker_state != 'running':
-            logger.warn('Trying to retrieve the log from a container in "{}" '
-                        'state: ignoring command.'.format(self.docker_state))
+            logging.info('Trying to retrieve the log from a container in "{}" '
+                         'state: ignoring command.'.format(self.docker_state))
             return  # container will not have log updates
 
         result = get_docker_log.delay(self.docker_id)
