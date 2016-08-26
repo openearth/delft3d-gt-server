@@ -9,7 +9,7 @@ import shutil
 import uuid
 import zipfile
 
-from celery.contrib.abortable import AsyncResult
+from celery.result import AsyncResult
 from celery.task.control import revoke as revoke_task
 
 from django.conf import settings  # noqa
@@ -494,9 +494,8 @@ class Container(models.Model):
 
     def update_task_result(self):
         """
-        This method will get the result from the last task it executed, given
-        that there is a result. If the task is not ready, this will not do
-        anything.
+        Get the result from the last task it executed, given that there is a
+        result. If the task is not ready, don't do anything.
         """
 
         if self.task_uuid is None:
@@ -512,26 +511,23 @@ class Container(models.Model):
 
     def update_from_docker_snapshot(self, snapshot):
         """
-        This method updates the Container based on a given snapshot
-        of a docker container which was retrieved with docker-py's
-        client.containers(all=True) (equivalent to 'docker ps').
+        Update the Container based on a given snapshot of a docker container
+        which was retrieved with docker-py's client.containers(all=True)
+        (equivalent to 'docker ps').
 
-        Given that the container has no pending tasks, it will also compare
-        this state to the its desired_state, which is defined by the Scene to
-        which this Container belongs. If (for any reason) the docker_state is
-        different from the desired_state, this Container will act: it will
-        start a task to get both states matched.
+        Given that the container has no pending tasks, Compare this state to
+        the its desired_state, which is defined by the Scene to which this
+        Container belongs. If (for any reason) the docker_state is different
+        from the desired_state, act: start a task to get both states matched.
 
-        At the end the Container will request a log update.
+        At the end request a log update.
         """
 
         self._update_state_and_save(snapshot)
 
-        if self.task_uuid == '':
+        self._fix_state_mismatch()
 
-            self._fix_state_mismatch()
-
-            self._update_log()
+        self._update_log()
 
     def _update_state_and_save(self, snapshot):
         """
@@ -555,9 +551,15 @@ class Container(models.Model):
                 self.docker_state = 'exited'
 
             else:
+                logging.error(
+                    'receieved unknown docker Status: {}'.format(
+                        snapshot['Status']
+                    )
+                )
                 self.docker_state = 'unknown'
 
         else:
+            logging.error('receieved unknown snapshot: {}'.format(snapshot))
             self.docker_state = 'unknown'
 
         self.save()
@@ -565,8 +567,7 @@ class Container(models.Model):
     def _fix_state_mismatch(self):
         """
         If the docker_state differs from the desired_state, and Container is
-        not waiting for a task result, a task should be executed to fix this
-        mismatch.
+        not waiting for a task result, execute a task to fix this mismatch.
         """
 
         # return if container still has an active task
@@ -577,19 +578,19 @@ class Container(models.Model):
         if self.desired_state == self.docker_state:
             return
 
-        # appearantly there is something to do, so let's act:
+        # apparantly there is something to do, so let's act:
 
         if self.desired_state == 'created':
             self._create_container()
 
-        if self.desired_state == 'running':
+        elif self.desired_state == 'running':
             self._start_container()
 
-        if self.desired_state == 'exited':
+        elif self.desired_state == 'exited':
             self._stop_container()
 
-        if self.desired_state == 'non-existent':
-            self._delete_container()
+        elif self.desired_state == 'non-existent':
+            self._remove_container()
 
     def _create_container(self):
         if self.docker_state != 'non-existent':
@@ -611,14 +612,22 @@ class Container(models.Model):
         self.save()
 
     def _start_container(self):
+        # a container can only be started if it is in 'created' or 'exited'
+        # state, any other state we will not allow a start
         if self.docker_state != 'created' and self.docker_state != 'exited':
+            logger.warn('Trying to start a container in "{}" state: ignoring '
+                        'command.'.format(self.docker_state))
             return  # container is not ready for start
 
         result = do_docker_start.delay(self.docker_id)
         self.task_uuid = result.id
 
     def _stop_container(self):
+        # a container can only be started if it is in 'running' state, any
+        # state we will not allow a stop
         if self.docker_state != 'running':
+            logger.warn('Trying to stop a container in "{}" state: ignoring '
+                        'command.'.format(self.docker_state))
             return  # container is not running, so it can't be stopped
 
         # I just discovered how to make myself unstoppable: don't move.
@@ -626,20 +635,25 @@ class Container(models.Model):
         result = do_docker_stop.delay(self.docker_id)
         self.task_uuid = result.id
 
-    def _delete_container(self):
+    def _remove_container(self):
+        # a container can only be removed if it is in 'created' or 'exited'
+        # state, any other state we will not allow a remove
         if self.docker_state != 'created' and self.docker_state != 'exited':
+            logger.warn('Trying to remove a container in "{}" state: ignoring '
+                        'command.'.format(self.docker_state))
             return  # container not ready for delete
 
         result = do_docker_remove.delay(self.docker_id)
         self.task_uuid = result.id
 
     def _update_log(self):
-
         # return if container still has an active task
         if self.task_uuid is not None:
             return
 
         if self.docker_state != 'running':
+            logger.warn('Trying to retrieve the log from a container in "{}" '
+                        'state: ignoring command.'.format(self.docker_state))
             return  # container will not have log updates
 
         result = get_docker_log.delay(self.docker_id)

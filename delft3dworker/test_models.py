@@ -563,7 +563,7 @@ class ContainerTestCase(TestCase):
 
     @patch('delft3dcontainermanager.tasks.do_docker_remove.delay',
            autospec=True)
-    def test_delete_container(self, mocked_task):
+    def test_remove_container(self, mocked_task):
         docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
         task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
 
@@ -577,16 +577,16 @@ class ContainerTestCase(TestCase):
         mocked_task.return_value = result
 
         # call method, check if do_docker_remove is called once, uuid updates
-        self.container._delete_container()
+        self.container._remove_container()
         mocked_task.assert_called_once_with(docker_id)
         self.assertEqual(self.container.task_uuid, task_uuid)
 
         # update container state, call method multiple times
         self.container.docker_state = 'non-existent'
-        self.container._delete_container()
-        self.container._delete_container()
-        self.container._delete_container()
-        self.container._delete_container()
+        self.container._remove_container()
+        self.container._remove_container()
+        self.container._remove_container()
+        self.container._remove_container()
 
         # all subsequent calls were ignored
         mocked_task.assert_called_once_with(docker_id)
