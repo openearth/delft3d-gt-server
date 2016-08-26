@@ -47,11 +47,11 @@ def get_docker_ps(self):
 @shared_task(bind=True, throws=(HTTPError))
 def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
     """
-    Retrieve the log of a container and return it in a string
+    Retrieve the log of a container and return container id and log
     """
     client = Client(base_url='unix://var/run/docker.sock')
     log = client.logs(
-        container=container_id,
+        container=str(container_id),
         stream=False,
         stdout=stdout,
         stderr=stderr,
@@ -76,8 +76,7 @@ def do_docker_create(self, image):
 @shared_task(bind=True, throws=(HTTPError))
 def do_docker_start(self, container_id):
     """
-    Start a container with a specific id and return whether
-    the container is started
+    Start a container with a specific id and id
     """
     client = Client(base_url='unix://var/run/docker.sock')
     client.start(container=container_id)
@@ -87,8 +86,7 @@ def do_docker_start(self, container_id):
 @shared_task(bind=True, throws=(HTTPError))
 def do_docker_stop(self, container_id, timeout=10):
     """
-    Stop a container with a specific id and return whether
-    the container is stopped
+    Stop a container with a specific id and return id
     """
     client = Client(base_url='unix://var/run/docker.sock')
     client.stop(container=container_id, timeout=timeout)
@@ -98,8 +96,7 @@ def do_docker_stop(self, container_id, timeout=10):
 @shared_task(bind=True, throws=(HTTPError))
 def do_docker_remove(self, container_id, force=False):
     """
-    Remove a container with a specific id and return whether
-    the container is removed
+    Remove a container with a specific id and return id
     """
     client = Client(base_url='unix://var/run/docker.sock')
     client.remove_container(container=container_id, force=force)
@@ -111,6 +108,6 @@ def do_docker_sync_filesystem(self, container_id):
     """
     TODO: implement task do_docker_sync_filesystem
     This task should sync the filesystem of a container with a specific id and
-    return whether the filesystem is synced
+    return id
     """
     return container_id, ""

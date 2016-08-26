@@ -12,8 +12,6 @@ import zipfile
 from celery.contrib.abortable import AsyncResult
 from celery.task.control import revoke as revoke_task
 
-from delft3dworker.utils import compare_states, parse_info
-
 from django.conf import settings  # noqa
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
@@ -29,6 +27,15 @@ from guardian.shortcuts import remove_perm
 from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
 # Postgresql 9.4
+
+from delft3dworker.utils import compare_states
+from delft3dworker.utils import parse_info
+
+from delft3dcontainermanager.tasks import do_docker_create
+from delft3dcontainermanager.tasks import do_docker_remove
+from delft3dcontainermanager.tasks import do_docker_start
+from delft3dcontainermanager.tasks import do_docker_stop
+from delft3dcontainermanager.tasks import get_docker_log
 
 
 BUSYSTATE = "PROCESSING"
@@ -448,7 +455,7 @@ class Container(models.Model):
     scene = models.ForeignKey(Scene)
 
     task_uuid = models.UUIDField(
-        default=uuid.uuid4, editable=False, blank=True)
+        default=None, blank=True, null=True)
 
     # delft3dgtmain.provisionedsettings
     CONTAINER_TYPE_CHOICES = (
@@ -483,6 +490,8 @@ class Container(models.Model):
     # docker container ids are sha256 hashes
     docker_id = models.CharField(max_length=64, blank=True, default='')
 
+    docker_log = models.TextField(blank=True, default='')
+
     def update_task_result(self):
         """
         This method will get the result from the last task it executed, given
@@ -490,15 +499,15 @@ class Container(models.Model):
         anything.
         """
 
-        if self.task_uuid == '':
+        if self.task_uuid is None:
             return
 
         result = AsyncResult(id=self.task_uuid)
 
         if result.ready():
 
-            self.docker_id, log = result.get()
-            self.task_uuid = ''
+            self.docker_id, self.docker_log = result.get()
+            self.task_uuid = None
             self.save()
 
     def update_from_docker_snapshot(self, snapshot):
@@ -560,8 +569,15 @@ class Container(models.Model):
         mismatch.
         """
 
-        if self.desired_state == self.docker_state or self.task_uuid != '':
-            return  # these are not the droids we're looking for, move along
+        # return if container still has an active task
+        if self.task_uuid is not None:
+            return
+
+        # return if the states match
+        if self.desired_state == self.docker_state:
+            return
+
+        # appearantly there is something to do, so let's act:
 
         if self.desired_state == 'created':
             self._create_container()
@@ -577,39 +593,57 @@ class Container(models.Model):
 
     def _create_container(self):
         if self.docker_state != 'non-existent':
-            return  # container already created
+            return  # container is already created
 
-        # fire create container task
+        # delay the create task with the appropriate image name
+        image_dict = {
+            'delft3d': settings.DELFT3D_IMAGE_NAME,
+            'export': settings.EXPORT_IMAGE_NAME,
+            'postprocess': settings.POSTPROCESS_IMAGE_NAME,
+            'preprocess': settings.PREPROCESS_IMAGE_NAME,
+            'process': settings.PROCESS_IMAGE_NAME
+        }
+        result = do_docker_create.delay(
+            image_dict[self.container_type]
+        )
+
+        self.task_uuid = result.id
+        self.save()
 
     def _start_container(self):
         if self.docker_state != 'created' and self.docker_state != 'exited':
-            return  # container not ready for start
+            return  # container is not ready for start
 
-        # fire start container task
+        result = do_docker_start.delay(self.docker_id)
+        self.task_uuid = result.id
 
     def _stop_container(self):
         if self.docker_state != 'running':
-            return  # container not ready for stop
+            return  # container is not running, so it can't be stopped
 
-        # fire stop container task
+        # I just discovered how to make myself unstoppable: don't move.
+
+        result = do_docker_stop.delay(self.docker_id)
+        self.task_uuid = result.id
 
     def _delete_container(self):
         if self.docker_state != 'created' and self.docker_state != 'exited':
             return  # container not ready for delete
 
-        # fire delete container task
+        result = do_docker_remove.delay(self.docker_id)
+        self.task_uuid = result.id
 
     def _update_log(self):
-        if self.docker_state != 'running' or self.task_uuid != '':
+
+        # return if container still has an active task
+        if self.task_uuid is not None:
+            return
+
+        if self.docker_state != 'running':
             return  # container will not have log updates
 
-        # fire update log task
-
-    def _get_container(self, id):
-
-        # TODO: write Container._get_container method
-
-        return None
+        result = get_docker_log.delay(self.docker_id)
+        self.task_uuid = result.id
 
     def __unicode__(self):
         return "{} ({}): {}".format(
