@@ -505,8 +505,14 @@ class Container(models.Model):
 
         if result.ready():
 
-            self.docker_id, self.docker_log = result.get()
+            self.docker_id, log = result.get()
+
+            # only write the log if log data has been received
+            if log != '':
+                self.docker_log = log
+
             self.task_uuid = None
+
             self.save()
 
     def update_from_docker_snapshot(self, snapshot):
