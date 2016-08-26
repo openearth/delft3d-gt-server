@@ -6,8 +6,7 @@ from delft3dworker.models import Container
 from delft3dworker.models import Scene
 
 """
-TODO: write this management command with the following functionality:
-
+Synchronization command that's called periodically.
 - Run docker ps (celery task)
 - Loop over container models and compare with the output of docker ps
 - Missing container model (orphan) -> Error, stop container

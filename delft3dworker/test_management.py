@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 from django.core.management import call_command
-import django.core.management
 
 from django.test import TestCase
 
@@ -45,7 +44,6 @@ class ManagementTest(TestCase):
         client = mockClient.return_value
         client.containers.return_value = [{'Id': 'abcdefg'},
                                           {'Id': 'orphan'}]
-        # container = mockContainer.return_value
 
         out = StringIO()
         call_command('containersync_sceneupdate', stderr=out)
