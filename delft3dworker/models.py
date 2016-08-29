@@ -590,7 +590,7 @@ class Container(models.Model):
         if self.desired_state == self.docker_state:
             return
 
-        # apparantly there is something to do, so let's act:
+        # apparently there is something to do, so let's act:
 
         if self.desired_state == 'created':
             self._create_container()
@@ -677,7 +677,7 @@ class Container(models.Model):
         label = {"type": self.container_type}
 
         result = do_docker_create.delay(label, parameters, environment,
-                                        **kwargs)
+                                        **kwargs[self.container_type])
 
         self.task_uuid = result.id
         self.save()

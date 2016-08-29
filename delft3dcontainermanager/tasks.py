@@ -72,13 +72,6 @@ def do_docker_create(self, label, parameters, environment, image, volumes,
 
     Create a new docker container from a given image and
     return the id of the container
-
-    This should be in the call from the container model:
-        inputfolder = os.path.join(workingdir, 'simulation')
-        outputfolder = os.path.join(workingdir, 'export')
-        volumes = ['{0}:/data/output:z'.format(outputfolder),
-                   '{0}:/data/input:ro'.format(inputfolder)]
-        command = "/data/run.sh /data/svn/scripts/export/export2grdecl.py"
     """
     # Create needed folders for mounts
     for folder in folders:
