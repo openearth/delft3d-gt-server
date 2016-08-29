@@ -34,8 +34,31 @@ class ManagementTest(TestCase):
             docker_id='hijklmn'
         )
 
+        # a freshly created Scene
+        self.scene_new = Scene.objects.create(
+            name='Scene_New',
+        )
+        self.container_1_1_new = Container.objects.create(
+            scene=self.scene_new,
+            desired_state='created',
+            docker_state='non-existent',
+            docker_id=''
+        )
+        self.container_1_0_new = Container.objects.create(
+            scene=self.scene_new,
+            desired_state='created',
+            docker_state='non-existent',
+            docker_id=''
+        )
+        self.container_0_1_new = Container.objects.create(
+            scene=self.scene_new,
+            desired_state='created',
+            docker_state='non-existent',
+            docker_id=''
+        )
+
     @patch('delft3dworker.management.commands.'
-        'containersync_sceneupdate.Container._update_state_and_save')
+           'containersync_sceneupdate.Container._update_state_and_save')
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_containersync_sceneupdate(self, mockClient, mockContainerupdate):
         """
@@ -56,4 +79,5 @@ class ManagementTest(TestCase):
             container='orphan', force=True)
 
         # Docker container in database
+        self.assertEqual(mockContainerupdate.call_count, 6)
         mockContainerupdate.assert_called_with({'Id': 'abcdefg'})
