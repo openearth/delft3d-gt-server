@@ -1,5 +1,8 @@
 from __future__ import absolute_import
 
+import os
+
+from six.moves import configparser
 from django.test import TestCase
 from mock import patch
 
@@ -47,14 +50,58 @@ class TaskTest(TestCase):
             container="id", stdout=False, stderr=True, tail=5, stream=False,
             timestamps=True)
 
-    def test_do_docker_create(self):
+    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
+    def test_do_docker_create(self, mockClient):
         """
-        TODO: write test
+        Assert that the docker_create task
+        calls the docker client.create_container() function.
         """
-        delay = do_docker_create.delay("image")
-        container, log = delay.result
-        self.assertEqual(container, None)
-        self.assertEqual(log, '')
+        image = "IMAGENAME"
+        volumes = ['/:/data/output:z',
+                   '/:/data/input:ro']
+        command = "echo test"
+        config = {}
+        environment = None
+        label = {"type": "delft3d"}
+        folder = ['input', 'output']
+        workingdir = os.path.join(os.getcwd(), 'test')
+        folders = [os.path.join(workingdir, f) for f in folder]
+        parameters = {u'test':
+                      {u'1': u'a', u'2': u'b', 'units': 'ignoreme'}
+                      }
+        mockClient.return_value.create_host_config.return_value = config
+
+        do_docker_create.delay(label, parameters, None,
+                               image, volumes, folders, command)
+
+        # Assert that docker is called
+        mockClient.return_value.create_container.assert_called_with(
+            image,
+            host_config=config,
+            command=command,
+            environment=environment,
+            labels=label
+        )
+
+        # Assert that folders are created
+        listdir = os.listdir(workingdir)
+        for f in listdir:
+            self.assertIn(f, listdir)
+
+        for folder in folders:
+            ini = os.path.join(folder, 'input.ini')
+            self.assertTrue(os.path.isfile(ini))
+
+            config = configparser.SafeConfigParser()
+            config.readfp(open(ini))
+            for key in parameters.keys():
+                self.assertTrue(config.has_section(key))
+                for option, value in parameters[key].items():
+                    if option != 'units':
+                        self.assertTrue(config.has_option(key, option))
+                        self.assertEqual(config.get(key, option), value)
+                    else:  # units should be ignored
+                        self.assertFalse(config.has_option(key, option))
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_do_docker_start(self, mockClient):

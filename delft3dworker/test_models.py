@@ -506,7 +506,15 @@ class ContainerTestCase(TestCase):
 
         # call method, check if do_docker_create is called once, uuid updates
         self.container._create_container()
-        mocked_task.assert_called_once_with(settings.PREPROCESS_IMAGE_NAME)
+        mocked_task.assert_called_once_with(
+            {'type': 'preprocess'}, {}, {'uuid': self.scene.suid},
+            command='/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
+            folders=['test/{}/preprocess'.format(self.scene.suid),
+                     'test/{}/simulation'.format(self.scene.suid)],
+            image='dummy_preprocessing', volumes=[
+                'test/{}/simulation:/data/output:z'.format(self.scene.suid),
+                'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]
+        )
         self.assertEqual(self.container.task_uuid, task_uuid)
 
         # update container state, call method multiple times
@@ -517,7 +525,15 @@ class ContainerTestCase(TestCase):
         self.container._create_container()
 
         # all subsequent calls were ignored
-        mocked_task.assert_called_once_with(settings.PREPROCESS_IMAGE_NAME)
+        mocked_task.assert_called_once_with(
+            {'type': 'preprocess'}, {}, {'uuid': self.scene.suid},
+            command='/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
+            folders=['test/{}/preprocess'.format(self.scene.suid),
+                     'test/{}/simulation'.format(self.scene.suid)],
+            image='dummy_preprocessing', volumes=[
+                'test/{}/simulation:/data/output:z'.format(self.scene.suid),
+                'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]
+        )
 
     @patch('delft3dcontainermanager.tasks.do_docker_start.delay',
            autospec=True)
