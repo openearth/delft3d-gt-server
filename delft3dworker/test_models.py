@@ -1,11 +1,11 @@
 from __future__ import absolute_import
 
 import json
-from mock import patch
 import os
+import uuid
 import zipfile
 
-
+from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
@@ -14,8 +14,12 @@ from django.test import TestCase
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
 
+from mock import Mock
+from mock import patch
+
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
+from delft3dworker.models import Container
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 from delft3dworker.models import User
@@ -106,7 +110,7 @@ class ScenarioControlTestCase(TestCase):
         Test if scenes are started when scenario is started
         """
         self.scenario_multi.start(self.user_foo)
-        self.assertTrue(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
     @patch('delft3dworker.models.Scene.abort', autospec=True)
     def test_abort(self, mocked_scene_method):
@@ -114,7 +118,7 @@ class ScenarioControlTestCase(TestCase):
         Test if scenes are aborted when scenario is aborted
         """
         self.scenario_multi.abort(self.user_foo)
-        self.assertTrue(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
     @patch('delft3dworker.models.Scene.delete', autospec=True)
     def test_delete(self, mocked_scene_method):
@@ -122,7 +126,7 @@ class ScenarioControlTestCase(TestCase):
         Test if scenes are deleted when scenario is deleted
         """
         self.scenario_multi.delete(self.user_foo)
-        self.assertTrue(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
     @patch('delft3dworker.models.Scene.publish_company', autospec=True)
     def test_publish_company(self, mocked_scene_method):
@@ -131,7 +135,7 @@ class ScenarioControlTestCase(TestCase):
         to company
         """
         self.scenario_multi.publish_company(self.user_foo)
-        self.assertTrue(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
     @patch('delft3dworker.models.Scene.publish_world', autospec=True)
     def test_publish_world(self, mocked_scene_method):
@@ -140,7 +144,7 @@ class ScenarioControlTestCase(TestCase):
         to world
         """
         self.scenario_multi.publish_world(self.user_foo)
-        self.assertTrue(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
 
 class SceneTestCase(TestCase):
@@ -370,13 +374,271 @@ class SceneTestCase(TestCase):
 class ContainerTestCase(TestCase):
 
     def setUp(self):
-        pass
 
-    def test_update_state_and_save(self):
+        self.created_docker_ps_dict = {
+            'Status': 'Created 4 minutes ago',
+            'Id':
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        }
 
-        # TODO: write these tests
+        self.up_docker_ps_dict = {
+            'Status': 'Up 4 minutes',
+            'Id':
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        }
 
-        pass
+        self.exited_docker_ps_dict = {
+            'Status': 'Exited (0) 2 hours ago',
+            'Id':
+            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvw'
+        }
+
+        self.error_docker_ps_dict = {
+            'Status': 'nvkeirwtynvowi',
+            'Id':
+            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvw'
+        }
+
+        self.scene = Scene.objects.create()
+
+        self.container = Container.objects.create(
+            scene=self.scene,
+            container_type='preprocess',
+            desired_state='created',
+            docker_state='non-existent',
+        )
+
+    @patch('logging.warn', autospec=True)
+    @patch('delft3dworker.models.AsyncResult', autospec=True)
+    def test_update_task_result(self, MockedAsyncResult, mocked_warn_method):
+
+        async_result = MockedAsyncResult.return_value
+
+        # Set up: A previous task is not yet finished
+        self.container.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        async_result.ready.return_value = False
+        async_result.state = "STARTED"
+
+        # call method
+        self.container.update_task_result()
+
+        # one time check for ready, no get and the task id remains
+        self.assertEqual(async_result.ready.call_count, 1)
+        self.assertEqual(async_result.get.call_count, 0)
+        self.assertEqual(self.container.task_uuid, uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792'))
+
+        # Set up: task is now finished with Failure
+        async_result.ready.return_value = True
+        async_result.get.return_value = (
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        ), 'ERror MesSAge'
+        async_result.state = "FAILURE"
+
+        # call method
+        self.container.update_task_result()
+
+        # check that warning is logged
+        self.assertEqual(mocked_warn_method.call_count, 1)
+
+        # Set up: task is now finished
+        async_result.ready.return_value = True
+        async_result.get.return_value = (
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        ), 'This is a log message.'
+        async_result.state = "SUCCESS"
+
+        # call method
+        self.container.update_task_result()
+
+        # second check for ready, now one get and the task id is set to
+        # None
+        self.assertEqual(async_result.ready.call_count, 2)
+        self.assertEqual(async_result.get.call_count, 1)
+        self.assertIsNone(self.container.task_uuid)
+        self.assertEqual(
+            self.container.docker_id,
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        )
+
+    @patch('logging.error', autospec=True)
+    def test_update_state_and_save(self, mocked_error_method):
+
+        # This test will test the behavior of a Container
+        # when it receives snapshot
+
+        self.container._update_state_and_save(
+            None)
+        self.assertEqual(
+            self.container.docker_state, 'non-existent')
+
+        self.container._update_state_and_save(
+            self.created_docker_ps_dict)
+        self.assertEqual(
+            self.container.docker_state, 'created')
+
+        self.container._update_state_and_save(
+            self.up_docker_ps_dict)
+        self.assertEqual(
+            self.container.docker_state, 'running')
+
+        self.container._update_state_and_save(
+            self.exited_docker_ps_dict)
+        self.assertEqual(
+            self.container.docker_state, 'exited')
+
+        self.container._update_state_and_save(
+            self.error_docker_ps_dict)
+        self.assertEqual(
+            self.container.docker_state, 'unknown')
+        self.assertEqual(
+            mocked_error_method.call_count, 1)  # event is logged as an error!
+
+    @patch('delft3dcontainermanager.tasks.do_docker_create.delay',
+           autospec=True)
+    def test_create_container(self, mocked_task):
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        result = Mock()
+        mocked_task.return_value = result
+        result.id = task_uuid
+
+        # call method, check if do_docker_create is called once, uuid updates
+        self.container._create_container()
+        mocked_task.assert_called_once_with(settings.PREPROCESS_IMAGE_NAME)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+
+        # update container state, call method multiple times
+        self.container.docker_state = 'created'
+        self.container._create_container()
+        self.container._create_container()
+        self.container._create_container()
+        self.container._create_container()
+
+        # all subsequent calls were ignored
+        mocked_task.assert_called_once_with(settings.PREPROCESS_IMAGE_NAME)
+
+    @patch('delft3dcontainermanager.tasks.do_docker_start.delay',
+           autospec=True)
+    def test_start_container(self, mocked_task):
+        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.container.desired_state = 'running'
+        self.container.docker_state = 'created'
+        self.container.docker_id = docker_id
+
+        result = Mock()
+        result.id = task_uuid
+        result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, check if do_docker_start is called once, uuid updates
+        self.container._start_container()
+        mocked_task.assert_called_once_with(docker_id)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+
+        # update container state, call method multiple times
+        self.container.docker_state = 'running'
+        self.container._start_container()
+        self.container._start_container()
+        self.container._start_container()
+        self.container._start_container()
+
+        # all subsequent calls were ignored
+        mocked_task.assert_called_once_with(docker_id)
+
+    @patch('delft3dcontainermanager.tasks.do_docker_stop.delay',
+           autospec=True)
+    def test_stop_container(self, mocked_task):
+        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.container.desired_state = 'exited'
+        self.container.docker_state = 'running'
+        self.container.docker_id = docker_id
+
+        result = Mock()
+        result.id = task_uuid
+        result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, check if do_docker_stop is called once, uuid updates
+        self.container._stop_container()
+        mocked_task.assert_called_once_with(docker_id)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+
+        # update container state, call method multiple times
+        self.container.docker_state = 'exited'
+        self.container._stop_container()
+        self.container._stop_container()
+        self.container._stop_container()
+        self.container._stop_container()
+
+        # all subsequent calls were ignored
+        mocked_task.assert_called_once_with(docker_id)
+
+    @patch('delft3dcontainermanager.tasks.do_docker_remove.delay',
+           autospec=True)
+    def test_remove_container(self, mocked_task):
+        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.container.desired_state = 'non-existent'
+        self.container.docker_state = 'created'
+        self.container.docker_id = docker_id
+
+        result = Mock()
+        result.id = task_uuid
+        result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, check if do_docker_remove is called once, uuid updates
+        self.container._remove_container()
+        mocked_task.assert_called_once_with(docker_id)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+
+        # update container state, call method multiple times
+        self.container.docker_state = 'non-existent'
+        self.container._remove_container()
+        self.container._remove_container()
+        self.container._remove_container()
+        self.container._remove_container()
+
+        # all subsequent calls were ignored
+        mocked_task.assert_called_once_with(docker_id)
+
+    @patch('delft3dcontainermanager.tasks.get_docker_log.delay',
+           autospec=True)
+    def test_update_log(self, mocked_task):
+        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.container.desired_state = 'running'
+        self.container.docker_state = 'running'
+        self.container.docker_id = docker_id
+
+        result = Mock()
+        result.id = task_uuid
+        result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, get_docker_log is called once, uuid updates
+        self.container._update_log()
+        mocked_task.assert_called_once_with(docker_id)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+
+        # 'finish' task, call method, get_docker_log is called again
+        self.container.task_uuid = None
+        self.container._update_log()
+        self.assertEqual(mocked_task.call_count, 2)
+
+        # 'exit' container, call method, get_docker_log is not called again
+        self.container.docker_state = 'exited'
+        self.container._update_log()
+        self.assertEqual(mocked_task.call_count, 2)
 
 
 class SearchFormTestCase(TestCase):
