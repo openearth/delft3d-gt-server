@@ -20,12 +20,28 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
+        # get all container models with celery task id
+        celery_set = set(
+            Container.objects.exclude(
+                task_uuid__exact='').values_list('task_uuid', flat=True))
+
         # Loop over non empty celery_task_ids in containers
-        # celery_set = set(
-            # Container.objects.exclude(celery_id__exact='').values_list('celery_id', flat=True))
+        for container in celery_set:
+            container.update_task_result()
 
         # retrieve containers from docker
-        containers_docker = get_docker_ps()
+        get_docker_ps.delay()
+
+        try:
+            containers_docker = get_docker_ps.get(timeout=30)
+        except celery.exceptions.TimeoutError as e:
+            logging.exception("get_docker_ps timed out (30 seconds)")
+
+        if containers_docker is None:
+            # Apparently something is wrong with the remote docker or celery
+            # To prevent new task creation by Containers exit beat.
+            return
+
         docker_dict = {x['Id']: x for x in containers_docker}
         docker_set = set(docker_dict.keys())
 
@@ -39,7 +55,7 @@ class Command(BaseCommand):
         # yes           1_1 1_0
         # no            0_1 0_0
         #
-        m_1_1 = docker_set & container_set
+        m_1_1 = container_set & docker_set
         m_1_0 = container_set - docker_set
         m_0_1 = docker_set - container_set
         m_0_0 = ((docker_set | container_set) -
