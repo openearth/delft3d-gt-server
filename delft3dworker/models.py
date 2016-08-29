@@ -466,7 +466,7 @@ class Container(models.Model):
     )
 
     container_type = models.CharField(
-        max_length=16, choices=CONTAINER_TYPE_CHOICES, blank=True)
+        max_length=16, choices=CONTAINER_TYPE_CHOICES, default='preprocess')
 
     # https://docs.docker.com/engine/reference/commandline/ps/
     CONTAINER_STATE_CHOICES = (

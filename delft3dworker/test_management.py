@@ -23,14 +23,17 @@ class ManagementTest(TestCase):
         )
         self.container_1_1 = Container.objects.create(
             scene=self.scene,
+            container_type='preprocess',
             docker_id='abcdefg'
         )
         self.container_1_0 = Container.objects.create(
             scene=self.scene,
+            container_type='delft3d',
             docker_id=''
         )
         self.container_0_1 = Container.objects.create(
             scene=self.scene,
+            container_type='process',
             docker_id='hijklmn'
         )
 
@@ -40,18 +43,21 @@ class ManagementTest(TestCase):
         )
         self.container_1_1_new = Container.objects.create(
             scene=self.scene_new,
+            container_type='preprocess',
             desired_state='created',
             docker_state='non-existent',
             docker_id=''
         )
         self.container_1_0_new = Container.objects.create(
             scene=self.scene_new,
+            container_type='delft3d',
             desired_state='created',
             docker_state='non-existent',
             docker_id=''
         )
         self.container_0_1_new = Container.objects.create(
             scene=self.scene_new,
+            container_type='process',
             desired_state='created',
             docker_state='non-existent',
             docker_id=''
