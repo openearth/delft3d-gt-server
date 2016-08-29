@@ -511,7 +511,7 @@ class ContainerTestCase(TestCase):
             command='/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
             folders=['test/{}/preprocess'.format(self.scene.suid),
                      'test/{}/simulation'.format(self.scene.suid)],
-            image='dummy_preprocessing', label='preprocess', volumes=[
+            image='dummy_preprocessing', volumes=[
                 'test/{}/simulation:/data/output:z'.format(self.scene.suid),
                 'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]
         )
@@ -530,7 +530,7 @@ class ContainerTestCase(TestCase):
             command='/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
             folders=['test/{}/preprocess'.format(self.scene.suid),
                      'test/{}/simulation'.format(self.scene.suid)],
-            image='dummy_preprocessing', label='preprocess', volumes=[
+            image='dummy_preprocessing', volumes=[
                 'test/{}/simulation:/data/output:z'.format(self.scene.suid),
                 'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]
         )
