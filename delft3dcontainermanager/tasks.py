@@ -57,8 +57,14 @@ def get_docker_log(self, container_id):
 
 
 @shared_task(bind=True, throws=(HTTPError))
-def do_docker_create(self, image, volumes, command, label, environment=None):
+def do_docker_create(self, image, volumes, folders, command, label, parameters,
+                     environment=None):
     """
+    Create necessary directories in a working directory 
+    for the mounts in the containers.
+
+    Write .ini file filled with given parameters in each folder.
+
     Create a new docker container from a given image and
     return the id of the container
 
@@ -69,14 +75,40 @@ def do_docker_create(self, image, volumes, command, label, environment=None):
                    '{0}:/data/input:ro'.format(inputfolder)]
         command = "/data/run.sh /data/svn/scripts/export/export2grdecl.py"
     """
+    # Create needed folders for mounts
+    for folder in folders:
+        try:
+            os.makedirs(folder, 0o2775)
+        # Path already exists, ignore
+        except OSError:
+            if not os.path.isdir(folder):
+                raise
+
+    # Create ini file for containers
+    config = configparser.SafeConfigParser()
+    for section in parameters:
+        if not config.has_section(section):
+            config.add_section(section)
+        for key, value in parameters[section].items():
+
+            # TODO: find more elegant solution for this! ugh!
+            if not key == 'units':
+                if not config.has_option(section, key):
+                    config.set(*map(str, [section, key, value]))
+
+    for folder in folders:
+        with open(os.path.join(folder, 'input.ini'), 'w') as f:
+            config.write(f)  # Yes, the ConfigParser writes to f
+
+    # Create docker container
     client = Client(base_url='unix://var/run/docker.sock')
     config = client.create_host_config(binds=volumes)
     container = client.create_container(
-        image,
-        host_config=config,
-        command=command,
-        environment=environment,
-        labels=label
+        image,  # docker image
+        host_config=config,  # mounts
+        command=command,  # command to run
+        environment=environment,  # {'uuid' = ""} for cloud fs sync
+        labels=label  # type of container
     )
     container_id = container.get('Id')
     return container_id
@@ -120,50 +152,3 @@ def do_docker_sync_filesystem(self, container_id):
     return whether the filesystem is synced
     """
     return False
-
-
-@shared_task(bind=True)
-def create_directory_layout(self, uuid, workingdir, parameters):
-    """
-    Create necessary directories in a working directory 
-    for the mounts in the containers.
-
-    Write .ini file filled with given parameters in each folder.
-    """
-
-    folders = ['process', 'preprocess', 'simulation', 'export']
-
-    # create directory for scene
-    if not os.path.exists(workingdir):
-        os.makedirs(workingdir, 0o2775)
-
-    for f in folders:
-        folder = os.path.join(workingdir, f)
-        if not os.path.exists(folder):
-            os.mkdir(os.path.join(workingdir, f))
-
-    # create ini file for containers
-    # in 2.7 ConfigParser is a bit stupid
-    # in 3.x configparser has .read_dict()
-    config = configparser.SafeConfigParser()
-    for section in parameters:
-        if not config.has_section(section):
-            config.add_section(section)
-        for key, value in parameters[section].items():
-
-            # TODO: find more elegant solution for this! ugh!
-            if not key == 'units':
-                if not config.has_option(section, key):
-                    config.set(*map(str, [section, key, value]))
-
-    with open(os.path.join(workingdir, 'input.ini'), 'w') as f:
-        config.write(f)  # Yes, the ConfigParser writes to f
-
-    for folder in folders:
-        shutil.copyfile(
-            os.path.join(workingdir, 'input.ini'),
-            os.path.join(os.path.join(
-                workingdir, '{}'.format(folder), 'input.ini'))
-        )
-
-    return

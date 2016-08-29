@@ -14,7 +14,6 @@ from delft3dcontainermanager.tasks import do_docker_start
 from delft3dcontainermanager.tasks import do_docker_stop
 from delft3dcontainermanager.tasks import do_docker_remove
 from delft3dcontainermanager.tasks import do_docker_sync_filesystem
-from delft3dcontainermanager.tasks import create_directory_layout
 
 
 class TaskTest(TestCase):
@@ -61,10 +60,18 @@ class TaskTest(TestCase):
         config = {}
         environment = None
         label = {"type": "delft3d"}
+        folder = ['input', 'output']
+        workingdir = os.path.join(os.getcwd(), 'test')
+        folders = [os.path.join(workingdir, f) for f in folder]
+        parameters = {u'test':
+                      {u'1': u'a', u'2': u'b', 'units': 'ignoreme'}
+                      }
         mockClient.return_value.create_host_config.return_value = config
 
-        do_docker_create.delay(
-            image=image, volumes=volumes, command=command, label=label)
+        do_docker_create.delay(image, volumes, folders, command, label,
+                               parameters, environment=None)
+
+        # Assert that docker is called
         mockClient.return_value.create_container.assert_called_with(
             image,
             host_config=config,
@@ -72,6 +79,26 @@ class TaskTest(TestCase):
             environment=environment,
             labels=label
         )
+
+        # Assert that folders are created
+        listdir = os.listdir(workingdir)
+        for f in listdir:
+            self.assertIn(f, listdir)
+
+        for folder in folders:
+            ini = os.path.join(folder, 'input.ini')
+            self.assertTrue(os.path.isfile(ini))
+
+            config = configparser.SafeConfigParser()
+            config.readfp(open(ini))
+            for key in parameters.keys():
+                self.assertTrue(config.has_section(key))
+                for option, value in parameters[key].items():
+                    if option != 'units':
+                        self.assertTrue(config.has_option(key, option))
+                        self.assertEqual(config.get(key, option), value)
+                    else:  # units should be ignored
+                        self.assertFalse(config.has_option(key, option))
 
     def test_do_docker_start(self):
         """
@@ -100,37 +127,3 @@ class TaskTest(TestCase):
         """
         delay = do_docker_sync_filesystem.delay("id")
         self.assertEqual(delay.result, False)
-
-    def test_create_directory_layout(self):
-        """
-        Assert that the create_directory_layout task
-        creates folders with filled .ini files.
-        """
-        uuid = "abcdef123"
-        workingdir = os.path.join(os.getcwd(), 'test')
-        parameters = {u'test':
-                      {u'1': u'a', u'2': u'b', 'units':'ignoreme'}
-                      }
-        create_directory_layout(uuid, workingdir, parameters)
-
-        folders = os.listdir(workingdir)
-        self.assertIn('process', folders)
-        self.assertIn('preprocess', folders)
-        self.assertIn('simulation', folders)
-        self.assertIn('export', folders)
-
-        for folder in folders:
-            if os.path.isdir(os.path.join(workingdir, folder)):
-                ini = os.path.join(workingdir, folder, 'input.ini')
-                self.assertTrue(os.path.isfile(ini))
-
-                config = configparser.SafeConfigParser()
-                config.readfp(open(ini))
-                for key in parameters.keys():
-                    self.assertTrue(config.has_section(key))
-                    for option, value in parameters[key].items():
-                        if option != 'units':
-                            self.assertTrue(config.has_option(key, option))
-                            self.assertEqual(config.get(key, option), value)
-                        else:  # units should be ignored
-                            self.assertFalse(config.has_option(key, option))
