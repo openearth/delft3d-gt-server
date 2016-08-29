@@ -20,17 +20,21 @@ class ManagementTest(TestCase):
     def setUp(self):
         self.scene = Scene.objects.create(
             name='Scene',
+
         )
         self.container_1_1 = Container.objects.create(
             scene=self.scene,
+            container_type='delft3d',
             docker_id='abcdefg'
         )
         self.container_1_0 = Container.objects.create(
             scene=self.scene,
+            container_type='delft3d',
             docker_id=''
         )
         self.container_0_1 = Container.objects.create(
             scene=self.scene,
+            container_type='delft3d',
             docker_id='hijklmn'
         )
 
