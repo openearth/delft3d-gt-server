@@ -9,10 +9,7 @@ import shutil
 import uuid
 import zipfile
 
-from celery.contrib.abortable import AbortableAsyncResult
-from celery.task.control import revoke as revoke_task
-
-from delft3dworker.utils import compare_states, parse_info
+from celery.result import AsyncResult
 
 from django.conf import settings  # noqa
 from django.contrib.auth.models import Group
@@ -30,11 +27,20 @@ from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
 # Postgresql 9.4
 
+from delft3dworker.utils import compare_states
+from delft3dworker.utils import parse_info
+
+from delft3dcontainermanager.tasks import do_docker_create
+from delft3dcontainermanager.tasks import do_docker_remove
+from delft3dcontainermanager.tasks import do_docker_start
+from delft3dcontainermanager.tasks import do_docker_stop
+from delft3dcontainermanager.tasks import get_docker_log
+
 
 BUSYSTATE = "PROCESSING"
 
 
-# ################################### SCENARIO & SCENE
+# ################################### SCENARIO, SCENE & CONTAINER
 
 class Scenario(models.Model):
 
@@ -434,6 +440,239 @@ class Scene(models.Model):
 
     def __unicode__(self):
         return self.name
+
+
+class Container(models.Model):
+    """
+    Container Model
+    This model is used to manage docker containers from the Django environment.
+    When a Scene creates Container models, it uses these containers to define
+    which containers it requires, and in which states these containers are
+    desired to be.
+    """
+
+    scene = models.ForeignKey(Scene)
+
+    task_uuid = models.UUIDField(
+        default=None, blank=True, null=True)
+
+    # delft3dgtmain.provisionedsettings
+    CONTAINER_TYPE_CHOICES = (
+        ('preprocess', 'preprocess'),
+        ('delft3d', 'delft3d'),
+        ('process', 'process'),
+        ('postprocess', 'postprocess'),
+        ('export', 'export'),
+    )
+
+    container_type = models.CharField(
+        max_length=16, choices=CONTAINER_TYPE_CHOICES, blank=True)
+
+    # https://docs.docker.com/engine/reference/commandline/ps/
+    CONTAINER_STATE_CHOICES = (
+        ('non-existent', 'non-existent'),
+        ('created', 'created'),
+        ('restarting', 'restarting'),
+        ('running', 'running'),
+        ('paused', 'paused'),
+        ('exited', 'exited'),
+        ('dead', 'dead'),
+        ('unknown', 'unknown'),
+    )
+
+    desired_state = models.CharField(
+        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
+
+    docker_state = models.CharField(
+        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
+
+    # docker container ids are sha256 hashes
+    docker_id = models.CharField(max_length=64, blank=True, default='')
+
+    docker_log = models.TextField(blank=True, default='')
+
+    def update_task_result(self):
+        """
+        Get the result from the last task it executed, given that there is a
+        result. If the task is not ready, don't do anything.
+        """
+
+        if self.task_uuid is None:
+            return
+
+        result = AsyncResult(id=self.task_uuid)
+
+        if result.ready():
+
+            if result.state == "FAILURE":
+                logging.warn(
+                    "Task of Container [{}] resulted in FAILURE state".format(
+                        self
+                    ))
+
+            self.docker_id, log = result.get()
+
+            # only write the log if log data has been received
+            if log != '':
+                self.docker_log = log
+
+            self.task_uuid = None
+
+            self.save()
+
+    def update_from_docker_snapshot(self, snapshot):
+        """
+        Update the Container based on a given snapshot of a docker container
+        which was retrieved with docker-py's client.containers(all=True)
+        (equivalent to 'docker ps').
+
+        Given that the container has no pending tasks, Compare this state to
+        the its desired_state, which is defined by the Scene to which this
+        Container belongs. If (for any reason) the docker_state is different
+        from the desired_state, act: start a task to get both states matched.
+
+        At the end request a log update.
+        """
+
+        self._update_state_and_save(snapshot)
+
+        self._fix_state_mismatch()
+
+        self._update_log()
+
+    def _update_state_and_save(self, snapshot):
+        """
+        Var snapshot can be either dictionary or None.
+        If None: docker container does not exist
+        If dictionary: snapshot['Status'] is a string describing status
+        """
+
+        if snapshot is None:
+            self.docker_state = 'non-existent'
+
+        elif isinstance(snapshot, dict) and ('Status' in snapshot):
+
+            if snapshot['Status'].startswith('Up'):
+                self.docker_state = 'running'
+
+            elif snapshot['Status'].startswith('Created'):
+                self.docker_state = 'created'
+
+            elif snapshot['Status'].startswith('Exited'):
+                self.docker_state = 'exited'
+
+            else:
+                logging.error(
+                    'receieved unknown docker Status: {}'.format(
+                        snapshot['Status']
+                    )
+                )
+                self.docker_state = 'unknown'
+
+        else:
+            logging.error('receieved unknown snapshot: {}'.format(snapshot))
+            self.docker_state = 'unknown'
+
+        self.save()
+
+    def _fix_state_mismatch(self):
+        """
+        If the docker_state differs from the desired_state, and Container is
+        not waiting for a task result, execute a task to fix this mismatch.
+        """
+
+        # return if container still has an active task
+        if self.task_uuid is not None:
+            return
+
+        # return if the states match
+        if self.desired_state == self.docker_state:
+            return
+
+        # apparantly there is something to do, so let's act:
+
+        if self.desired_state == 'created':
+            self._create_container()
+
+        elif self.desired_state == 'running':
+            self._start_container()
+
+        elif self.desired_state == 'exited':
+            self._stop_container()
+
+        elif self.desired_state == 'non-existent':
+            self._remove_container()
+
+    def _create_container(self):
+        if self.docker_state != 'non-existent':
+            return  # container is already created
+
+        # delay the create task with the appropriate image name
+        image_dict = {
+            'delft3d': settings.DELFT3D_IMAGE_NAME,
+            'export': settings.EXPORT_IMAGE_NAME,
+            'postprocess': settings.POSTPROCESS_IMAGE_NAME,
+            'preprocess': settings.PREPROCESS_IMAGE_NAME,
+            'process': settings.PROCESS_IMAGE_NAME
+        }
+        result = do_docker_create.delay(
+            image_dict[self.container_type]
+        )
+
+        self.task_uuid = result.id
+        self.save()
+
+    def _start_container(self):
+        # a container can only be started if it is in 'created' or 'exited'
+        # state, any other state we will not allow a start
+        if self.docker_state != 'created' and self.docker_state != 'exited':
+            logging.info('Trying to start a container in "{}" state: ignoring '
+                         'command.'.format(self.docker_state))
+            return  # container is not ready for start
+
+        result = do_docker_start.delay(self.docker_id)
+        self.task_uuid = result.id
+
+    def _stop_container(self):
+        # a container can only be started if it is in 'running' state, any
+        # state we will not allow a stop
+        if self.docker_state != 'running':
+            logging.info('Trying to stop a container in "{}" state: ignoring '
+                         'command.'.format(self.docker_state))
+            return  # container is not running, so it can't be stopped
+
+        # I just discovered how to make myself unstoppable: don't move.
+
+        result = do_docker_stop.delay(self.docker_id)
+        self.task_uuid = result.id
+
+    def _remove_container(self):
+        # a container can only be removed if it is in 'created' or 'exited'
+        # state, any other state we will not allow a remove
+        if self.docker_state != 'created' and self.docker_state != 'exited':
+            logging.info('Trying to remove a container in "{}" state: ignoring'
+                         ' command.'.format(self.docker_state))
+            return  # container not ready for delete
+
+        result = do_docker_remove.delay(self.docker_id)
+        self.task_uuid = result.id
+
+    def _update_log(self):
+        # return if container still has an active task
+        if self.task_uuid is not None:
+            return
+
+        if self.docker_state != 'running':
+            logging.info('Trying to retrieve the log from a container in "{}" '
+                         'state: ignoring command.'.format(self.docker_state))
+            return  # container will not have log updates
+
+        result = get_docker_log.delay(self.docker_id)
+        self.task_uuid = result.id
+
+    def __unicode__(self):
+        return "{} ({}): {}".format(
+            self.container_type, self.docker_state, self.docker_id)
 
 
 # ################################### SEARCHFORM & TEMPLATE

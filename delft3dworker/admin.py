@@ -4,8 +4,14 @@ from guardian.admin import GuardedModelAdmin
 
 from models import Scenario
 from models import Scene
+from models import Container
 from models import SearchForm
 from models import Template
+
+
+class ContainerInline(admin.StackedInline):
+    extra = 0
+    model = Container
 
 
 @admin.register(Scenario)
@@ -15,6 +21,13 @@ class ScenarioAdmin(GuardedModelAdmin):
 
 @admin.register(Scene)
 class SceneAdmin(GuardedModelAdmin):
+    inlines = [
+        ContainerInline,
+    ]
+
+
+@admin.register(Container)
+class ContainerAdmin(GuardedModelAdmin):
     pass
 
 
