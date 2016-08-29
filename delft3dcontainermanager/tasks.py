@@ -137,8 +137,8 @@ def create_directory_layout(self, uuid, workingdir, parameters):
     if not os.path.exists(workingdir):
         os.makedirs(workingdir, 0o2775)
 
-        for f in folders:
-            os.makedirs(os.path.join(workingdir, f))
+    for f in folders:
+        os.mkdir(os.path.join(workingdir, f))
 
     # create ini file for containers
     # in 2.7 ConfigParser is a bit stupid

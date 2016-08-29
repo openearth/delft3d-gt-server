@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import os
 
+from six.moves import configparser
 from django.test import TestCase
 from mock import patch
 
@@ -108,7 +109,7 @@ class TaskTest(TestCase):
         uuid = "abcdef123"
         workingdir = os.path.join(os.getcwd(), 'test')
         parameters = {u'test':
-                      {u'1': u'a', u'2': u'b'}
+                      {u'1': u'a', u'2': u'b', 'units':'ignoreme'}
                       }
         create_directory_layout(uuid, workingdir, parameters)
 
@@ -122,3 +123,14 @@ class TaskTest(TestCase):
             if os.path.isdir(os.path.join(workingdir, folder)):
                 ini = os.path.join(workingdir, folder, 'input.ini')
                 self.assertTrue(os.path.isfile(ini))
+
+                config = configparser.SafeConfigParser()
+                config.readfp(open(ini))
+                for key in parameters.keys():
+                    self.assertTrue(config.has_section(key))
+                    for option, value in parameters[key].items():
+                        if option != 'units':
+                            self.assertTrue(config.has_option(key, option))
+                            self.assertEqual(config.get(key, option), value)
+                        else:  # units should be ignored
+                            self.assertFalse(config.has_option(key, option))
