@@ -71,8 +71,8 @@ class TaskTest(TestCase):
                       }
         mockClient.return_value.create_host_config.return_value = config
 
-        do_docker_create.delay(image, volumes, folders, command, label,
-                               parameters, environment=None)
+        do_docker_create.delay(label, parameters, None,
+                               image, volumes, folders, command)
 
         # Assert that docker is called
         mockClient.return_value.create_container.assert_called_with(

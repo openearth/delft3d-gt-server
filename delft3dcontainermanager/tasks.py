@@ -1,8 +1,6 @@
 from __future__ import absolute_import
 
-
 import os
-import shutil
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from docker import Client
@@ -16,11 +14,10 @@ logger = get_task_logger(__name__)
 @shared_task(bind=True)
 def delft3dgt_pulse(self):
     """
-    This taks runs the containersync_sceneupdate management command.
+    This task runs the containersync_sceneupdate management command.
     This command updates the states in container and scene model
     """
     call_command('containersync_sceneupdate')
-
     return
 
 
@@ -65,8 +62,8 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
 
 
 @shared_task(bind=True, throws=(HTTPError))
-def do_docker_create(self, image, volumes, folders, command, label, parameters,
-                     environment=None):
+def do_docker_create(self, label, parameters, environment, image, volumes,
+                     folders, command):
     """
     Create necessary directories in a working directory 
     for the mounts in the containers.

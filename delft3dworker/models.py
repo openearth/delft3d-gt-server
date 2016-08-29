@@ -607,17 +607,76 @@ class Container(models.Model):
         if self.docker_state != 'non-existent':
             return  # container is already created
 
-        # delay the create task with the appropriate image name
-        image_dict = {
-            'delft3d': settings.DELFT3D_IMAGE_NAME,
-            'export': settings.EXPORT_IMAGE_NAME,
-            'postprocess': settings.POSTPROCESS_IMAGE_NAME,
-            'preprocess': settings.PREPROCESS_IMAGE_NAME,
-            'process': settings.PROCESS_IMAGE_NAME
+        workingdir = self.scene.workingdir
+        simdir = os.path.join(workingdir, 'simulation')
+        predir = os.path.join(workingdir, 'preprocess')
+        prodir = os.path.join(workingdir, 'process')
+        posdir = os.path.join(workingdir, 'postprocess')
+        expdir = os.path.join(workingdir, 'export')
+
+        # Specific settings for each container type
+        kwargs = {
+            'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
+                        'label': 'simulation',
+                        'volumes': ['{0}:/data'.format(simdir)],
+                        'folders': [simdir],
+                        'command': ""},
+
+            'export': {'image': settings.EXPORT_IMAGE_NAME,
+                       'label': 'export',
+                       'volumes': [
+                                '{0}:/data/output:z'.format(expdir),
+                           '{0}:/data/input:ro'.format(simdir)],
+                       'folders': [expdir,
+                                   simdir],
+                       'command': "/data/run.sh /data/svn/scripts/export/export2grdecl.py",
+                       },
+
+            'postprocess': {'image': settings.POSTPROCESS_IMAGE_NAME,
+                            'label': 'postprocess',
+                            'volumes': [
+                                '{0}:/data/output:z'.format(posdir),
+                                '{0}:/data/input:ro'.format(workingdir)],
+                            'folders': [workingdir,
+                                        posdir],
+                            'command': "",
+                            },
+
+            'preprocess': {'image': settings.PREPROCESS_IMAGE_NAME,
+                           'label': 'preprocess',
+                           'volumes': [
+                               '{0}:/data/output:z'.format(simdir),
+                               '{0}:/data/input:ro'.format(predir)],
+                           'folders': [predir,
+                                       simdir],
+                           'command': "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"
+                           },
+
+            'process': {'image': settings.PROCESS_IMAGE_NAME,
+                        'label': 'process',
+                        'volumes': [
+                            '{0}:/data/input:ro'.format(simdir),
+                            '{0}:/data/output:z'.format(prodir)
+                        ],
+                        'folders': [prodir,
+                                    simdir],
+                        'command': ' '.join([
+                            "/data/run.sh ",
+                            "/data/svn/scripts/postprocessing/channel_network_proc.py",
+                            "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
+                            "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
+                            "/data/svn/scripts/visualisation/channel_network_viz.py",
+                            "/data/svn/scripts/visualisation/delta_fringe_viz.py",
+                            "/data/svn/scripts/visualisation/sediment_fraction_viz.py"
+                        ])},
         }
-        result = do_docker_create.delay(
-            image_dict[self.container_type]
-        )
+
+        parameters = self.scene.parameters
+        environment = {"uuid": self.scene.suid}
+        label = {"type": self.container_type}
+
+        result = do_docker_create.delay(label, parameters, environment,
+                                        **kwargs)
 
         self.task_uuid = result.id
         self.save()
