@@ -162,7 +162,7 @@ CELERYBEAT_SCHEDULE = {
     'sync': {
         'task': 'delft3dcontainermanager.tasks.delft3dgt_pulse',
         'schedule': timedelta(seconds=60),
-        'options': {'queue' : 'beat'}
+        'options': {'queue': 'beat'}
     },
 }
 
@@ -200,6 +200,7 @@ except ImportError:
 if 'test' in sys.argv:
 
     from teamcity import is_running_under_teamcity
+    from celery import Celery
 
     DATABASES = {
         'default': {
@@ -220,7 +221,13 @@ if 'test' in sys.argv:
     # make sure celery delayed tasks are executed immediately
     CELERY_RESULT_BACKEND = 'cache'
     CELERY_CACHE_BACKEND = 'memory'
+
     CELERY_ALWAYS_EAGER = True
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True  # Issue #75
+
+    app = Celery('delft3dgt')
+    app.conf.CELERY_ALWAYS_EAGER = True
+    app.conf.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
     # set dummy container image names to dummy images
     DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'

@@ -27,7 +27,6 @@ class TaskTest(TestCase):
         delft3dgt_pulse.delay()
         mock.assert_called_with('containersync_sceneupdate')
 
-
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_get_docker_ps(self, mockClient):
         """
@@ -53,7 +52,9 @@ class TaskTest(TestCase):
         TODO: write test
         """
         delay = do_docker_create.delay("image")
-        self.assertEqual(delay.result, None)
+        container, log = delay.result
+        self.assertEqual(container, None)
+        self.assertEqual(log, '')
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_do_docker_start(self, mockClient):
@@ -83,11 +84,15 @@ class TaskTest(TestCase):
         delay = do_docker_remove.delay("id")
         mockClient.return_value.remove_container.assert_called_with(
             container="id", force=False)
-        self.assertEqual(delay.result, True)
+        container, log = delay.result
+        self.assertEqual(container, "id")
+        self.assertEqual(log, "")
 
     def test_do_docker_sync_filesystem(self):
         """
         TODO: write test
         """
         delay = do_docker_sync_filesystem.delay("id")
-        self.assertEqual(delay.result, False)
+        container, log = delay.result
+        self.assertEqual(container, "id")
+        self.assertEqual(log, "")
