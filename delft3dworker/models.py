@@ -511,11 +511,21 @@ class Container(models.Model):
                         self
                     ))
 
-            self.docker_id, log = result.get()
+            docker_id, docker_log = result.get()
 
-            # only write the log if log data has been received
-            if log != '':
-                self.docker_log = log
+            # only write the id if the result is as expected
+            if docker_id is not None and isinstance(docker_id, str):
+                self.docker_id = docker_id
+            else:
+                logging.warn(
+                    "Task of Container [{}] returned an unexpected "
+                    "docker_id: {}".format(self, docker_id))
+
+            # only write the log if the result is as expected and there is
+            # an actual log
+            if docker_log is not None and docker_log != '' and isinstance(
+                    docker_id, str):
+                self.docker_log = docker_log
 
             self.task_uuid = None
 
@@ -672,7 +682,7 @@ class Container(models.Model):
         self.task_uuid = result.id
 
     def __unicode__(self):
-        return "{} ({}): {}".format(
+        return "{}({}):{}".format(
             self.container_type, self.docker_state, self.docker_id)
 
 
