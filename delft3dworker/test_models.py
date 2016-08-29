@@ -409,62 +409,58 @@ class ContainerTestCase(TestCase):
         )
 
     @patch('logging.warn', autospec=True)
-    @patch('celery.result.AsyncResult.ready', autospec=True)
-    @patch('celery.result.AsyncResult.get', autospec=True)
-    def test_update_task_result(self, mocked_asyncresult_get_method,
-                                mocked_asyncresult_ready_method,
-                                mocked_logging_warn_method):
+    @patch('delft3dworker.models.AsyncResult', autospec=True)
+    def test_update_task_result(self, MockedAsyncResult, mocked_warn_method):
+
+        async_result = MockedAsyncResult.return_value
 
         # Set up: A previous task is not yet finished
         self.container.task_uuid = uuid.UUID(
             '6764743a-3d63-4444-8e7b-bc938bff7792')
-        mocked_asyncresult_ready_method.return_value = False
+        async_result.ready.return_value = False
+        async_result.state = "STARTED"
 
-        with patch('celery.result.AsyncResult.state', 'STARTED'):
+        # call method
+        self.container.update_task_result()
 
-            # call method
-            self.container.update_task_result()
-
-            # one time check for ready, no get and the task id remains
-            self.assertEqual(mocked_asyncresult_ready_method.call_count, 1)
-            self.assertEqual(mocked_asyncresult_get_method.call_count, 0)
-            self.assertEqual(self.container.task_uuid, uuid.UUID(
-                '6764743a-3d63-4444-8e7b-bc938bff7792'))
+        # one time check for ready, no get and the task id remains
+        self.assertEqual(async_result.ready.call_count, 1)
+        self.assertEqual(async_result.get.call_count, 0)
+        self.assertEqual(self.container.task_uuid, uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792'))
 
         # Set up: task is now finished with Failure
-        mocked_asyncresult_ready_method.return_value = True
-        mocked_asyncresult_get_method.return_value = (
+        async_result.ready.return_value = True
+        async_result.get.return_value = (
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
         ), 'ERror MesSAge'
+        async_result.state = "FAILURE"
 
-        with patch('celery.result.AsyncResult.state', 'FAILURE'):
+        # call method
+        self.container.update_task_result()
 
-            # call method
-            self.container.update_task_result()
-
-            # check that warning is logged
-            self.assertEqual(mocked_logging_warn_method.call_count, 1)
+        # check that warning is logged
+        self.assertEqual(mocked_warn_method.call_count, 1)
 
         # Set up: task is now finished
-        mocked_asyncresult_ready_method.return_value = True
-        mocked_asyncresult_get_method.return_value = (
+        async_result.ready.return_value = True
+        async_result.get.return_value = (
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
         ), 'This is a log message.'
+        async_result.state = "SUCCESS"
 
-        with patch('celery.result.AsyncResult.state', 'SUCCESS'):
+        # call method
+        self.container.update_task_result()
 
-            # call method
-            self.container.update_task_result()
-
-            # second check for ready, now one get and the task id is set to
-            # None
-            self.assertEqual(mocked_asyncresult_ready_method.call_count, 2)
-            self.assertEqual(mocked_asyncresult_get_method.call_count, 1)
-            self.assertIsNone(self.container.task_uuid)
-            self.assertEqual(
-                self.container.docker_id,
-                '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-            )
+        # second check for ready, now one get and the task id is set to
+        # None
+        self.assertEqual(async_result.ready.call_count, 2)
+        self.assertEqual(async_result.get.call_count, 1)
+        self.assertIsNone(self.container.task_uuid)
+        self.assertEqual(
+            self.container.docker_id,
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        )
 
     @patch('logging.error', autospec=True)
     def test_update_state_and_save(self, mocked_error_method):
