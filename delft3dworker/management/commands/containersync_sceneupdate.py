@@ -1,4 +1,5 @@
 import celery
+import logging
 
 from django.core.management import BaseCommand
 
