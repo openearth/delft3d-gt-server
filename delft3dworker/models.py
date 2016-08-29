@@ -505,6 +505,12 @@ class Container(models.Model):
 
         if result.ready():
 
+            if result.state == "FAILURE":
+                logging.warn(
+                    "Task of Container [{}] resulted in FAILURE state".format(
+                        self
+                    ))
+
             self.docker_id, log = result.get()
 
             # only write the log if log data has been received
