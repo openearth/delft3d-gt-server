@@ -616,6 +616,8 @@ class Container(models.Model):
         expdir = os.path.join(workingdir, 'export')
 
         # Specific settings for each container type
+        # TODO It would be more elegant to put these 
+        # hardcoded settings in a seperate file.
         kwargs = {
             'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
                         'volumes': ['{0}:/data'.format(simdir)],
