@@ -20,7 +20,6 @@ class ManagementTest(TestCase):
     def setUp(self):
         self.scene = Scene.objects.create(
             name='Scene',
-
         )
         self.container_1_1 = Container.objects.create(
             scene=self.scene,
