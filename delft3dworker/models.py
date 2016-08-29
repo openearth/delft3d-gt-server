@@ -618,13 +618,11 @@ class Container(models.Model):
         # Specific settings for each container type
         kwargs = {
             'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
-                        'label': 'simulation',
                         'volumes': ['{0}:/data'.format(simdir)],
                         'folders': [simdir],
                         'command': ""},
 
             'export': {'image': settings.EXPORT_IMAGE_NAME,
-                       'label': 'export',
                        'volumes': [
                                 '{0}:/data/output:z'.format(expdir),
                            '{0}:/data/input:ro'.format(simdir)],
@@ -634,7 +632,6 @@ class Container(models.Model):
                        },
 
             'postprocess': {'image': settings.POSTPROCESS_IMAGE_NAME,
-                            'label': 'postprocess',
                             'volumes': [
                                 '{0}:/data/output:z'.format(posdir),
                                 '{0}:/data/input:ro'.format(workingdir)],
@@ -644,7 +641,6 @@ class Container(models.Model):
                             },
 
             'preprocess': {'image': settings.PREPROCESS_IMAGE_NAME,
-                           'label': 'preprocess',
                            'volumes': [
                                '{0}:/data/output:z'.format(simdir),
                                '{0}:/data/input:ro'.format(predir)],
@@ -654,7 +650,6 @@ class Container(models.Model):
                            },
 
             'process': {'image': settings.PROCESS_IMAGE_NAME,
-                        'label': 'process',
                         'volumes': [
                             '{0}:/data/input:ro'.format(simdir),
                             '{0}:/data/output:z'.format(prodir)
