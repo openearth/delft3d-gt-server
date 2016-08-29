@@ -487,7 +487,8 @@ class Container(models.Model):
         max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
 
     # docker container ids are sha256 hashes
-    docker_id = models.CharField(max_length=64, blank=True, default='')
+    docker_id = models.CharField(
+        max_length=64, blank=True, default='', db_index=True)
 
     docker_log = models.TextField(blank=True, default='')
 
@@ -500,7 +501,7 @@ class Container(models.Model):
         if self.task_uuid is None:
             return
 
-        result = AsyncResult(id=self.task_uuid)
+        result = AsyncResult(id=str(self.task_uuid))
 
         if result.ready():
 
