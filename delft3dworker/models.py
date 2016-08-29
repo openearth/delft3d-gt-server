@@ -10,7 +10,6 @@ import uuid
 import zipfile
 
 from celery.result import AsyncResult
-from celery.task.control import revoke as revoke_task
 
 from django.conf import settings  # noqa
 from django.contrib.auth.models import Group

@@ -378,25 +378,25 @@ class ContainerTestCase(TestCase):
         self.created_docker_ps_dict = {
             'Status': 'Created 4 minutes ago',
             'Id':
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnop'
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
         }
 
         self.up_docker_ps_dict = {
             'Status': 'Up 4 minutes',
             'Id':
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnop'
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
         }
 
         self.exited_docker_ps_dict = {
             'Status': 'Exited (0) 2 hours ago',
             'Id':
-            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvwxyz1'
+            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvw'
         }
 
         self.error_docker_ps_dict = {
             'Status': 'nvkeirwtynvowi',
             'Id':
-            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvwxyz1'
+            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvw'
         }
 
         self.scene = Scene.objects.create()
@@ -408,45 +408,66 @@ class ContainerTestCase(TestCase):
             docker_state='non-existent',
         )
 
-    @patch('celery.contrib.abortable.AsyncResult.ready', autospec=True)
-    @patch('celery.contrib.abortable.AsyncResult.get', autospec=True)
-    def test_update_task_result(
-            self, mocked_asyncresult_get_method,
-            mocked_asyncresult_ready_method):
+    @patch('logging.warn', autospec=True)
+    @patch('celery.result.AsyncResult.ready', autospec=True)
+    @patch('celery.result.AsyncResult.get', autospec=True)
+    def test_update_task_result(self, mocked_asyncresult_get_method,
+                                mocked_asyncresult_ready_method,
+                                mocked_logging_warn_method):
 
         # Set up: A previous task is not yet finished
         self.container.task_uuid = uuid.UUID(
             '6764743a-3d63-4444-8e7b-bc938bff7792')
         mocked_asyncresult_ready_method.return_value = False
 
-        # call method
-        self.container.update_task_result()
+        with patch('celery.result.AsyncResult.state', 'STARTED'):
 
-        # one time check for ready, no get and the task id remains
-        self.assertEqual(mocked_asyncresult_ready_method.call_count, 1)
-        self.assertEqual(mocked_asyncresult_get_method.call_count, 0)
-        self.assertEqual(self.container.task_uuid, uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792'))
+            # call method
+            self.container.update_task_result()
+
+            # one time check for ready, no get and the task id remains
+            self.assertEqual(mocked_asyncresult_ready_method.call_count, 1)
+            self.assertEqual(mocked_asyncresult_get_method.call_count, 0)
+            self.assertEqual(self.container.task_uuid, uuid.UUID(
+                '6764743a-3d63-4444-8e7b-bc938bff7792'))
+
+        # Set up: task is now finished with Failure
+        mocked_asyncresult_ready_method.return_value = True
+        mocked_asyncresult_get_method.return_value = (
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        ), 'ERror MesSAge'
+
+        with patch('celery.result.AsyncResult.state', 'FAILURE'):
+
+            # call method
+            self.container.update_task_result()
+
+            # check that warning is logged
+            self.assertEqual(mocked_logging_warn_method.call_count, 1)
 
         # Set up: task is now finished
         mocked_asyncresult_ready_method.return_value = True
         mocked_asyncresult_get_method.return_value = (
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnop'
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
         ), 'This is a log message.'
 
-        # call method
-        self.container.update_task_result()
+        with patch('celery.result.AsyncResult.state', 'SUCCESS'):
 
-        # second check for ready, now one get and the task id is set to None
-        self.assertEqual(mocked_asyncresult_ready_method.call_count, 2)
-        self.assertEqual(mocked_asyncresult_get_method.call_count, 1)
-        self.assertIsNone(self.container.task_uuid)
-        self.assertEqual(
-            self.container.docker_id,
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnop'
-        )
+            # call method
+            self.container.update_task_result()
 
-    def test_update_state_and_save(self):
+            # second check for ready, now one get and the task id is set to
+            # None
+            self.assertEqual(mocked_asyncresult_ready_method.call_count, 2)
+            self.assertEqual(mocked_asyncresult_get_method.call_count, 1)
+            self.assertIsNone(self.container.task_uuid)
+            self.assertEqual(
+                self.container.docker_id,
+                '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+            )
+
+    @patch('logging.error', autospec=True)
+    def test_update_state_and_save(self, mocked_error_method):
 
         # This test will test the behavior of a Container
         # when it receives snapshot
@@ -475,6 +496,8 @@ class ContainerTestCase(TestCase):
             self.error_docker_ps_dict)
         self.assertEqual(
             self.container.docker_state, 'unknown')
+        self.assertEqual(
+            mocked_error_method.call_count, 1)  # event is logged as an error!
 
     @patch('delft3dcontainermanager.tasks.do_docker_create.delay',
            autospec=True)
