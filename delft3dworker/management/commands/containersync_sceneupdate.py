@@ -1,3 +1,5 @@
+import celery
+
 from django.core.management import BaseCommand
 
 from delft3dcontainermanager.tasks import get_docker_ps
@@ -21,19 +23,17 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         # get all container models with celery task id
-        celery_set = set(
-            Container.objects.exclude(
-                task_uuid__exact='').values_list('task_uuid', flat=True))
+        celery_set = set(Container.objects.exclude(task_uuid__exact=None))
 
         # Loop over non empty celery_task_ids in containers
         for container in celery_set:
             container.update_task_result()
 
         # retrieve containers from docker
-        get_docker_ps.delay()
+        ps = get_docker_ps.delay()
 
         try:
-            containers_docker = get_docker_ps.get(timeout=30)
+            containers_docker = ps.get(timeout=30)
         except celery.exceptions.TimeoutError as e:
             logging.exception("get_docker_ps timed out (30 seconds)")
 

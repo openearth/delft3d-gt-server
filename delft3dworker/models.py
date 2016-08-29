@@ -501,7 +501,7 @@ class Container(models.Model):
         if self.task_uuid is None:
             return
 
-        result = AsyncResult(id=self.task_uuid)
+        result = AsyncResult(id=str(self.task_uuid))
 
         if result.ready():
 
