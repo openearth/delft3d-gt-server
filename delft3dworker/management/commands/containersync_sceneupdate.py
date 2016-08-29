@@ -66,9 +66,9 @@ class Command(BaseCommand):
         # Update state of all matching containers
         container_match = m_1_1 | m_1_0
         for con_id in container_match:
-            info = docker_dict[con_id] if con_id in docker_dict else None
+            snapshot = docker_dict[con_id] if con_id in docker_dict else None
             for c in Container.objects.filter(docker_id=con_id):
-                c._update_state_and_save(info)
+                c.update_from_docker_snapshot(snapshot)
 
         # Call error for mismatch
         container_mismatch = m_0_1 | m_0_0
