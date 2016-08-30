@@ -523,8 +523,8 @@ class Container(models.Model):
 
             # only write the log if the result is as expected and there is
             # an actual log
-            if docker_log is not None and docker_log != '' and isinstance(
-                    docker_id, str):
+            if docker_log is not None and isinstance(
+                    docker_id, unicode) and docker_log != '':
                 self.docker_log = docker_log
 
             self.task_uuid = None
@@ -560,6 +560,7 @@ class Container(models.Model):
 
         if snapshot is None:
             self.docker_state = 'non-existent'
+            self.docker_id = ''
 
         elif isinstance(snapshot, dict) and ('Status' in snapshot):
 
@@ -571,6 +572,10 @@ class Container(models.Model):
 
             elif snapshot['Status'].startswith('Exited'):
                 self.docker_state = 'exited'
+
+            # TODO: add handling of shapshot Statuses:
+            # - Dead
+            # - Removal In Progress
 
             else:
                 logging.error(
@@ -626,7 +631,7 @@ class Container(models.Model):
         expdir = os.path.join(workingdir, 'export')
 
         # Specific settings for each container type
-        # TODO It would be more elegant to put these 
+        # TODO It would be more elegant to put these
         # hardcoded settings in a seperate file.
         kwargs = {
             'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
@@ -636,7 +641,7 @@ class Container(models.Model):
 
             'export': {'image': settings.EXPORT_IMAGE_NAME,
                        'volumes': [
-                                '{0}:/data/output:z'.format(expdir),
+                           '{0}:/data/output:z'.format(expdir),
                            '{0}:/data/input:ro'.format(simdir)],
                        'folders': [expdir,
                                    simdir],

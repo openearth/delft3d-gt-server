@@ -55,7 +55,6 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
         stream=False,
         stdout=stdout,
         stderr=stderr,
-        tail=tail,
         timestamps=True,
     ).replace('\n', '')
     return container_id, log
@@ -65,7 +64,7 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
 def do_docker_create(self, label, parameters, environment, image, volumes,
                      folders, command):
     """
-    Create necessary directories in a working directory 
+    Create necessary directories in a working directory
     for the mounts in the containers.
 
     Write .ini file filled with given parameters in each folder.
