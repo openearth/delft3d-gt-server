@@ -49,8 +49,10 @@ class Command(BaseCommand):
         Update Scenes with latest status of their Containers, and possibly
         shift Scene phase
         """
-        for scene in Scene.objects.all():
-            scene.update_and_phase_shift()
+
+        # TODO: uncommand following lines when update_and_phase_shift is available
+        # for scene in Scene.objects.all():
+        #     scene.update_and_phase_shift()
 
     def _synchronise_django_docker_containers(self):
         """
