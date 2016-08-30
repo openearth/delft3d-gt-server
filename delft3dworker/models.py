@@ -456,7 +456,7 @@ class Container(models.Model):
 
     task_uuid = models.UUIDField(
         default=None, blank=True, null=True)
-    task_starttime = models.DateTimeField(default=now(), blank=True)
+    task_starttime = models.DateTimeField(default=now, blank=True)
 
     # delft3dgtmain.provisionedsettings
     CONTAINER_TYPE_CHOICES = (
@@ -492,8 +492,8 @@ class Container(models.Model):
     docker_id = models.CharField(
         max_length=64, blank=True, default='', db_index=True)
 
-    container_starttime = models.DateTimeField(default=now(), blank=True)
-    container_stoptime = models.DateTimeField(default=now(), blank=True)
+    container_starttime = models.DateTimeField(default=now, blank=True)
+    container_stoptime = models.DateTimeField(default=now, blank=True)
 
     docker_log = models.TextField(blank=True, default='')
 
