@@ -275,7 +275,8 @@ class Scene(models.Model):
 
     def abort(self):
 
-        self.shift_to_phase(1000)   # shift to Aborting...
+        if self.phase >= 8:  # only allow aborts when simulation (or more)
+            self.shift_to_phase(1000)   # shift to Aborting...
 
         return {
             "task_id": None,
