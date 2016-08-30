@@ -23,14 +23,39 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        # get all container models with celery task id
+        # STEP I : Loop over non empty celery_task_ids in containers
+
+        self._update_container_tasks()
+
+        # STEP II : Update Scenes and their Phases
+
+        self._update_scene_phases()
+
+        # STEP III : Synchronise Django Container Models and Docker containers
+
+        self._synchronise_django_docker_containers()
+
+    def _update_container_tasks(self):
+        """
+        Update Containers with results from finished tasks.
+        """
         celery_set = set(Container.objects.exclude(task_uuid__exact=None))
 
-        # Loop over non empty celery_task_ids in containers
         for container in celery_set:
             container.update_task_result()
 
-        # retrieve containers from docker
+    def _update_scene_phases(self):
+        """
+        Update Scenes with latest status of their Containers, and possibly
+        shift Scene phase
+        """
+        for scene in Scene.objects.all():
+            scene.update_and_phase_shift()
+
+    def _synchronise_django_docker_containers(self):
+        """
+        Synchronise local Django Container models with remote Docker containers
+        """
         ps = get_docker_ps.delay()
 
         try:
@@ -77,7 +102,3 @@ class Command(BaseCommand):
             self.stderr.write(
                 "Docker container {} not found in database!".format(container))
             do_docker_remove(container, force=True)
-
-        # Call update state for all scenes
-        for scene in Scene.objects.all():
-            scene._update_state_and_save()
