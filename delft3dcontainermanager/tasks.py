@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import os
+import json
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from docker import Client
@@ -41,7 +42,10 @@ def get_docker_ps(self):
     """
     client = Client(base_url='unix://var/run/docker.sock')
     containers = client.containers(all=True)
-    return containers
+    containers_id = [container['Id'] for container in containers]
+    inspected_containers = [client.inspect_container(
+        container_id) for container_id in containers_id]
+    return inspected_containers
 
 
 @shared_task(bind=True, throws=(HTTPError))

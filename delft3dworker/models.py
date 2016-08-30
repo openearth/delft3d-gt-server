@@ -494,8 +494,8 @@ class Container(models.Model):
 
     docker_log = models.TextField(blank=True, default='')
 
-    # container_starttime = models.DateTimeField()
-    # container_stoptime = models.DateTimeField()
+    container_starttime = models.DateTimeField(default=now(), blank=True)
+    container_stoptime = models.DateTimeField(default=now(), blank=True)
     task_starttime = models.DateTimeField(default=now(), blank=True)
 
     def update_task_result(self):
@@ -515,14 +515,15 @@ class Container(models.Model):
                 docker_id, docker_log = result.result
 
                 # only write the id if the result is as expected
-                if docker_id is not None and isinstance(docker_id, str):
+                if docker_id is not None and (
+                        isinstance(docker_id, str) or isinstance(docker_id, unicode)):
                     self.docker_id = docker_id
                 else:
                     logging.warn(
                         "Task of Container [{}] returned an unexpected "
                         "docker_id: {}".format(self, docker_id))
 
-                # only write the log if the result is as expected and there is
+                # only write the loggingog if the result is as expected and there is
                 # an actual log
                 if docker_log is not None and isinstance(
                         docker_id, unicode) and docker_log != '':
@@ -541,6 +542,7 @@ class Container(models.Model):
             logging.warn("Celery task is still not ready, removing from db.")
             result.revoke()
             self.task_uuid = None
+            self.save()
 
         # elif self.task_starttime - now() > 500:
             # #task expired here
@@ -574,22 +576,44 @@ class Container(models.Model):
         """
         Var snapshot can be either dictionary or None.
         If None: docker container does not exist
-        If dictionary: snapshot['Status'] is a string describing status
+        If dictionary:
+        {...,
+            "State": {
+                "Dead": false,
+                "Error": "",
+                "ExitCode": 0,
+                "FinishedAt": "2016-08-30T10:33:41.159456168Z",
+                "OOMKilled": false,
+                "Paused": false,
+                "Pid": 0,
+                "Restarting": false,
+                "Running": false,
+                "StartedAt": "2016-08-30T10:32:31.415322502Z",
+                "Status": "exited"
+            },
+        ...
+        }
         """
 
         if snapshot is None:
             self.docker_state = 'non-existent'
             self.docker_id = ''
 
-        elif isinstance(snapshot, dict) and ('State' in snapshot):
+        elif isinstance(snapshot, dict) and \
+                ('State' in snapshot) and ('Status' in snapshot['State']):
 
             choices = [choice[1] for choice in self.CONTAINER_STATE_CHOICES]
-            if snapshot['State'] in choices:
-                self.docker_state = snapshot['State']
+            if snapshot['State']['Status'] in choices:
+                self.docker_state = snapshot['State']['Status']
 
             # TODO: add handling of snapshot Statuses:
             # - Dead
             # - Removal In Progress
+
+            if 'StartedAt' in snapshot['State'] and \
+                'FinishedAt' in snapshot['State']:
+                self.container_starttime = snapshot['State']['StartedAt']
+                self.container_stoptime = snapshot['State']['FinishedAt']
 
             else:
                 logging.error(
@@ -704,7 +728,7 @@ class Container(models.Model):
 
         result = do_docker_create.delay(label, parameters, environment,
                                         **kwargs[self.container_type])
-        
+
         self.task_starttime = now()
         self.task_uuid = result.id
         self.save()

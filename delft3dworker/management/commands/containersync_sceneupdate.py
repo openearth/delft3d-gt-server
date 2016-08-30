@@ -1,6 +1,5 @@
 import celery
 import logging
-import json
 from django.core.management import BaseCommand
 
 from delft3dcontainermanager.tasks import get_docker_ps
@@ -63,7 +62,6 @@ class Command(BaseCommand):
 
         try:
             containers_docker = ps.get(timeout=30)
-            print json.dumps(containers_docker)
         except celery.exceptions.TimeoutError as e:
             logging.exception("get_docker_ps timed out (30 seconds)")
 
