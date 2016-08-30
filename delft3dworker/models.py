@@ -701,7 +701,7 @@ class Container(models.Model):
     task_uuid = models.UUIDField(
         default=None, blank=True, null=True)
 
-    task_starttime = models.DateTimeField(default=now(), blank=True)
+    task_starttime = models.DateTimeField(default=now, blank=True)
 
     # delft3dgtmain.provisionedsettings
     CONTAINER_TYPE_CHOICES = (
