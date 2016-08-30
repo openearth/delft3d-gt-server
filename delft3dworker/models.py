@@ -505,30 +505,30 @@ class Container(models.Model):
 
         if result.ready():
 
-            if result.state == "FAILURE":
-                logging.warn(
-                    "Task of Container [{}] resulted in FAILURE state".format(
-                        self
-                    ))
+            if result.successful():
+                docker_id, docker_log = result.result
 
-            docker_id, docker_log = result.get()
+                # only write the id if the result is as expected
+                if docker_id is not None and isinstance(docker_id, str):
+                    self.docker_id = docker_id
+                else:
+                    logging.warn(
+                        "Task of Container [{}] returned an unexpected "
+                        "docker_id: {}".format(self, docker_id))
 
-            # only write the id if the result is as expected
-            if docker_id is not None and isinstance(docker_id, str):
-                self.docker_id = docker_id
+                # only write the log if the result is as expected and there is
+                # an actual log
+                if docker_log is not None and isinstance(
+                        docker_id, unicode) and docker_log != '':
+                    self.docker_log = docker_log
+
             else:
+                error = result.result
                 logging.warn(
-                    "Task of Container [{}] returned an unexpected "
-                    "docker_id: {}".format(self, docker_id))
-
-            # only write the log if the result is as expected and there is
-            # an actual log
-            if docker_log is not None and isinstance(
-                    docker_id, unicode) and docker_log != '':
-                self.docker_log = docker_log
+                    "Task of Container [{}] resulted in {}: {}".
+                    format(self, result.state, error))
 
             self.task_uuid = None
-
             self.save()
 
     def update_from_docker_snapshot(self, snapshot):
