@@ -496,7 +496,7 @@ class Container(models.Model):
 
     # container_starttime = models.DateTimeField()
     # container_stoptime = models.DateTimeField()
-    task_starttime = models.DateTimeField(default=now(), blank=True)
+    task_starttime = models.DateTimeField(default=now, blank=True)
 
     def update_task_result(self):
         """
@@ -704,7 +704,7 @@ class Container(models.Model):
 
         result = do_docker_create.delay(label, parameters, environment,
                                         **kwargs[self.container_type])
-        
+
         self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
