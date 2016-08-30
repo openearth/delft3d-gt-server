@@ -18,6 +18,7 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
+from django.utils.timezone import now
 
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_groups_with_perms
@@ -495,7 +496,7 @@ class Container(models.Model):
 
     # container_starttime = models.DateTimeField()
     # container_stoptime = models.DateTimeField()
-    task_starttime = models.DateTimeField()
+    task_starttime = models.DateTimeField(default=now(), blank=True)
 
     def update_task_result(self):
         """
@@ -541,7 +542,7 @@ class Container(models.Model):
             result.revoke()
             self.task_uuid = None
 
-        # elif self.task_starttime - datetime.now() > 500:
+        # elif self.task_starttime - now() > 500:
             # #task expired here
             # result.revoke()
             # self.task_uuid = None
@@ -704,7 +705,7 @@ class Container(models.Model):
         result = do_docker_create.delay(label, parameters, environment,
                                         **kwargs[self.container_type])
         
-        self.task_starttime = datetime.now()
+        self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
 
@@ -717,7 +718,7 @@ class Container(models.Model):
             return  # container is not ready for start
 
         result = do_docker_start.delay(self.docker_id)
-        self.task_starttime = datetime.now()
+        self.task_starttime = now()
         self.task_uuid = result.id
 
     def _stop_container(self):
@@ -731,7 +732,7 @@ class Container(models.Model):
         # I just discovered how to make myself unstoppable: don't move.
 
         result = do_docker_stop.delay(self.docker_id)
-        self.task_starttime = datetime.now()
+        self.task_starttime = now()
         self.task_uuid = result.id
 
     def _remove_container(self):
@@ -743,7 +744,7 @@ class Container(models.Model):
             return  # container not ready for delete
 
         result = do_docker_remove.delay(self.docker_id)
-        self.task_starttime = datetime.now()
+        self.task_starttime = now()
         self.task_uuid = result.id
 
     def _update_log(self):
@@ -757,7 +758,7 @@ class Container(models.Model):
             return  # container will not have log updates
 
         result = get_docker_log.delay(self.docker_id)
-        self.task_starttime = datetime.now()
+        self.task_starttime = now()
         self.task_uuid = result.id
 
     def __unicode__(self):
