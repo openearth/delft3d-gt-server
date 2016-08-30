@@ -152,6 +152,10 @@ CELERY_TIMEZONE = 'Europe/Amsterdam'
 CELERY_ENABLE_UTC = True
 CELERY_TRACK_STARTED = True  # All pending tasks can be revoked
 CELERY_TASK_PUBLISH_RETRY = False  # No retry on connection error
+CELERY_MESSAGE_COMPRESSION = 'gzip'  # Can help on docker inspect messages
+
+# Custom task expire time
+TASK_EXPIRE_TIME = 5 * 60  # After 5 minutes, tasks are forgotten
 
 # Worker specific settings, becomes important
 # with cloud workers, when there are multiple
