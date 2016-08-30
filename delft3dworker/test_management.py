@@ -75,6 +75,11 @@ class ManagementTest(TestCase):
         client.containers.return_value = [{'Id': 'abcdefg'},
                                           {'Id': 'orphan'}]
 
+        def inspect(arg):
+            return {'Id': arg}
+
+        client.inspect_container.side_effect = inspect
+
         out = StringIO()
         call_command('containersync_sceneupdate', stderr=out)
 

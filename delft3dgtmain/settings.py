@@ -227,7 +227,7 @@ if 'test' in sys.argv:
     # make sure celery delayed tasks are executed immediately
     CELERY_RESULT_BACKEND = 'cache'
     CELERY_CACHE_BACKEND = 'memory'
-
+    TASK_EXPIRE_TIME = 24 * 60 * 60  # Expire after a day
     CELERY_ALWAYS_EAGER = True
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True  # Issue #75
 

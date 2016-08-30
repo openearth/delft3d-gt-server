@@ -45,9 +45,9 @@ class TaskTest(TestCase):
         Assert that the docker_log task
         calls the docker client.logs() function.
         """
-        get_docker_log.delay("id", stdout=False, stderr=True, tail=5)
+        get_docker_log.delay("id", stdout=False, stderr=True)
         mockClient.return_value.logs.assert_called_with(
-            container="id", stdout=False, stderr=True, tail=5, stream=False,
+            container="id", stdout=False, stderr=True, stream=False,
             timestamps=True)
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)

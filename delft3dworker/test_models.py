@@ -10,6 +10,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.utils.timezone import now
 
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
@@ -375,29 +376,29 @@ class ContainerTestCase(TestCase):
 
     def setUp(self):
 
-        self.created_docker_ps_dict = {
-            'Status': 'Created 4 minutes ago',
+        self.created_docker_ps_dict = {'State': {
+            'Status': 'created',
             'Id':
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        }
+        }}
 
-        self.up_docker_ps_dict = {
-            'Status': 'Up 4 minutes',
+        self.up_docker_ps_dict = {'State': {
+            'Status': 'running',
             'Id':
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        }
+        }}
 
-        self.exited_docker_ps_dict = {
-            'Status': 'Exited (0) 2 hours ago',
+        self.exited_docker_ps_dict = {'State': {
+            'Status': 'exited',
             'Id':
             'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvw'
-        }
+        }}
 
-        self.error_docker_ps_dict = {
+        self.error_docker_ps_dict = {'State': {
             'Status': 'nvkeirwtynvowi',
             'Id':
             'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvw'
-        }
+        }}
 
         self.scene = Scene.objects.create()
 
@@ -417,15 +418,17 @@ class ContainerTestCase(TestCase):
         # Set up: A previous task is not yet finished
         self.container.task_uuid = uuid.UUID(
             '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.container.task_starttime = now()
         async_result.ready.return_value = False
         async_result.state = "STARTED"
-
+        async_result.result.return_value = "dockerid", "dockerlog"
+        async_result.successful.return_value = False
         # call method
         self.container.update_task_result()
 
         # one time check for ready, no get and the task id remains
         self.assertEqual(async_result.ready.call_count, 1)
-        self.assertEqual(async_result.get.call_count, 0)
+        self.assertEqual(async_result.result.call_count, 0)
         self.assertEqual(self.container.task_uuid, uuid.UUID(
             '6764743a-3d63-4444-8e7b-bc938bff7792'))
 
@@ -440,11 +443,12 @@ class ContainerTestCase(TestCase):
         self.container.update_task_result()
 
         # check that warning is logged
-        self.assertEqual(mocked_warn_method.call_count, 1)
+        self.assertEqual(mocked_warn_method.call_count, 2)
 
         # Set up: task is now finished
         async_result.ready.return_value = True
-        async_result.get.return_value = (
+        async_result.successful.return_value = True
+        async_result.result = (
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
         ), 'This is a log message.'
         async_result.state = "SUCCESS"
@@ -455,7 +459,6 @@ class ContainerTestCase(TestCase):
         # second check for ready, now one get and the task id is set to
         # None
         self.assertEqual(async_result.ready.call_count, 2)
-        self.assertEqual(async_result.get.call_count, 1)
         self.assertIsNone(self.container.task_uuid)
         self.assertEqual(
             self.container.docker_id,
@@ -495,7 +498,7 @@ class ContainerTestCase(TestCase):
         self.assertEqual(
             mocked_error_method.call_count, 1)  # event is logged as an error!
 
-    @patch('delft3dcontainermanager.tasks.do_docker_create.delay',
+    @patch('delft3dcontainermanager.tasks.do_docker_create.apply_async',
            autospec=True)
     def test_create_container(self, mocked_task):
         task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
@@ -506,14 +509,16 @@ class ContainerTestCase(TestCase):
 
         # call method, check if do_docker_create is called once, uuid updates
         self.container._create_container()
-        mocked_task.assert_called_once_with(
-            {'type': 'preprocess'}, {}, {'uuid': self.scene.suid},
-            command='/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
-            folders=['test/{}/preprocess'.format(self.scene.suid),
-                     'test/{}/simulation'.format(self.scene.suid)],
-            image='dummy_preprocessing', volumes=[
-                'test/{}/simulation:/data/output:z'.format(self.scene.suid),
-                'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]
+        mocked_task.assert_called_once_with(args=(
+            {'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)},),
+            kwargs={'command': '/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
+                    'folders': ['test/{}/preprocess'.format(self.scene.suid),
+                                'test/{}/simulation'.format(self.scene.suid)],
+                    'image': 'dummy_preprocessing', 'volumes': [
+                        'test/{}/simulation:/data/output:z'.format(
+                            self.scene.suid),
+                        'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]},
+            expires=settings.TASK_EXPIRE_TIME
         )
         self.assertEqual(self.container.task_uuid, task_uuid)
 
@@ -525,17 +530,19 @@ class ContainerTestCase(TestCase):
         self.container._create_container()
 
         # all subsequent calls were ignored
-        mocked_task.assert_called_once_with(
-            {'type': 'preprocess'}, {}, {'uuid': self.scene.suid},
-            command='/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
-            folders=['test/{}/preprocess'.format(self.scene.suid),
-                     'test/{}/simulation'.format(self.scene.suid)],
-            image='dummy_preprocessing', volumes=[
-                'test/{}/simulation:/data/output:z'.format(self.scene.suid),
-                'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]
+        mocked_task.assert_called_once_with(args=(
+            {'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)},),
+            kwargs={'command': '/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
+                    'folders': ['test/{}/preprocess'.format(self.scene.suid),
+                                'test/{}/simulation'.format(self.scene.suid)],
+                    'image': 'dummy_preprocessing', 'volumes': [
+                        'test/{}/simulation:/data/output:z'.format(
+                            self.scene.suid),
+                        'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]},
+            expires=settings.TASK_EXPIRE_TIME
         )
 
-    @patch('delft3dcontainermanager.tasks.do_docker_start.delay',
+    @patch('delft3dcontainermanager.tasks.do_docker_start.apply_async',
            autospec=True)
     def test_start_container(self, mocked_task):
         docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
@@ -552,7 +559,8 @@ class ContainerTestCase(TestCase):
 
         # call method, check if do_docker_start is called once, uuid updates
         self.container._start_container()
-        mocked_task.assert_called_once_with(docker_id)
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
         self.assertEqual(self.container.task_uuid, task_uuid)
         self.assertEqual(self.container.task_uuid, task_uuid)
 
@@ -564,9 +572,10 @@ class ContainerTestCase(TestCase):
         self.container._start_container()
 
         # all subsequent calls were ignored
-        mocked_task.assert_called_once_with(docker_id)
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
 
-    @patch('delft3dcontainermanager.tasks.do_docker_stop.delay',
+    @patch('delft3dcontainermanager.tasks.do_docker_stop.apply_async',
            autospec=True)
     def test_stop_container(self, mocked_task):
         docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
@@ -583,7 +592,8 @@ class ContainerTestCase(TestCase):
 
         # call method, check if do_docker_stop is called once, uuid updates
         self.container._stop_container()
-        mocked_task.assert_called_once_with(docker_id)
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
         self.assertEqual(self.container.task_uuid, task_uuid)
 
         # update container state, call method multiple times
@@ -594,9 +604,10 @@ class ContainerTestCase(TestCase):
         self.container._stop_container()
 
         # all subsequent calls were ignored
-        mocked_task.assert_called_once_with(docker_id)
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
 
-    @patch('delft3dcontainermanager.tasks.do_docker_remove.delay',
+    @patch('delft3dcontainermanager.tasks.do_docker_remove.apply_async',
            autospec=True)
     def test_remove_container(self, mocked_task):
         docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
@@ -613,7 +624,8 @@ class ContainerTestCase(TestCase):
 
         # call method, check if do_docker_remove is called once, uuid updates
         self.container._remove_container()
-        mocked_task.assert_called_once_with(docker_id)
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
         self.assertEqual(self.container.task_uuid, task_uuid)
 
         # update container state, call method multiple times
@@ -624,9 +636,10 @@ class ContainerTestCase(TestCase):
         self.container._remove_container()
 
         # all subsequent calls were ignored
-        mocked_task.assert_called_once_with(docker_id)
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
 
-    @patch('delft3dcontainermanager.tasks.get_docker_log.delay',
+    @patch('delft3dcontainermanager.tasks.get_docker_log.apply_async',
            autospec=True)
     def test_update_log(self, mocked_task):
         docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
@@ -643,7 +656,8 @@ class ContainerTestCase(TestCase):
 
         # call method, get_docker_log is called once, uuid updates
         self.container._update_log()
-        mocked_task.assert_called_once_with(docker_id)
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
         self.assertEqual(self.container.task_uuid, task_uuid)
 
         # 'finish' task, call method, get_docker_log is called again

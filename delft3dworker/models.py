@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import copy
-from datetime import datetime
 import hashlib
 import io
 import logging
@@ -510,6 +509,7 @@ class Container(models.Model):
         result = AsyncResult(id=str(self.task_uuid))
         time_passed = self.task_starttime - now()
 
+        # print result.ready(), result.successful()
         if result.ready():
 
             if result.successful():
@@ -529,6 +529,8 @@ class Container(models.Model):
                 if docker_log is not None and isinstance(
                         docker_id, unicode) and docker_log != '':
                     self.docker_log = docker_log
+                else:
+                    logging.warn("Cant parse docker log.")
 
             else:
                 error = result.result
@@ -549,7 +551,7 @@ class Container(models.Model):
 
         # Forget task after 5 minutes
         elif time_passed.seconds > settings.TASK_EXPIRE_TIME:
-            # task expired here
+            logging.warn("Celery task expired after {} seconds".format(time_passed.seconds))
             result.revoke()
             self.task_uuid = None
             self.save()
@@ -616,18 +618,18 @@ class Container(models.Model):
             # - Dead
             # - Removal In Progress
 
+            else:
+                logging.error(
+                    'received unknown docker Status: {}'.format(
+                        snapshot['State']['Status']
+                    )
+                )
+                self.docker_state = 'unknown'
+
             if 'StartedAt' in snapshot['State'] and \
                     'FinishedAt' in snapshot['State']:
                 self.container_starttime = snapshot['State']['StartedAt']
                 self.container_stoptime = snapshot['State']['FinishedAt']
-
-            else:
-                logging.error(
-                    'received unknown docker Status: {}'.format(
-                        snapshot['Status']
-                    )
-                )
-                self.docker_state = 'unknown'
 
         else:
             logging.error('received unknown snapshot: {}'.format(snapshot))
@@ -796,8 +798,8 @@ class Container(models.Model):
                          'state: ignoring command.'.format(self.docker_state))
             return  # container will not have log updates
 
-        result = get_docker_log.delay(args=(self.docker_id,),
-                                      expires=settings.TASK_EXPIRE_TIME)
+        result = get_docker_log.apply_async(args=(self.docker_id,),
+                                            expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
