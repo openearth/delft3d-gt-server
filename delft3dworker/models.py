@@ -767,7 +767,10 @@ class Container(models.Model):
                 docker_id, docker_log = result.result
 
                 # only write the id if the result is as expected
-                if docker_id is not None and isinstance(docker_id, str):
+                if docker_id is not None and (
+                    isinstance(docker_id, str) or isinstance(
+                        docker_id, unicode)
+                ):
                     self.docker_id = docker_id
                 else:
                     logging.warn(
@@ -924,8 +927,8 @@ class Container(models.Model):
                            '{0}:/data/input:ro'.format(simdir)],
                        'folders': [expdir,
                                    simdir],
-                       'command': "/data/run.sh /data/svn/scripts/export/"
-                       "export2grdecl.py",
+                       'command': "/data/run.sh /data/svn/scripts/"
+                       "export/export2grdecl.py",
                        },
 
             'postprocess': {'image': settings.POSTPROCESS_IMAGE_NAME,
