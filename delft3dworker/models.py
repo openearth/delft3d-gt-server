@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import copy
+from datetime import datetime
 import hashlib
 import io
 import logging
@@ -17,6 +18,7 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
+from django.utils.timezone import now
 
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_groups_with_perms
@@ -698,6 +700,8 @@ class Container(models.Model):
     task_uuid = models.UUIDField(
         default=None, blank=True, null=True)
 
+    task_starttime = models.DateTimeField(default=now(), blank=True)
+
     # delft3dgtmain.provisionedsettings
     CONTAINER_TYPE_CHOICES = (
         ('preprocess', 'preprocess'),
@@ -734,6 +738,9 @@ class Container(models.Model):
 
     docker_log = models.TextField(blank=True, default='')
 
+    # container_starttime = models.DateTimeField()
+    # container_stoptime = models.DateTimeField()
+
     # CONTROL METHODS
 
     def set_desired_phase(self, desired_state):
@@ -763,31 +770,44 @@ class Container(models.Model):
 
         if result.ready():
 
-            if result.state == "FAILURE":
-                logging.warn(
-                    "Task of Container [{}] resulted in FAILURE state".format(
-                        self
-                    ))
+            if result.successful():
+                docker_id, docker_log = result.result
 
-            docker_id, docker_log = result.get()
+                # only write the id if the result is as expected
+                if docker_id is not None and isinstance(docker_id, str):
+                    self.docker_id = docker_id
+                else:
+                    logging.warn(
+                        "Task of Container [{}] returned an unexpected "
+                        "docker_id: {}".format(self, docker_id))
 
-            # only write the id if the result is as expected
-            if docker_id is not None and isinstance(docker_id, unicode):
-                self.docker_id = docker_id
+                # only write the log if the result is as expected and there is
+                # an actual log
+                if docker_log is not None and isinstance(
+                        docker_id, unicode) and docker_log != '':
+                    self.docker_log = docker_log
+
             else:
+                error = result.result
                 logging.warn(
-                    "Task of Container [{}] returned an unexpected "
-                    "docker_id: {}".format(self, docker_id))
-
-            # only write the log if the result is as expected and there is
-            # an actual log
-            if docker_log is not None and isinstance(
-                    docker_id, unicode) and docker_log != '':
-                self.docker_log = docker_log
+                    "Task of Container [{}] resulted in {}: {}".
+                    format(self, result.state, error))
 
             self.task_uuid = None
-
             self.save()
+
+        elif result.state == "PENDING":
+            logging.warn("Celery task is still not ready, removing from db.")
+            result.revoke()
+            self.task_uuid = None
+
+        # elif self.task_starttime - now() > 500:
+            # #task expired here
+            # result.revoke()
+            # self.task_uuid = None
+
+        else:
+            logging.warn("Celery task of {} is not ready yet.".format(self))
 
     def update_from_docker_snapshot(self, snapshot):
         """
@@ -822,9 +842,13 @@ class Container(models.Model):
             self.docker_state = 'non-existent'
             self.docker_id = ''
 
-        elif isinstance(snapshot, dict) and ('Status' in snapshot):
+        elif isinstance(snapshot, dict) and ('State' in snapshot):
 
-            if snapshot['Status'].startswith('Up'):
+            choices = [choice[1] for choice in self.CONTAINER_STATE_CHOICES]
+            if snapshot['State'] in choices:
+                self.docker_state = snapshot['State']
+
+            elif snapshot['Status'].startswith('Up'):
                 self.docker_state = 'running'
 
             elif snapshot['Status'].startswith('Created'):
@@ -841,14 +865,14 @@ class Container(models.Model):
 
             else:
                 logging.error(
-                    'receieved unknown docker Status: {}'.format(
+                    'received unknown docker Status: {}'.format(
                         snapshot['Status']
                     )
                 )
                 self.docker_state = 'unknown'
 
         else:
-            logging.error('receieved unknown snapshot: {}'.format(snapshot))
+            logging.error('received unknown snapshot: {}'.format(snapshot))
             self.docker_state = 'unknown'
 
         self.save()
@@ -961,6 +985,7 @@ class Container(models.Model):
         result = do_docker_create.delay(label, parameters, environment,
                                         **kwargs[self.container_type])
 
+        self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
 
@@ -973,6 +998,7 @@ class Container(models.Model):
             return  # container is not ready for start
 
         result = do_docker_start.delay(self.docker_id)
+        self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
 
@@ -987,6 +1013,7 @@ class Container(models.Model):
         # I just discovered how to make myself unstoppable: don't move.
 
         result = do_docker_stop.delay(self.docker_id)
+        self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
 
@@ -999,6 +1026,7 @@ class Container(models.Model):
             return  # container not ready for delete
 
         result = do_docker_remove.delay(self.docker_id)
+        self.task_starttime = now()
         self.task_uuid = result.id
 
     def _update_log(self):
@@ -1010,6 +1038,7 @@ class Container(models.Model):
             return  # the container is done, no logging needed
 
         result = get_docker_log.delay(self.docker_id)
+        self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
 
@@ -1027,7 +1056,7 @@ class SearchForm(models.Model):
     This model is used to make a search form similar to the Template model.
     The idea was to provide a json to the front-end similar to how we deliver
     the Templates: via the API.
-    Possible improvements: Becuase we only have one SearchForm, we could
+    Possible improvements: Because we only have one SearchForm, we could
     implement a 'view' on all Templates, which automatically generates the
     json at each request.
     """

@@ -1,6 +1,6 @@
 import celery
 import logging
-
+import json
 from django.core.management import BaseCommand
 
 from delft3dcontainermanager.tasks import get_docker_ps
@@ -24,11 +24,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         # STEP I : Loop over non empty celery_task_ids in containers
-
+        # Sets task_uuid to None except for when a task is queued
+        # Queued for log, no start? expire gebruiken
         self._update_container_tasks()
 
         # STEP II : Update Scenes and their Phases
-
+        # Controls container desired states
         self._update_scene_phases()
 
         # STEP III : Synchronise Django Container Models and Docker containers
@@ -63,6 +64,7 @@ class Command(BaseCommand):
 
         try:
             containers_docker = ps.get(timeout=30)
+            print json.dumps(containers_docker)
         except celery.exceptions.TimeoutError as e:
             logging.exception("get_docker_ps timed out (30 seconds)")
 
