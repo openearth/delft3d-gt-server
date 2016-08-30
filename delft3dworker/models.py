@@ -231,6 +231,30 @@ class Scene(models.Model):
     shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True)
 
+    phases = (
+        (0, 'New'),
+        (1, 'Creating containers...'),
+        (2, 'Created containers'),
+        (3, 'Starting preprocessing...'),
+        (4, 'Running preprocessing...'),
+        (5, 'Finished preprocessing'),
+        (6, 'Idle'),
+        (7, 'Starting simulation...'),
+        (8, 'Running simulation...'),
+        (9, 'Finished simulation'),
+        (10, 'Starting postprocessing...'),
+        (11, 'Running postprocessing...'),
+        (12, 'Finished postprocessing'),
+        (13, 'Starting container remove...'),
+        (14, 'Removing containers...'),
+        (15, 'Containers removed'),
+
+        (1000, 'Starting Abort...'),
+        (1001, 'Aborting...'),
+        (1002, 'Finished Abort'),
+    )
+    phase = models.PositiveSmallIntegerField(default=0, choices=phases)
+
     # PROPERTY METHODS
 
     class Meta:
@@ -238,17 +262,18 @@ class Scene(models.Model):
             ('view_scene', 'View Scene'),
         )
 
-    # CONTROL METHODS
+    # UI CONTROL METHODS
 
     def start(self, workflow="main"):
 
-        # TODO: write start method
+        if self.phase == 6:  # only allow a start when Scene is 'Idle'
+            self.shift_to_phase(7)   # shift to Starting simulation...
 
         return {"task_id": None, "scene_id": None}
 
     def abort(self):
 
-        # TODO: write abort method
+        self.shift_to_phase(1000)   # shift to Aborting...
 
         return {
             "task_id": None,
@@ -421,6 +446,223 @@ class Scene(models.Model):
         self.shared = "w"
         self.save()
 
+    # HEARTBEAT UPDATE AND SAVE
+
+    def update_and_phase_shift(self):
+
+        # ### PHASE: New
+        if self.phase == 0:
+
+            # what do we do? - create containers
+            preprocess_container = Container.objects.create(
+                scene=self,
+                container_type='preprocess',
+                desired_state='created',
+            )
+            preprocess_container.save()
+            delft3d_container = Container.objects.create(
+                scene=self,
+                container_type='delft3d',
+                desired_state='created',
+            )
+            delft3d_container.save()
+            process_container = Container.objects.create(
+                scene=self,
+                container_type='process',
+                desired_state='created',
+            )
+            process_container.save()
+
+            # when do we shift? - always
+            self.shift_to_phase(1)  # shift to Creating...
+
+            return
+
+        # ### PHASE: Creating...
+        if self.phase == 1:
+
+            # what do we do? - and now we wait...
+
+            # when do we shift? - when all containers are created
+            done = True
+            for container in self.container_set.all():
+                done = done and (container.docker_state == 'created')
+
+            if done:
+                self.shift_to_phase(2)  # shift to Created containers
+
+        # ### PHASE: Created containers
+        if self.phase == 2:
+
+            # what do we do? - nothing
+
+            # when do we shift? - always
+            self.shift_to_phase(3)  # shift to Starting preprocessing...
+
+            return
+
+        # ### PHASE: Starting preprocessing...
+        if self.phase == 3:
+
+            # what do we do? - tell preprocess to start
+            container = self.container_set.get(container_type='preprocess')
+            container.set_desired_phase('running')
+
+            # when do we shift? - preprocess is running
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(4)  # shift to Running preprocessing...
+
+            return
+
+        # ### PHASE: Running preprocessing...
+        if self.phase == 4:
+
+            # what do we do? - and now we wait...
+
+            # when do we shift? - preprocess is done
+            container = self.container_set.get(container_type='preprocess')
+            if (container.docker_state == 'exited'):
+                container.set_desired_phase('exited')
+                self.shift_to_phase(5)  # shift to Created containers
+
+            return
+
+        # ### PHASE: Finished preprocessing
+        if self.phase == 5:
+
+            # what do we do? - nothing
+
+            # when do we shift? - preprocess is done
+            self.shift_to_phase(6)  # shift to Idle
+
+            return
+
+        # ### PHASE: Starting simulation...
+        if self.phase == 7:
+
+            # what do we do? - tell simulation containers to start
+            delft3d_container = self.container_set.get(
+                container_type='delft3d')
+            delft3d_container.set_desired_phase('running')
+
+            processing_container = self.container_set.get(
+                container_type='process')
+            processing_container.set_desired_phase('running')
+
+            # when do we shift? - simulation containers are running
+            if (delft3d_container.docker_state == 'running'):
+                self.shift_to_phase(8)  # shift to Running simulation...
+
+            return
+
+        # ### PHASE: Running simulation...
+        if self.phase == 8:
+
+            # what do we do? - and now we wait...
+
+            # when do we shift? - simulations containers are done
+            delft3d_container = self.container_set.get(
+                container_type='delft3d')
+            processing_container = self.container_set.get(
+                container_type='process')
+
+            if (delft3d_container.docker_state == 'exited'):
+                delft3d_container.set_desired_phase('exited')
+                processing_container.set_desired_phase('exited')
+
+                self.shift_to_phase(9)  # shift to Finished simulation
+
+            return
+
+        # ### PHASE: Finished simulation
+        if self.phase == 9:
+
+            # what do we do? - nothing
+
+            # when do we shift? - always
+            self.shift_to_phase(6)  # shift to Idle
+
+            return
+
+        # ### PHASE: Starting container remove...
+        if self.phase == 13:
+
+            # what do we do? - tell containers to harakiri
+            for container in self.container_set.all():
+                container.set_desired_phase('non-existent')
+
+            # when do we shift? - always
+            self.shift_to_phase(14)  # Removing containers...
+
+            return
+
+        # ### PHASE: Removing containers...
+        if self.phase == 14:
+
+            # what do we do? - and now we wait...
+
+            # when do we shift? - containers are gone
+            done = True
+            for container in self.container_set.all():
+                done = done and (container.docker_state == 'non-existent')
+
+            if done:
+                self.shift_to_phase(15)  # shift to Containers removed
+
+            return
+
+        # ### PHASE: Starting Abort...
+        if self.phase == 1000:
+
+            # what do we do? - tell containers to stop
+            delft3d_container = self.container_set.get(
+                container_type='delft3d')
+            delft3d_container.set_desired_phase('exited')
+
+            processing_container = self.container_set.get(
+                container_type='process')
+            processing_container.set_desired_phase('exited')
+
+            # when do we shift? - always
+            self.shift_to_phase(1001)  # shift to Aborting...
+
+            return
+
+        # ### PHASE: Aborting...
+        if self.phase == 1001:
+
+            # what do we do? - and now we wait...
+
+            # when do we shift? - containers are gone
+            delft3d_container = self.container_set.get(
+                container_type='delft3d')
+            processing_container = self.container_set.get(
+                container_type='process')
+
+            if (delft3d_container.docker_state == 'exited'):
+                delft3d_container.set_desired_phase('exited')
+                processing_container.set_desired_phase('exited')
+
+                self.shift_to_phase(1002)  # shift to Finished Aborting
+
+            return
+
+        # ### PHASE: Finished Aborting
+        if self.phase == 1002:
+
+            # what do we do? - nothing
+
+            # when do we shift? - always
+            self.shift_to_phase(6)  # shift to Idle
+
+            return
+
+        return
+
+    def shift_to_phase(self, new_phase):
+        self.phase = new_phase
+        self.save()
+
     # INTERNALS
 
     def _delete_datafolder(self):
@@ -492,6 +734,18 @@ class Container(models.Model):
 
     docker_log = models.TextField(blank=True, default='')
 
+    # CONTROL METHODS
+
+    def set_desired_phase(self, desired_state):
+
+        if desired_state < 1000 and self.phase != 6:
+            return
+
+        self.desired_state = desired_state
+        self.save()
+
+    # HEARTBEAT METHODS
+
     def update_task_result(self):
         """
         Get the result from the last task it executed, given that there is a
@@ -502,6 +756,10 @@ class Container(models.Model):
             return
 
         result = AsyncResult(id=str(self.task_uuid))
+
+        print result
+        print result.ready()
+        print result.get()
 
         if result.ready():
 
@@ -514,7 +772,7 @@ class Container(models.Model):
             docker_id, docker_log = result.get()
 
             # only write the id if the result is as expected
-            if docker_id is not None and isinstance(docker_id, str):
+            if docker_id is not None and isinstance(docker_id, unicode):
                 self.docker_id = docker_id
             else:
                 logging.warn(
@@ -551,6 +809,8 @@ class Container(models.Model):
 
         self._update_log()
 
+    # INTERNALS
+
     def _update_state_and_save(self, snapshot):
         """
         Var snapshot can be either dictionary or None.
@@ -573,9 +833,11 @@ class Container(models.Model):
             elif snapshot['Status'].startswith('Exited'):
                 self.docker_state = 'exited'
 
-            # TODO: add handling of shapshot Statuses:
-            # - Dead
-            # - Removal In Progress
+            elif snapshot['Status'].startswith('Dead'):
+                self.docker_state = 'exited'
+
+            elif snapshot['Status'].startswith('Removal In Progress'):
+                self.docker_state = 'running'
 
             else:
                 logging.error(
@@ -645,7 +907,8 @@ class Container(models.Model):
                            '{0}:/data/input:ro'.format(simdir)],
                        'folders': [expdir,
                                    simdir],
-                       'command': "/data/run.sh /data/svn/scripts/export/export2grdecl.py",
+                       'command': "/data/run.sh /data/svn/scripts/export/"
+                       "export2grdecl.py",
                        },
 
             'postprocess': {'image': settings.POSTPROCESS_IMAGE_NAME,
@@ -663,7 +926,8 @@ class Container(models.Model):
                                '{0}:/data/input:ro'.format(predir)],
                            'folders': [predir,
                                        simdir],
-                           'command': "/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py"
+                           'command': "/data/run.sh /data/svn/scripts/"
+                           "preprocessing/preprocessing.py"
                            },
 
             'process': {'image': settings.PROCESS_IMAGE_NAME,
@@ -675,12 +939,18 @@ class Container(models.Model):
                                     simdir],
                         'command': ' '.join([
                             "/data/run.sh ",
-                            "/data/svn/scripts/postprocessing/channel_network_proc.py",
-                            "/data/svn/scripts/postprocessing/delta_fringe_proc.py",
-                            "/data/svn/scripts/postprocessing/sediment_fraction_proc.py",
-                            "/data/svn/scripts/visualisation/channel_network_viz.py",
-                            "/data/svn/scripts/visualisation/delta_fringe_viz.py",
-                            "/data/svn/scripts/visualisation/sediment_fraction_viz.py"
+                            "/data/svn/scripts/postprocessing/"
+                            "channel_network_proc.py",
+                            "/data/svn/scripts/postprocessing/"
+                            "delta_fringe_proc.py",
+                            "/data/svn/scripts/postprocessing/"
+                            "sediment_fraction_proc.py",
+                            "/data/svn/scripts/visualisation/"
+                            "channel_network_viz.py",
+                            "/data/svn/scripts/visualisation/"
+                            "delta_fringe_viz.py",
+                            "/data/svn/scripts/visualisation/"
+                            "sediment_fraction_viz.py"
                         ])},
         }
 
@@ -704,6 +974,7 @@ class Container(models.Model):
 
         result = do_docker_start.delay(self.docker_id)
         self.task_uuid = result.id
+        self.save()
 
     def _stop_container(self):
         # a container can only be started if it is in 'running' state, any
@@ -717,6 +988,7 @@ class Container(models.Model):
 
         result = do_docker_stop.delay(self.docker_id)
         self.task_uuid = result.id
+        self.save()
 
     def _remove_container(self):
         # a container can only be removed if it is in 'created' or 'exited'
@@ -735,12 +1007,11 @@ class Container(models.Model):
             return
 
         if self.docker_state != 'running':
-            logging.info('Trying to retrieve the log from a container in "{}" '
-                         'state: ignoring command.'.format(self.docker_state))
-            return  # container will not have log updates
+            return  # the container is done, no logging needed
 
         result = get_docker_log.delay(self.docker_id)
         self.task_uuid = result.id
+        self.save()
 
     def __unicode__(self):
         return "{}({}):{}".format(
