@@ -101,4 +101,5 @@ class Command(BaseCommand):
         for container in container_mismatch:
             self.stderr.write(
                 "Docker container {} not found in database!".format(container))
-            do_docker_remove(container, force=True)
+            do_docker_remove.delay(container, force=True)
+

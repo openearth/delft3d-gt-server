@@ -685,7 +685,7 @@ class Container(models.Model):
         }
 
         parameters = self.scene.parameters
-        environment = {"uuid": self.scene.suid}
+        environment = {"uuid": str(self.scene.suid)}
         label = {"type": self.container_type}
 
         result = do_docker_create.delay(label, parameters, environment,
