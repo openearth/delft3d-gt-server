@@ -275,7 +275,7 @@ class Scene(models.Model):
 
     def abort(self):
 
-        if self.phase >= 8:  # only allow aborts when simulation (or more)
+        if self.phase >= 8:  # only allow aborts when (beyond) simulating
             self.shift_to_phase(1000)   # shift to Aborting...
 
         return {
@@ -760,10 +760,6 @@ class Container(models.Model):
             return
 
         result = AsyncResult(id=str(self.task_uuid))
-
-        print result
-        print result.ready()
-        print result.get()
 
         if result.ready():
 
