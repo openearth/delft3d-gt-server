@@ -745,10 +745,6 @@ class Container(models.Model):
     # CONTROL METHODS
 
     def set_desired_phase(self, desired_state):
-
-        if desired_state < 1000 and self.phase != 6:
-            return
-
         self.desired_state = desired_state
         self.save()
 
