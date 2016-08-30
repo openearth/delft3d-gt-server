@@ -508,16 +508,14 @@ class Container(models.Model):
 
         result = AsyncResult(id=str(self.task_uuid))
         time_passed = self.task_starttime - now()
-
-        # print result.ready(), result.successful()
         if result.ready():
 
             if result.successful():
                 docker_id, docker_log = result.result
-
                 # only write the id if the result is as expected
                 if docker_id is not None and (isinstance(docker_id, str) or
                                               isinstance(docker_id, unicode)):
+
                     self.docker_id = docker_id
                 else:
                     logging.warn(

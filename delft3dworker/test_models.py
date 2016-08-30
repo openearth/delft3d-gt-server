@@ -421,20 +421,19 @@ class ContainerTestCase(TestCase):
         self.container.task_starttime = now()
         async_result.ready.return_value = False
         async_result.state = "STARTED"
-        async_result.result.return_value = "dockerid", "dockerlog"
+        async_result.result = "dockerid", "dockerlog"
         async_result.successful.return_value = False
         # call method
         self.container.update_task_result()
 
         # one time check for ready, no get and the task id remains
         self.assertEqual(async_result.ready.call_count, 1)
-        self.assertEqual(async_result.result.call_count, 0)
         self.assertEqual(self.container.task_uuid, uuid.UUID(
             '6764743a-3d63-4444-8e7b-bc938bff7792'))
 
         # Set up: task is now finished with Failure
         async_result.ready.return_value = True
-        async_result.get.return_value = (
+        async_result.result = (
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
         ), 'ERror MesSAge'
         async_result.state = "FAILURE"
@@ -446,6 +445,8 @@ class ContainerTestCase(TestCase):
         self.assertEqual(mocked_warn_method.call_count, 2)
 
         # Set up: task is now finished
+        self.container.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
         async_result.ready.return_value = True
         async_result.successful.return_value = True
         async_result.result = (
@@ -458,7 +459,6 @@ class ContainerTestCase(TestCase):
 
         # second check for ready, now one get and the task id is set to
         # None
-        self.assertEqual(async_result.ready.call_count, 2)
         self.assertIsNone(self.container.task_uuid)
         self.assertEqual(
             self.container.docker_id,
