@@ -166,8 +166,9 @@ class Scenario(models.Model):
             for scene in self.scene_set.all():
 
                 progress = progress + scene.progress
+
                 if scene.phase != 6:
-                    self.status = 'active'
+                    self.state = 'active'
 
             self.progress = progress / count
 
@@ -566,6 +567,7 @@ class Scene(models.Model):
         if self.phase == 7:
 
             # what do we do? - tell simulation containers to start
+
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
             delft3d_container.set_desired_phase('running')
