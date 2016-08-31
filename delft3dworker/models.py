@@ -380,9 +380,9 @@ class Scene(models.Model):
                 str(self.suid),
                 ''
             )
-            self.images = models.FilePathField(path=self.workingdir, 
-                match="*.png",
-                recursive=True)
+            self.images = models.FilePathField(path=self.workingdir,
+                                               match="*.png",
+                                               recursive=True)
             # Hack to have the "dt:20" in the correct format
             if self.parameters == "":
                 self.parameters = {"delft3d": self.info}
@@ -517,6 +517,11 @@ class Scene(models.Model):
             if (container.docker_state == 'running'):
                 self.shift_to_phase(4)  # shift to Running preprocessing...
 
+            # when do we shift? - preprocess is running
+            if (container.docker_state == 'exited'):
+                container.set_desired_phase('exited')
+                self.shift_to_phase(5)  # shift to Created containers
+
             return
 
         # ### PHASE: Running preprocessing...
@@ -558,6 +563,11 @@ class Scene(models.Model):
             if (delft3d_container.docker_state == 'running'):
                 self.shift_to_phase(8)  # shift to Running simulation...
 
+            if (delft3d_container.docker_state == 'exited'):
+                delft3d_container.set_desired_phase('exited')
+                processing_container.set_desired_phase('exited')
+                self.shift_to_phase(9)  # shift to Finished simulation
+
             return
 
         # ### PHASE: Running simulation...
@@ -579,7 +589,6 @@ class Scene(models.Model):
             if (delft3d_container.docker_state == 'exited'):
                 delft3d_container.set_desired_phase('exited')
                 processing_container.set_desired_phase('exited')
-
                 self.shift_to_phase(9)  # shift to Finished simulation
 
             return
@@ -693,8 +702,8 @@ class Scene(models.Model):
 
     def _local_scan(self):
         for root, dirs, files in os.walk(
-                os.path.join(self.workingdir, 'process')
-            ):
+            os.path.join(self.workingdir, 'process')
+        ):
             for f in sorted(files):
                 name, ext = os.path.splitext(f)
                 if ext in ('.png', '.jpg', '.gif'):
@@ -826,13 +835,13 @@ class Container(models.Model):
                 if docker_log is not None and isinstance(
                         docker_log, unicode) and docker_log != '':
                     self.docker_log = docker_log
-                    progress = log_progress_parser(self.docker_log, 
+                    progress = log_progress_parser(self.docker_log,
                                                    self.container_type)
                     self.container_progress = progress if \
                         progress is not None else 0
                 else:
                     logging.warn("Can't parse docker log of {}".
-                        format(self.container_type))
+                                 format(self.container_type))
 
             else:
                 error = result.result
@@ -870,24 +879,6 @@ class Container(models.Model):
         which was retrieved with docker-py's client.containers(all=True)
         (equivalent to 'docker ps').
 
-        Given that the container has no pending tasks, Compare this state to
-        the its desired_state, which is defined by the Scene to which this
-        Container belongs. If (for any reason) the docker_state is different
-        from the desired_state, act: start a task to get both states matched.
-
-        At the end request a log update.
-        """
-
-        self._update_state_and_save(snapshot)
-
-        self._fix_state_mismatch()
-
-        self._update_log()
-
-    # INTERNALS
-
-    def _update_state_and_save(self, snapshot):
-        """
         Parameter snapshot can be either dictionary or None.
         If None: docker container does not exist
         If dictionary:
@@ -941,6 +932,21 @@ class Container(models.Model):
             self.docker_state = 'unknown'
 
         self.save()
+
+    def fix_mismatch_or_log(self):
+        """
+        Given that the container has no pending tasks, Compare this state to
+        the its desired_state, which is defined by the Scene to which this
+        Container belongs. If (for any reason) the docker_state is different
+        from the desired_state, act: start a task to get both states matched.
+
+        At the end, if still no task, request a log update.
+        """
+        self._fix_state_mismatch()
+
+        self._update_log()
+
+    # INTERNALS
 
     def _fix_state_mismatch(self):
         """

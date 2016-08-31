@@ -27,13 +27,15 @@ class Command(BaseCommand):
         # Queued for log, no start? expire gebruiken
         self._update_container_tasks()
 
-        # STEP II : Update Scenes and their Phases
+        # STEP II : Get latest container statuses
+        self._get_latest_docker_status()
+
+        # STEP III : Update Scenes and their Phases
         # Controls container desired states
         self._update_scene_phases()
 
-        # STEP III : Synchronise Django Container Models and Docker containers
-
-        self._synchronise_django_docker_containers()
+        # STEP IV : Synchronise Django Container Models and Docker containers
+        self._fix_container_state_mismatches_or_log()
 
     def _update_container_tasks(self):
         """
@@ -44,18 +46,7 @@ class Command(BaseCommand):
         for container in celery_set:
             container.update_task_result()
 
-    def _update_scene_phases(self):
-        """
-        Update Scenes with latest status of their Containers, and possibly
-        shift Scene phase
-        """
-
-        # TODO: uncommand following lines when update_and_phase_shift is
-        # available
-        for scene in Scene.objects.all():
-            scene.update_and_phase_shift()
-
-    def _synchronise_django_docker_containers(self):
+    def _get_latest_docker_status(self):
         """
         Synchronise local Django Container models with remote Docker containers
         """
@@ -95,7 +86,8 @@ class Command(BaseCommand):
         # Update state of all matching containers
         container_match = m_1_1 | m_1_0
         for con_id in container_match:
-            snapshot = docker_dict[con_id] if con_id in docker_dict else None
+            snapshot = docker_dict[
+                con_id] if con_id in docker_dict else None
             for c in Container.objects.filter(docker_id=con_id):
                 c.update_from_docker_snapshot(snapshot)
 
@@ -105,3 +97,20 @@ class Command(BaseCommand):
             self.stderr.write(
                 "Docker container {} not found in database!".format(container))
             do_docker_remove.delay(container, force=True)
+
+    def _update_scene_phases(self):
+        """
+        Update Scenes with latest status of their Containers, and possibly
+        shift Scene phase
+        """
+
+        # TODO: uncommand following lines when update_and_phase_shift is
+        # available
+        for scene in Scene.objects.all():
+            scene.update_and_phase_shift()
+
+    def _fix_container_state_mismatches_or_log(self):
+
+        for container in Container.objects.all():
+
+            container.fix_mismatch_or_log()
