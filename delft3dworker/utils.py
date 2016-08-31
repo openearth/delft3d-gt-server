@@ -198,18 +198,17 @@ class PersistentLogger(object):
 
 
 def log_progress_parser(log, container_type):
-    progress = []
     lines = log.splitlines()
     if container_type == 'delft3d':
-        for line in lines:
+        for line in lines[::-1]:
             parsed = delft3d_logparser(line)
-            progress.append(parsed['progress'])
+            if parsed['progress'] is not None:
+                return parsed['progress']
     else:  # TODO: improve method to raise error if type is unknown
-        for line in lines:
+        for line in lines[::-1]:
             parsed = python_logparser(line)
-            progress.append(parsed['progress'])
-
-    return max(progress)
+            if parsed['progress'] is not None:
+                return parsed['progress']
 
 def delft3d_logparser(line):
     """
