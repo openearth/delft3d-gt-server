@@ -40,9 +40,6 @@ from delft3dcontainermanager.tasks import do_docker_stop
 from delft3dcontainermanager.tasks import get_docker_log
 
 
-BUSYSTATE = "PROCESSING"
-
-
 # ################################### SCENARIO, SCENE & CONTAINER
 
 class Scenario(models.Model):
@@ -158,7 +155,23 @@ class Scenario(models.Model):
 
     def _update_state_and_save(self):
 
-        # TODO rewrite _update_state_and_save method+
+        count = self.scene_set.all().count()
+
+        self.state = 'inactive'
+
+        if count > 0:
+
+            progress = 0
+
+            for scene in self.scene_set.all():
+
+                progress = progress + scene.progress
+                if scene.phase != 6:
+                    self.status = 'active'
+
+            self.progress = progress / count
+
+            self.save()
 
         return self.state
 
@@ -256,6 +269,7 @@ class Scene(models.Model):
         (1001, 'Aborting...'),
         (1002, 'Finished Abort'),
     )
+
     phase = models.PositiveSmallIntegerField(default=0, choices=phases)
 
     # PROPERTY METHODS
@@ -564,11 +578,6 @@ class Scene(models.Model):
             if (delft3d_container.docker_state == 'running'):
                 self.shift_to_phase(8)  # shift to Running simulation...
 
-            if (delft3d_container.docker_state == 'exited'):
-                delft3d_container.set_desired_phase('exited')
-                processing_container.set_desired_phase('exited')
-                self.shift_to_phase(9)  # shift to Finished simulation
-
             return
 
         # ### PHASE: Running simulation...
@@ -597,7 +606,12 @@ class Scene(models.Model):
         # ### PHASE: Finished simulation
         if self.phase == 9:
 
-            # what do we do? - nothing
+            # what do we do? - update progress one last time
+
+            delft3d_container = self.container_set.get(
+                container_type='delft3d')
+            self.progress = delft3d_container.container_progress
+            self.save()
 
             # when do we shift? - always
             self.shift_to_phase(6)  # shift to Idle
