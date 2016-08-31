@@ -653,6 +653,8 @@ class Container(models.Model):
         kwargs = {
             'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
                         'volumes': ['{0}:/data'.format(simdir)],
+                        'name': "{}-{}".format(self.container_type,
+                                               str(self.scene.suid)),
                         'folders': [simdir],
                         'command': ""},
 
@@ -660,6 +662,8 @@ class Container(models.Model):
                        'volumes': [
                            '{0}:/data/output:z'.format(expdir),
                            '{0}:/data/input:ro'.format(simdir)],
+                       'name': "{}-{}".format(self.container_type,
+                                              str(self.scene.suid)),
                        'folders': [expdir,
                                    simdir],
                        'command': "/data/run.sh /data/svn/scripts/"
@@ -670,6 +674,8 @@ class Container(models.Model):
                             'volumes': [
                                 '{0}:/data/output:z'.format(posdir),
                                 '{0}:/data/input:ro'.format(workingdir)],
+                            'name': "{}-{}".format(self.container_type,
+                                                   str(self.scene.suid)),
                             'folders': [workingdir,
                                         posdir],
                             'command': "",
@@ -679,6 +685,8 @@ class Container(models.Model):
                            'volumes': [
                                '{0}:/data/output:z'.format(simdir),
                                '{0}:/data/input:ro'.format(predir)],
+                           'name': "{}-{}".format(self.container_type,
+                                                  str(self.scene.suid)),
                            'folders': [predir,
                                        simdir],
                            'command': "/data/run.sh /data/svn/scripts/"
@@ -690,6 +698,8 @@ class Container(models.Model):
                             '{0}:/data/input:ro'.format(simdir),
                             '{0}:/data/output:z'.format(prodir)
                         ],
+                        'name': "{}-{}".format(self.container_type,
+                                               str(self.scene.suid)),
                         'folders': [prodir,
                                     simdir],
                         'command': ' '.join([
