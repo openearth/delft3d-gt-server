@@ -227,7 +227,6 @@ class Scene(models.Model):
 
     # TODO: use FilePath Field
     workingdir = models.CharField(max_length=256)
-    images = models.FilePathField(max_length=256, blank=True)
     parameters_hash = models.CharField(max_length=64, blank=True)
 
     shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
