@@ -197,6 +197,12 @@ class PersistentLogger(object):
         return self.info
 
 
+def logparser(log, container_type):
+    if container_type == 'delft3d':
+        return delft3d_logparser(log)
+    else:  # TODO: improve method to raise error if type is unknown
+        return python_logparser(log)
+
 def delft3d_logparser(line):
     """
     read progress information from delft3d log.

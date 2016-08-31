@@ -150,6 +150,12 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TIMEZONE = 'Europe/Amsterdam'
 CELERY_ENABLE_UTC = True
+CELERY_TRACK_STARTED = True  # All pending tasks can be revoked
+CELERY_TASK_PUBLISH_RETRY = False  # No retry on connection error
+CELERY_MESSAGE_COMPRESSION = 'gzip'  # Can help on docker inspect messages
+
+# Custom task expire time
+TASK_EXPIRE_TIME = 5 * 60  # After 5 minutes, tasks are forgotten
 
 # Worker specific settings, becomes important
 # with cloud workers, when there are multiple
@@ -221,7 +227,7 @@ if 'test' in sys.argv:
     # make sure celery delayed tasks are executed immediately
     CELERY_RESULT_BACKEND = 'cache'
     CELERY_CACHE_BACKEND = 'memory'
-
+    TASK_EXPIRE_TIME = 24 * 60 * 60  # Expire after a day
     CELERY_ALWAYS_EAGER = True
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True  # Issue #75
 

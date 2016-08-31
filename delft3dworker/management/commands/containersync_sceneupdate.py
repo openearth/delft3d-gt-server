@@ -1,6 +1,5 @@
 import celery
 import logging
-import json
 from django.core.management import BaseCommand
 
 from delft3dcontainermanager.tasks import get_docker_ps

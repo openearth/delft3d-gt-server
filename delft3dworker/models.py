@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import copy
-from datetime import datetime
 import hashlib
 import io
 import logging
@@ -31,6 +30,7 @@ from jsonfield import JSONField
 
 from delft3dworker.utils import compare_states
 from delft3dworker.utils import parse_info
+from delft3dworker.utils import logparser
 
 from delft3dcontainermanager.tasks import do_docker_create
 from delft3dcontainermanager.tasks import do_docker_remove
@@ -668,6 +668,7 @@ class Scene(models.Model):
 
     # INTERNALS
 
+    # TODO Remove method and update code calls
     def _delete_datafolder(self):
         # delete directory for scene
         if os.path.exists(self.workingdir):
@@ -700,7 +701,6 @@ class Container(models.Model):
 
     task_uuid = models.UUIDField(
         default=None, blank=True, null=True)
-
     task_starttime = models.DateTimeField(default=now, blank=True)
 
     # delft3dgtmain.provisionedsettings
@@ -737,10 +737,12 @@ class Container(models.Model):
     docker_id = models.CharField(
         max_length=64, blank=True, default='', db_index=True)
 
-    docker_log = models.TextField(blank=True, default='')
+    container_starttime = models.DateTimeField(default=now, blank=True)
+    container_stoptime = models.DateTimeField(default=now, blank=True)
+    container_exitcode = models.PositiveSmallIntegerField(default=0)
+    container_progress = models.PositiveSmallIntegerField(default=0)
 
-    # container_starttime = models.DateTimeField()
-    # container_stoptime = models.DateTimeField()
+    docker_log = models.TextField(blank=True, default='')
 
     # CONTROL METHODS
 
@@ -760,17 +762,14 @@ class Container(models.Model):
             return
 
         result = AsyncResult(id=str(self.task_uuid))
-
+        time_passed = self.task_starttime - now()
         if result.ready():
 
             if result.successful():
                 docker_id, docker_log = result.result
-
                 # only write the id if the result is as expected
-                if docker_id is not None and (
-                    isinstance(docker_id, str) or isinstance(
-                        docker_id, unicode)
-                ):
+                if docker_id is not None and (isinstance(docker_id, str) or
+                                              isinstance(docker_id, unicode)):
                     self.docker_id = docker_id
                 else:
                     logging.warn(
@@ -780,8 +779,15 @@ class Container(models.Model):
                 # only write the log if the result is as expected and there is
                 # an actual log
                 if docker_log is not None and isinstance(
-                        docker_id, unicode) and docker_log != '':
+                        docker_log, unicode) and docker_log != '':
                     self.docker_log = docker_log
+                    log = logparser(self.docker_log, self.container_type)
+                    if isinstance(log, dict) and 'progress' in log and \
+                        log['progress'] is not None:
+                        progress = float(log['progress'])
+                        self.container_progress = progress
+                else:
+                    logging.warn("Can't parse docker log.")
 
             else:
                 error = result.result
@@ -792,19 +798,24 @@ class Container(models.Model):
             self.task_uuid = None
             self.save()
 
+        # Pending means not queued yet or unknown
+        # so celery is probably down
         elif result.state == "PENDING":
-            logging.warn("Celery task is still not ready, removing from db.")
+            logging.warn("Celery task is unknown or celery is down.")
             result.revoke()
             self.task_uuid = None
             self.save()
 
-        # elif self.task_starttime - now() > 500:
-            # #task expired here
-            # result.revoke()
-            # self.task_uuid = None
+        # Forget task after 5 minutes
+        elif time_passed.seconds > settings.TASK_EXPIRE_TIME:
+            logging.warn("Celery task expired after {} seconds".format(time_passed.seconds))
+            result.revoke()
+            self.task_uuid = None
+            self.save()
 
         else:
-            logging.warn("Celery task of {} is not ready yet.".format(self))
+            logging.warn("Celery task of {} is still {}.".format(self,
+                                                                 result.state))
 
     def update_from_docker_snapshot(self, snapshot):
         """
@@ -830,43 +841,53 @@ class Container(models.Model):
 
     def _update_state_and_save(self, snapshot):
         """
-        Var snapshot can be either dictionary or None.
+        Parameter snapshot can be either dictionary or None.
         If None: docker container does not exist
-        If dictionary: snapshot['Status'] is a string describing status
+        If dictionary:
+        {...,
+            "State": {
+                "Dead": false,
+                "Error": "",
+                "ExitCode": 0,
+                "FinishedAt": "2016-08-30T10:33:41.159456168Z",
+                "OOMKilled": false,
+                "Paused": false,
+                "Pid": 0,
+                "Restarting": false,
+                "Running": false,
+                "StartedAt": "2016-08-30T10:32:31.415322502Z",
+                "Status": "exited"
+            },
+        ...
+        }
         """
 
         if snapshot is None:
             self.docker_state = 'non-existent'
             self.docker_id = ''
 
-        elif isinstance(snapshot, dict) and ('State' in snapshot):
+        elif isinstance(snapshot, dict) and \
+                ('State' in snapshot) and ('Status' in snapshot['State']):
 
             choices = [choice[1] for choice in self.CONTAINER_STATE_CHOICES]
-            if snapshot['State'] in choices:
-                self.docker_state = snapshot['State']
-
-            elif snapshot['Status'].startswith('Up'):
-                self.docker_state = 'running'
-
-            elif snapshot['Status'].startswith('Created'):
-                self.docker_state = 'created'
-
-            elif snapshot['Status'].startswith('Exited'):
-                self.docker_state = 'exited'
-
-            elif snapshot['Status'].startswith('Dead'):
-                self.docker_state = 'exited'
-
-            elif snapshot['Status'].startswith('Removal In Progress'):
-                self.docker_state = 'running'
+            if snapshot['State']['Status'] in choices:
+                self.docker_state = snapshot['State']['Status']
 
             else:
                 logging.error(
                     'received unknown docker Status: {}'.format(
-                        snapshot['Status']
+                        snapshot['State']['Status']
                     )
                 )
                 self.docker_state = 'unknown'
+
+            if 'StartedAt' in snapshot['State'] and \
+                    'FinishedAt' in snapshot['State']:
+                self.container_starttime = snapshot['State']['StartedAt']
+                self.container_stoptime = snapshot['State']['FinishedAt']
+
+            if 'ExitCode' in snapshot['State']:
+                self.container_exitcode = snapshot['State']['ExitCode']
 
         else:
             logging.error('received unknown snapshot: {}'.format(snapshot))
@@ -915,7 +936,7 @@ class Container(models.Model):
 
         # Specific settings for each container type
         # TODO It would be more elegant to put these
-        # hardcoded settings in a seperate file.
+        # hard-coded settings in a separate file.
         kwargs = {
             'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
                         'volumes': ['{0}:/data'.format(simdir)],
@@ -989,8 +1010,11 @@ class Container(models.Model):
         environment = {"uuid": str(self.scene.suid)}
         label = {"type": self.container_type}
 
-        result = do_docker_create.delay(label, parameters, environment,
-                                        **kwargs[self.container_type])
+        result = do_docker_create.apply_async(args=(label, parameters,
+                                                    environment),
+                                              kwargs=kwargs[
+                                                  self.container_type],
+                                              expires=settings.TASK_EXPIRE_TIME)
 
         self.task_starttime = now()
         self.task_uuid = result.id
@@ -1004,7 +1028,8 @@ class Container(models.Model):
                          'command.'.format(self.docker_state))
             return  # container is not ready for start
 
-        result = do_docker_start.delay(self.docker_id)
+        result = do_docker_start.apply_async(args=(self.docker_id,),
+                                             expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
@@ -1019,7 +1044,8 @@ class Container(models.Model):
 
         # I just discovered how to make myself unstoppable: don't move.
 
-        result = do_docker_stop.delay(self.docker_id)
+        result = do_docker_stop.apply_async(args=(self.docker_id,),
+                                            expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
@@ -1032,9 +1058,11 @@ class Container(models.Model):
                          ' command.'.format(self.docker_state))
             return  # container not ready for delete
 
-        result = do_docker_remove.delay(self.docker_id)
+        result = do_docker_remove.apply_async(args=(self.docker_id,),
+                                              expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
         self.task_uuid = result.id
+        self.save()
 
     def _update_log(self):
         # return if container still has an active task
@@ -1044,7 +1072,8 @@ class Container(models.Model):
         if self.docker_state != 'running':
             return  # the container is done, no logging needed
 
-        result = get_docker_log.delay(self.docker_id)
+        result = get_docker_log.apply_async(args=(self.docker_id,),
+                                            expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
