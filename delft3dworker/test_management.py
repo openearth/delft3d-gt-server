@@ -64,7 +64,7 @@ class ManagementTest(TestCase):
         )
 
     @patch('delft3dworker.management.commands.'
-           'containersync_sceneupdate.Container._update_state_and_save')
+           'containersync_sceneupdate.Container.update_from_docker_snapshot')
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_containersync_sceneupdate(self, mockClient, mockContainerupdate):
         """

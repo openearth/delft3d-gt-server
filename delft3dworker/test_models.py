@@ -471,27 +471,27 @@ class ContainerTestCase(TestCase):
         # This test will test the behavior of a Container
         # when it receives snapshot
 
-        self.container._update_state_and_save(
+        self.container.update_from_docker_snapshot(
             None)
         self.assertEqual(
             self.container.docker_state, 'non-existent')
 
-        self.container._update_state_and_save(
+        self.container.update_from_docker_snapshot(
             self.created_docker_ps_dict)
         self.assertEqual(
             self.container.docker_state, 'created')
 
-        self.container._update_state_and_save(
+        self.container.update_from_docker_snapshot(
             self.up_docker_ps_dict)
         self.assertEqual(
             self.container.docker_state, 'running')
 
-        self.container._update_state_and_save(
+        self.container.update_from_docker_snapshot(
             self.exited_docker_ps_dict)
         self.assertEqual(
             self.container.docker_state, 'exited')
 
-        self.container._update_state_and_save(
+        self.container.update_from_docker_snapshot(
             self.error_docker_ps_dict)
         self.assertEqual(
             self.container.docker_state, 'unknown')
@@ -511,15 +511,16 @@ class ContainerTestCase(TestCase):
         self.container._create_container()
 
         mocked_task.assert_called_once_with(
-            {'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)},
-            command='/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
-            folders=['test/{}/preprocess'.format(self.scene.suid),
+            args=({'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)}),
+            expires=settings.TASK_EXPIRE_TIME,
+            kwargs={'command':'/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
+            'folders':['test/{}/preprocess'.format(self.scene.suid),
                      'test/{}/simulation'.format(self.scene.suid)],
-            image='dummy_preprocessing', 
-            name='preprocess-6764743a-3d63-4444-8e7b-bc938bff7792',
-            volumes=[
+            'image':'dummy_preprocessing', 
+            'name':'preprocess-{}'.format(str(self.scene.suid)),
+            'volumes':[
                 'test/{}/simulation:/data/output:z'.format(self.scene.suid),
-                'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]
+                'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]}
         )
         self.assertEqual(self.container.task_uuid, task_uuid)
 
@@ -536,7 +537,9 @@ class ContainerTestCase(TestCase):
             kwargs={'command': '/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
-                    'image': 'dummy_preprocessing', 'volumes': [
+                    'image': 'dummy_preprocessing', 
+                    'name':'preprocess-{}'.format(str(self.scene.suid)),
+                    'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
                             self.scene.suid),
                         'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]},
