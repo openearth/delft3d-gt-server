@@ -64,8 +64,8 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
 
 
 @shared_task(bind=True, throws=(HTTPError))
-def do_docker_create(self, label, parameters, environment, name, image, volumes,
-                     folders, command):
+def do_docker_create(self, label, parameters, environment, name, image,
+                     volumes, folders, command):
     """
     Create necessary directories in a working directory
     for the mounts in the containers.

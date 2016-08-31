@@ -561,11 +561,14 @@ class Scene(models.Model):
         # ### PHASE: Running simulation...
         if self.phase == 8:
 
-            # what do we do? - and now we wait...
-
-            # when do we shift? - simulations containers are done
+            # what do we do? - update progress
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
+
+            self.progress = delft3d_container.container_progress
+            self.save()
+
+            # when do we shift? - simulations containers are done
             processing_container = self.container_set.get(
                 container_type='process')
 
@@ -783,7 +786,6 @@ class Container(models.Model):
                     self.docker_log = docker_log
                     progress = log_progress_parser(self.docker_log, 
                                                    self.container_type)
-                    print progress, type(progress)
                     self.container_progress = progress if \
                         progress is not None else 0
                 else:
@@ -809,7 +811,9 @@ class Container(models.Model):
 
         # Forget task after 5 minutes
         elif time_passed.seconds > settings.TASK_EXPIRE_TIME:
-            logging.warn("Celery task expired after {} seconds".format(time_passed.seconds))
+            logging.warn(
+                "Celery task expired after {} seconds".format(
+                    time_passed.seconds))
             result.revoke()
             self.task_uuid = None
             self.save()
@@ -1011,11 +1015,11 @@ class Container(models.Model):
         environment = {"uuid": str(self.scene.suid)}
         label = {"type": self.container_type}
 
-        result = do_docker_create.apply_async(args=(label, parameters,
-                                                    environment),
-                                              kwargs=kwargs[
-                                                  self.container_type],
-                                              expires=settings.TASK_EXPIRE_TIME)
+        result = do_docker_create.apply_async(
+            args=(label, parameters, environment),
+            kwargs=kwargs[self.container_type],
+            expires=settings.TASK_EXPIRE_TIME
+        )
 
         self.task_starttime = now()
         self.task_uuid = result.id
@@ -1059,8 +1063,11 @@ class Container(models.Model):
                          ' command.'.format(self.docker_state))
             return  # container not ready for delete
 
-        result = do_docker_remove.apply_async(args=(self.docker_id,),
-                                              expires=settings.TASK_EXPIRE_TIME)
+        result = do_docker_remove.apply_async(
+            args=(self.docker_id,),
+            expires=settings.TASK_EXPIRE_TIME
+        )
+
         self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
