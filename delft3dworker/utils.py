@@ -205,7 +205,7 @@ def log_progress_parser(log, container_type):
             if parsed['progress'] is not None:
                 return parsed['progress']
     else:  # TODO: improve method to raise error if type is unknown
-        for line in lines[::-1:
+        for line in lines[::-1]:
             parsed = python_logparser(line)
             if parsed['progress'] is not None:
                 return parsed['progress']
