@@ -828,24 +828,6 @@ class Container(models.Model):
         which was retrieved with docker-py's client.containers(all=True)
         (equivalent to 'docker ps').
 
-        Given that the container has no pending tasks, Compare this state to
-        the its desired_state, which is defined by the Scene to which this
-        Container belongs. If (for any reason) the docker_state is different
-        from the desired_state, act: start a task to get both states matched.
-
-        At the end request a log update.
-        """
-
-        self._update_state_and_save(snapshot)
-
-        self._fix_state_mismatch()
-
-        self._update_log()
-
-    # INTERNALS
-
-    def _update_state_and_save(self, snapshot):
-        """
         Parameter snapshot can be either dictionary or None.
         If None: docker container does not exist
         If dictionary:
@@ -899,6 +881,21 @@ class Container(models.Model):
             self.docker_state = 'unknown'
 
         self.save()
+
+    def fix_mismatch_or_log(self):
+        """
+        Given that the container has no pending tasks, Compare this state to
+        the its desired_state, which is defined by the Scene to which this
+        Container belongs. If (for any reason) the docker_state is different
+        from the desired_state, act: start a task to get both states matched.
+
+        At the end, if still no task, request a log update.
+        """
+        self._fix_state_mismatch()
+
+        self._update_log()
+
+    # INTERNALS
 
     def _fix_state_mismatch(self):
         """
