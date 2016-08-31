@@ -115,8 +115,7 @@ class ApiAccessTestCase(TestCase):
         }
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        mockedStartMethod.assert_called_once_with(
-            Scenario.objects.get(name="New Scenario"), self.user_foo)
+        self.assertEqual(mockedStartMethod.call_count, 0)
 
     def test_search(self):
         # User Foo can access own models
