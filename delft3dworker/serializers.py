@@ -54,9 +54,7 @@ class SceneSerializer(serializers.ModelSerializer):
 
     owner = UserSerializer(read_only=True)
 
-    # Run update state on serialization
-    state = serializers.CharField(
-        source='_update_state_and_save', read_only=True)
+    state = serializers.CharField(source='get_phase_display', read_only=True)
 
     class Meta:
         model = Scene
@@ -74,6 +72,7 @@ class SceneSerializer(serializers.ModelSerializer):
             'parameters',
             'task_id',
             'workingdir',
+            'phase'
         )
 
 

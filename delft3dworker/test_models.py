@@ -509,6 +509,7 @@ class ContainerTestCase(TestCase):
 
         # call method, check if do_docker_create is called once, uuid updates
         self.container._create_container()
+<<<<<<< HEAD
         mocked_task.assert_called_once_with(args=(
             {'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)},),
             kwargs={'command': '/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
@@ -519,6 +520,18 @@ class ContainerTestCase(TestCase):
                             self.scene.suid),
                         'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]},
             expires=settings.TASK_EXPIRE_TIME
+=======
+        mocked_task.assert_called_once_with(
+            {'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)},
+            command='/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
+            folders=['test/{}/preprocess'.format(self.scene.suid),
+                     'test/{}/simulation'.format(self.scene.suid)],
+            image='dummy_preprocessing', 
+            name='preprocess-6764743a-3d63-4444-8e7b-bc938bff7792',
+            volumes=[
+                'test/{}/simulation:/data/output:z'.format(self.scene.suid),
+                'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]
+>>>>>>> sprint06-feature-tijn-scene-phase-update
         )
         self.assertEqual(self.container.task_uuid, task_uuid)
 

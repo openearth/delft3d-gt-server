@@ -64,6 +64,7 @@ class TaskTest(TestCase):
         environment = None
         label = {"type": "delft3d"}
         folder = ['input', 'output']
+        name = 'test-8172318273'
         workingdir = os.path.join(os.getcwd(), 'test')
         folders = [os.path.join(workingdir, f) for f in folder]
         parameters = {u'test':
@@ -71,7 +72,7 @@ class TaskTest(TestCase):
                       }
         mockClient.return_value.create_host_config.return_value = config
 
-        do_docker_create.delay(label, parameters, None,
+        do_docker_create.delay(label, parameters, None, name,
                                image, volumes, folders, command)
 
         # Assert that docker is called
@@ -79,6 +80,7 @@ class TaskTest(TestCase):
             image,
             host_config=config,
             command=command,
+            name=name,
             environment=environment,
             labels=label
         )

@@ -167,7 +167,7 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 CELERYBEAT_SCHEDULE = {
     'sync': {
         'task': 'delft3dcontainermanager.tasks.delft3dgt_pulse',
-        'schedule': timedelta(seconds=60),
+        'schedule': timedelta(seconds=10),
         'options': {'queue': 'beat'}
     },
 }

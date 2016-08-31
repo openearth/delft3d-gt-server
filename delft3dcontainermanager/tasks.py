@@ -64,7 +64,7 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
 
 
 @shared_task(bind=True, throws=(HTTPError))
-def do_docker_create(self, label, parameters, environment, image, volumes,
+def do_docker_create(self, label, parameters, environment, name, image, volumes,
                      folders, command):
     """
     Create necessary directories in a working directory
@@ -105,6 +105,7 @@ def do_docker_create(self, label, parameters, environment, image, volumes,
     config = client.create_host_config(binds=volumes)
     container = client.create_container(
         image,  # docker image
+        name=name,
         host_config=config,  # mounts
         command=command,  # command to run
         environment=environment,  # {'uuid' = ""} for cloud fs sync
