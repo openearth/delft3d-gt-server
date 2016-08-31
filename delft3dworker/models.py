@@ -4,6 +4,7 @@ import copy
 import hashlib
 import io
 import logging
+import math
 import os
 import shutil
 import uuid
@@ -851,7 +852,7 @@ class Container(models.Model):
                     self.docker_log = docker_log
                     progress = log_progress_parser(self.docker_log,
                                                    self.container_type)
-                    self.container_progress = progress if \
+                    self.container_progress = math.ceil(progress) if \
                         progress is not None else 0
                 else:
                     logging.warn("Can't parse docker log of {}".
