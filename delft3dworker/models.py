@@ -240,7 +240,7 @@ class Scene(models.Model):
         (3, 'Starting preprocessing...'),
         (4, 'Running preprocessing...'),
         (5, 'Finished preprocessing'),
-        (6, 'Idle'),
+        (6, 'Idle: waiting for user input'),
         (7, 'Starting simulation...'),
         (8, 'Running simulation...'),
         (9, 'Finished simulation'),
