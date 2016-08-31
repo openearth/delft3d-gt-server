@@ -667,6 +667,7 @@ class Scene(models.Model):
 
     # INTERNALS
 
+    # TODO Remove method and update code calls
     def _delete_datafolder(self):
         # delete directory for scene
         if os.path.exists(self.workingdir):
@@ -699,8 +700,6 @@ class Container(models.Model):
 
     task_uuid = models.UUIDField(
         default=None, blank=True, null=True)
-    task_starttime = models.DateTimeField(default=now, blank=True)
-
     task_starttime = models.DateTimeField(default=now, blank=True)
 
     # delft3dgtmain.provisionedsettings
@@ -739,11 +738,8 @@ class Container(models.Model):
 
     container_starttime = models.DateTimeField(default=now, blank=True)
     container_stoptime = models.DateTimeField(default=now, blank=True)
-
+    container_exitcode = models.PositiveSmallIntegerField(default=0)
     docker_log = models.TextField(blank=True, default='')
-
-    # container_starttime = models.DateTimeField()
-    # container_stoptime = models.DateTimeField()
 
     # CONTROL METHODS
 
@@ -869,21 +865,6 @@ class Container(models.Model):
             if snapshot['State']['Status'] in choices:
                 self.docker_state = snapshot['State']['Status']
 
-            elif snapshot['Status'].startswith('Up'):
-                self.docker_state = 'running'
-
-            elif snapshot['Status'].startswith('Created'):
-                self.docker_state = 'created'
-
-            elif snapshot['Status'].startswith('Exited'):
-                self.docker_state = 'exited'
-
-            elif snapshot['Status'].startswith('Dead'):
-                self.docker_state = 'exited'
-
-            elif snapshot['Status'].startswith('Removal In Progress'):
-                self.docker_state = 'running'
-
             else:
                 logging.error(
                     'received unknown docker Status: {}'.format(
@@ -896,6 +877,9 @@ class Container(models.Model):
                     'FinishedAt' in snapshot['State']:
                 self.container_starttime = snapshot['State']['StartedAt']
                 self.container_stoptime = snapshot['State']['FinishedAt']
+
+            if 'ExitCode' in snapshot['State']:
+                self.container_exitcode = snapshot['State']['ExitCode']
 
         else:
             logging.error('received unknown snapshot: {}'.format(snapshot))
