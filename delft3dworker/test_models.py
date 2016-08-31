@@ -431,7 +431,7 @@ class ContainerTestCase(TestCase):
 
         # Set up: task is now finished with Failure
         async_result.ready.return_value = True
-        async_result.get.return_value = (
+        async_result.result = (
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
         ), 'ERror MesSAge'
         async_result.state = "FAILURE"
@@ -444,7 +444,7 @@ class ContainerTestCase(TestCase):
 
         # Set up: task is now finished
         async_result.ready.return_value = True
-        async_result.get.return_value = (
+        async_result.result = (
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
         ), 'This is a log message.'
         async_result.state = "SUCCESS"
@@ -507,11 +507,13 @@ class ContainerTestCase(TestCase):
         # call method, check if do_docker_create is called once, uuid updates
         self.container._create_container()
         mocked_task.assert_called_once_with(
-            {'type': 'preprocess'}, {}, {'uuid': self.scene.suid},
+            {'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)},
             command='/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
             folders=['test/{}/preprocess'.format(self.scene.suid),
                      'test/{}/simulation'.format(self.scene.suid)],
-            image='dummy_preprocessing', volumes=[
+            image='dummy_preprocessing', 
+            name='preprocess-6764743a-3d63-4444-8e7b-bc938bff7792',
+            volumes=[
                 'test/{}/simulation:/data/output:z'.format(self.scene.suid),
                 'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]
         )
