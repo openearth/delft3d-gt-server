@@ -227,6 +227,7 @@ class Scene(models.Model):
 
     # TODO: use FilePath Field
     workingdir = models.CharField(max_length=256)
+    images = models.FilePathField(max_length=256, blank=True)
     parameters_hash = models.CharField(max_length=64, blank=True)
 
     shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
@@ -380,7 +381,9 @@ class Scene(models.Model):
                 str(self.suid),
                 ''
             )
-
+            self.images = models.FilePathField(path=self.workingdir, 
+                match="*.png",
+                recursive=True)
             # Hack to have the "dt:20" in the correct format
             if self.parameters == "":
                 self.parameters = {"delft3d": self.info}
@@ -565,6 +568,8 @@ class Scene(models.Model):
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
 
+            self._local_scan()  # update images and logfile
+
             self.progress = delft3d_container.container_progress
             self.save()
 
@@ -686,6 +691,44 @@ class Scene(models.Model):
         # TODO: write _update_state_and_save method
 
         return self.state
+
+    def _local_scan(self):
+        for root, dirs, files in os.walk(
+                os.path.join(self.workingdir, 'process')
+            ):
+            for f in sorted(files):
+                name, ext = os.path.splitext(f)
+                if ext in ('.png', '.jpg', '.gif'):
+                    # TODO use get to check image list and
+                    # make this code less deep in if/for statements
+                    if ("delta_fringe" in name and f not in self.info[
+                            "delta_fringe_images"]["images"]):
+                        self.info["delta_fringe_images"][
+                            "images"].append(f)
+                    elif ("channel_network" in name and f not in self.info[
+                            "channel_network_images"]["images"]):
+                        self.info["channel_network_images"][
+                            "images"].append(f)
+                    elif ("sediment_fraction" in name and
+                          f not in self.info[
+                            "sediment_fraction_images"]["images"]):
+                        self.info["sediment_fraction_images"][
+                            "images"].append(f)
+                    else:
+                        # Other images ?
+                        pass
+
+        # If no log path is yet known, set log
+        # so don't update this everytime
+        if self.info["logfile"]["file"] == "":
+            for root, dirs, files in os.walk(
+                os.path.join(self.workingdir, 'simulation')
+            ):
+                for f in files:
+                    if f == 'delft3d.log':
+                        # No log is generated at the moment
+                        self.info["logfile"]["file"] = f
+                        break
 
     def __unicode__(self):
         return self.name
