@@ -785,7 +785,6 @@ class Container(models.Model):
                     if isinstance(log, dict) and 'progress' in log and \
                         log['progress'] is not None:
                         progress = float(log['progress'])
-                        print progress
                         self.container_progress = progress
                 else:
                     logging.warn("Can't parse docker log.")
