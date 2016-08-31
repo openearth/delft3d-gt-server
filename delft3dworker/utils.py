@@ -197,11 +197,19 @@ class PersistentLogger(object):
         return self.info
 
 
-def logparser(log, container_type):
+def log_progress_parser(log, container_type):
+    progress = []
+    lines = log.splitlines()
     if container_type == 'delft3d':
-        return delft3d_logparser(log)
+        for line in lines:
+            parsed = delft3d_logparser(line)
+            progress.append(parsed['progress'])
     else:  # TODO: improve method to raise error if type is unknown
-        return python_logparser(log)
+        for line in lines:
+            parsed = python_logparser(line)
+            progress.append(parsed['progress'])
+
+    return max(progress)
 
 def delft3d_logparser(line):
     """
@@ -219,6 +227,7 @@ def delft3d_logparser(line):
         )
         """, re.VERBOSE)
         match = percentage_re.search(line)
+
         if match:
             match = match.groupdict()
             match["message"] = line
@@ -227,8 +236,7 @@ def delft3d_logparser(line):
                 match["progress"] is not None and
                 match["progress"] != ""
             ):
-                match['progress'] = format(
-                    float(match['progress']) / 100, '.2f')
+                match['progress'] = float(match['progress'])
             # add default log level
             match['level'] = 'INFO'
             # add state

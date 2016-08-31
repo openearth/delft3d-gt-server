@@ -30,7 +30,7 @@ from jsonfield import JSONField
 
 from delft3dworker.utils import compare_states
 from delft3dworker.utils import parse_info
-from delft3dworker.utils import logparser
+from delft3dworker.utils import log_progress_parser
 
 from delft3dcontainermanager.tasks import do_docker_create
 from delft3dcontainermanager.tasks import do_docker_remove
@@ -781,13 +781,14 @@ class Container(models.Model):
                 if docker_log is not None and isinstance(
                         docker_log, unicode) and docker_log != '':
                     self.docker_log = docker_log
-                    log = logparser(self.docker_log, self.container_type)
-                    if isinstance(log, dict) and 'progress' in log and \
-                        log['progress'] is not None:
-                        progress = float(log['progress'])
-                        self.container_progress = progress
+                    progress = log_progress_parser(self.docker_log, 
+                                                   self.container_type)
+                    print progress, type(progress)
+                    self.container_progress = progress if \
+                        progress is not None else 0
                 else:
-                    logging.warn("Can't parse docker log.")
+                    logging.warn("Can't parse docker log of {}".
+                        format(self.container_type))
 
             else:
                 error = result.result
