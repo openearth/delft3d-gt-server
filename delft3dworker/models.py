@@ -544,6 +544,7 @@ class Container(models.Model):
             logging.warn("Celery task is still not ready, removing from db.")
             result.revoke()
             self.task_uuid = None
+            self.save()
 
         # elif self.task_starttime - now() > 500:
             # #task expired here
