@@ -45,9 +45,9 @@ class TaskTest(TestCase):
         Assert that the docker_log task
         calls the docker client.logs() function.
         """
-        get_docker_log.delay("id", stdout=False, stderr=True, tail=5)
+        get_docker_log.delay("id", stdout=False, stderr=True)
         mockClient.return_value.logs.assert_called_with(
-            container="id", stdout=False, stderr=True, tail=5, stream=False,
+            container="id", stdout=False, stderr=True, stream=False,
             timestamps=True)
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
@@ -64,6 +64,7 @@ class TaskTest(TestCase):
         environment = None
         label = {"type": "delft3d"}
         folder = ['input', 'output']
+        name = 'test-8172318273'
         workingdir = os.path.join(os.getcwd(), 'test')
         folders = [os.path.join(workingdir, f) for f in folder]
         parameters = {u'test':
@@ -71,7 +72,7 @@ class TaskTest(TestCase):
                       }
         mockClient.return_value.create_host_config.return_value = config
 
-        do_docker_create.delay(label, parameters, None,
+        do_docker_create.delay(label, parameters, None, name,
                                image, volumes, folders, command)
 
         # Assert that docker is called
@@ -79,6 +80,7 @@ class TaskTest(TestCase):
             image,
             host_config=config,
             command=command,
+            name=name,
             environment=environment,
             labels=label
         )
