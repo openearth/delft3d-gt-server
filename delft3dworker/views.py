@@ -294,10 +294,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             instance.save()
 
-            # 25 april '16: Almar, Fedor & Tijn decided that
-            # a scenario should be started server-side after creation
-            instance.start(instance.owner)
-
     # Pass on user to check permissions
     def perform_destroy(self, instance):
         instance.delete(self.request.user)
