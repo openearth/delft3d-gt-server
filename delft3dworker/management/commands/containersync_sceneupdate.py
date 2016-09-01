@@ -52,7 +52,7 @@ class Command(BaseCommand):
         """
         ps = get_docker_ps.delay()
 
-        container_dockers = None
+        containers_docker = None
         try:
             containers_docker = ps.get(timeout=30)
         except celery.exceptions.TimeoutError as e:

@@ -372,6 +372,15 @@ class SceneTestCase(TestCase):
         pass
 
 
+class ScenarioControlTestCase(TestCase):
+
+    def setUp(self):
+        pass
+
+    def test_phase_Stuff(self):
+        pass
+
+
 class ContainerTestCase(TestCase):
 
     def setUp(self):
@@ -513,14 +522,17 @@ class ContainerTestCase(TestCase):
         mocked_task.assert_called_once_with(
             args=({'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)}),
             expires=settings.TASK_EXPIRE_TIME,
-            kwargs={'command':'/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
-            'folders':['test/{}/preprocess'.format(self.scene.suid),
-                     'test/{}/simulation'.format(self.scene.suid)],
-            'image':'dummy_preprocessing', 
-            'name':'preprocess-{}'.format(str(self.scene.suid)),
-            'volumes':[
-                'test/{}/simulation:/data/output:z'.format(self.scene.suid),
-                'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]}
+            kwargs={'command': '/data/run.sh /data/svn/scripts/'
+                    'preprocessing/preprocessing.py',
+                    'folders': ['test/{}/preprocess'.format(self.scene.suid),
+                                'test/{}/simulation'.format(self.scene.suid)],
+                    'image': 'dummy_preprocessing',
+                    'name': 'preprocess-{}'.format(str(self.scene.suid)),
+                    'volumes': [
+                        'test/{}/simulation:/data/output:z'.format(
+                            self.scene.suid),
+                        'test/{}/preprocess:/data/input:ro'.format(
+                            self.scene.suid)]}
         )
         self.assertEqual(self.container.task_uuid, task_uuid)
 
@@ -534,15 +546,18 @@ class ContainerTestCase(TestCase):
         # all subsequent calls were ignored
         mocked_task.assert_called_once_with(args=(
             {'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)},),
-            kwargs={'command': '/data/run.sh /data/svn/scripts/preprocessing/preprocessing.py',
+            kwargs={'command': '/data/run.sh /data/svn/scripts/'
+                    'preprocessing/preprocessing.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
-                    'image': 'dummy_preprocessing', 
-                    'name':'preprocess-{}'.format(str(self.scene.suid)),
+                    'image': 'dummy_preprocessing',
+                    'name': 'preprocess-{}'.format(str(self.scene.suid)),
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
                             self.scene.suid),
-                        'test/{}/preprocess:/data/input:ro'.format(self.scene.suid)]},
+                        'test/{}/preprocess:/data/input:ro'.format(
+                            self.scene.suid
+                        )]},
             expires=settings.TASK_EXPIRE_TIME
         )
 
