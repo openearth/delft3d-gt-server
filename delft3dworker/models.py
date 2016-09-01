@@ -267,10 +267,12 @@ class Scene(models.Model):
         (17, 'Starting container remove...'),
         (18, 'Removing containers...'),
         (19, 'Containers removed'),
+        (20, 'Finished'),
 
         (1000, 'Starting Abort...'),
         (1001, 'Aborting...'),
         (1002, 'Finished Abort'),
+        (1003, 'Queued')
     )
 
     phase = models.PositiveSmallIntegerField(default=0, choices=phases)
@@ -285,9 +287,9 @@ class Scene(models.Model):
     # UI CONTROL METHODS
 
     def start(self, workflow="main"):
-
-        if self.phase == 6:  # only allow a start when Scene is 'Idle'
-            self.shift_to_phase(7)   # shift to Starting simulation...
+        # only allow a start when Scene is 'Idle' or 'Finished'
+        if self.phase in (6, 20):
+            self.shift_to_phase(1003)   # shift to Queued
 
         return {"task_id": None, "scene_id": None}
 
@@ -683,7 +685,7 @@ class Scene(models.Model):
             # what do we do? - nothing
 
             # when do we shift? - export is done
-            self.shift_to_phase(6)  # shift to Idle
+            self.shift_to_phase(20)  # shift to Idle
 
             return
 
@@ -713,6 +715,7 @@ class Scene(models.Model):
                 self.shift_to_phase(19)  # shift to Containers removed
 
             return
+
 
         # ### PHASE: Starting Abort...
         if self.phase == 1000:
@@ -757,6 +760,22 @@ class Scene(models.Model):
 
             # when do we shift? - always
             self.shift_to_phase(6)  # shift to Idle
+
+            return
+
+        # ### PHASE: Queued
+        if self.phase == 1003:
+
+            # what do we do? - check running simulations
+            scene_phases = Scene.objects.values_list('phase', flat=True)
+
+            print scene_phases
+            number_simulations = sum(
+                (i >=7 and i<=10) for i in scene_phases)
+
+            # when do we shift? - if space is available
+            if number_simulations < settings.MAX_SIMULATIONS:
+                self.shift_to_phase(7)
 
             return
 
