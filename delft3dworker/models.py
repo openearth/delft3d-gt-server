@@ -259,12 +259,16 @@ class Scene(models.Model):
         (7, 'Starting simulation...'),
         (8, 'Running simulation...'),
         (9, 'Finished simulation'),
-        (10, 'Starting postprocessing...'),
-        (11, 'Running postprocessing...'),
-        (12, 'Finished postprocessing'),
-        (13, 'Starting container remove...'),
-        (14, 'Removing containers...'),
-        (15, 'Containers removed'),
+        (10, 'Stopping simulation...'),
+        (11, 'Starting postprocessing...'),
+        (12, 'Running postprocessing...'),
+        (13, 'Finished postprocessing'),
+        (14, 'Starting export...'),
+        (15, 'Running export...'),
+        (16, 'Finished export'),
+        (17, 'Starting container remove...'),
+        (18, 'Removing containers...'),
+        (19, 'Containers removed'),
 
         (1000, 'Starting Abort...'),
         (1001, 'Aborting...'),
@@ -290,9 +294,9 @@ class Scene(models.Model):
         return {"task_id": None, "scene_id": None}
 
     def abort(self):
-
-        if self.phase >= 8:  # only allow aborts when (beyond) simulating
-            self.shift_to_phase(1000)   # shift to Aborting...
+        # Stop simulation
+        if self.phase >= 7 and self.phase <= 9:
+            self.shift_to_phase(10)   # stop Simulation
 
         return {
             "task_id": None,
@@ -493,6 +497,13 @@ class Scene(models.Model):
                 desired_state='created',
             )
             process_container.save()
+            export_container = Container.objects.create(
+                scene=self,
+                container_type='export',
+                desired_state='created',
+            )
+            export_container.save()
+
 
             # when do we shift? - always
             self.shift_to_phase(1)  # shift to Creating...
@@ -533,7 +544,7 @@ class Scene(models.Model):
             if (container.docker_state == 'running'):
                 self.shift_to_phase(4)  # shift to Running preprocessing...
 
-            # when do we shift? - preprocess is running
+            # when do we shift? - preprocess is exited
             if (container.docker_state == 'exited'):
                 container.set_desired_phase('exited')
                 self.shift_to_phase(5)  # shift to Created containers
@@ -616,24 +627,84 @@ class Scene(models.Model):
             self.save()
 
             # when do we shift? - always
+            self.shift_to_phase(14)  # shift to Starting export...
+
+            return
+
+        # ### PHASE: Stopping simulation...
+        if self.phase == 10:
+
+            # what do we do? - tell simulation and processing to stop
+            delft3d_container = self.container_set.get(
+                container_type='delft3d')
+            delft3d_container.set_desired_phase('exited')
+
+            processing_container = self.container_set.get(
+                container_type='process')
+            processing_container.set_desired_phase('exited')
+
+            # when do we shift? - delft3d is exited
+            if (delft3d_container.docker_state == 'exited'
+                and processing_container.docker_state == 'exited'):
+                self.shift_to_phase(14) # shift to Starting export...
+
+            return
+
+        # ### PHASE: Starting export...
+        if self.phase == 14:
+
+            # what do we do? - tell export to start
+            container = self.container_set.get(container_type='export')
+            container.set_desired_phase('running')
+
+            # when do we shift? - export is running
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(15)  # shift to Running export...
+
+            # when do we shift? - export is exited
+            if (container.docker_state == 'exited'):
+                container.set_desired_phase('exited')
+                self.shift_to_phase(16)  # shift to Finish export
+
+            return
+
+        # ### PHASE: Running export...
+        if self.phase == 15:
+
+            # what do we do? - and now we wait...
+
+            # when do we shift? - export is done
+            container = self.container_set.get(container_type='export')
+            if (container.docker_state == 'exited'):
+                container.set_desired_phase('exited')
+                self.shift_to_phase(16)  # shift to Finish export
+
+            return
+
+        # ### PHASE: Finished export
+        if self.phase == 16:
+
+            # what do we do? - nothing
+
+            # when do we shift? - export is done
             self.shift_to_phase(6)  # shift to Idle
 
             return
 
         # ### PHASE: Starting container remove...
-        if self.phase == 13:
+        if self.phase == 17:
 
             # what do we do? - tell containers to harakiri
             for container in self.container_set.all():
                 container.set_desired_phase('non-existent')
 
             # when do we shift? - always
-            self.shift_to_phase(14)  # Removing containers...
+            self.shift_to_phase(18)  # Removing containers...
 
             return
 
         # ### PHASE: Removing containers...
-        if self.phase == 14:
+        if self.phase == 18:
 
             # what do we do? - and now we wait...
 
@@ -643,7 +714,7 @@ class Scene(models.Model):
                 done = done and (container.docker_state == 'non-existent')
 
             if done:
-                self.shift_to_phase(15)  # shift to Containers removed
+                self.shift_to_phase(19)  # shift to Containers removed
 
             return
 
