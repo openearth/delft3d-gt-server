@@ -113,10 +113,10 @@ class Scenario(models.Model):
 
     # CONTROL METHODS
 
-    def start(self, user, workflow="main"):
+    def start(self, user):
         for scene in self.scene_set.all():
             if user.has_perm('delft3dworker.change_scene', scene):
-                scene.start(workflow)
+                scene.start()
         return "started"
 
     def abort(self, user):
@@ -286,7 +286,7 @@ class Scene(models.Model):
 
     # UI CONTROL METHODS
 
-    def start(self, workflow="main"):
+    def start(self):
         # only allow a start when Scene is 'Idle' or 'Finished'
         if self.phase in (6, 20):
             self.shift_to_phase(1003)   # shift to Queued
