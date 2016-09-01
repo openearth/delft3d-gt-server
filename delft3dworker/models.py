@@ -273,6 +273,7 @@ class Scene(models.Model):
         (1000, 'Starting Abort...'),
         (1001, 'Aborting...'),
         (1002, 'Finished Abort'),
+        (1003, 'Queued')
     )
 
     phase = models.PositiveSmallIntegerField(default=0, choices=phases)
@@ -289,7 +290,7 @@ class Scene(models.Model):
     def start(self, workflow="main"):
 
         if self.phase == 6:  # only allow a start when Scene is 'Idle'
-            self.shift_to_phase(7)   # shift to Starting simulation...
+            self.shift_to_phase(1003)   # shift to Queued
 
         return {"task_id": None, "scene_id": None}
 
@@ -761,6 +762,22 @@ class Scene(models.Model):
 
             # when do we shift? - always
             self.shift_to_phase(6)  # shift to Idle
+
+            return
+
+        # ### PHASE: Queued
+        if self.phase == 1003:
+
+            # what do we do? - check running simulations
+            scene_phases = Scene.objects.values_list('phase', flat=True)
+
+            print scene_phases
+            number_simulations = sum(
+                (i >=7 and i<=10) for i in scene_phases)
+
+            # when do we shift? - if space is available
+            if number_simulations < settings.MAX_SIMULATIONS:
+                self.shift_to_phase(7)
 
             return
 
