@@ -29,8 +29,6 @@ from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
 # Postgresql 9.4
 
-from delft3dworker.utils import compare_states
-from delft3dworker.utils import parse_info
 from delft3dworker.utils import log_progress_parser
 
 from delft3dcontainermanager.tasks import do_docker_create
