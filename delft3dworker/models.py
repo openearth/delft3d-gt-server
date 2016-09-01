@@ -398,9 +398,7 @@ class Scene(models.Model):
                 str(self.suid),
                 ''
             )
-            self.images = models.FilePathField(path=self.workingdir,
-                                               match="*.png",
-                                               recursive=True)
+
             # Hack to have the "dt:20" in the correct format
             if self.parameters == "":
                 self.parameters = {"delft3d": self.info}
