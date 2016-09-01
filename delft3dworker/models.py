@@ -267,6 +267,7 @@ class Scene(models.Model):
         (17, 'Starting container remove...'),
         (18, 'Removing containers...'),
         (19, 'Containers removed'),
+        (20, 'Finished'),
 
         (1000, 'Starting Abort...'),
         (1001, 'Aborting...'),
@@ -286,8 +287,8 @@ class Scene(models.Model):
     # UI CONTROL METHODS
 
     def start(self, workflow="main"):
-
-        if self.phase == 6:  # only allow a start when Scene is 'Idle'
+        # only allow a start when Scene is 'Idle' or 'Finished'
+        if self.phase in (6, 20):
             self.shift_to_phase(1003)   # shift to Queued
 
         return {"task_id": None, "scene_id": None}
@@ -686,7 +687,7 @@ class Scene(models.Model):
             # what do we do? - nothing
 
             # when do we shift? - export is done
-            self.shift_to_phase(6)  # shift to Idle
+            self.shift_to_phase(20)  # shift to Idle
 
             return
 
@@ -716,6 +717,7 @@ class Scene(models.Model):
                 self.shift_to_phase(19)  # shift to Containers removed
 
             return
+
 
         # ### PHASE: Starting Abort...
         if self.phase == 1000:
