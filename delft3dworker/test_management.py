@@ -64,7 +64,7 @@ class ManagementTest(TestCase):
         )
 
     @patch('delft3dworker.management.commands.'
-           'containersync_sceneupdate.Container._update_state_and_save')
+           'containersync_sceneupdate.Container.update_from_docker_snapshot')
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_containersync_sceneupdate(self, mockClient, mockContainerupdate):
         """
@@ -74,6 +74,11 @@ class ManagementTest(TestCase):
         client = mockClient.return_value
         client.containers.return_value = [{'Id': 'abcdefg'},
                                           {'Id': 'orphan'}]
+
+        def inspect(arg):
+            return {'Id': arg}
+
+        client.inspect_container.side_effect = inspect
 
         out = StringIO()
         call_command('containersync_sceneupdate', stderr=out)

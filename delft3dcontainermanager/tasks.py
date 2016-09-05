@@ -41,7 +41,10 @@ def get_docker_ps(self):
     """
     client = Client(base_url='unix://var/run/docker.sock')
     containers = client.containers(all=True)
-    return containers
+    containers_id = [container['Id'] for container in containers]
+    inspected_containers = [client.inspect_container(
+        container_id) for container_id in containers_id]
+    return inspected_containers
 
 
 @shared_task(bind=True, throws=(HTTPError))
@@ -56,13 +59,13 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
         stdout=stdout,
         stderr=stderr,
         timestamps=True,
-    ).replace('\n', '')
+    )
     return container_id, log
 
 
 @shared_task(bind=True, throws=(HTTPError))
-def do_docker_create(self, label, parameters, environment, name, image, volumes,
-                     folders, command):
+def do_docker_create(self, label, parameters, environment, name, image,
+                     volumes, folders, command):
     """
     Create necessary directories in a working directory
     for the mounts in the containers.

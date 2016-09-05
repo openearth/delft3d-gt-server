@@ -294,10 +294,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
             instance.save()
 
-            # 25 april '16: Almar, Fedor & Tijn decided that
-            # a scenario should be started server-side after creation
-            instance.start(instance.owner)
-
     # Pass on user to check permissions
     def perform_destroy(self, instance):
         instance.delete(self.request.user)
@@ -305,12 +301,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     @detail_route(methods=["put"])  # denied after publish to company/world
     def start(self, request, pk=None):
         scenario = self.get_object()
-
-        if "workflow" in request.data:
-            scenario.start(request.user, workflow=request.data["workflow"])
-        else:
-            scenario.start(request.user, workflow="main")
-
+        scenario.start(request.user)
         serializer = self.get_serializer(scenario)
 
         return Response(serializer.data)
@@ -502,12 +493,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     def start(self, request, pk=None):
 
         scene = self.get_object()
-
-        if "workflow" in request.data:
-            scene.start(workflow=request.data["workflow"])
-        else:
-            scene.start(workflow="main")
-
+        scene.start()
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
