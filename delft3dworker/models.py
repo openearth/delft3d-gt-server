@@ -503,7 +503,6 @@ class Scene(models.Model):
             )
             export_container.save()
 
-
             # when do we shift? - always
             self.shift_to_phase(1)  # shift to Creating...
 
@@ -522,6 +521,8 @@ class Scene(models.Model):
             if done:
                 self.shift_to_phase(2)  # shift to Created containers
 
+            return
+
         # ### PHASE: Created containers
         if self.phase == 2:
 
@@ -537,7 +538,7 @@ class Scene(models.Model):
 
             # what do we do? - tell preprocess to start
             container = self.container_set.get(container_type='preprocess')
-            container.set_desired_phase('running')
+            container.set_desired_state('running')
 
             # when do we shift? - preprocess is running
             if (container.docker_state == 'running'):
@@ -545,7 +546,7 @@ class Scene(models.Model):
 
             # when do we shift? - preprocess is exited
             if (container.docker_state == 'exited'):
-                container.set_desired_phase('exited')
+                container.set_desired_state('exited')
                 self.shift_to_phase(5)  # shift to Created containers
 
             return
@@ -558,7 +559,7 @@ class Scene(models.Model):
             # when do we shift? - preprocess is done
             container = self.container_set.get(container_type='preprocess')
             if (container.docker_state == 'exited'):
-                container.set_desired_phase('exited')
+                container.set_desired_state('exited')
                 self.shift_to_phase(5)  # shift to Created containers
 
             return
@@ -580,11 +581,11 @@ class Scene(models.Model):
 
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
-            delft3d_container.set_desired_phase('running')
+            delft3d_container.set_desired_state('running')
 
             processing_container = self.container_set.get(
                 container_type='process')
-            processing_container.set_desired_phase('running')
+            processing_container.set_desired_state('running')
 
             # when do we shift? - simulation containers are running
             if (delft3d_container.docker_state == 'running'):
@@ -598,19 +599,18 @@ class Scene(models.Model):
             # what do we do? - update progress
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
+            processing_container = self.container_set.get(
+                container_type='process')
 
             self._local_scan()  # update images and logfile
 
             self.progress = delft3d_container.container_progress
             self.save()
 
-            # when do we shift? - simulations containers are done
-            processing_container = self.container_set.get(
-                container_type='process')
-
+            # when do we shift? - simulation container is done
             if (delft3d_container.docker_state == 'exited'):
-                delft3d_container.set_desired_phase('exited')
-                processing_container.set_desired_phase('exited')
+                delft3d_container.set_desired_state('exited')
+                processing_container.set_desired_state('exited')
                 self.shift_to_phase(9)  # shift to Finished simulation
 
             return
@@ -636,16 +636,16 @@ class Scene(models.Model):
             # what do we do? - tell simulation and processing to stop
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
-            delft3d_container.set_desired_phase('exited')
+            delft3d_container.set_desired_state('exited')
 
             processing_container = self.container_set.get(
                 container_type='process')
-            processing_container.set_desired_phase('exited')
+            processing_container.set_desired_state('exited')
 
             # when do we shift? - delft3d is exited
-            if (delft3d_container.docker_state == 'exited'
-                and processing_container.docker_state == 'exited'):
-                self.shift_to_phase(14) # shift to Starting export...
+            if (delft3d_container.docker_state == 'exited' and
+                    processing_container.docker_state == 'exited'):
+                self.shift_to_phase(14)  # shift to Starting export...
 
             return
 
@@ -654,7 +654,7 @@ class Scene(models.Model):
 
             # what do we do? - tell export to start
             container = self.container_set.get(container_type='export')
-            container.set_desired_phase('running')
+            container.set_desired_state('running')
 
             # when do we shift? - export is running
             if (container.docker_state == 'running'):
@@ -662,7 +662,7 @@ class Scene(models.Model):
 
             # when do we shift? - export is exited
             if (container.docker_state == 'exited'):
-                container.set_desired_phase('exited')
+                container.set_desired_state('exited')
                 self.shift_to_phase(16)  # shift to Finish export
 
             return
@@ -675,7 +675,7 @@ class Scene(models.Model):
             # when do we shift? - export is done
             container = self.container_set.get(container_type='export')
             if (container.docker_state == 'exited'):
-                container.set_desired_phase('exited')
+                container.set_desired_state('exited')
                 self.shift_to_phase(16)  # shift to Finish export
 
             return
@@ -695,7 +695,7 @@ class Scene(models.Model):
 
             # what do we do? - tell containers to harakiri
             for container in self.container_set.all():
-                container.set_desired_phase('non-existent')
+                container.set_desired_state('non-existent')
 
             # when do we shift? - always
             self.shift_to_phase(18)  # Removing containers...
@@ -723,11 +723,11 @@ class Scene(models.Model):
             # what do we do? - tell containers to stop
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
-            delft3d_container.set_desired_phase('exited')
+            delft3d_container.set_desired_state('exited')
 
             processing_container = self.container_set.get(
                 container_type='process')
-            processing_container.set_desired_phase('exited')
+            processing_container.set_desired_state('exited')
 
             # when do we shift? - always
             self.shift_to_phase(1001)  # shift to Aborting...
@@ -746,9 +746,6 @@ class Scene(models.Model):
                 container_type='process')
 
             if (delft3d_container.docker_state == 'exited'):
-                delft3d_container.set_desired_phase('exited')
-                processing_container.set_desired_phase('exited')
-
                 self.shift_to_phase(1002)  # shift to Finished Aborting
 
             return
@@ -769,9 +766,8 @@ class Scene(models.Model):
             # what do we do? - check running simulations
             scene_phases = Scene.objects.values_list('phase', flat=True)
 
-            print scene_phases
             number_simulations = sum(
-                (i >=7 and i<=10) for i in scene_phases)
+                (i >= 7 and i <= 10) for i in scene_phases)
 
             # when do we shift? - if space is available
             if number_simulations < settings.MAX_SIMULATIONS:
@@ -903,7 +899,7 @@ class Container(models.Model):
 
     # CONTROL METHODS
 
-    def set_desired_phase(self, desired_state):
+    def set_desired_state(self, desired_state):
         self.desired_state = desired_state
         self.save()
 

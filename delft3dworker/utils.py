@@ -1,6 +1,7 @@
 import re
 import sys
 
+
 def log_progress_parser(log, container_type):
     lines = log.splitlines()
     if container_type == 'delft3d':
@@ -13,6 +14,7 @@ def log_progress_parser(log, container_type):
             parsed = python_logparser(line)
             if parsed['progress'] is not None:
                 return parsed['progress']
+
 
 def delft3d_logparser(line):
     """
