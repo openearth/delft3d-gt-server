@@ -113,10 +113,10 @@ class Scenario(models.Model):
 
     # CONTROL METHODS
 
-    def start(self, user, workflow="main"):
+    def start(self, user):
         for scene in self.scene_set.all():
             if user.has_perm('delft3dworker.change_scene', scene):
-                scene.start(workflow)
+                scene.start()
         return "started"
 
     def abort(self, user):
@@ -267,6 +267,7 @@ class Scene(models.Model):
         (17, 'Starting container remove...'),
         (18, 'Removing containers...'),
         (19, 'Containers removed'),
+        (20, 'Finished'),
 
         (1000, 'Starting Abort...'),
         (1001, 'Aborting...'),
@@ -285,9 +286,9 @@ class Scene(models.Model):
 
     # UI CONTROL METHODS
 
-    def start(self, workflow="main"):
-
-        if self.phase == 6:  # only allow a start when Scene is 'Idle'
+    def start(self):
+        # only allow a start when Scene is 'Idle' or 'Finished'
+        if self.phase in (6, 20):
             self.shift_to_phase(1003)   # shift to Queued
 
         return {"task_id": None, "scene_id": None}
@@ -399,9 +400,7 @@ class Scene(models.Model):
                 str(self.suid),
                 ''
             )
-            self.images = models.FilePathField(path=self.workingdir,
-                                               match="*.png",
-                                               recursive=True)
+
             # Hack to have the "dt:20" in the correct format
             if self.parameters == "":
                 self.parameters = {"delft3d": self.info}
@@ -686,7 +685,7 @@ class Scene(models.Model):
             # what do we do? - nothing
 
             # when do we shift? - export is done
-            self.shift_to_phase(6)  # shift to Idle
+            self.shift_to_phase(20)  # shift to Idle
 
             return
 
@@ -716,6 +715,7 @@ class Scene(models.Model):
                 self.shift_to_phase(19)  # shift to Containers removed
 
             return
+
 
         # ### PHASE: Starting Abort...
         if self.phase == 1000:

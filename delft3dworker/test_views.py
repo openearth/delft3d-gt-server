@@ -291,14 +291,11 @@ class SceneTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(mocked_scene_method.call_count, 0)
 
-        # foo can start, both default and with arguments
+        # foo can start
         self.client.login(username='foo', password='secret')
         response = self.client.put(url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mocked_scene_method.assert_called_with(self.scene_1, workflow="main")
-        response = self.client.put(url, {"workflow": "test"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mocked_scene_method.assert_called_with(self.scene_1, workflow="test")
+        mocked_scene_method.assert_called_with(self.scene_1)
 
     @patch('delft3dworker.models.Scene.start', autospec=True)
     def test_scene_no_start_after_publish(self, mocked_scene_method):
@@ -543,24 +540,21 @@ class ScenarioTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(mocked_scene_method.call_count, 0)
 
-        # foo can start, both default and with arguments
+        # foo can start
         self.client.login(username='foo', password='secret')
 
         response = self.client.put(url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         mocked_scene_method.assert_called_with(
-            self.scenario, self.user_foo, workflow="main")
-
-        response = self.client.put(url, {"workflow": "test"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mocked_scene_method.assert_called_with(
-            self.scenario, self.user_foo, workflow="test")
+            self.scenario, self.user_foo)
 
 
 class ScenarioSearchTestCase(TestCase):
     """
     SceneSearchTestCase
     Tests the Scene search functionality using Django REST filters
+
+
     """
 
     def setUp(self):
