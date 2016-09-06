@@ -569,7 +569,7 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene.phase = 16
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 6)
+        self.assertEqual(self.scene.phase, 20)
 
     def test_phase_17(self):
         self.scene.phase = 17
