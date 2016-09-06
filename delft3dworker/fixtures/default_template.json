@@ -3,12 +3,12 @@
     "fields": {
       "templates": [
         {
-          "name": "Basin fill",
-          "id": 50
-        },
-        {
           "name": "Basin fill with marine reworking",
           "id": 51
+        },
+        {
+          "name": "Basin fill",
+          "id": 50
         },
         {
           "name": "Testing template",
@@ -61,7 +61,7 @@
               "name": "Output timestep"
             }
           ],
-          "name": "Parameters"
+          "name": "Simulation settings"
         },
         {
           "variables": [
@@ -115,7 +115,7 @@
               "id": "tidalamplitude"
             }
           ],
-          "name": "Forces"
+          "name": "Forcing"
         },
         {
           "variables": [
@@ -211,7 +211,7 @@
               "name": "Output timestep"
             }
           ],
-          "name": "Parameters"
+          "name": "Simulation settings"
         },
         {
           "variables": [
@@ -273,7 +273,7 @@
               "id": "tidalamplitude"
             }
           ],
-          "name": "Forces"
+          "name": "Forcing"
         },
         {
           "variables": [
@@ -370,7 +370,7 @@
               "name": "Output timestep"
             }
           ],
-          "name": "Parameters"
+          "name": "Simulation settings"
         },
         {
           "variables": [
@@ -432,7 +432,7 @@
               "id": "tidalamplitude"
             }
           ],
-          "name": "Forces"
+          "name": "Forcing"
         },
         {
           "variables": [
@@ -541,7 +541,7 @@
               "name": "Output timestep"
             }
           ],
-          "name": "Parameters"
+          "name": "Simulation settings"
         },
         {
           "variables": [
@@ -603,7 +603,7 @@
               "id": "tidalamplitude"
             }
           ],
-          "name": "Forces"
+          "name": "Forcing"
         },
         {
           "variables": [
