@@ -64,3 +64,9 @@ TASK_EXPIRE_TIME = 5 * 60  # After 5 minutes, tasks are forgotten
 # workers for each queue.
 CELERY_ACKS_LATE = False
 CELERYD_PREFETCH_MULTIPLIER = 1
+
+# import provisioned settings
+try:
+    from provisionedsettings import *
+except ImportError:
+    SECRET_KEY = 'test'
