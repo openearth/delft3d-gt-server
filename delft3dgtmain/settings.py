@@ -151,6 +151,7 @@ CELERY_MESSAGE_COMPRESSION = 'gzip'  # Can help on docker inspect messages
 
 # Custom task expire time
 TASK_EXPIRE_TIME = 5 * 60  # After 5 minutes, tasks are forgotten
+CELERY_TASK_RESULT_EXPIRES = 5 * 60  # After 5 minutes redis keys are deleted
 
 # Worker specific settings, becomes important
 # with cloud workers, when there are multiple
