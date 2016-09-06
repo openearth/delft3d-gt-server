@@ -716,7 +716,6 @@ class Scene(models.Model):
 
             return
 
-
         # ### PHASE: Starting Abort...
         if self.phase == 1000:
 
@@ -1092,6 +1091,8 @@ class Container(models.Model):
         kwargs = {
             'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
                         'volumes': ['{0}:/data'.format(simdir)],
+                        'environment': {"uuid": str(self.scene.suid),
+                                        "folder": simdir},
                         'name': "{}-{}".format(self.container_type,
                                                str(self.scene.suid)),
                         'folders': [simdir],
@@ -1101,6 +1102,8 @@ class Container(models.Model):
                        'volumes': [
                            '{0}:/data/output:z'.format(expdir),
                            '{0}:/data/input:ro'.format(simdir)],
+                       'environment': {"uuid": str(self.scene.suid),
+                                       "folder": expdir},
                        'name': "{}-{}".format(self.container_type,
                                               str(self.scene.suid)),
                        'folders': [expdir,
@@ -1113,6 +1116,8 @@ class Container(models.Model):
                             'volumes': [
                                 '{0}:/data/output:z'.format(posdir),
                                 '{0}:/data/input:ro'.format(workingdir)],
+                            'environment': {"uuid": str(self.scene.suid),
+                                            "folder": posdir},
                             'name': "{}-{}".format(self.container_type,
                                                    str(self.scene.suid)),
                             'folders': [workingdir,
@@ -1124,6 +1129,8 @@ class Container(models.Model):
                            'volumes': [
                                '{0}:/data/output:z'.format(simdir),
                                '{0}:/data/input:ro'.format(predir)],
+                           'environment': {"uuid": str(self.scene.suid),
+                                           "folder": simdir},
                            'name': "{}-{}".format(self.container_type,
                                                   str(self.scene.suid)),
                            'folders': [predir,
@@ -1137,6 +1144,8 @@ class Container(models.Model):
                             '{0}:/data/input:ro'.format(simdir),
                             '{0}:/data/output:z'.format(prodir)
                         ],
+                        'environment': {"uuid": str(self.scene.suid),
+                                        "folder": prodir},
                         'name': "{}-{}".format(self.container_type,
                                                str(self.scene.suid)),
                         'folders': [prodir,
@@ -1159,11 +1168,10 @@ class Container(models.Model):
         }
 
         parameters = self.scene.parameters
-        environment = {"uuid": str(self.scene.suid)}
         label = {"type": self.container_type}
 
         result = do_docker_create.apply_async(
-            args=(label, parameters, environment),
+            args=(label, parameters),
             kwargs=kwargs[self.container_type],
             expires=settings.TASK_EXPIRE_TIME
         )
