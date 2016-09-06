@@ -137,9 +137,6 @@ LOGIN_REDIRECT_URL = '/'
 # Celery
 # ######
 
-BROKER_URL = 'redis://'
-CELERY_RESULT_BACKEND = 'redis://'
-
 # Disabling rate limits altogether is recommended if you don't have any tasks
 # using them. This is because the rate limit subsystem introduces quite a lot
 # of complexity.
