@@ -267,7 +267,10 @@ class Scene(models.Model):
         (17, 'Starting container remove...'),
         (18, 'Removing containers...'),
         (19, 'Containers removed'),
-        (20, 'Finished'),
+        (20, 'Started synchronization'),
+        (21, 'Running synchronization'),
+        (22, 'Finished synchronization'),
+        (30, 'Finished'),
 
         (1000, 'Starting Abort...'),
         (1001, 'Aborting...'),
@@ -288,7 +291,7 @@ class Scene(models.Model):
 
     def start(self):
         # only allow a start when Scene is 'Idle' or 'Finished'
-        if self.phase in (6, 20):
+        if self.phase in (6, 30):
             self.shift_to_phase(1003)   # shift to Queued
 
         return {"task_id": None, "scene_id": None}
@@ -504,6 +507,12 @@ class Scene(models.Model):
                 desired_state='created',
             )
             export_container.save()
+            sync_clean_container = Container.objects.create(
+                scene=self,
+                container_type='sync_cleanup',
+                desired_state='created',
+            )
+            sync_clean_container.save()
 
             # when do we shift? - always
             self.shift_to_phase(1)  # shift to Creating...
@@ -762,6 +771,43 @@ class Scene(models.Model):
 
             return
 
+        # ### PHASE: Started synchronization
+        if self.phase == 20:
+
+            # what do we do? - tell sync_cleanup to start
+            container = self.container_set.get(container_type='sync_cleanup')
+            container.set_desired_state('running')
+
+            # when do we shift? - sync_cleanup is running
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(21)  # shift to Running synchronization...
+
+            # when do we shift? - sync_cleanup is exited
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(22)  # shift to Finish synchronization
+
+            return
+
+        # ### PHASE: Running synchronization
+        if self.phase == 21:
+
+            container = self.container_set.get(container_type='sync_cleanup')
+            # when do we shift? - sync_cleanup is exited
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(22)  # shift to Finish synchronization
+
+            return
+
+        # ### PHASE: Finished synchronization
+        if self.phase == 22:
+
+            # Do nothing -> Finished
+            self.shift_to_phase(30)
+
+            return
+
         # ### PHASE: Queued
         if self.phase == 1003:
 
@@ -865,6 +911,7 @@ class Container(models.Model):
         ('process', 'process'),
         ('postprocess', 'postprocess'),
         ('export', 'export'),
+        ('sync_cleanup', 'sync_cleanup'),
     )
 
     container_type = models.CharField(
@@ -1087,6 +1134,7 @@ class Container(models.Model):
         prodir = os.path.join(workingdir, 'process')
         posdir = os.path.join(workingdir, 'postprocess')
         expdir = os.path.join(workingdir, 'export')
+        syndir = workingdir
 
         # Specific settings for each container type
         # TODO It would be more elegant to put these
@@ -1094,6 +1142,8 @@ class Container(models.Model):
         kwargs = {
             'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
                         'volumes': ['{0}:/data'.format(simdir)],
+                        'environment': {"uuid": str(self.scene.suid),
+                                        "folder": simdir},
                         'name': "{}-{}".format(self.container_type,
                                                str(self.scene.suid)),
                         'folders': [simdir],
@@ -1103,6 +1153,8 @@ class Container(models.Model):
                        'volumes': [
                            '{0}:/data/output:z'.format(expdir),
                            '{0}:/data/input:ro'.format(simdir)],
+                       'environment': {"uuid": str(self.scene.suid),
+                                       "folder": expdir},
                        'name': "{}-{}".format(self.container_type,
                                               str(self.scene.suid)),
                        'folders': [expdir,
@@ -1115,6 +1167,8 @@ class Container(models.Model):
                             'volumes': [
                                 '{0}:/data/output:z'.format(posdir),
                                 '{0}:/data/input:ro'.format(workingdir)],
+                            'environment': {"uuid": str(self.scene.suid),
+                                            "folder": posdir},
                             'name': "{}-{}".format(self.container_type,
                                                    str(self.scene.suid)),
                             'folders': [workingdir,
@@ -1126,6 +1180,8 @@ class Container(models.Model):
                            'volumes': [
                                '{0}:/data/output:z'.format(simdir),
                                '{0}:/data/input:ro'.format(predir)],
+                           'environment': {"uuid": str(self.scene.suid),
+                                           "folder": simdir},
                            'name': "{}-{}".format(self.container_type,
                                                   str(self.scene.suid)),
                            'folders': [predir,
@@ -1134,11 +1190,24 @@ class Container(models.Model):
                            "preprocessing/preprocessing.py"
                            },
 
+            'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
+                           'volumes': [
+                               '{0}:/data/:z'.format(syndir)],
+                           'environment': {"uuid": str(self.scene.suid),
+                                           "folder": syndir},
+                           'name': "{}-{}".format(self.container_type,
+                                                  str(self.scene.suid)),
+                           'folders': [],  # sync doesn't need new folders
+                           'command': "/data/run.sh cleanup"
+                           },
+
             'process': {'image': settings.PROCESS_IMAGE_NAME,
                         'volumes': [
                             '{0}:/data/input:ro'.format(simdir),
                             '{0}:/data/output:z'.format(prodir)
                         ],
+                        'environment': {"uuid": str(self.scene.suid),
+                                        "folder": prodir},
                         'name': "{}-{}".format(self.container_type,
                                                str(self.scene.suid)),
                         'folders': [prodir,
@@ -1161,11 +1230,10 @@ class Container(models.Model):
         }
 
         parameters = self.scene.parameters
-        environment = {"uuid": str(self.scene.suid)}
         label = {"type": self.container_type}
 
         result = do_docker_create.apply_async(
-            args=(label, parameters, environment),
+            args=(label, parameters),
             kwargs=kwargs[self.container_type],
             expires=settings.TASK_EXPIRE_TIME
         )

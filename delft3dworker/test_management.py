@@ -75,8 +75,8 @@ class ManagementTest(TestCase):
         client.containers.return_value = [{'Id': 'abcdefg'},
                                           {'Id': 'orphan'}]
 
-        def inspect(arg):
-            return {'Id': arg}
+        def inspect(container=''):
+            return {'Id': container}
 
         client.inspect_container.side_effect = inspect
 
