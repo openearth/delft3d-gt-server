@@ -367,7 +367,10 @@ class Scene(models.Model):
                     add = True
 
                 if 'export_thirdparty' in options and (
-                        'export' in root):
+                        'export' in root
+                ) and (
+                    ext in ['.gz', ]
+                ):
                     add = True
 
                 # Zip movie
@@ -715,7 +718,6 @@ class Scene(models.Model):
                 self.shift_to_phase(19)  # shift to Containers removed
 
             return
-
 
         # ### PHASE: Starting Abort...
         if self.phase == 1000:
