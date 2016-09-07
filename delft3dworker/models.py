@@ -1132,7 +1132,6 @@ class Container(models.Model):
         posdir = os.path.join(workingdir, 'postprocess')
         expdir = os.path.join(workingdir, 'export')
         syndir = workingdir
-        datadir = os.path.abspath(os.path.join(workingdir, os.pardir))
 
         # Specific settings for each container type
         # TODO It would be more elegant to put these
@@ -1190,7 +1189,7 @@ class Container(models.Model):
 
             'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
                            'volumes': [
-                               '{0}:/data/:z'.format(datadir)],
+                               '{0}:/data/:z'.format(syndir)],
                            'environment': {"uuid": str(self.scene.suid),
                                            "folder": syndir},
                            'name': "{}-{}".format(self.container_type,
