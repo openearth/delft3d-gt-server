@@ -1,21 +1,26 @@
 from __future__ import absolute_import
 
 import json
-from mock import patch
 import os
+import uuid
 import zipfile
 
-
+from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.utils.timezone import now
 
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
 
+from mock import Mock
+from mock import patch
+
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
+from delft3dworker.models import Container
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 from delft3dworker.models import User
@@ -106,7 +111,7 @@ class ScenarioControlTestCase(TestCase):
         Test if scenes are started when scenario is started
         """
         self.scenario_multi.start(self.user_foo)
-        self.assertTrue(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
     @patch('delft3dworker.models.Scene.abort', autospec=True)
     def test_abort(self, mocked_scene_method):
@@ -114,7 +119,7 @@ class ScenarioControlTestCase(TestCase):
         Test if scenes are aborted when scenario is aborted
         """
         self.scenario_multi.abort(self.user_foo)
-        self.assertTrue(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
     @patch('delft3dworker.models.Scene.delete', autospec=True)
     def test_delete(self, mocked_scene_method):
@@ -122,7 +127,7 @@ class ScenarioControlTestCase(TestCase):
         Test if scenes are deleted when scenario is deleted
         """
         self.scenario_multi.delete(self.user_foo)
-        self.assertTrue(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
     @patch('delft3dworker.models.Scene.publish_company', autospec=True)
     def test_publish_company(self, mocked_scene_method):
@@ -131,7 +136,7 @@ class ScenarioControlTestCase(TestCase):
         to company
         """
         self.scenario_multi.publish_company(self.user_foo)
-        self.assertTrue(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
     @patch('delft3dworker.models.Scene.publish_world', autospec=True)
     def test_publish_world(self, mocked_scene_method):
@@ -140,7 +145,7 @@ class ScenarioControlTestCase(TestCase):
         to world
         """
         self.scenario_multi.publish_world(self.user_foo)
-        self.assertTrue(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
 
 class SceneTestCase(TestCase):
@@ -354,23 +359,586 @@ class SceneTestCase(TestCase):
     #     zf = zipfile.ZipFile(stream)
     #     self.assertEqual(len(zf.namelist()), 1)
 
-    @patch('delft3dworker.tasks.chainedtask.delay', autospec=True)
-    def test_start_scene(self, mocked_chainedtask):
-        # mockchainedtask.return_value = {"info": {}, 'id': '22', 'state': ""}
-        mocked_chainedtask.return_value.task_id = '22'
-        mocked_chainedtask.return_value.state = "PROCESSING"
+    def test_start_scene(self):
 
-        started = self.scene.start()
+        # TODO: write these tests
 
-    @patch('delft3dworker.models.revoke_task', autospec=True)
-    @patch('celery.contrib.abortable.AbortableAsyncResult', autospec=True)
-    def test_stop_scene(self, mocked_task_delay, MockedAbortableResult):
-        mocked_task_delay.return_value = {"info": {}, 'id': '22', 'state': ""}
-        self.scene.state = "PROCESSING"
-        aborted = self.scene.abort()
+        pass
 
-        self.scene.state = "BUSY"
-        revoked = self.scene.abort()
+    def test_stop_scene(self):
+
+        # TODO: write these tests
+
+        pass
+
+
+class ScenarioZeroPhaseTestCase(TestCase):
+
+    def test_phase_00(self):
+        scene = Scene.objects.create(name='scene')
+        scene.phase = 0
+
+        scene.update_and_phase_shift()
+        self.assertEqual(scene.phase, 1)
+        scene.update_and_phase_shift()
+
+        self.assertEqual(
+            len(scene.container_set.filter(container_type='preprocess')), 1)
+        container = scene.container_set.get(container_type='preprocess')
+        self.assertEqual(container.desired_state, 'created')
+        self.assertEqual(container.docker_state, 'non-existent')
+
+        self.assertEqual(
+            len(scene.container_set.filter(container_type='delft3d')), 1)
+        container = scene.container_set.get(container_type='delft3d')
+        self.assertEqual(container.desired_state, 'created')
+        self.assertEqual(container.docker_state, 'non-existent')
+
+        self.assertEqual(
+            len(scene.container_set.filter(container_type='process')), 1)
+        container = scene.container_set.get(container_type='process')
+        self.assertEqual(container.desired_state, 'created')
+        self.assertEqual(container.docker_state, 'non-existent')
+
+        self.assertEqual(
+            len(scene.container_set.filter(container_type='export')), 1)
+        container = scene.container_set.get(container_type='export')
+        self.assertEqual(container.desired_state, 'created')
+        self.assertEqual(container.docker_state, 'non-existent')
+
+
+class ScenarioPhasesTestCase(TestCase):
+
+    def setUp(self):
+        self.scene = Scene.objects.create(name='scene')
+        self.scene.update_and_phase_shift()
+
+    def test_phase_01(self):
+        self.scene.phase = 1
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 1)
+
+        # check if scene remains in phase 1 when not all containers are created
+
+        # check if scene moved to phase 2 when all containers are created
+
+    def test_phase_02(self):
+        self.scene.phase = 2
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 3)
+
+    def test_phase_03_01(self):
+        self.scene.phase = 3
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 3)
+
+        # check to see if the preprocessing container is set to running as
+        # desired state
+
+        # check if scene moved to phase 4 when preprocessing container is
+        # running
+
+    def test_phase_03_02(self):
+        self.scene.phase = 3
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 3)
+
+        # check to see if the preprocessing container is set to running as
+        # desired state
+
+        # check if scene moved to phase 5 when preprocessing container is
+        # exited
+
+    def test_phase_04(self):
+        self.scene.phase = 4
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 4)
+
+        # check if scene moved to phase 5 when preprocessing container is
+        # exited
+
+    def test_phase_05(self):
+        self.scene.phase = 5
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 6)
+
+    def test_phase_06(self):
+        self.scene.phase = 6
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 6)
+
+    def test_phase_07(self):
+        self.scene.phase = 7
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 7)
+
+        # check if the simulation and processing container are set to running
+        # as desired state
+
+        # check if scene moved to phase 8 when simulation container is
+        # running
+
+    def test_phase_08(self):
+        self.scene.phase = 8
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 8)
+
+        # check if _local_scane was called
+
+        # check if the progress is updated
+
+        # check if scene moved to phase 8 when simulation container is
+        # exited and check if simulation and process container desired states
+        # are set to exited
+
+    def test_phase_09(self):
+        self.scene.phase = 9
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 14)
+
+        # check if the progress is updated
+
+    def test_phase_10(self):
+        self.scene.phase = 10
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 10)
+
+        # check if the simulation and processing containers are set to exited
+        # as desired state
+
+        # check if scene moved to phase 14 when simulation container is
+        # exited
+
+    def test_phase_11(self):
+        # TODO: write tests
+        pass
+
+    def test_phase_12(self):
+        # TODO: write tests
+        pass
+
+    def test_phase_13(self):
+        # TODO: write tests
+        pass
+
+    def test_phase_14_01(self):
+        self.scene.phase = 14
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 14)
+
+        # check if the export container is set to exited
+        # as desired state
+
+        # check if scene moved to phase 15 when export container is
+        # running
+
+    def test_phase_14_01(self):
+        self.scene.phase = 14
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 14)
+
+        # check if the export container is set to exited
+        # as desired state
+
+        # check if scene moved to phase 16 when export container is
+        # exited
+
+    def test_phase_15(self):
+        self.scene.phase = 15
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 15)
+
+        # check if scene moved to phase 16 when export container is
+        # exited
+
+    def test_phase_16(self):
+        self.scene.phase = 16
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 20)
+
+    def test_phase_17(self):
+        self.scene.phase = 17
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 18)
+
+        # check if all containers are set to non-existent
+        # as desired state
+
+    def test_phase_18(self):
+        self.scene.phase = 18
+        for container in self.scene.container_set.all():
+            container.docker_state = 'exited'
+            container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 18)
+
+        # check if scene stays in phase 18 when not all containers are
+        # exited
+
+        # check if scene moves to phase 19 when all containers are
+        # exited
+
+    def test_phase_1000(self):
+        self.scene.phase = 1000
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 1001)
+
+        # check if simulation and processing containers are set to exited
+        # as desired state
+
+    def test_phase_1001(self):
+        self.scene.phase = 1001
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 1001)
+
+        # check if scene remains in phase 1001 when not all containers are
+        # exited
+
+        # check if scene moves to phase 1002 when all containers are
+        # exited
+
+    def test_phase_1002(self):
+        self.scene.phase = 1002
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 6)
+
+    def test_phase_1003(self):
+        self.scene.phase = 1003
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, 7)
+
+        # check if scene stays in phase 1003 when there are too many
+        # simulations already running
+
+
+class ContainerTestCase(TestCase):
+
+    def setUp(self):
+
+        self.created_docker_ps_dict = {'State': {
+            'Status': 'created',
+            'Id':
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        }}
+
+        self.up_docker_ps_dict = {'State': {
+            'Status': 'running',
+            'Id':
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        }}
+
+        self.exited_docker_ps_dict = {'State': {
+            'Status': 'exited',
+            'Id':
+            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvw'
+        }}
+
+        self.error_docker_ps_dict = {'State': {
+            'Status': 'nvkeirwtynvowi',
+            'Id':
+            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvw'
+        }}
+
+        self.scene = Scene.objects.create()
+
+        self.container = Container.objects.create(
+            scene=self.scene,
+            container_type='preprocess',
+            desired_state='created',
+            docker_state='non-existent',
+        )
+
+    @patch('logging.warn', autospec=True)
+    @patch('delft3dworker.models.AsyncResult', autospec=True)
+    def test_update_task_result(self, MockedAsyncResult, mocked_warn_method):
+
+        async_result = MockedAsyncResult.return_value
+
+        # Set up: A previous task is not yet finished
+        self.container.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.container.task_starttime = now()
+        async_result.ready.return_value = False
+        async_result.state = "STARTED"
+        async_result.result = "dockerid", "dockerlog"
+        async_result.successful.return_value = False
+        # call method
+        self.container.update_task_result()
+
+        # one time check for ready, no get and the task id remains
+        self.assertEqual(async_result.ready.call_count, 1)
+        self.assertEqual(self.container.task_uuid, uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792'))
+
+        # Set up: task is now finished with Failure
+        async_result.ready.return_value = True
+        async_result.result = (
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        ), 'ERror MesSAge'
+        async_result.state = "FAILURE"
+
+        # call method
+        self.container.update_task_result()
+
+        # check that warning is logged
+        self.assertEqual(mocked_warn_method.call_count, 2)
+
+        # Set up: task is now finished
+        self.container.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        async_result.ready.return_value = True
+        async_result.successful.return_value = True
+        async_result.result = (
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        ), 'This is a log message.'
+        async_result.state = "SUCCESS"
+
+        # call method
+        self.container.update_task_result()
+
+        # second check for ready, now one get and the task id is set to
+        # None
+        self.assertIsNone(self.container.task_uuid)
+        self.assertEqual(
+            self.container.docker_id,
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        )
+
+    @patch('logging.error', autospec=True)
+    def test_update_state_and_save(self, mocked_error_method):
+
+        # This test will test the behavior of a Container
+        # when it receives snapshot
+
+        self.container.update_from_docker_snapshot(
+            None)
+        self.assertEqual(
+            self.container.docker_state, 'non-existent')
+
+        self.container.update_from_docker_snapshot(
+            self.created_docker_ps_dict)
+        self.assertEqual(
+            self.container.docker_state, 'created')
+
+        self.container.update_from_docker_snapshot(
+            self.up_docker_ps_dict)
+        self.assertEqual(
+            self.container.docker_state, 'running')
+
+        self.container.update_from_docker_snapshot(
+            self.exited_docker_ps_dict)
+        self.assertEqual(
+            self.container.docker_state, 'exited')
+
+        self.container.update_from_docker_snapshot(
+            self.error_docker_ps_dict)
+        self.assertEqual(
+            self.container.docker_state, 'unknown')
+        self.assertEqual(
+            mocked_error_method.call_count, 1)  # event is logged as an error!
+
+    @patch('delft3dcontainermanager.tasks.do_docker_create.apply_async',
+           autospec=True)
+    def test_create_container(self, mocked_task):
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        result = Mock()
+        mocked_task.return_value = result
+        result.id = task_uuid
+
+        # call method, check if do_docker_create is called once, uuid updates
+        self.container._create_container()
+
+        mocked_task.assert_called_once_with(
+            args=({'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)}),
+            expires=settings.TASK_EXPIRE_TIME,
+            kwargs={'command': '/data/run.sh /data/svn/scripts/'
+                    'preprocessing/preprocessing.py',
+                    'folders': ['test/{}/preprocess'.format(self.scene.suid),
+                                'test/{}/simulation'.format(self.scene.suid)],
+                    'image': 'dummy_preprocessing',
+                    'name': 'preprocess-{}'.format(str(self.scene.suid)),
+                    'volumes': [
+                        'test/{}/simulation:/data/output:z'.format(
+                            self.scene.suid),
+                        'test/{}/preprocess:/data/input:ro'.format(
+                            self.scene.suid)]}
+        )
+        self.assertEqual(self.container.task_uuid, task_uuid)
+
+        # update container state, call method multiple times
+        self.container.docker_state = 'created'
+        self.container._create_container()
+        self.container._create_container()
+        self.container._create_container()
+        self.container._create_container()
+
+        # all subsequent calls were ignored
+        mocked_task.assert_called_once_with(args=(
+            {'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)},),
+            kwargs={'command': '/data/run.sh /data/svn/scripts/'
+                    'preprocessing/preprocessing.py',
+                    'folders': ['test/{}/preprocess'.format(self.scene.suid),
+                                'test/{}/simulation'.format(self.scene.suid)],
+                    'image': 'dummy_preprocessing',
+                    'name': 'preprocess-{}'.format(str(self.scene.suid)),
+                    'volumes': [
+                        'test/{}/simulation:/data/output:z'.format(
+                            self.scene.suid),
+                        'test/{}/preprocess:/data/input:ro'.format(
+                            self.scene.suid
+                        )]},
+            expires=settings.TASK_EXPIRE_TIME
+        )
+
+    @patch('delft3dcontainermanager.tasks.do_docker_start.apply_async',
+           autospec=True)
+    def test_start_container(self, mocked_task):
+        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.container.desired_state = 'running'
+        self.container.docker_state = 'created'
+        self.container.docker_id = docker_id
+
+        result = Mock()
+        result.id = task_uuid
+        result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, check if do_docker_start is called once, uuid updates
+        self.container._start_container()
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+
+        # update container state, call method multiple times
+        self.container.docker_state = 'running'
+        self.container._start_container()
+        self.container._start_container()
+        self.container._start_container()
+        self.container._start_container()
+
+        # all subsequent calls were ignored
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
+
+    @patch('delft3dcontainermanager.tasks.do_docker_stop.apply_async',
+           autospec=True)
+    def test_stop_container(self, mocked_task):
+        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.container.desired_state = 'exited'
+        self.container.docker_state = 'running'
+        self.container.docker_id = docker_id
+
+        result = Mock()
+        result.id = task_uuid
+        result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, check if do_docker_stop is called once, uuid updates
+        self.container._stop_container()
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+
+        # update container state, call method multiple times
+        self.container.docker_state = 'exited'
+        self.container._stop_container()
+        self.container._stop_container()
+        self.container._stop_container()
+        self.container._stop_container()
+
+        # all subsequent calls were ignored
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
+
+    @patch('delft3dcontainermanager.tasks.do_docker_remove.apply_async',
+           autospec=True)
+    def test_remove_container(self, mocked_task):
+        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.container.desired_state = 'non-existent'
+        self.container.docker_state = 'created'
+        self.container.docker_id = docker_id
+
+        result = Mock()
+        result.id = task_uuid
+        result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, check if do_docker_remove is called once, uuid updates
+        self.container._remove_container()
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+
+        # update container state, call method multiple times
+        self.container.docker_state = 'non-existent'
+        self.container._remove_container()
+        self.container._remove_container()
+        self.container._remove_container()
+        self.container._remove_container()
+
+        # all subsequent calls were ignored
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
+
+    @patch('delft3dcontainermanager.tasks.get_docker_log.apply_async',
+           autospec=True)
+    def test_update_log(self, mocked_task):
+        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.container.desired_state = 'running'
+        self.container.docker_state = 'running'
+        self.container.docker_id = docker_id
+
+        result = Mock()
+        result.id = task_uuid
+        result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, get_docker_log is called once, uuid updates
+        self.container._update_log()
+        mocked_task.assert_called_once_with(
+            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
+        self.assertEqual(self.container.task_uuid, task_uuid)
+
+        # 'finish' task, call method, get_docker_log is called again
+        self.container.task_uuid = None
+        self.container._update_log()
+        self.assertEqual(mocked_task.call_count, 2)
+
+        # 'exit' container, call method, get_docker_log is not called again
+        self.container.docker_state = 'exited'
+        self.container._update_log()
+        self.assertEqual(mocked_task.call_count, 2)
 
 
 class SearchFormTestCase(TestCase):

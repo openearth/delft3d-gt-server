@@ -12,8 +12,8 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 import sys
-import djcelery
-djcelery.setup_loader()
+
+from datetime import timedelta
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,10 +38,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'djcelery',
     'rest_framework',
     'crispy_forms',
     'guardian',
+    'delft3dcontainermanager',
     'delft3dworker',
     'delft3dgtfrontend',
 ]
@@ -137,36 +137,21 @@ LOGIN_REDIRECT_URL = '/'
 # Celery
 # ######
 
-BROKER_URL = 'redis://'
-CELERY_RESULT_BACKEND = 'redis://'
-
 # Disabling rate limits altogether is recommended if you don't have any tasks
 # using them. This is because the rate limit subsystem introduces quite a lot
 # of complexity.
 CELERY_DISABLE_RATE_LIMITS = True
 
-# If True the task will report its status as started when the task is
-# executed by a worker.
-CELERY_TRACK_STARTED = True
-
-# Time (in seconds, or a timedelta object) for when after stored task
-# tombstones will be deleted. A built-in periodic task will delete the results
-# after this time (celery.task.backend_cleanup). A value of None or 0 means
-# results will never expire (depending on backend specifications). Default is
-# to expire after 1 day. This resulted in losing task status.
-CELERY_TASK_RESULT_EXPIRES = None
-
-# Timeout before task is retried. So when a task is queued but not executed
-# for half a day (standard) the task is send again. This explains
-# many identical tasks running, in turn keeping many other tasks pending.
-# Timeout should be set to (at least) twice the maximum runtime of task
-BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 5184000}  # 60 days
-
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TIMEZONE = 'Europe/Amsterdam'
-CELERY_ENABLE_UTC = True
+CELERY_TRACK_STARTED = True  # All pending tasks can be revoked
+CELERY_TASK_PUBLISH_RETRY = False  # No retry on connection error
+CELERY_MESSAGE_COMPRESSION = 'gzip'  # Can help on docker inspect messages
+
+# Custom task expire time
+TASK_EXPIRE_TIME = 5 * 60  # After 5 minutes, tasks are forgotten
+CELERY_TASK_RESULT_EXPIRES = 5 * 60  # After 5 minutes redis keys are deleted
 
 # Worker specific settings, becomes important
 # with cloud workers, when there are multiple
@@ -174,7 +159,17 @@ CELERY_ENABLE_UTC = True
 CELERY_ACKS_LATE = False
 CELERYD_PREFETCH_MULTIPLIER = 1
 
+# Celerybeat
+CELERYBEAT_SCHEDULE = {
+    'sync': {
+        'task': 'delft3dcontainermanager.tasks.delft3dgt_pulse',
+        'schedule': timedelta(seconds=10),
+        'options': {'queue': 'beat'}
+    },
+}
+
 WORKER_FILEURL = '/files'
+
 
 # REST Framework
 
@@ -202,11 +197,15 @@ try:
 except ImportError:
     SECRET_KEY = 'test'
 
+# max number of simulations
+MAX_SIMULATIONS = 1
+
 # TESTING
 
 if 'test' in sys.argv:
 
     from teamcity import is_running_under_teamcity
+    from celery import Celery
 
     DATABASES = {
         'default': {
@@ -218,25 +217,31 @@ if 'test' in sys.argv:
     # Debug on running tests
     DEBUG = True
 
-    # BROKER_BACKEND='memory'
-    CELERY_RESULT_BACKEND = 'cache'
-    CELERY_CACHE_BACKEND = 'memory'
-
+    # use a subdir for testing output
     WORKER_FILEDIR = 'test/'
 
-    DELFT3DGTRUNNER = 'delft3dworker.tests.Delft3DGTRunner'
-    TEAMCITYDELFT3DGTRUNNER = 'delft3dworker.tests.TeamcityDelft3DGTRunner'
-    TEST_RUNNER = TEAMCITYDELFT3DGTRUNNER if is_running_under_teamcity(
-    ) else DELFT3DGTRUNNER
+    if is_running_under_teamcity():
+        TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 
+    # make sure celery delayed tasks are executed immediately
+    CELERY_RESULT_BACKEND = 'cache'
+    CELERY_CACHE_BACKEND = 'memory'
+    TASK_EXPIRE_TIME = 24 * 60 * 60  # Expire after a day
     CELERY_ALWAYS_EAGER = True
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True  # Issue #75
 
+    app = Celery('delft3dgt')
+    app.conf.CELERY_ALWAYS_EAGER = True
+    app.conf.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+
+    # set dummy container image names to dummy images
     DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'
     POSTPROCESS_DUMMY_IMAGE_NAME = 'dummy_postprocessing'
     PREPROCESS_DUMMY_IMAGE_NAME = 'dummy_preprocessing'
     PROCESS_DUMMY_IMAGE_NAME = 'dummy_processing'
     EXPORT_DUMMY_IMAGE_NAME = 'dummy_export'
 
+    # set container image names to dummy images
     DELFT3D_IMAGE_NAME = 'dummy_simulation'
     POSTPROCESS_IMAGE_NAME = 'dummy_postprocessing'
     PREPROCESS_IMAGE_NAME = 'dummy_preprocessing'
