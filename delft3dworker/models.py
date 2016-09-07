@@ -779,7 +779,7 @@ class Scene(models.Model):
             if (container.docker_state == 'running'):
                 self.shift_to_phase(21)  # shift to Running synchronization...
 
-            # when do we shift? - export is exited
+            # when do we shift? - sync_cleanup is exited
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
                 self.shift_to_phase(22)  # shift to Finish synchronization
@@ -790,7 +790,7 @@ class Scene(models.Model):
         if self.phase == 21:
 
             container = self.container_set.get(container_type='sync_cleanup')
-            # when do we shift? - export is exited
+            # when do we shift? - sync_cleanup is exited
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
                 self.shift_to_phase(22)  # shift to Finish synchronization
