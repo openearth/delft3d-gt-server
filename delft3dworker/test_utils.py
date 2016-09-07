@@ -2,16 +2,14 @@ from __future__ import absolute_import
 
 # from celery.states import SUCCESS, PENDING
 
-from delft3dworker.utils import delft3d_logparser
-from delft3dworker.utils import PersistentLogger
-from delft3dworker.utils import compare_states
+from delft3dworker.utils import log_progress_parser
 
 from django.test import TestCase
 
 
 class LogTests(TestCase):
 
-    def testLogParse(self):
+    def test_progress_parser(self):
         """
         Test if progress can be read from logfile
         """
@@ -30,46 +28,15 @@ INFO:root:Time to finish 0.0, 100.0% completed, time steps  left 0.0
 INFO:root:Finished
         """
 
-        progresses = []
-        messages = []
-        for line in log.splitlines():
-            match = delft3d_logparser(line)
-            if match['progress'] is not None:
-                progresses.append(match['progress'])
-            messages.append(match['message'])
-        self.assertTrue(
-            any(True for progress in progresses if float(progress) < 0.001))
-        self.assertTrue(
-            any(True for progress in progresses if float(progress) > 0.99))
-        self.assertTrue(
-            any(True for message in messages if message is not None))
+        progress = log_progress_parser(log, 'delft3d')
+        self.assertTrue(progress == 100.0)
 
+        log = """
+        INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0
+        """
+        progress = log_progress_parser(log, 'delft3d')
+        self.assertTrue(progress == 55.5555555556)
 
-class StateTests(TestCase):
-
-    def test_state_compare(self):
-        # Aborted is higher than SUCCESS
-        state_a = "SUCCESS"
-        state_b = "ABORTED"
-        self.assertEqual(
-            compare_states(state_a, state_b, high=True), "ABORTED")
-
-        # REVOKED is higher than SUCCESS
-        state_a = "SUCCESS"
-        state_b = "REVOKED"
-        self.assertEqual(
-            compare_states(state_a, state_b, high=True), "REVOKED")
-
-        # SUCCESS is higher than PENDING
-        state_a = "PENDING"
-        state_b = "SUCCESS"
-        self.assertEqual(
-            compare_states(state_a, state_b, high=True), "SUCCESS")
-
-        # SUCCESS is higher than PENDING, but we want lowest
-        state_a = "PENDING"
-        state_b = "SUCCESS"
-        self.assertEqual(compare_states(state_a, state_b), "PENDING")
-
-        # No input gives us INACTIVE
-        self.assertEqual(compare_states(), "INACTIVE")
+        log = """INFO:root:Finished"""
+        progress = log_progress_parser(log, 'delft3d')
+        self.assertTrue(progress is None)
