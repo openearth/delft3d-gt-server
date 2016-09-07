@@ -404,7 +404,7 @@ class Scene(models.Model):
                 ''
             )
 
-            # Hack to have the "dt:30" in the correct format
+            # Hack to have the "dt:20" in the correct format
             if self.parameters == "":
                 self.parameters = {"delft3d": self.info}
 
