@@ -267,7 +267,10 @@ class Scene(models.Model):
         (17, 'Starting container remove...'),
         (18, 'Removing containers...'),
         (19, 'Containers removed'),
-        (20, 'Finished'),
+        (20, 'Started synchronization'),
+        (21, 'Running synchronization'),
+        (22, 'Finished synchronization'),
+        (30, 'Finished'),
 
         (1000, 'Starting Abort...'),
         (1001, 'Aborting...'),
@@ -288,7 +291,7 @@ class Scene(models.Model):
 
     def start(self):
         # only allow a start when Scene is 'Idle' or 'Finished'
-        if self.phase in (6, 20):
+        if self.phase in (6, 30):
             self.shift_to_phase(1003)   # shift to Queued
 
         return {"task_id": None, "scene_id": None}
@@ -401,7 +404,7 @@ class Scene(models.Model):
                 ''
             )
 
-            # Hack to have the "dt:20" in the correct format
+            # Hack to have the "dt:30" in the correct format
             if self.parameters == "":
                 self.parameters = {"delft3d": self.info}
 
@@ -501,6 +504,12 @@ class Scene(models.Model):
                 desired_state='created',
             )
             export_container.save()
+            sync_clean_container = Container.objects.create(
+                scene=self,
+                container_type='sync_cleanup',
+                desired_state='created',
+            )
+            sync_clean_container.save()
 
             # when do we shift? - always
             self.shift_to_phase(1)  # shift to Creating...
@@ -756,6 +765,43 @@ class Scene(models.Model):
 
             # when do we shift? - always
             self.shift_to_phase(6)  # shift to Idle
+
+            return
+
+        # ### PHASE: Started synchronization
+        if self.phase == 20:
+
+            # what do we do? - tell sync_cleanup to start
+            container = self.container_set.get(container_type='sync_cleanup')
+            container.set_desired_state('running')
+
+            # when do we shift? - sync_cleanup is running
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(21)  # shift to Running synchronization...
+
+            # when do we shift? - export is exited
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(22)  # shift to Finish synchronization
+
+            return
+
+        # ### PHASE: Running synchronization
+        if self.phase == 21:
+
+            container = self.container_set.get(container_type='sync_cleanup')
+            # when do we shift? - export is exited
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(22)  # shift to Finish synchronization
+
+            return
+
+        # ### PHASE: Finished synchronization
+        if self.phase == 22:
+
+            # Do nothing -> Finished
+            self.shift_to_phase(30)
 
             return
 
