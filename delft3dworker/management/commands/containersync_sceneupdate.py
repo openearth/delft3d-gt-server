@@ -96,12 +96,16 @@ class Command(BaseCommand):
         container_mismatch = m_0_1 | m_0_0
         for container in container_mismatch:
             info = docker_dict[container]
-            if 'Labels' in info and 'type' in info['Labels']:
-                type = info['Labels']['type']
+            if ('Config' in info and
+                'Labels' in info['Config'] and
+                    'type' in info['Config']['Labels']):
+                type = info['Config']['Labels']['type']
                 if type in [choice[0] for choice in Container.CONTAINER_TYPE_CHOICES]:
                     self.stderr.write(
                         "Docker container {} not found in database!".format(container))
                     do_docker_remove.delay(container, force=True)
+            else:
+                logging.info("Found non-delft3dgt docker container, ignoring.")
 
     def _update_scene_phases(self):
         """
@@ -109,8 +113,6 @@ class Command(BaseCommand):
         shift Scene phase
         """
 
-        # TODO: uncommand following lines when update_and_phase_shift is
-        # available
         for scene in Scene.objects.all():
             scene.update_and_phase_shift()
 

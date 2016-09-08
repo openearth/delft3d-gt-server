@@ -73,12 +73,12 @@ class ManagementTest(TestCase):
         """
         client = mockClient.return_value
         client.containers.return_value = [{'Id': 'abcdefg',
-                                           'Labels': {'type': 'preprocess'}},
+                                           'Config':{'Labels': {'type': 'preprocess'}}},
                                           {'Id': 'orphan',
-                                           'Labels': {'type': 'preprocess'}}]
+                                           'Config':{'Labels': {'type': 'preprocess'}}}]
 
         def inspect(arg):
-            return {'Id': arg, 'Labels': {'type': 'preprocess'}}
+            return {'Id': arg, 'Config':{'Labels': {'type': 'preprocess'}}}
 
         client.inspect_container.side_effect = inspect
 
@@ -94,4 +94,30 @@ class ManagementTest(TestCase):
         # Docker container in database
         self.assertEqual(mockContainerupdate.call_count, 6)
         mockContainerupdate.assert_called_with(
-            {'Id': 'abcdefg', 'Labels': {'type': 'preprocess'}})
+            {'Id': 'abcdefg', 'Config':{'Labels': {'type': 'preprocess'}}})
+
+    @patch('delft3dworker.management.commands.'
+           'containersync_sceneupdate.Container.update_from_docker_snapshot')
+    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
+    def test_containersync_scenekill(self, mockClient, mockContainerupdate):
+        """
+        Test match matrix for docker containers and model containers
+        TODO: Add test case with timeout error as return_value
+        """
+        client = mockClient.return_value
+        client.containers.return_value = [{'Id': 'abcdefg',
+                                           'Config': {'Labels': {'type': 'preprocess'}}},
+                                          {'Id': 'orphan',
+                                           'Config': {'Labels': {'type': 'preprocess'}}}]
+
+        # Give non existing label, so this container should be ignored
+        def inspect(arg):
+            return {'Id': arg, 'Config': {'Labels': {'type': 'notfromhere'}}}
+
+        client.inspect_container.side_effect = inspect
+
+        out = StringIO()
+        call_command('containersync_sceneupdate', stderr=out)
+
+        # Docker container not in database
+        assert not client.remove_container.called
