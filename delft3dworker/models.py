@@ -1192,7 +1192,7 @@ class Container(models.Model):
 
             'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
                            'volumes': [
-                               '{0}:/data/:z'.format(syndir)],
+                               '{0}:/data/input:z'.format(syndir)],
                            'environment': {"uuid": str(self.scene.suid),
                                            "folder": syndir},
                            'name': "{}-{}".format(self.container_type,
