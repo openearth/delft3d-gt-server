@@ -72,11 +72,13 @@ class ManagementTest(TestCase):
         TODO: Add test case with timeout error as return_value
         """
         client = mockClient.return_value
-        client.containers.return_value = [{'Id': 'abcdefg'},
-                                          {'Id': 'orphan'}]
+        client.containers.return_value = [{'Id': 'abcdefg',
+                                           'Labels': {'type': 'preprocess'}},
+                                          {'Id': 'orphan',
+                                           'Labels': {'type': 'preprocess'}}]
 
         def inspect(arg):
-            return {'Id': arg}
+            return {'Id': arg, 'Labels': {'type': 'preprocess'}}
 
         client.inspect_container.side_effect = inspect
 
@@ -91,4 +93,5 @@ class ManagementTest(TestCase):
 
         # Docker container in database
         self.assertEqual(mockContainerupdate.call_count, 6)
-        mockContainerupdate.assert_called_with({'Id': 'abcdefg'})
+        mockContainerupdate.assert_called_with(
+            {'Id': 'abcdefg', 'Labels': {'type': 'preprocess'}})
