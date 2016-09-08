@@ -77,8 +77,8 @@ class ManagementTest(TestCase):
                                           {'Id': 'orphan',
                                            'Labels': {'type': 'preprocess'}}]
 
-        def inspect(arg):
-            return {'Id': arg, 'Labels': {'type': 'preprocess'}}
+        def inspect(container=''):
+            return {'Id': container, 'Labels': {'type': 'preprocess'}}
 
         client.inspect_container.side_effect = inspect
 
