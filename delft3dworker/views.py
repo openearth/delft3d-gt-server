@@ -169,6 +169,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             assign_perm('view_scenario', self.request.user, world_scenario)
         for scene in get_objects_for_user(
                 self.request.user, 'view_scene', Scene).filter(shared='w'):
+            scene.scenario.remove(company_scenario)
             scene.scenario.add(world_scenario)
 
         # build queryset
