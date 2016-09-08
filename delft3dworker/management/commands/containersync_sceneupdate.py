@@ -63,12 +63,7 @@ class Command(BaseCommand):
             # To prevent new task creation by Containers exit beat.
             return
 
-        docker_dict = {}
-        for container in containers_docker:
-            if 'Labels' in container and 'type' in container['Labels']:
-                type = container['Labels']['type']
-                if type in [choice[0] for choice in Container.CONTAINER_TYPE_CHOICES]:
-                    docker_dict[container['Id']] = container
+        docker_dict = {x['Id']: x for x in containers_docker}
         docker_set = set(docker_dict.keys())
 
         # retrieve container from database
@@ -100,9 +95,13 @@ class Command(BaseCommand):
         # Call error for mismatch
         container_mismatch = m_0_1 | m_0_0
         for container in container_mismatch:
-            self.stderr.write(
-                "Docker container {} not found in database!".format(container))
-            do_docker_remove.delay(container, force=True)
+            info = docker_dict[container]
+            if 'Labels' in info and 'type' in info['Labels']:
+                type = info['Labels']['type']
+                if type in [choice[0] for choice in Container.CONTAINER_TYPE_CHOICES]:
+                    self.stderr.write(
+                        "Docker container {} not found in database!".format(container))
+                    do_docker_remove.delay(container, force=True)
 
     def _update_scene_phases(self):
         """
