@@ -63,7 +63,12 @@ class Command(BaseCommand):
             # To prevent new task creation by Containers exit beat.
             return
 
-        docker_dict = {x['Id']: x for x in containers_docker}
+        docker_dict = {}
+        for container in containers_docker:
+            if 'Labels' in container and 'type' in container['Labels']:
+                type = container['Labels']['type']
+                if type in [choice[0] for choice in Container.CONTAINER_TYPE_CHOICES]:
+                    docker_dict[container['Id']] = container
         docker_set = set(docker_dict.keys())
 
         # retrieve container from database
