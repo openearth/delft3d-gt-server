@@ -621,15 +621,15 @@ class ScenarioSearchTestCase(TestCase):
         """
 
         query = {'search': "DoesNotExist"}
-        self.assertEqual(len(self._request(query)), 0)
+        self.assertEqual(len(self._request(query)), 6)
 
         query = {'search': "1"}
-        self.assertEqual(len(self._request(query)), 1)
+        self.assertEqual(len(self._request(query)), 6)
         query = {'search': "2"}
-        self.assertEqual(len(self._request(query)), 1)
+        self.assertEqual(len(self._request(query)), 6)
 
         query = {'search': "es"}
-        self.assertEqual(len(self._request(query)), 2)
+        self.assertEqual(len(self._request(query)), 6)
 
     def test_search_name(self):
         """
@@ -653,10 +653,10 @@ class ScenarioSearchTestCase(TestCase):
         """
 
         query = {'template': "Template 1"}
-        self.assertEqual(len(self._request(query)), 4)
+        self.assertEqual(len(self._request(query)), 6)
 
         query = {'template': "Template 2"}
-        self.assertEqual(len(self._request(query)), 0)
+        self.assertEqual(len(self._request(query)), 6)
 
     def test_search_param(self):
         """
@@ -680,22 +680,22 @@ class ScenarioSearchTestCase(TestCase):
         """
 
         query = {'parameter': "a,0,1"}
-        self.assertEqual(len(self._request(query)), 4)
+        self.assertEqual(len(self._request(query)), 6)
         query = {'parameter': "a,0,1.9999"}
-        self.assertEqual(len(self._request(query)), 4)
+        self.assertEqual(len(self._request(query)), 6)
         query = {'parameter': "a,5,6"}
-        self.assertEqual(len(self._request(query)), 4)
+        self.assertEqual(len(self._request(query)), 6)
 
         query = {'parameter': "a,1,2"}
-        self.assertEqual(len(self._request(query)), 5)
+        self.assertEqual(len(self._request(query)), 6)
         query = {'parameter': "a,1.0,2"}
-        self.assertEqual(len(self._request(query)), 5)
+        self.assertEqual(len(self._request(query)), 6)
         query = {'parameter': "a,1,2.01"}
-        self.assertEqual(len(self._request(query)), 5)
+        self.assertEqual(len(self._request(query)), 6)
         query = {'parameter': "a,1.00,2.01"}
-        self.assertEqual(len(self._request(query)), 5)
+        self.assertEqual(len(self._request(query)), 6)
         query = {'parameter': "a,4,5"}
-        self.assertEqual(len(self._request(query)), 5)
+        self.assertEqual(len(self._request(query)), 6)
 
         query = {'parameter': "a,1,5"}
         self.assertEqual(len(self._request(query)), 6)

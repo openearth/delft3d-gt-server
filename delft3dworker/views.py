@@ -99,7 +99,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     # Our own custom filter to create custom search fields
     # this creates &name= among others
     filter_class = ScenarioFilter
-    search_fields = ('$name', )
 
     queryset = Scenario.objects.none()
 
@@ -129,7 +128,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             company_scenario, created = Scenario.objects.get_or_create(
                 owner=self.request.user,
                 name="Shared with company",
-                defaults={'template': template},
             )
         except Scenario.MultipleObjectsReturned:
             multiple = Scenario.objects.filter(
@@ -152,7 +150,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             world_scenario, created = Scenario.objects.get_or_create(
                 owner=self.request.user,
                 name="Shared with world",
-                defaults={'template': template},
             )
         except Scenario.MultipleObjectsReturned:
             multiple = Scenario.objects.filter(
@@ -175,100 +172,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
         # build queryset
 
         queryset = Scenario.objects.all()
-
-        # Filter on parameter
-        parameters = self.request.query_params.getlist('parameter', [])
-        template = self.request.query_params.getlist('template', [])
-
-        # explained later
-        temp_workaraound = False
-
-        if len(parameters) > 0:
-            # Processing user input
-            # will sometimes fail
-            try:
-                for parameter in parameters:
-
-                    p = parameter.split(',')
-
-                    # Key, min, max lookup
-                    if len(p) == 3:
-
-                        key, minvalue, maxvalue = p
-                        logging.info(
-                            "Lookup value [{} - {}] for parameter {}".format(
-                                minvalue,
-                                maxvalue,
-                                key
-                            )
-                        )
-
-                        # Make into integers or floats
-                        # (no float values should throw exception)
-                        try:
-                            minvalue = float(minvalue)
-                            maxvalue = float(maxvalue)
-
-                            # Create json lookup
-                            # q = {key: {'value': value}}
-
-                            # Not yet possible to do json queries directly
-                            # Requires JSONField from Postgresql 9.4 and Django
-                            # 1.9, So we loop manually (bad performance!)
-                            wanted = []
-                            for scenario in queryset:
-                                for pval in scenario.parameters.get(
-                                        key, {}).get('values', ['None']):
-                                    if (minvalue <= pval <= maxvalue) or (
-                                            pval == 'None'):
-                                        wanted.append(scenario.id)
-
-                            queryset = queryset.filter(pk__in=wanted)
-
-                        except ValueError:
-                            pass  # no floats? no results
-                            temp_workaraound = True
-
-                    # The front-end is supposed to provide sediment
-                    # compositions as follows:
-                    #
-                    # ...?parameter=composition,sand-clay&parameter=composition,mud
-                    #
-                    # however, now it provides it as follows:
-                    #
-                    # ...?parameter=composition,sand-clay,mud
-                    #
-                    # hence this temp_workaraound:
-                    if temp_workaraound or len(p) > 3:
-                        key = p[0]
-                        values = p[1:]
-                        wanted = []
-
-                        for value in values:
-
-                            # a blatant copy-paste of the above, because I
-                            # cannot be bothered
-
-                            logging.info(
-                                "Lookup value for parameter {}".format(key))
-
-                            for scenario in queryset:
-                                for pval in scenario.parameters.get(
-                                        key, {}).get('values', ['None']):
-                                    if value == pval or pval == 'None':
-                                        wanted.append(scenario.id)
-
-                        queryset = queryset.filter(pk__in=wanted)
-
-            except Exception as e:
-                logging.exception(
-                    "Search with params {} and template {} failed".format(
-                        parameters, template)
-                )
-                return Scene.objects.none()
-
-        if len(template) > 0:
-            queryset = queryset.filter(template__name__in=template)
 
         return queryset.order_by('name')
 
@@ -479,7 +382,8 @@ class SceneViewSet(viewsets.ModelViewSet):
                 return Scene.objects.none()
 
         if len(template) > 0:
-            queryset = queryset.filter(scenario__template__name__in=template)
+            queryset = queryset.filter(
+                scenario__template__name__in=template).distinct()
 
         if len(shared) > 0:
             lookup = {"private": "p", "company": "c", "public": "w"}
