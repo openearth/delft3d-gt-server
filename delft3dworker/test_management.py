@@ -73,12 +73,12 @@ class ManagementTest(TestCase):
         """
         client = mockClient.return_value
         client.containers.return_value = [{'Id': 'abcdefg',
-                                           'Config':{'Labels': {'type': 'preprocess'}}},
+                                           'Config': {'Labels': {'type': 'preprocess'}}},
                                           {'Id': 'orphan',
-                                           'Config':{'Labels': {'type': 'preprocess'}}}]
+                                           'Config': {'Labels': {'type': 'preprocess'}}}]
 
         def inspect(arg):
-            return {'Id': arg, 'Config':{'Labels': {'type': 'preprocess'}}}
+            return {'Id': arg, 'Config': {'Labels': {'type': 'preprocess'}}}
 
         client.inspect_container.side_effect = inspect
 
@@ -94,7 +94,7 @@ class ManagementTest(TestCase):
         # Docker container in database
         self.assertEqual(mockContainerupdate.call_count, 6)
         mockContainerupdate.assert_called_with(
-            {'Id': 'abcdefg', 'Config':{'Labels': {'type': 'preprocess'}}})
+            {'Id': 'abcdefg', 'Config': {'Labels': {'type': 'preprocess'}}})
 
     @patch('delft3dworker.management.commands.'
            'containersync_sceneupdate.Container.update_from_docker_snapshot')
