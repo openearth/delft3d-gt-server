@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 
 import os
+import logging
+from shutil import rmtree
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from docker import Client
@@ -132,16 +134,32 @@ def do_docker_stop(self, container_id, timeout=10):
     """
     client = Client(base_url='unix://var/run/docker.sock')
     client.stop(container=container_id, timeout=timeout)
+
     return container_id, ""
 
 
 @shared_task(bind=True, throws=(HTTPError))
 def do_docker_remove(self, container_id, force=False):
     """
-    Remove a container with a specific id and return id
+    Remove a container with a specific id and return id.
+    Try to remove the created files as well.
     """
     client = Client(base_url='unix://var/run/docker.sock')
+    info = client.inspect_container(container=container_id)
+
     client.remove_container(container=container_id, force=force)
+
+    if isinstance(info, dict):
+        try:
+            envs = info['Config']['Env']
+            for env in envs:
+                key, value = env.split("=")
+                if key == 'folder':
+                    rmtree(value)
+                    break
+        except:
+            logging.error("Failed at removing folder.")
+
     return container_id, ""
 
 
