@@ -771,13 +771,16 @@ class ContainerTestCase(TestCase):
         self.container._create_container()
 
         mocked_task.assert_called_once_with(
-            args=({'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)}),
+            args=({'type': 'preprocess'}, {}),
             expires=settings.TASK_EXPIRE_TIME,
             kwargs={'command': '/data/run.sh /data/svn/scripts/'
                     'preprocessing/preprocessing.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
                     'image': 'dummy_preprocessing',
+                    'environment': {'uuid': str(self.scene.suid),
+                                    'folder': os.path.join(
+                                        self.scene.workingdir, 'simulation')},
                     'name': 'preprocess-{}'.format(str(self.scene.suid)),
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
@@ -796,12 +799,15 @@ class ContainerTestCase(TestCase):
 
         # all subsequent calls were ignored
         mocked_task.assert_called_once_with(args=(
-            {'type': 'preprocess'}, {}, {'uuid': str(self.scene.suid)},),
+            {'type': 'preprocess'}, {},),
             kwargs={'command': '/data/run.sh /data/svn/scripts/'
                     'preprocessing/preprocessing.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
                     'image': 'dummy_preprocessing',
+                    'environment': {'uuid': str(self.scene.suid),
+                                    'folder': os.path.join(
+                                        self.scene.workingdir, 'simulation')},
                     'name': 'preprocess-{}'.format(str(self.scene.suid)),
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(

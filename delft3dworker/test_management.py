@@ -77,8 +77,8 @@ class ManagementTest(TestCase):
                                           {'Id': 'orphan',
                                            'Config': {'Labels': {'type': 'preprocess'}}}]
 
-        def inspect(arg):
-            return {'Id': arg, 'Config': {'Labels': {'type': 'preprocess'}}}
+        def inspect(container=''):
+            return {'Id': container, 'Config': {'Labels': {'type': 'preprocess'}}}
 
         client.inspect_container.side_effect = inspect
 
@@ -111,8 +111,8 @@ class ManagementTest(TestCase):
                                            'Config': {'Labels': {'type': 'preprocess'}}}]
 
         # Give non existing label, so this container should be ignored
-        def inspect(arg):
-            return {'Id': arg, 'Config': {'Labels': {'type': 'notfromhere'}}}
+        def inspect(container=''):
+            return {'Id': container, 'Config': {'Labels': {'type': 'notfromhere'}}}
 
         client.inspect_container.side_effect = inspect
 
