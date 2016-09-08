@@ -73,9 +73,9 @@ class ManagementTest(TestCase):
         """
         client = mockClient.return_value
         client.containers.return_value = [{'Id': 'abcdefg',
-                                           'Config': {'Labels': {'type': 'preprocess'}}},
+                                           'Labels': {'type': 'preprocess'}},
                                           {'Id': 'orphan',
-                                           'Config': {'Labels': {'type': 'preprocess'}}}]
+                                           'Labels': {'type': 'preprocess'}}]
 
         def inspect(container=''):
             return {'Id': container, 'Config': {'Labels': {'type': 'preprocess'}}}
