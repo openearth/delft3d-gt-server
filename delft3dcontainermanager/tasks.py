@@ -59,6 +59,7 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
         stdout=stdout,
         stderr=stderr,
         timestamps=True,
+        tail=5
     )
     return container_id, log
 

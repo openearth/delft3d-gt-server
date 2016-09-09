@@ -48,7 +48,7 @@ class TaskTest(TestCase):
         get_docker_log.delay("id", stdout=False, stderr=True)
         mockClient.return_value.logs.assert_called_with(
             container="id", stdout=False, stderr=True, stream=False,
-            timestamps=True)
+            timestamps=True, tail=5)
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_do_docker_create(self, mockClient):
