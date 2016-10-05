@@ -15,6 +15,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+SECRET_KEY = 'notneeded'
 
 # Application definition
 
@@ -37,10 +38,7 @@ USE_TZ = True
 
 # ######
 # Celery
-# ######
-
-BROKER_URL = 'redis://172.31.42.27'
-CELERY_RESULT_BACKEND = 'redis://172.31.42.27'
+# ######q
 
 # Disabling rate limits altogether is recommended if you don't have any tasks
 # using them. This is because the rate limit subsystem introduces quite a lot
@@ -66,6 +64,6 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 
 # import provisioned settings
 try:
-    from delft3dgtmain.provisionedsettings import *
+    from provisionedsettings import *
 except ImportError:
     SECRET_KEY = 'test'
