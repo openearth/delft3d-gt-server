@@ -240,6 +240,7 @@ if 'test' in sys.argv:
     PREPROCESS_DUMMY_IMAGE_NAME = 'dummy_preprocessing'
     PROCESS_DUMMY_IMAGE_NAME = 'dummy_processing'
     EXPORT_DUMMY_IMAGE_NAME = 'dummy_export'
+    SYNC_CLEANUP_IMAGE_NAME = 'dummy_sync'
 
     # set container image names to dummy images
     DELFT3D_IMAGE_NAME = 'dummy_simulation'
