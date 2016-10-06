@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import ConfigParser
 import copy
 import hashlib
 import io
@@ -426,11 +427,16 @@ class Scene(models.Model):
                 "images": [],
                 "location": "process/"
             }
+            self.info["subenvironment_images"] = {
+                "images": [],
+                "location": "postprocess/"
+            }
             self.info["logfile"] = {
                 "file": "",
                 "location": "simulation/"
             }
             self.info["procruns"] = 0
+            self.info["postprocess_output"] = {}
 
             self.fileurl = os.path.join(
                 settings.WORKER_FILEURL, str(self.suid), '')
@@ -869,6 +875,11 @@ class Scene(models.Model):
                             "sediment_fraction_images"]["images"]):
                         self.info["sediment_fraction_images"][
                             "images"].append(f)
+                    elif ("subenvironment" in name and
+                          f not in self.info[
+                            "subenvironment_images"]["images"]):
+                        self.info["subenvironment_images"][
+                            "images"].append(f)
                     else:
                         # Other images ?
                         pass
@@ -884,6 +895,23 @@ class Scene(models.Model):
                         # No log is generated at the moment
                         self.info["logfile"]["file"] = f
                         break
+
+    # Run this after post processing
+    def _parse_postprocessing(self):
+        section = "postprocess"
+        ini = os.path.join(self.workingdir, 'postprocess', 'output.ini')
+        if os.path.exists(ini):
+            config = ConfigParser.RawConfigParser()
+            config.read(ini)
+            for name, value in config.items(section):
+                try:
+                    v = config.getfloat(section, name)
+                    self.info["postprocess_output"][name] = v
+                except:
+                    logging.error("Couldn't parse value for {}".format(name))
+                    pass
+        else:
+            logging.error("Couldn't find postprocessing output.ini")
 
     def __unicode__(self):
         return self.name
@@ -1191,15 +1219,15 @@ class Container(models.Model):
                            },
 
             'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
-                           'volumes': [
-                               '{0}:/data/input:z'.format(syndir)],
-                           'environment': {"uuid": str(self.scene.suid),
-                                           "folder": syndir},
-                           'name': "{}-{}".format(self.container_type,
-                                                  str(self.scene.suid)),
-                           'folders': [],  # sync doesn't need new folders
-                           'command': "/data/run.sh cleanup"
-                           },
+                             'volumes': [
+                                 '{0}:/data/input:z'.format(syndir)],
+                             'environment': {"uuid": str(self.scene.suid),
+                                             "folder": syndir},
+                             'name': "{}-{}".format(self.container_type,
+                                                    str(self.scene.suid)),
+                             'folders': [],  # sync doesn't need new folders
+                             'command': "/data/run.sh cleanup"
+                             },
 
             'process': {'image': settings.PROCESS_IMAGE_NAME,
                         'volumes': [
