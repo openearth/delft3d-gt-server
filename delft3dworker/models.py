@@ -1201,7 +1201,9 @@ class Container(models.Model):
                                                    str(self.scene.suid)),
                             'folders': [workingdir,
                                         posdir],
-                            'command': "",
+                            'command': " ".join(["/data/run.sh",
+                            "/data/svn/scripts/postprocess/dummyfigure.py",
+                            "/data/svn/scripts/postprocess/dummylist.py"])
                             },
 
             'preprocess': {'image': settings.PREPROCESS_IMAGE_NAME,
