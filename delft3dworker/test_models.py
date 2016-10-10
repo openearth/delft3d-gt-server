@@ -774,7 +774,7 @@ class ContainerTestCase(TestCase):
             args=({'type': 'preprocess'}, {}),
             expires=settings.TASK_EXPIRE_TIME,
             kwargs={'command': '/data/run.sh /data/svn/scripts/'
-                    'preprocessing/preprocessing.py',
+                    'preprocess/preprocessing.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
                     'image': 'dummy_preprocessing',
@@ -801,7 +801,7 @@ class ContainerTestCase(TestCase):
         mocked_task.assert_called_once_with(args=(
             {'type': 'preprocess'}, {},),
             kwargs={'command': '/data/run.sh /data/svn/scripts/'
-                    'preprocessing/preprocessing.py',
+                    'preprocess/preprocessing.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
                     'image': 'dummy_preprocessing',
