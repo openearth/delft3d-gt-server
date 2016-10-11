@@ -513,6 +513,12 @@ class Scene(models.Model):
                 desired_state='created',
             )
             export_container.save()
+            postprocess_container = Container.objects.create(
+                scene=self,
+                container_type='postprocess',
+                desired_state='created',
+            )
+            postprocess_container.save()
             sync_clean_container = Container.objects.create(
                 scene=self,
                 container_type='sync_cleanup',
@@ -643,7 +649,7 @@ class Scene(models.Model):
             self.save()
 
             # when do we shift? - always
-            self.shift_to_phase(14)  # shift to Starting export...
+            self.shift_to_phase(11)  # shift to Starting postprocess...
 
             return
 
@@ -680,7 +686,7 @@ class Scene(models.Model):
             # when do we shift? - postprocess is exited
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
-                self.shift_to_phase(16)  # shift to Finish postprocess
+                self.shift_to_phase(13)  # shift to Finish postprocess
 
             return
 
