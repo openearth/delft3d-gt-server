@@ -1217,7 +1217,7 @@ class Container(models.Model):
                            'folders': [predir,
                                        simdir],
                            'command': "/data/run.sh /data/svn/scripts/"
-                           "preprocessing/preprocessing.py"
+                           "preprocess/preprocessing.py"
                            },
 
             'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
@@ -1244,11 +1244,11 @@ class Container(models.Model):
                                     simdir],
                         'command': ' '.join([
                             "/data/run.sh ",
-                            "/data/svn/scripts/postprocessing/"
+                            "/data/svn/scripts/process/"
                             "channel_network_proc.py",
-                            "/data/svn/scripts/postprocessing/"
+                            "/data/svn/scripts/process/"
                             "delta_fringe_proc.py",
-                            "/data/svn/scripts/postprocessing/"
+                            "/data/svn/scripts/process/"
                             "sediment_fraction_proc.py",
                             "/data/svn/scripts/visualisation/"
                             "channel_network_viz.py",
