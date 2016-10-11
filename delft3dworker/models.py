@@ -662,7 +662,46 @@ class Scene(models.Model):
             # when do we shift? - delft3d is exited
             if (delft3d_container.docker_state == 'exited' and
                     processing_container.docker_state == 'exited'):
-                self.shift_to_phase(14)  # shift to Starting export...
+                self.shift_to_phase(11)  # shift to Starting postprocess...
+
+            return
+
+        # ### PHASE: Starting postprocess
+        if self.phase == 11:
+
+            # what do we do? - tell postprocess to start
+            container = self.container_set.get(container_type='postprocess')
+            container.set_desired_state('running')
+
+            # when do we shift? - postprocess is running
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(12)  # shift to Running postprocess...
+
+            # when do we shift? - postprocess is exited
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(16)  # shift to Finish postprocess
+
+            return
+
+        # ### PHASE: Running postprocess
+        if self.phase == 12:
+
+            # what do we do? - wait to finish
+
+            # when do we shift? - postprocess is exited
+            container = self.container_set.get(container_type='postprocess')
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(13)  # shift to Finish postprocess
+
+            return
+
+        # ### PHASE: Finished postprocess
+        if self.phase == 13:
+
+            # when do we shift - always
+            self.shift_to_phase(14)  # shift to Starting Export
 
             return
 
