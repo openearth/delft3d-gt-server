@@ -10,6 +10,7 @@ django-crispy-forms==1.6.0
 django-generic-json-views==0.7
 django-jsonfield==0.9.19
 django-guardian==1.4.4
+django-model-utils==2.6
 djangorestframework==3.3.3
 docker-py==1.7.2
 flower==0.9.1
