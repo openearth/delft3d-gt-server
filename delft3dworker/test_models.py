@@ -376,64 +376,63 @@ class ScenarioZeroPhaseTestCase(TestCase):
 
     def test_phase_00(self):
         scene = Scene.objects.create(name='scene')
-        scene.phase = 0
+        scene.phase = scene.phases.new
 
         scene.update_and_phase_shift()
-        self.assertEqual(scene.phase, 1)
-        scene.update_and_phase_shift()
+        self.assertEqual(scene.phase, scene.phases.preproc_create)
 
         self.assertEqual(
             len(scene.container_set.filter(container_type='preprocess')), 1)
         container = scene.container_set.get(container_type='preprocess')
-        self.assertEqual(container.desired_state, 'created')
+        self.assertEqual(container.desired_state, 'non-existent')
         self.assertEqual(container.docker_state, 'non-existent')
 
         self.assertEqual(
             len(scene.container_set.filter(container_type='delft3d')), 1)
         container = scene.container_set.get(container_type='delft3d')
-        self.assertEqual(container.desired_state, 'created')
+        self.assertEqual(container.desired_state, 'non-existent')
         self.assertEqual(container.docker_state, 'non-existent')
 
         self.assertEqual(
             len(scene.container_set.filter(container_type='process')), 1)
         container = scene.container_set.get(container_type='process')
-        self.assertEqual(container.desired_state, 'created')
+        self.assertEqual(container.desired_state, 'non-existent')
         self.assertEqual(container.docker_state, 'non-existent')
 
         self.assertEqual(
             len(scene.container_set.filter(container_type='export')), 1)
         container = scene.container_set.get(container_type='export')
-        self.assertEqual(container.desired_state, 'created')
+        self.assertEqual(container.desired_state, 'non-existent')
         self.assertEqual(container.docker_state, 'non-existent')
 
 
 class ScenarioPhasesTestCase(TestCase):
+    """TODO Some sort of flow matrix should be defined between phases.
+    We can then randomly set container states, and check whether the 
+    resulting phases are allowed. This is way too verbose.
+
+    Basicly we create a framework for phases and check its function,
+    not (what we're doing now) checking for each phase if changes are correct."""
 
     def setUp(self):
         self.scene = Scene.objects.create(name='scene')
         self.scene.update_and_phase_shift()
+        self.p = self.scene.phases  # shorthand
 
-    def test_phase_01(self):
-        self.scene.phase = 1
+    def test_phase_new(self):
+        self.scene.phase = self.p.new
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 1)
+        self.assertEqual(self.scene.phase, self.p.preproc_create)
 
         # check if scene remains in phase 1 when not all containers are created
-
         # check if scene moved to phase 2 when all containers are created
 
-    def test_phase_02(self):
-        self.scene.phase = 2
+    def test_phase_preproc_create(self):
+        self.scene.phase = self.p.preproc_create
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 3)
-
-    def test_phase_03_01(self):
-        self.scene.phase = 3
-
-        self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 3)
+        self.assertEqual(self.scene.phase, self.p.preproc_create)
 
         # check to see if the preprocessing container is set to running as
         # desired state
@@ -441,11 +440,11 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moved to phase 4 when preprocessing container is
         # running
 
-    def test_phase_03_02(self):
-        self.scene.phase = 3
+    def test_phase_preproc_start(self):
+        self.scene.phase = self.p.preproc_start
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 3)
+        self.assertEqual(self.scene.phase, self.p.preproc_start)
 
         # check to see if the preprocessing container is set to running as
         # desired state
@@ -453,32 +452,38 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moved to phase 5 when preprocessing container is
         # exited
 
-    def test_phase_04(self):
-        self.scene.phase = 4
+    def test_phase_preproc_run(self):
+        self.scene.phase = self.p.preproc_run
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 4)
+        self.assertEqual(self.scene.phase, self.p.preproc_run)
 
         # check if scene moved to phase 5 when preprocessing container is
         # exited
 
-    def test_phase_05(self):
-        self.scene.phase = 5
+    def test_phase_preproc_fin(self):
+        self.scene.phase = self.p.preproc_fin
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 6)
+        self.assertEqual(self.scene.phase, self.p.idle)
 
-    def test_phase_06(self):
-        self.scene.phase = 6
-
-        self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 6)
-
-    def test_phase_07(self):
-        self.scene.phase = 7
+    def test_phase_idle(self):
+        self.scene.phase = self.p.idle
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 7)
+        self.assertEqual(self.scene.phase, self.p.idle)
+
+    def test_phase_sim_create(self):
+        self.scene.phase = self.p.sim_create
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_create)
+
+    def test_phase_sim_start(self):
+        self.scene.phase = self.p.sim_start
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_start)
 
         # check if the simulation and processing container are set to running
         # as desired state
@@ -486,13 +491,13 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moved to phase 8 when simulation container is
         # running
 
-    def test_phase_08(self):
-        self.scene.phase = 8
+    def test_phase_sim_run(self):
+        self.scene.phase = self.p.sim_run
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 8)
+        self.assertEqual(self.scene.phase, self.p.sim_run)
 
-        # check if _local_scane was called
+        # check if _local_scan was called
 
         # check if the progress is updated
 
@@ -500,19 +505,19 @@ class ScenarioPhasesTestCase(TestCase):
         # exited and check if simulation and process container desired states
         # are set to exited
 
-    def test_phase_09(self):
-        self.scene.phase = 9
+    def test_phase_sim_fin(self):
+        self.scene.phase = self.p.sim_fin
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 11)
+        self.assertEqual(self.scene.phase, self.p.postproc_create)
 
         # check if the progress is updated
 
-    def test_phase_10(self):
-        self.scene.phase = 10
+    def test_phase_sim_stop(self):
+        self.scene.phase = self.p.sim_stop
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 10)
+        self.assertEqual(self.scene.phase, self.p.sim_stop)
 
         # check if the simulation and processing containers are set to exited
         # as desired state
@@ -520,38 +525,47 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moved to phase 14 when simulation container is
         # exited
 
-    def test_phase_11(self):
+    def test_phase_postproc_create(self):
         # Started postprocessing
-        self.scene.phase = 11
+        self.scene.phase = self.p.postproc_create
+        container = self.scene.container_set.get(container_type='postprocess')
+        container.docker_state = 'created'
+        container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.postproc_start)
+
+    def test_phase_postproc_start(self):
+        # Started postprocessing
+        self.scene.phase = self.p.postproc_start
         container = self.scene.container_set.get(container_type='postprocess')
         container.docker_state = 'running'
         container.save()
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 12)
+        self.assertEqual(self.scene.phase, self.p.postproc_run)
 
-    def test_phase_12(self):
-        # Running postprocessing
-        self.scene.phase = 12
+    def test_phase_postproc_run(self):
+        self.scene.phase = self.p.postproc_run
         container = self.scene.container_set.get(container_type='postprocess')
         container.docker_state = 'exited'
         container.save()
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 13)
+        self.assertEqual(self.scene.phase, self.p.postproc_fin)
 
-    def test_phase_13(self):
+    def test_phase_postproc_fin(self):
         # Finished postprocessing
-        self.scene.phase = 13
+        self.scene.phase = self.p.postproc_fin
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 14)
+        self.assertEqual(self.scene.phase, self.p.exp_create)
 
-    def test_phase_14_01(self):
-        self.scene.phase = 14
+    def test_phase_exp_create(self):
+        self.scene.phase = self.p.exp_create
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 14)
+        self.assertEqual(self.scene.phase, self.p.exp_create)
 
         # check if the export container is set to exited
         # as desired state
@@ -559,11 +573,11 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moved to phase 15 when export container is
         # running
 
-    def test_phase_14_01(self):
-        self.scene.phase = 14
+    def test_phase_exp_start(self):
+        self.scene.phase = self.p.exp_start
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 14)
+        self.assertEqual(self.scene.phase, self.p.exp_start)
 
         # check if the export container is set to exited
         # as desired state
@@ -571,38 +585,47 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moved to phase 16 when export container is
         # exited
 
-    def test_phase_15(self):
-        self.scene.phase = 15
+    def test_phase_exp_run(self):
+        self.scene.phase = self.p.exp_run
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 15)
+        self.assertEqual(self.scene.phase, self.p.exp_run)
 
         # check if scene moved to phase 16 when export container is
         # exited
 
-    def test_phase_16(self):
-        self.scene.phase = 16
+    def test_phase_exp_fin(self):
+        self.scene.phase = self.p.exp_fin
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 20)
+        self.assertEqual(self.scene.phase, self.p.sync_create)
 
-    def test_phase_17(self):
-        self.scene.phase = 17
+    def test_phase_sync_create(self):
+        self.scene.phase = self.p.sync_create
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 18)
+        self.assertEqual(self.scene.phase, self.p.sync_create)
 
         # check if all containers are set to non-existent
         # as desired state
 
-    def test_phase_18(self):
-        self.scene.phase = 18
+    def test_phase_sync_start(self):
+        self.scene.phase = self.p.sync_start
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sync_start)
+
+        # check if all containers are set to non-existent
+        # as desired state
+
+    def test_phase_sync_run(self):
+        self.scene.phase = self.p.sync_run
         for container in self.scene.container_set.all():
             container.docker_state = 'exited'
             container.save()
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 18)
+        self.assertEqual(self.scene.phase, self.p.sync_fin)
 
         # check if scene stays in phase 18 when not all containers are
         # exited
@@ -610,20 +633,20 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moves to phase 19 when all containers are
         # exited
 
-    def test_phase_1000(self):
-        self.scene.phase = 1000
+    def test_phase_abort_start(self):
+        self.scene.phase = self.p.abort_start
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 1001)
+        self.assertEqual(self.scene.phase, self.p.abort_run)
 
         # check if simulation and processing containers are set to exited
         # as desired state
 
-    def test_phase_1001(self):
-        self.scene.phase = 1001
+    def test_phase_abort_run(self):
+        self.scene.phase = self.p.abort_run
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 1001)
+        self.assertEqual(self.scene.phase, self.p.abort_run)
 
         # check if scene remains in phase 1001 when not all containers are
         # exited
@@ -631,17 +654,17 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moves to phase 1002 when all containers are
         # exited
 
-    def test_phase_1002(self):
-        self.scene.phase = 1002
+    def test_phase_abort_fin(self):
+        self.scene.phase = self.p.abort_fin
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 6)
+        self.assertEqual(self.scene.phase, self.p.idle)
 
-    def test_phase_1003(self):
-        self.scene.phase = 1003
+    def test_phase_queued(self):
+        self.scene.phase = self.p.queued
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 7)
+        self.assertEqual(self.scene.phase, self.p.sim_create)
 
         # check if scene stays in phase 1003 when there are too many
         # simulations already running
