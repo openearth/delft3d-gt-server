@@ -554,7 +554,7 @@ class Scene(models.Model):
             container = self.container_set.get(container_type='preprocess')
             container.set_desired_state('created')
 
-            if (container.docker_state == 'created'):
+            if (container.docker_state != 'non-existent'):
                 self.shift_to_phase(self.phases.preproc_start)
 
             return
@@ -598,8 +598,8 @@ class Scene(models.Model):
                 container_type='process')
             processing_container.set_desired_state('created')
 
-            if (delft3d_container.docker_state == 'created' and
-                    processing_container.docker_state == 'created'):
+            if (delft3d_container.docker_state != 'non-existent' and
+                    processing_container.docker_state != 'non-existent'):
                 self.shift_to_phase(self.phases.sim_start)
 
             return
@@ -670,7 +670,7 @@ class Scene(models.Model):
             container = self.container_set.get(container_type='postprocess')
             container.set_desired_state('created')
 
-            if (container.docker_state == 'created'):
+            if (container.docker_state != 'non-existent'):
                 self.shift_to_phase(self.phases.postproc_start)
 
             return
@@ -712,7 +712,7 @@ class Scene(models.Model):
             container = self.container_set.get(container_type='export')
             container.set_desired_state('created')
 
-            if (container.docker_state == 'created'):
+            if (container.docker_state != 'non-existent'):
                 self.shift_to_phase(self.phases.exp_start)
 
             return
@@ -803,7 +803,7 @@ class Scene(models.Model):
             container = self.container_set.get(container_type='sync_cleanup')
             container.set_desired_state('created')
 
-            if (container.docker_state == 'created'):
+            if (container.docker_state != 'non-existent'):
                 self.shift_to_phase(self.phases.sync_start)
 
             return
