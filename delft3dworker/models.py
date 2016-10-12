@@ -1265,8 +1265,8 @@ class Container(models.Model):
                             'folders': [workingdir,
                                         posdir],
                             'command': " ".join(["/data/run.sh",
-                                                 "/data/svn/scripts/postprocess/dummyfigure.py",
-                                                 "/data/svn/scripts/postprocess/dummylist.py"])
+                                                 "/data/svn/scripts/postprocess/subenvironment.py",
+                                                 "/data/svn/scripts/postprocess/sedimentproperties.py"])
                             },
 
             'preprocess': {'image': settings.PREPROCESS_IMAGE_NAME,
