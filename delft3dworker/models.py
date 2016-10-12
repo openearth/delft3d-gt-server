@@ -1,9 +1,9 @@
 from __future__ import absolute_import
 
-import ConfigParser
 import copy
 import hashlib
 import io
+import json
 import logging
 import math
 import os
@@ -625,7 +625,7 @@ class Scene(models.Model):
             processing_container = self.container_set.get(
                 container_type='process')
 
-            self._local_scan()  # update images and logfile
+            self._local_scan_process()  # update images and logfile
 
             self.progress = delft3d_container.container_progress
             self.save()
@@ -707,6 +707,9 @@ class Scene(models.Model):
         if self.phase == 13:
 
             # when do we shift - always
+            self._local_scan_postprocess()  # scan for new images
+            self._parse_postprocessing()  # parse output.ini
+            self.save()
             self.shift_to_phase(14)  # shift to Starting Export
 
             return
@@ -895,10 +898,9 @@ class Scene(models.Model):
     def _update_state_and_save(self):
 
         # TODO: write _update_state_and_save method
-
         return self.state
 
-    def _local_scan(self):
+    def _local_scan_process(self):
         for root, dirs, files in os.walk(
             os.path.join(self.workingdir, 'process')
         ):
@@ -920,11 +922,6 @@ class Scene(models.Model):
                             "sediment_fraction_images"]["images"]):
                         self.info["sediment_fraction_images"][
                             "images"].append(f)
-                    elif ("subenvironment" in name and
-                          f not in self.info[
-                            "subenvironment_images"]["images"]):
-                        self.info["subenvironment_images"][
-                            "images"].append(f)
                     else:
                         # Other images ?
                         pass
@@ -941,22 +938,34 @@ class Scene(models.Model):
                         self.info["logfile"]["file"] = f
                         break
 
+    def _local_scan_postprocess(self):
+        for root, dirs, files in os.walk(
+            os.path.join(self.workingdir, 'postprocess')
+        ):
+            for f in sorted(files):
+                name, ext = os.path.splitext(f)
+                if ext in ('.png', '.jpg', '.gif'):
+                    print f
+                    # TODO use get to check image list and
+                    # make this code less deep in if/for statements
+                    if ("subenvironment" in name and
+                        f not in self.info[
+                            "subenvironment_images"]["images"]):
+                        self.info["subenvironment_images"][
+                            "images"].append(f)
+                    else:
+                        # Other images ?
+                        pass
+
     # Run this after post processing
     def _parse_postprocessing(self):
-        section = "postprocess"
-        ini = os.path.join(self.workingdir, 'postprocess', 'output.ini')
-        if os.path.exists(ini):
-            config = ConfigParser.RawConfigParser()
-            config.read(ini)
-            for name, value in config.items(section):
-                try:
-                    v = config.getfloat(section, name)
-                    self.info["postprocess_output"][name] = v
-                except:
-                    logging.error("Couldn't parse value for {}".format(name))
-                    pass
+        outputfn = os.path.join(self.workingdir, 'postprocess', 'output.json')
+        if os.path.exists(outputfn):
+            with open(outputfn) as f:
+                output_dict = json.load(f)
+            self.info["postprocess_output"].update(output_dict)
         else:
-            logging.error("Couldn't find postprocessing output.ini")
+            logging.error("Couldn't find postprocessing output.json")
 
     def __unicode__(self):
         return self.name
@@ -1247,8 +1256,8 @@ class Container(models.Model):
                             'folders': [workingdir,
                                         posdir],
                             'command': " ".join(["/data/run.sh",
-                            "/data/svn/scripts/postprocess/dummyfigure.py",
-                            "/data/svn/scripts/postprocess/dummylist.py"])
+                                                 "/data/svn/scripts/postprocess/dummyfigure.py",
+                                                 "/data/svn/scripts/postprocess/dummylist.py"])
                             },
 
             'preprocess': {'image': settings.PREPROCESS_IMAGE_NAME,
