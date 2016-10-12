@@ -945,7 +945,6 @@ class Scene(models.Model):
             for f in sorted(files):
                 name, ext = os.path.splitext(f)
                 if ext in ('.png', '.jpg', '.gif'):
-                    print f
                     # TODO use get to check image list and
                     # make this code less deep in if/for statements
                     if ("subenvironment" in name and
@@ -962,7 +961,10 @@ class Scene(models.Model):
         outputfn = os.path.join(self.workingdir, 'postprocess', 'output.json')
         if os.path.exists(outputfn):
             with open(outputfn) as f:
-                output_dict = json.load(f)
+                try:
+                    output_dict = json.load(f)
+                except:
+                    logging.error("Error parsing postprocessing output.json")
             self.info["postprocess_output"].update(output_dict)
         else:
             logging.error("Couldn't find postprocessing output.json")
