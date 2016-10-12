@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import copy
 import hashlib
 import io
+import json
 import logging
 import math
 import os
@@ -426,11 +427,16 @@ class Scene(models.Model):
                 "images": [],
                 "location": "process/"
             }
+            self.info["subenvironment_images"] = {
+                "images": [],
+                "location": "postprocess/"
+            }
             self.info["logfile"] = {
                 "file": "",
                 "location": "simulation/"
             }
             self.info["procruns"] = 0
+            self.info["postprocess_output"] = {}
 
             self.fileurl = os.path.join(
                 settings.WORKER_FILEURL, str(self.suid), '')
@@ -507,6 +513,12 @@ class Scene(models.Model):
                 desired_state='created',
             )
             export_container.save()
+            postprocess_container = Container.objects.create(
+                scene=self,
+                container_type='postprocess',
+                desired_state='created',
+            )
+            postprocess_container.save()
             sync_clean_container = Container.objects.create(
                 scene=self,
                 container_type='sync_cleanup',
@@ -613,7 +625,7 @@ class Scene(models.Model):
             processing_container = self.container_set.get(
                 container_type='process')
 
-            self._local_scan()  # update images and logfile
+            self._local_scan_process()  # update images and logfile
 
             self.progress = delft3d_container.container_progress
             self.save()
@@ -637,7 +649,7 @@ class Scene(models.Model):
             self.save()
 
             # when do we shift? - always
-            self.shift_to_phase(14)  # shift to Starting export...
+            self.shift_to_phase(11)  # shift to Starting postprocess...
 
             return
 
@@ -656,7 +668,49 @@ class Scene(models.Model):
             # when do we shift? - delft3d is exited
             if (delft3d_container.docker_state == 'exited' and
                     processing_container.docker_state == 'exited'):
-                self.shift_to_phase(14)  # shift to Starting export...
+                self.shift_to_phase(11)  # shift to Starting postprocess...
+
+            return
+
+        # ### PHASE: Starting postprocess
+        if self.phase == 11:
+
+            # what do we do? - tell postprocess to start
+            container = self.container_set.get(container_type='postprocess')
+            container.set_desired_state('running')
+
+            # when do we shift? - postprocess is running
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(12)  # shift to Running postprocess...
+
+            # when do we shift? - postprocess is exited
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(13)  # shift to Finish postprocess
+
+            return
+
+        # ### PHASE: Running postprocess
+        if self.phase == 12:
+
+            # what do we do? - wait to finish
+
+            # when do we shift? - postprocess is exited
+            container = self.container_set.get(container_type='postprocess')
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(13)  # shift to Finish postprocess
+
+            return
+
+        # ### PHASE: Finished postprocess
+        if self.phase == 13:
+
+            # when do we shift - always
+            self._local_scan_postprocess()  # scan for new images
+            self._parse_postprocessing()  # parse output.ini
+            self.save()
+            self.shift_to_phase(14)  # shift to Starting Export
 
             return
 
@@ -844,10 +898,9 @@ class Scene(models.Model):
     def _update_state_and_save(self):
 
         # TODO: write _update_state_and_save method
-
         return self.state
 
-    def _local_scan(self):
+    def _local_scan_process(self):
         for root, dirs, files in os.walk(
             os.path.join(self.workingdir, 'process')
         ):
@@ -884,6 +937,37 @@ class Scene(models.Model):
                         # No log is generated at the moment
                         self.info["logfile"]["file"] = f
                         break
+
+    def _local_scan_postprocess(self):
+        for root, dirs, files in os.walk(
+            os.path.join(self.workingdir, 'postprocess')
+        ):
+            for f in sorted(files):
+                name, ext = os.path.splitext(f)
+                if ext in ('.png', '.jpg', '.gif'):
+                    # TODO use get to check image list and
+                    # make this code less deep in if/for statements
+                    if ("subenvironment" in name and
+                        f not in self.info[
+                            "subenvironment_images"]["images"]):
+                        self.info["subenvironment_images"][
+                            "images"].append(f)
+                    else:
+                        # Other images ?
+                        pass
+
+    # Run this after post processing
+    def _parse_postprocessing(self):
+        outputfn = os.path.join(self.workingdir, 'postprocess', 'output.json')
+        if os.path.exists(outputfn):
+            with open(outputfn) as f:
+                try:
+                    output_dict = json.load(f)
+                except:
+                    logging.error("Error parsing postprocessing output.json")
+            self.info["postprocess_output"].update(output_dict)
+        else:
+            logging.error("Couldn't find postprocessing output.json")
 
     def __unicode__(self):
         return self.name
@@ -1173,7 +1257,9 @@ class Container(models.Model):
                                                    str(self.scene.suid)),
                             'folders': [workingdir,
                                         posdir],
-                            'command': "",
+                            'command': " ".join(["/data/run.sh",
+                                                 "/data/svn/scripts/postprocess/subenvironment.py",
+                                                 "/data/svn/scripts/postprocess/sedimentproperties.py"])
                             },
 
             'preprocess': {'image': settings.PREPROCESS_IMAGE_NAME,
@@ -1191,15 +1277,15 @@ class Container(models.Model):
                            },
 
             'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
-                           'volumes': [
-                               '{0}:/data/input:z'.format(syndir)],
-                           'environment': {"uuid": str(self.scene.suid),
-                                           "folder": syndir},
-                           'name': "{}-{}".format(self.container_type,
-                                                  str(self.scene.suid)),
-                           'folders': [],  # sync doesn't need new folders
-                           'command': "/data/run.sh cleanup"
-                           },
+                             'volumes': [
+                                 '{0}:/data/input:z'.format(syndir)],
+                             'environment': {"uuid": str(self.scene.suid),
+                                             "folder": syndir},
+                             'name': "{}-{}".format(self.container_type,
+                                                    str(self.scene.suid)),
+                             'folders': [],  # sync doesn't need new folders
+                             'command': "/data/run.sh cleanup"
+                             },
 
             'process': {'image': settings.PROCESS_IMAGE_NAME,
                         'volumes': [
