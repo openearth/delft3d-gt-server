@@ -504,7 +504,7 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene.phase = 9
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 11)
+        self.assertEqual(self.scene.phase, 14)
 
         # check if the progress is updated
 
@@ -521,43 +521,16 @@ class ScenarioPhasesTestCase(TestCase):
         # exited
 
     def test_phase_11(self):
-        # Started postprocessing
-        self.scene.phase = 11
-        container = self.scene.container_set.get(container_type='postprocess')
-        container.docker_state = 'running'
-        container.save()
-
-        self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 12)
+        # TODO: write tests
+        pass
 
     def test_phase_12(self):
-        # Running postprocessing
-        self.scene.phase = 12
-        container = self.scene.container_set.get(container_type='postprocess')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 13)
+        # TODO: write tests
+        pass
 
     def test_phase_13(self):
-        # Finished postprocessing
-        self.scene.phase = 13
-
-        self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 14)
-
-    def test_phase_14_01(self):
-        self.scene.phase = 14
-
-        self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, 14)
-
-        # check if the export container is set to exited
-        # as desired state
-
-        # check if scene moved to phase 15 when export container is
-        # running
+        # TODO: write tests
+        pass
 
     def test_phase_14_01(self):
         self.scene.phase = 14
