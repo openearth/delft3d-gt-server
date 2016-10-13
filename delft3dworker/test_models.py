@@ -882,6 +882,7 @@ class ContainerTestCase(TestCase):
                     'preprocess/preprocessing.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
+                    'memory_limit': '200m',
                     'image': 'dummy_preprocessing',
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
@@ -909,6 +910,7 @@ class ContainerTestCase(TestCase):
                     'preprocess/preprocessing.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
+                    'memory_limit': '200m',
                     'image': 'dummy_preprocessing',
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
