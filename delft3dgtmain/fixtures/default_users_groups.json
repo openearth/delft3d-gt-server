@@ -9,7 +9,7 @@
   },
   {
     "fields": {
-      "name": "access:org:Foo_Company",
+      "name": "access:org:Pho_Company",
       "permissions": [
         [
           "add_scenario",
@@ -63,7 +63,7 @@
   },
   {
     "fields": {
-      "name": "access:org:Bar_Company",
+      "name": "access:org:Nit_Company",
       "permissions": [
         [
           "add_scenario",
@@ -117,8 +117,8 @@
   },
   {
     "fields": {
-      "username": "foo",
-      "first_name": "Foo",
+      "username": "phosphorus",
+      "first_name": "Pho",
       "last_name": "User",
       "is_active": true,
       "is_superuser": false,
@@ -129,12 +129,11 @@
           "access:world"
         ],
         [
-          "access:org:Foo_Company"
+          "access:org:Pho_Company"
         ]
       ],
       "user_permissions": [],
-      "password": "pbkdf2_sha256$20000$twSLZRbL2oty$QbldXf1MNLCdf9n7xIoQKZX1D9phDylwrlplQqepEKc=",
-      "email": "foo@bar.com",
+      "password": "pbkdf2_sha256$20000$kZFpcrsFBITM$xNaUkbk4sqHbYyAMkCBBdybjhTWkX2BoLT2MBqGSZps=",      "email": "pho@bar.com",
       "date_joined": "2016-01-01T12:00:00Z"
     },
     "model": "auth.user",
@@ -142,8 +141,8 @@
   },
   {
     "fields": {
-      "username": "bar",
-      "first_name": "Bar",
+      "username": "nitrogen",
+      "first_name": "Nit",
       "last_name": "User",
       "is_active": true,
       "is_superuser": false,
@@ -154,12 +153,11 @@
           "access:world"
         ],
         [
-          "access:org:Bar_Company"
+          "access:org:Nit_Company"
         ]
       ],
       "user_permissions": [],
-      "password": "pbkdf2_sha256$20000$3UJqTdQX0mMo$Or4V7/KXHbmZpVH3kjTWE2lbtA8JOzmzt0ngaU5Azz8=",
-      "email": "bar@foo.com",
+      "password": "pbkdf2_sha256$20000$mcIIpD3yxfuQ$/yr8Bf6+plrRRY27nopOgOH81b7wRBfqRzS4G28OEB8=",      "email": "nit@foo.com",
       "date_joined": "2016-01-01T12:00:00Z"
     },
     "model": "auth.user",
@@ -167,8 +165,8 @@
   },
   {
     "fields": {
-      "username": "foo2",
-      "first_name": "Second Foo",
+      "username": "phosphorus2",
+      "first_name": "PhoTwo",
       "last_name": "User",
       "is_active": true,
       "is_superuser": false,
@@ -179,12 +177,11 @@
           "access:world"
         ],
         [
-          "access:org:Foo_Company"
+          "access:org:Pho_Company"
         ]
       ],
       "user_permissions": [],
-      "password": "pbkdf2_sha256$20000$5Q6LPVSietTb$m/7kemHtL3Y3iCESAh+umtDOurXQiyuS7XlfM6JKvmo=",
-      "email": "foo2@bar.com",
+      "password": "pbkdf2_sha256$20000$kZFpcrsFBITM$xNaUkbk4sqHbYyAMkCBBdybjhTWkX2BoLT2MBqGSZps=",      "email": "pho2@bar.com",
       "date_joined": "2016-05-27T14:55:11Z"
     },
     "model": "auth.user",
