@@ -157,7 +157,8 @@
         ]
       ],
       "user_permissions": [],
-      "password": "pbkdf2_sha256$20000$mcIIpD3yxfuQ$/yr8Bf6+plrRRY27nopOgOH81b7wRBfqRzS4G28OEB8=",      "email": "nit@foo.com",
+      "password": "pbkdf2_sha256$20000$mcIIpD3yxfuQ$/yr8Bf6+plrRRY27nopOgOH81b7wRBfqRzS4G28OEB8=",
+      "email": "nit@foo.com",
       "date_joined": "2016-01-01T12:00:00Z"
     },
     "model": "auth.user",
@@ -181,7 +182,8 @@
         ]
       ],
       "user_permissions": [],
-      "password": "pbkdf2_sha256$20000$kZFpcrsFBITM$xNaUkbk4sqHbYyAMkCBBdybjhTWkX2BoLT2MBqGSZps=",      "email": "pho2@bar.com",
+      "password": "pbkdf2_sha256$20000$kZFpcrsFBITM$xNaUkbk4sqHbYyAMkCBBdybjhTWkX2BoLT2MBqGSZps=",
+      "email": "pho2@bar.com",
       "date_joined": "2016-05-27T14:55:11Z"
     },
     "model": "auth.user",
