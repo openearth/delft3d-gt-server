@@ -68,7 +68,7 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
 
 @shared_task(bind=True, throws=(HTTPError))
 def do_docker_create(self, label, parameters, environment, name, image,
-                     volumes, folders, command):
+                     volumes, memory_limit, folders, command):
     """
     Create necessary directories in a working directory
     for the mounts in the containers.
@@ -105,7 +105,8 @@ def do_docker_create(self, label, parameters, environment, name, image,
 
     # Create docker container
     client = Client(base_url='http://localhost:4000')
-    config = client.create_host_config(binds=volumes)
+    # We could also pass mem_reservation since docker-py 1.10
+    config = client.create_host_config(binds=volumes, mem_limit=memory_limit)
     container = client.create_container(
         image,  # docker image
         name=name,

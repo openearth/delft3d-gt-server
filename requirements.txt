@@ -3,14 +3,16 @@ anyjson==0.3.3
 backports.ssl-match-hostname==3.5.0.1
 billiard==3.3.0.23
 celery==3.1.21
+configparser==3.5.0
 Django==1.8.11
 django-filter==0.13.0
 django-crispy-forms==1.6.0
 django-generic-json-views==0.7
 django-jsonfield==0.9.19
 django-guardian==1.4.4
+django-model-utils==2.6
 djangorestframework==3.3.3
-docker-py==1.7.2
+docker-py==1.10.3
 flower==0.9.1
 kombu==3.0.34
 Mako==1.0.3

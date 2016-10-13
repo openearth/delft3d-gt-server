@@ -59,6 +59,7 @@ class TaskTest(TestCase):
         image = "IMAGENAME"
         volumes = ['/:/data/output:z',
                    '/:/data/input:ro']
+        memory_limit = '1g'
         command = "echo test"
         config = {}
         environment = None
@@ -73,7 +74,7 @@ class TaskTest(TestCase):
         mockClient.return_value.create_host_config.return_value = config
 
         do_docker_create.delay(label, parameters, None, name,
-                               image, volumes, folders, command)
+                               image, volumes, memory_limit, folders, command)
 
         # Assert that docker is called
         mockClient.return_value.create_container.assert_called_with(
