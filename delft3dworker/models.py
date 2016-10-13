@@ -584,7 +584,11 @@ class Scene(models.Model):
 
         elif self.phase == self.phases.preproc_fin:
 
-            self.shift_to_phase(self.phases.idle)
+            container = self.container_set.get(container_type='preprocess')
+            container.set_desired_state('non-existent')
+
+            if (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.idle)
 
             return
 
@@ -642,10 +646,18 @@ class Scene(models.Model):
 
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
-            self.progress = delft3d_container.container_progress
-            self.save()
+            delft3d_container.set_desired_state('non-existent')
 
-            self.shift_to_phase(self.phases.postproc_create)
+            processing_container = self.container_set.get(
+                container_type='process')
+            processing_container.set_desired_state('non-existent')
+
+            if (delft3d_container.docker_state != 'non-existent'):
+                self.progress = delft3d_container.container_progress
+                self.save()
+
+            else:
+                self.shift_to_phase(self.phases.postproc_create)
 
             return
 
@@ -661,7 +673,7 @@ class Scene(models.Model):
 
             if (delft3d_container.docker_state == 'exited' and
                     processing_container.docker_state == 'exited'):
-                self.shift_to_phase(self.phases.postproc_create)
+                self.shift_to_phase(self.phases.sim_fin)
 
             return
 
@@ -700,10 +712,15 @@ class Scene(models.Model):
 
         elif self.phase == self.phases.postproc_fin:
 
-            self._local_scan_postprocess()  # scan for new images
-            self._parse_postprocessing()  # parse output.ini
-            self.save()
-            self.shift_to_phase(self.phases.exp_create)
+            container = self.container_set.get(container_type='postprocess')
+            container.set_desired_state('non-existent')
+
+            if (container.docker_state != 'non-existent'):
+                self._local_scan_postprocess()  # scan for new images
+                self._parse_postprocessing()  # parse output.ini
+                self.save()
+            else:
+                self.shift_to_phase(self.phases.exp_create)
 
             return
 
@@ -742,7 +759,11 @@ class Scene(models.Model):
 
         elif self.phase == self.phases.exp_fin:
 
-            self.shift_to_phase(self.phases.sync_create)  # shift to sync
+            container = self.container_set.get(container_type='export')
+            container.set_desired_state('non-existent')
+
+            if (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.sync_create)  # shift to sync
 
             return
 
@@ -793,8 +814,17 @@ class Scene(models.Model):
             return
 
         elif self.phase == self.phases.abort_fin:
+            delft3d_container = self.container_set.get(
+                container_type='delft3d')
+            delft3d_container.set_desired_state('non-existent')
 
-            self.shift_to_phase(self.phases.idle)  # shift to Idle
+            processing_container = self.container_set.get(
+                container_type='process')
+            processing_container.set_desired_state('non-existent')
+
+            if (delft3d_container.docker_state == 'non-existent' and
+                    processing_container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.idle)
 
             return
 
@@ -833,7 +863,11 @@ class Scene(models.Model):
 
         elif self.phase == self.phases.sync_fin:
 
-            self.shift_to_phase(self.phases.fin)
+            container = self.container_set.get(container_type='sync_cleanup')
+            container.set_desired_state('non-existent')
+
+            if (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.fin)
 
             return
 
