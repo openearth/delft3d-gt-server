@@ -464,6 +464,17 @@ class ScenarioPhasesTestCase(TestCase):
     def test_phase_preproc_fin(self):
         self.scene.phase = self.p.preproc_fin
 
+        container = self.scene.container_set.get(container_type='preprocess')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.preproc_fin)
+
+        container = self.scene.container_set.get(container_type='preprocess')
+        container.docker_state = 'non-existent'
+        container.save()
+
         self.scene.update_and_phase_shift()
         self.assertEqual(self.scene.phase, self.p.idle)
 
@@ -507,6 +518,23 @@ class ScenarioPhasesTestCase(TestCase):
 
     def test_phase_sim_fin(self):
         self.scene.phase = self.p.sim_fin
+
+        container = self.scene.container_set.get(container_type='delft3d')
+        container.docker_state = 'exited'
+        container.save()
+        container = self.scene.container_set.get(container_type='process')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_fin)
+
+        container = self.scene.container_set.get(container_type='delft3d')
+        container.docker_state = 'non-existent'
+        container.save()
+        container = self.scene.container_set.get(container_type='process')
+        container.docker_state = 'non-existent'
+        container.save()
 
         self.scene.update_and_phase_shift()
         self.assertEqual(self.scene.phase, self.p.postproc_create)
@@ -558,6 +586,17 @@ class ScenarioPhasesTestCase(TestCase):
         # Finished postprocessing
         self.scene.phase = self.p.postproc_fin
 
+        container = self.scene.container_set.get(container_type='postprocess')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.postproc_fin)
+
+        container = self.scene.container_set.get(container_type='postprocess')
+        container.docker_state = 'non-existent'
+        container.save()
+
         self.scene.update_and_phase_shift()
         self.assertEqual(self.scene.phase, self.p.exp_create)
 
@@ -597,6 +636,17 @@ class ScenarioPhasesTestCase(TestCase):
     def test_phase_exp_fin(self):
         self.scene.phase = self.p.exp_fin
 
+        container = self.scene.container_set.get(container_type='export')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.exp_fin)
+
+        container = self.scene.container_set.get(container_type='export')
+        container.docker_state = 'non-existent'
+        container.save()
+
         self.scene.update_and_phase_shift()
         self.assertEqual(self.scene.phase, self.p.sync_create)
 
@@ -632,6 +682,23 @@ class ScenarioPhasesTestCase(TestCase):
 
         # check if scene moves to phase 19 when all containers are
         # exited
+
+    def test_phase_sync_fin(self):
+        self.scene.phase = self.p.sync_fin
+
+        container = self.scene.container_set.get(container_type='sync_cleanup')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sync_fin)
+
+        container = self.scene.container_set.get(container_type='sync_cleanup')
+        container.docker_state = 'non-existent'
+        container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.fin)
 
     def test_phase_abort_start(self):
         self.scene.phase = self.p.abort_start
