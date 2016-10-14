@@ -400,8 +400,8 @@ class SceneSearchTestCase(TestCase):
 
         self.assertEqual(len(self._request(search_query_parameter_a)), 2)
         self.assertEqual(len(self._request(search_query_parameter_b)), 2)
-        self.assertEqual(len(self._request(search_query_parameter_c)), 2)
-        self.assertEqual(len(self._request(search_query_parameter_d)), 2)
+        self.assertEqual(len(self._request(search_query_parameter_c)), 0)
+        self.assertEqual(len(self._request(search_query_parameter_d)), 0)
         self.assertEqual(len(self._request(search_query_parameter_e)), 1)
         self.assertEqual(len(self._request(search_query_parameter_f)), 2)
         self.assertEqual(len(self._request(search_query_parameter_g)), 0)
@@ -412,12 +412,12 @@ class SceneSearchTestCase(TestCase):
         """
 
         query = {'parameter': "hack,no-dice"}
-        self.assertEqual(len(self._request(query)), 2)
+        self.assertEqual(len(self._request(query)), 0)
 
         query = {'parameter': "hack,mud"}
-        self.assertEqual(len(self._request(query)), 2)
+        self.assertEqual(len(self._request(query)), 1)
         query = {'parameter': "hack,grease"}
-        self.assertEqual(len(self._request(query)), 2)
+        self.assertEqual(len(self._request(query)), 1)
 
         query = {'parameter': "hack"}
         self.assertEqual(len(self._request(query)), 2)
