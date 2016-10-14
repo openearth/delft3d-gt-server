@@ -228,7 +228,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         shared = self.request.query_params.getlist('shared', [])
 
         # explained later
-        temp_workaraound = False
+        temp_workaround = False
 
         if len(parameters) > 0:
             # Processing user input
@@ -272,7 +272,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                             queryset = queryset.filter(pk__in=wanted)
                         except ValueError:
                             pass  # no floats? no results
-                            temp_workaraound = True
+                            temp_workaround = True
 
                     # The front-end is supposed to provide sediment
                     # compositions as follows:
@@ -283,8 +283,8 @@ class SceneViewSet(viewsets.ModelViewSet):
                     #
                     # ...?parameter=composition,sand-clay,mud
                     #
-                    # hence this temp_workaraound:
-                    if temp_workaraound or len(p) > 3:
+                    # hence this temp_workaround:
+                    if temp_workaround or len(p) == 2 or len(p) > 3:
                         key = p[0]
                         values = p[1:]
                         wanted = []
