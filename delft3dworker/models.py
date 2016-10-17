@@ -254,7 +254,7 @@ class Scene(models.Model):
         (0, 'new', 'New'),
 
         # Preprocessing container
-        (2, 'preproc_create', 'Creating preprocessing'),
+        (2, 'preproc_create', 'Allocating preprocessing resources'),
         (3, 'preproc_start', 'Starting preprocessing'),
         (4, 'preproc_run', 'Running preprocessing'),
         (5, 'preproc_fin', 'Finished preprocessing'),
@@ -263,20 +263,20 @@ class Scene(models.Model):
         (6, 'idle', 'Idle: waiting for user input'),
 
         # Simulation container
-        (10, 'sim_create', 'Creating simulation'),
+        (10, 'sim_create', 'Allocating simulation resources'),
         (11, 'sim_start', 'Starting simulation'),
         (12, 'sim_run', 'Running simulation'),
         (13, 'sim_fin', 'Finished simulation'),
         (14, 'sim_stop', 'Stopping simulation'),
 
         # Postprocessing container
-        (20, 'postproc_create', 'Creating postprocessing'),
+        (20, 'postproc_create', 'Allocating postprocessing resources'),
         (21, 'postproc_start', 'Starting postprocessing'),
         (22, 'postproc_run', 'Running postprocessing'),
         (23, 'postproc_fin', 'Finished postprocessing'),
 
         # Export container
-        (30, 'exp_create', 'Creating export'),
+        (30, 'exp_create', 'Allocating export resources'),
         (31, 'exp_start', 'Starting export'),
         (32, 'exp_run', 'Running export'),
         (33, 'exp_fin', 'Finished export'),
@@ -287,7 +287,7 @@ class Scene(models.Model):
         (19, 'cont_rem_fin', 'Containers removed'),
 
         # Sync container
-        (40, 'sync_create', 'Creating synchronization'),
+        (40, 'sync_create', 'Allocating synchronization resources'),
         (41, 'sync_start', 'Started synchronization'),
         (42, 'sync_run', 'Running synchronization'),
         (43, 'sync_fin', 'Finished synchronization'),
@@ -567,9 +567,14 @@ class Scene(models.Model):
             if (container.docker_state == 'running'):
                 self.shift_to_phase(self.phases.preproc_run)
 
-            if (container.docker_state == 'exited'):
+            elif (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
                 self.shift_to_phase(self.phases.preproc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.preproc_create)
+                logging.error("Lost preprocess container!")
 
             return
 
@@ -579,6 +584,11 @@ class Scene(models.Model):
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
                 self.shift_to_phase(self.phases.preproc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.preproc_start)
+                logging.error("Lost preprocess container!")
 
             return
 
@@ -621,6 +631,12 @@ class Scene(models.Model):
             if (delft3d_container.docker_state == 'running'):
                 self.shift_to_phase(self.phases.sim_run)
 
+            # If container disappeared, shift back
+            elif (delft3d_container.docker_state == 'non-existent' or
+                  processing_container.docker_state == 'non-existent'):
+                logging.error("Lost sim or process container!")
+                self.shift_to_phase(self.phases.sim_create)
+
             return
 
         elif self.phase == self.phases.sim_run:
@@ -639,6 +655,12 @@ class Scene(models.Model):
                 delft3d_container.set_desired_state('exited')
                 processing_container.set_desired_state('exited')
                 self.shift_to_phase(self.phases.sim_fin)
+
+            # If container disappeared, shift back
+            elif (delft3d_container.docker_state == 'non-existent' or
+                  processing_container.docker_state == 'non-existent'):
+                logging.error("Lost sim/process container!")
+                self.shift_to_phase(self.phases.sim_create)
 
             return
 
@@ -675,6 +697,12 @@ class Scene(models.Model):
                     processing_container.docker_state == 'exited'):
                 self.shift_to_phase(self.phases.sim_fin)
 
+            # If container disappeared, shift forward
+            elif (delft3d_container.docker_state == 'non-existent' or
+                    processing_container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.sim_fin)
+
+
             return
 
         elif self.phase == self.phases.postproc_create:
@@ -695,9 +723,14 @@ class Scene(models.Model):
             if (container.docker_state == 'running'):
                 self.shift_to_phase(self.phases.postproc_run)
 
-            if (container.docker_state == 'exited'):
+            elif (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
                 self.shift_to_phase(self.phases.postproc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.postproc_create)
+                logging.error("Lost postprocess container!")
 
             return
 
@@ -707,6 +740,11 @@ class Scene(models.Model):
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
                 self.shift_to_phase(self.phases.postproc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.postproc_create)
+                logging.error("Lost postprocess container!")
 
             return
 
@@ -742,9 +780,14 @@ class Scene(models.Model):
             if (container.docker_state == 'running'):
                 self.shift_to_phase(self.phases.exp_run)
 
-            if (container.docker_state == 'exited'):
+            elif (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
                 self.shift_to_phase(self.phases.exp_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.exp_create)
+                logging.error("Lost export container!")
 
             return
 
@@ -754,6 +797,11 @@ class Scene(models.Model):
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
                 self.shift_to_phase(self.phases.exp_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.exp_create)
+                logging.error("Lost export container!")
 
             return
 
@@ -846,9 +894,14 @@ class Scene(models.Model):
             if (container.docker_state == 'running'):
                 self.shift_to_phase(self.phases.sync_run)
 
-            if (container.docker_state == 'exited'):
+            elif (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
                 self.shift_to_phase(self.phases.sync_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.sync_create)
+                logging.error("Lost sync container!")
 
             return
 
@@ -858,6 +911,11 @@ class Scene(models.Model):
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
                 self.shift_to_phase(self.phases.sync_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.sync_create)
+                logging.error("Lost sync container!")
 
             return
 
@@ -1245,7 +1303,7 @@ class Container(models.Model):
                        'volumes': [
                            '{0}:/data/output:z'.format(expdir),
                            '{0}:/data/input:ro'.format(simdir)],
-                        'memory_limit': '200m',
+                       'memory_limit': '400m',
                        'environment': {"uuid": str(self.scene.suid),
                                        "folder": expdir},
                        'name': "{}-{}".format(self.container_type,
@@ -1260,7 +1318,7 @@ class Container(models.Model):
                             'volumes': [
                                 '{0}:/data/output:z'.format(posdir),
                                 '{0}:/data/input:ro'.format(workingdir)],
-                            'memory_limit': '200m',
+                            'memory_limit': '500m',
                             'environment': {"uuid": str(self.scene.suid),
                                             "folder": posdir},
                             'name': "{}-{}".format(self.container_type,
@@ -1276,7 +1334,7 @@ class Container(models.Model):
                            'volumes': [
                                '{0}:/data/output:z'.format(simdir),
                                '{0}:/data/input:ro'.format(predir)],
-                            'memory_limit': '200m',
+                           'memory_limit': '100m',
                            'environment': {"uuid": str(self.scene.suid),
                                            "folder": simdir},
                            'name': "{}-{}".format(self.container_type,
@@ -1304,7 +1362,7 @@ class Container(models.Model):
                             '{0}:/data/input:ro'.format(simdir),
                             '{0}:/data/output:z'.format(prodir)
                         ],
-                        'memory_limit': '200m',
+                        'memory_limit': '700m',
                         'environment': {"uuid": str(self.scene.suid),
                                         "folder": prodir},
                         'name': "{}-{}".format(self.container_type,
