@@ -606,11 +606,13 @@ class Scene(models.Model):
 
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
-            delft3d_container.set_desired_state('created')
+            if delft3d_container.docker_state == 'non-existent':
+                delft3d_container.set_desired_state('created')
 
             processing_container = self.container_set.get(
                 container_type='process')
-            processing_container.set_desired_state('created')
+            if processing_container.docker_state == 'non-existent':
+                processing_container.set_desired_state('created')
 
             if (delft3d_container.docker_state != 'non-existent' and
                     processing_container.docker_state != 'non-existent'):
