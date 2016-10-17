@@ -718,7 +718,6 @@ class Scene(models.Model):
             if (container.docker_state != 'non-existent'):
                 self._local_scan_postprocess()  # scan for new images
                 self._parse_postprocessing()  # parse output.ini
-                self.save()
             else:
                 self.shift_to_phase(self.phases.exp_create)
 
@@ -962,6 +961,7 @@ class Scene(models.Model):
                     else:
                         # Other images ?
                         pass
+        self.save()
 
     # Run this after post processing
     def _parse_postprocessing(self):
@@ -975,6 +975,7 @@ class Scene(models.Model):
             self.info["postprocess_output"].update(output_dict)
         else:
             logging.error("Couldn't find postprocessing output.json")
+        self.save()
 
     def __unicode__(self):
         return self.name
