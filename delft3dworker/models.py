@@ -755,10 +755,9 @@ class Scene(models.Model):
             container = self.container_set.get(container_type='postprocess')
             container.set_desired_state('non-existent')
 
-            if (container.docker_state != 'non-existent'):
+            if (container.docker_state == 'non-existent'):
                 self._local_scan_postprocess()  # scan for new images
                 self._parse_postprocessing()  # parse output.ini
-            else:
                 self.shift_to_phase(self.phases.exp_create)
 
             return
@@ -1320,13 +1319,13 @@ class Container(models.Model):
             'postprocess': {'image': settings.POSTPROCESS_IMAGE_NAME,
                             'volumes': [
                                 '{0}:/data/output:z'.format(posdir),
-                                '{0}:/data/input:ro'.format(workingdir)],
+                                '{0}:/data/input:ro'.format(simdir)],
                             'memory_limit': '500m',
                             'environment': {"uuid": str(self.scene.suid),
                                             "folder": posdir},
                             'name': "{}-{}".format(self.container_type,
                                                    str(self.scene.suid)),
-                            'folders': [workingdir,
+                            'folders': [simdir,
                                         posdir],
                             'command': " ".join(["/data/run.sh",
                                                  "/data/svn/scripts/postprocess/subenvironment.py",
