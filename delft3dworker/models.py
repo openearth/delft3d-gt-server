@@ -876,7 +876,7 @@ class Scene(models.Model):
             scene_phases = Scene.objects.values_list('phase', flat=True)
 
             number_simulations = sum(
-                (i >= self.phases.sim_start and i <= self.phases.sim_stop) for i in scene_phases)
+                (i >= self.phases.sim_create and i <= self.phases.sim_stop) for i in scene_phases)
 
             if number_simulations < settings.MAX_SIMULATIONS:
                 self.shift_to_phase(self.phases.sim_create)
