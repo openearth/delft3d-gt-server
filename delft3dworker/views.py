@@ -237,6 +237,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                 for parameter in parameters:
 
                     p = parameter.split(',')
+                    p = [val for val in p if val != '']
 
                     # Key, min, max lookup
                     if len(p) == 3:
