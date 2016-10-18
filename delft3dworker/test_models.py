@@ -812,6 +812,12 @@ class ContainerTestCase(TestCase):
             desired_state='created',
             docker_state='non-existent',
         )
+        self.delft3d_container = Container.objects.create(
+            scene=self.scene,
+            container_type='delft3d',
+            desired_state='created',
+            docker_state='non-existent',
+        )
 
     @patch('logging.warn', autospec=True)
     @patch('delft3dworker.models.AsyncResult', autospec=True)
@@ -825,7 +831,7 @@ class ContainerTestCase(TestCase):
         self.container.task_starttime = now()
         async_result.ready.return_value = False
         async_result.state = "STARTED"
-        async_result.result = "dockerid", "dockerlog"
+        async_result.result = "dockerid", "None"
         async_result.successful.return_value = False
         # call method
         self.container.update_task_result()
@@ -855,7 +861,7 @@ class ContainerTestCase(TestCase):
         async_result.successful.return_value = True
         async_result.result = (
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        ), 'This is a log message.'
+        ), 'INFO:root:Time to finish 70.0, 10.0% completed,'
         async_result.state = "SUCCESS"
 
         # call method
@@ -868,6 +874,45 @@ class ContainerTestCase(TestCase):
             self.container.docker_id,
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
         )
+
+    @patch('delft3dworker.models.AsyncResult', autospec=True)
+    def test_update_progress(self, MockedAsyncResult):
+
+        async_result = MockedAsyncResult.return_value
+
+        # Set up: A previous task is not yet finished
+        self.delft3d_container.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.delft3d_container.task_starttime = now()
+        async_result.ready.return_value = True
+        async_result.state = "SUCCESS"
+        async_result.result = "dockerid", u"None"
+        async_result.successful.return_value = True
+
+        # call method
+        self.delft3d_container.update_task_result()
+
+        # check progress changed
+        self.assertEqual(self.delft3d_container.container_progress, 0)
+
+        # Set up: task is now finished
+        self.delft3d_container.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        async_result.ready.return_value = True
+        async_result.successful.return_value = True
+        async_result.result = (
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        ), u"""INFO:root:Time to finish 70.0, 22.2222222222% completed, time steps  left 7.0
+INFO:root:Time to finish 60.0, 33.3333333333% completed, time steps  left 6.0
+INFO:root:Time to finish 50.0, 44.4444444444% completed, time steps  left 5.0
+INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
+        async_result.state = "SUCCESS"
+
+        # call method
+        self.delft3d_container.update_task_result()
+
+        # check progress changed
+        self.assertEqual(self.delft3d_container.container_progress, 56.0)
 
     @patch('logging.error', autospec=True)
     def test_update_state_and_save(self, mocked_error_method):

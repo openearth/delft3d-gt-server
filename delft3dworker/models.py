@@ -1096,6 +1096,7 @@ class Container(models.Model):
     container_progress = models.PositiveSmallIntegerField(default=0)
 
     docker_log = models.TextField(blank=True, default='')
+    container_log = models.TextField(blank=True, default='')
 
     # CONTROL METHODS
 
@@ -1110,7 +1111,6 @@ class Container(models.Model):
         Get the result from the last task it executed, given that there is a
         result. If the task is not ready, don't do anything.
         """
-
         if self.task_uuid is None:
             return
 
@@ -1136,8 +1136,8 @@ class Container(models.Model):
                     self.docker_log = docker_log
                     progress = log_progress_parser(self.docker_log,
                                                    self.container_type)
-                    self.container_progress = math.ceil(progress) if \
-                        progress is not None else 0
+                    if progress is not None:
+                        self.container_progress = math.ceil(progress)
                 else:
                     logging.warn("Can't parse docker log of {}".
                                  format(self.container_type))
@@ -1398,6 +1398,8 @@ class Container(models.Model):
         )
 
         self.task_starttime = now()
+        self.container_log += str(self.task_starttime) + "Container was created \n"
+
         self.task_uuid = result.id
         self.save()
 
@@ -1412,6 +1414,8 @@ class Container(models.Model):
         result = do_docker_start.apply_async(args=(self.docker_id,),
                                              expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
+        self.container_log += str(self.task_starttime) + "Container was started \n"
+
         self.task_uuid = result.id
         self.save()
 
@@ -1428,6 +1432,8 @@ class Container(models.Model):
         result = do_docker_stop.apply_async(args=(self.docker_id,),
                                             expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
+        self.container_log += str(self.task_starttime) + "Container was stopped \n"
+
         self.task_uuid = result.id
         self.save()
 
@@ -1445,6 +1451,8 @@ class Container(models.Model):
         )
 
         self.task_starttime = now()
+        self.container_log += str(self.task_starttime) + "Container was removed \n"
+
         self.task_uuid = result.id
         self.save()
 
