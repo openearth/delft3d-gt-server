@@ -11,20 +11,9 @@
         {
           "variables": [
             {
-              "validators": {},
-              "type": "text",
-              "id": "name",
-              "name": "Name"
-            }
-          ],
-          "name": "Scenario"
-        },
-        {
-          "variables": [
-            {
               "units": "days",
-              "id": "simstoptime",
               "type": "numeric",
+              "id": "simstoptime",
               "name": "Stop time",
               "validators": {
                 "max": 160,
