@@ -197,9 +197,6 @@ try:
 except ImportError:
     SECRET_KEY = 'test'
 
-# max number of simulations
-MAX_SIMULATIONS = 1
-
 # TESTING
 
 if 'test' in sys.argv:
@@ -248,3 +245,6 @@ if 'test' in sys.argv:
     PREPROCESS_IMAGE_NAME = 'dummy_preprocessing'
     PROCESS_IMAGE_NAME = 'dummy_processing'
     EXPORT_IMAGE_NAME = 'dummy_export'
+
+    # max number of simulations
+    MAX_SIMULATIONS = 1
