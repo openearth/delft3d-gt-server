@@ -1344,7 +1344,7 @@ class Container(models.Model):
                            'folders': [predir,
                                        simdir],
                            'command': "/data/run.sh /data/svn/scripts/"
-                           "preprocess/preprocessing.py"
+                           "preprocess/preprocess.py"
                            },
 
             'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
