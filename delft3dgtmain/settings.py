@@ -197,9 +197,6 @@ try:
 except ImportError:
     SECRET_KEY = 'test'
 
-# max number of simulations
-MAX_SIMULATIONS = 1
-
 # TESTING
 
 if 'test' in sys.argv:

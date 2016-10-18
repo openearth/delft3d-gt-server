@@ -39,3 +39,6 @@ WORKER_FILEDIR = '/data/container/files'
 
 BROKER_URL = 'redis://'
 CELERY_RESULT_BACKEND = 'redis://'
+
+# max number of simulations
+MAX_SIMULATIONS = 1
