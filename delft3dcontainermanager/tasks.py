@@ -144,27 +144,37 @@ def do_docker_stop(self, container_id, timeout=10):
 def do_docker_remove(self, container_id, force=False):
     """
     Remove a container with a specific id and return id.
-    Try to remove the created files as well.
+    Try to write the docker log output as well.
     """
 
     # Commented out removing folders in this task
     # functionality could be moved, therefore not removed
 
     client = Client(base_url='http://localhost:4000')
-    # info = client.inspect_container(container=container_id)
-
+    info = client.inspect_container(container=container_id)
+    log = client.logs(
+        container=str(container_id),
+        stream=False,
+        stdout=True,
+        stderr=True,
+        timestamps=True,
+    )
     client.remove_container(container=container_id, force=force)
 
-    # if isinstance(info, dict):
-    #     try:
-    #         envs = info['Config']['Env']
-    #         for env in envs:
-    #             key, value = env.split("=")
-    #             if key == 'folder':
-    #                 rmtree(value)
-    #                 break
-    #     except:
-    #         logging.error("Failed at removing folder.")
+    if isinstance(info, dict):
+        try:
+            name = info['Name'].split('-')[0].strip('/')  # type
+            envs = info['Config']['Env']
+            for env in envs:
+                key, value = env.split("=")
+                if key == 'folder':
+                    folder = os.path.split(value)[0]  # root
+                    break
+            with open(os.path.join(folder,
+                    'docker_{}.log'.format(name)), 'wb') as f:
+                f.write(log)
+        except:
+            logging.error("Failed at writing docker log.")
 
     return container_id, ""
 
