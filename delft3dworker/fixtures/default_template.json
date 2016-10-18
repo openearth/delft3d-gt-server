@@ -3,16 +3,8 @@
     "fields": {
       "templates": [
         {
-          "name": "Basin fill with marine reworking",
-          "id": 51
-        },
-        {
-          "name": "Basin fill",
-          "id": 50
-        },
-        {
-          "name": "Testing template",
-          "id": 52
+          "name": "River dominated delta",
+          "id": 53
         }
       ],
       "sections": [
@@ -23,16 +15,6 @@
               "type": "text",
               "id": "name",
               "name": "Name"
-            },
-            {
-              "units": "min",
-              "id": "dt",
-              "type": "numeric",
-              "name": "Timestep",
-              "validators": {
-                "max": 20,
-                "min": 0.5
-              }
             }
           ],
           "name": "Scenario"
@@ -113,6 +95,30 @@
               "units": "m",
               "type": "numeric",
               "id": "tidalamplitude"
+            },
+            {
+              "name": "Wave height",
+              "validators": {
+                "max": 2,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "waveheight",
+              "description": "Please note: for model stability, a wave height larger than 1 meter will double(!) the required simulation time."
+            },
+            {
+              "name": "Base level change",
+              "validators": {
+                "max": 3.0,
+                "min": -3.0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "baselevel",
+              "description": "Positive values define 'a base level rise', negative values define 'a base level fall'. The magnitude of this value should be based on simulation stop time: the larger the stop time value, the larger the magnitude of this value can be."
             }
           ],
           "name": "Forcing"
@@ -165,14 +171,14 @@
   {
     "fields": {
       "meta": {
-        "description": "A river dominated and tidal influenced delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
-        "creator": "fedor.baart@deltares.nl"
+        "description": "A template for a river dominated basin fill scenario.",
+        "creator": "Liang.Li@tudelft.nl"
       },
       "sections": [
         {
           "variables": [
             {
-              "default": "Basin Fill Scenario",
+              "default": "River dominated basin fill",
               "type": "text",
               "id": "name",
               "name": "Name",
@@ -271,165 +277,34 @@
               "units": "m",
               "type": "numeric",
               "id": "tidalamplitude"
-            }
-          ],
-          "name": "Forcing"
-        },
-        {
-          "variables": [
-            {
-              "description": "Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
-              "default": "medium-sand",
-              "id": "composition",
-              "validators": {},
-              "type": "select",
-              "options": [
-                {
-                  "text": "coarse-sand",
-                  "value": "coarse-sand"
-                },
-                {
-                  "text": "medium-sand",
-                  "value": "medium-sand"
-                },
-                {
-                  "text": "fine-sand",
-                  "value": "fine-sand"
-                },
-                {
-                  "text": "coarse-silt",
-                  "value": "coarse-silt"
-                },
-                {
-                  "text": "medium-silt",
-                  "value": "medium-silt"
-                },
-                {
-                  "text": "fine-silt",
-                  "value": "fine-silt"
-                }
-              ],
-              "name": "Sediment classes"
-            }
-          ],
-          "name": "Sediment composition",
-          "description": "Sediment can consist of a mixture of different classes. Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
-        }
-      ],
-      "name": "Basin fill"
-    },
-    "model": "delft3dworker.template",
-    "pk": 50
-  },
-  {
-    "fields": {
-      "meta": {
-        "description": "A river or tide dominated delta with wind waves as a marine reworking force",
-        "creator": "liang.li@tudelft.nl"
-      },
-      "sections": [
-        {
-          "variables": [
-            {
-              "default": "Basin Fill with Marine Reworking Scenario",
-              "type": "text",
-              "id": "name",
-              "name": "Name",
-              "validators": {
-                "required": true
-              }
-            }
-          ],
-          "name": "Scenario"
-        },
-        {
-          "variables": [
-            {
-              "name": "Stop time",
-              "default": 60,
-              "validators": {
-                "max": 160,
-                "required": true,
-                "min": 0
-              },
-              "units": "days",
-              "type": "numeric",
-              "id": "simstoptime"
             },
             {
-              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
-              "default": 1,
+              "name": "Wave height",
+              "default": 0.0,
               "validators": {
                 "max": 2,
                 "required": true,
-                "min": 0.5
-              },
-              "units": "days",
-              "type": "numeric",
-              "id": "outputinterval",
-              "name": "Output timestep"
-            }
-          ],
-          "name": "Simulation settings"
-        },
-        {
-          "variables": [
-            {
-              "name": "Basin slope",
-              "default": 0.0143,
-              "validators": {
-                "max": 0.3,
-                "required": true,
-                "min": 0.01
-              },
-              "factor": true,
-              "units": "deg",
-              "type": "numeric",
-              "id": "basinslope"
-            },
-            {
-              "name": "River width",
-              "default": 300,
-              "validators": {
-                "max": 1000,
-                "required": true,
-                "min": 100
-              },
-              "factor": true,
-              "units": "m",
-              "type": "numeric",
-              "id": "riverwidth"
-            }
-          ],
-          "name": "Geometry"
-        },
-        {
-          "variables": [
-            {
-              "name": "River discharge",
-              "default": 1000,
-              "validators": {
-                "max": 2000,
-                "required": true,
-                "min": 0
-              },
-              "factor": true,
-              "units": "m³/s",
-              "type": "numeric",
-              "id": "riverdischarge"
-            },
-            {
-              "name": "Tidal amplitude",
-              "default": 1,
-              "validators": {
-                "max": 3,
-                "required": true,
                 "min": 0
               },
               "factor": true,
               "units": "m",
               "type": "numeric",
-              "id": "tidalamplitude"
+              "id": "waveheight",
+              "description": "Please note: for model stability, a wave height larger than 1 meter will double(!) the required simulation time."
+            },
+            {
+              "name": "Base level change",
+              "default": 0,
+              "validators": {
+                "max": 3.0,
+                "required": true,
+                "min": -3.0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "baselevel",
+              "description": "Positive values define 'a base level rise', negative values define 'a base level fall'. The magnitude of this value should be based on simulation stop time: the larger the stop time value, the larger the magnitude of this value can be."
             }
           ],
           "name": "Forcing"
@@ -475,180 +350,9 @@
           "description": "Sediment can consist of a mixture of different classes. Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
         }
       ],
-      "name": "Basin fill with marine reworking"
+      "name": "River dominated delta"
     },
     "model": "delft3dworker.template",
-    "pk": 51
-  },
-  {
-    "fields": {
-      "meta": {
-        "description": "A river dominated and tidal influenced delta (no waves). No specific location. This is a delta like the Mississipi delta or the Mahakam river delta on East Kalimantan.",
-        "creator": "fedor.baart@deltares.nl"
-      },
-      "sections": [
-        {
-          "variables": [
-            {
-              "default": "Test Basin Fill Scenario",
-              "type": "text",
-              "id": "name",
-              "name": "Name",
-              "validators": {
-                "required": true
-              }
-            },
-            {
-              "name": "Timestep",
-              "default": 2,
-              "validators": {
-                "max": 20,
-                "required": true,
-                "min": 0.5
-              },
-              "units": "min",
-              "type": "numeric",
-              "id": "dt"
-            }
-          ],
-          "name": "Scenario"
-        },
-        {
-          "variables": [
-            {
-              "name": "Stop time",
-              "default": 60,
-              "validators": {
-                "max": 160,
-                "required": true,
-                "min": 0
-              },
-              "units": "days",
-              "type": "numeric",
-              "id": "simstoptime"
-            },
-            {
-              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
-              "default": 1,
-              "validators": {
-                "max": 2,
-                "required": true,
-                "min": 0.5
-              },
-              "units": "days",
-              "type": "numeric",
-              "id": "outputinterval",
-              "name": "Output timestep"
-            }
-          ],
-          "name": "Simulation settings"
-        },
-        {
-          "variables": [
-            {
-              "name": "Basin slope",
-              "default": 0.0143,
-              "validators": {
-                "max": 0.3,
-                "required": true,
-                "min": 0.01
-              },
-              "factor": true,
-              "units": "deg",
-              "type": "numeric",
-              "id": "basinslope"
-            },
-            {
-              "name": "River width",
-              "default": 300,
-              "validators": {
-                "max": 1000,
-                "required": true,
-                "min": 100
-              },
-              "factor": true,
-              "units": "m",
-              "type": "numeric",
-              "id": "riverwidth"
-            }
-          ],
-          "name": "Geometry"
-        },
-        {
-          "variables": [
-            {
-              "name": "River discharge",
-              "default": 1000,
-              "validators": {
-                "max": 2000,
-                "required": true,
-                "min": 0
-              },
-              "factor": true,
-              "units": "m³/s",
-              "type": "numeric",
-              "id": "riverdischarge"
-            },
-            {
-              "name": "Tidal amplitude",
-              "default": 1,
-              "validators": {
-                "max": 3,
-                "required": true,
-                "min": 0
-              },
-              "factor": true,
-              "units": "m",
-              "type": "numeric",
-              "id": "tidalamplitude"
-            }
-          ],
-          "name": "Forcing"
-        },
-        {
-          "variables": [
-            {
-              "description": "Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
-              "default": "medium-sand",
-              "id": "composition",
-              "validators": {},
-              "type": "select",
-              "options": [
-                {
-                  "text": "coarse-sand",
-                  "value": "coarse-sand"
-                },
-                {
-                  "text": "medium-sand",
-                  "value": "medium-sand"
-                },
-                {
-                  "text": "fine-sand",
-                  "value": "fine-sand"
-                },
-                {
-                  "text": "coarse-silt",
-                  "value": "coarse-silt"
-                },
-                {
-                  "text": "medium-silt",
-                  "value": "medium-silt"
-                },
-                {
-                  "text": "fine-silt",
-                  "value": "fine-silt"
-                }
-              ],
-              "name": "Sediment classes"
-            }
-          ],
-          "name": "Sediment composition",
-          "description": "Sediment can consist of a mixture of different classes. Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
-        }
-      ],
-      "name": "Testing template"
-    },
-    "model": "delft3dworker.template",
-    "pk": 52
+    "pk": 53
   }
 ]
