@@ -373,18 +373,6 @@ class Scene(models.Model):
 
                 # Could be dynamic or tuple of extensions
                 if (
-                    'export_d3doutput' in options
-                ) and (
-                    root.endswith('simulation')
-                ) and (
-                    not f.startswith('TMP')
-                ) and (
-                    ext in ['.dat', '.def', '.nc']
-                ):
-                    add = True
-
-                # Could be dynamic or tuple of extensions
-                if (
                     'export_images' in options
                 ) and (
                     ext in ['.png', '.jpg', '.gif']
