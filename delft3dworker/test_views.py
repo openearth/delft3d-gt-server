@@ -406,6 +406,21 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_parameter_f)), 2)
         self.assertEqual(len(self._request(search_query_parameter_g)), 0)
 
+        # user searches
+        search_query_users_1 = {'users': []}
+        search_query_users_2 = {'users': [""]}
+        search_query_users_3 = {'users': ["a"]}
+        search_query_users_4 = {'users': ["1"]}
+        search_query_users_5 = {'users': ["2"]}
+        search_query_users_6 = {'users': ["1","2"]}
+
+        self.assertEqual(len(self._request(search_query_users_1)), 2)
+        self.assertEqual(len(self._request(search_query_users_2)), 0)
+        self.assertEqual(len(self._request(search_query_users_3)), 0)
+        self.assertEqual(len(self._request(search_query_users_4)), 2)
+        self.assertEqual(len(self._request(search_query_users_5)), 0)
+        self.assertEqual(len(self._request(search_query_users_6)), 2)
+
     def test_search_hack(self):
         """
         Test search options

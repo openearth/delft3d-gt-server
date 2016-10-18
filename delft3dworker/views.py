@@ -325,7 +325,7 @@ class SceneViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(shared__in=wanted)
 
         if len(users) > 0:
-            userids = [int(user) for user in users]
+            userids = [int(user) for user in users if user.isdigit()]
             queryset = queryset.filter(owner__in=userids)
 
         # self.queryset = queryset
