@@ -1279,6 +1279,10 @@ class Container(models.Model):
         # Specific settings for each container type
         # TODO It would be more elegant to put these
         # hard-coded settings in a separate file.
+
+        # Random string in order to avoid naming conflicts.
+        # We want new containers when old ones fail in Docker Swarm
+        # but Docker Swarm still recognizes the old names.
         random_postfix = ''.join(random.SystemRandom().choice(
             string.ascii_uppercase + string.digits) for _ in range(5))
 
@@ -1402,7 +1406,8 @@ class Container(models.Model):
         self.task_uuid = result.id
         self.save()
 
-        return random_postfix
+        # Return name because of random part at the end
+        return kwargs[self.container_type]['name']
 
     def _start_container(self):
         # a container can only be started if it is in 'created' or 'exited'

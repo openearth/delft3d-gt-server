@@ -957,7 +957,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
         result.id = task_uuid
 
         # call method, check if do_docker_create is called once, uuid updates
-        random_postfix = self.container._create_container()
+        name = self.container._create_container()
 
         mocked_task.assert_called_once_with(
             args=({'type': 'preprocess'}, {}),
@@ -971,7 +971,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
                                         self.scene.workingdir, 'simulation')},
-                    'name': 'preprocess-{}-{}'.format(str(self.scene.suid), random_postfix),
+                    'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
                             self.scene.suid),
@@ -999,7 +999,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
                                         self.scene.workingdir, 'simulation')},
-                    'name': 'preprocess-{}-{}'.format(str(self.scene.suid), random_postfix),
+                    'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
                             self.scene.suid),

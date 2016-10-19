@@ -42,7 +42,8 @@ def get_docker_ps(self):
     ]
     """
     # if there are more ignore states we should catch the exception
-    # in the inspect call
+    # in the inspect call. We filter because Docker Swarm can have disconnected
+    # nodes which are seen, but cannot be inspected.
     ignore_states = ['Host Down']
     client = Client(base_url='http://localhost:4000')
     containers = client.containers(all=True)  # filter here does not work
