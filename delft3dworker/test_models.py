@@ -408,7 +408,7 @@ class ScenarioZeroPhaseTestCase(TestCase):
 
 class ScenarioPhasesTestCase(TestCase):
     """TODO Some sort of flow matrix should be defined between phases.
-    We can then randomly set container states, and check whether the 
+    We can then randomly set container states, and check whether the
     resulting phases are allowed. This is way too verbose.
 
     Basicly we create a framework for phases and check its function,
@@ -963,7 +963,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
             args=({'type': 'preprocess'}, {}),
             expires=settings.TASK_EXPIRE_TIME,
             kwargs={'command': '/data/run.sh /data/svn/scripts/'
-                    'preprocess/preprocessing.py',
+                    'preprocess/preprocess.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
                     'memory_limit': '100m',
@@ -991,7 +991,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
         mocked_task.assert_called_once_with(args=(
             {'type': 'preprocess'}, {},),
             kwargs={'command': '/data/run.sh /data/svn/scripts/'
-                    'preprocess/preprocessing.py',
+                    'preprocess/preprocess.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
                     'memory_limit': '100m',
