@@ -7,7 +7,9 @@ import json
 import logging
 import math
 import os
+import random
 import shutil
+import string
 import uuid
 import zipfile
 
@@ -692,7 +694,6 @@ class Scene(models.Model):
                     processing_container.docker_state == 'non-existent'):
                 self.shift_to_phase(self.phases.sim_fin)
 
-
             return
 
         elif self.phase == self.phases.postproc_create:
@@ -1278,14 +1279,18 @@ class Container(models.Model):
         # Specific settings for each container type
         # TODO It would be more elegant to put these
         # hard-coded settings in a separate file.
+        random_postfix = ''.join(random.SystemRandom().choice(
+            string.ascii_uppercase + string.digits) for _ in range(5))
+
         kwargs = {
             'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
                         'volumes': ['{0}:/data'.format(simdir)],
                         'memory_limit': '3g',  # 75% of t2.medium
                         'environment': {"uuid": str(self.scene.suid),
                                         "folder": simdir},
-                        'name': "{}-{}".format(self.container_type,
-                                               str(self.scene.suid)),
+                        'name': "{}-{}-{}".format(self.container_type,
+                                                  str(self.scene.suid),
+                                                  random_postfix),
                         'folders': [simdir],
                         'command': ""},
 
@@ -1296,8 +1301,9 @@ class Container(models.Model):
                        'memory_limit': '400m',
                        'environment': {"uuid": str(self.scene.suid),
                                        "folder": expdir},
-                       'name': "{}-{}".format(self.container_type,
-                                              str(self.scene.suid)),
+                       'name': "{}-{}-{}".format(self.container_type,
+                                                 str(self.scene.suid),
+                                                 random_postfix),
                        'folders': [expdir,
                                    simdir],
                        'command': "/data/run.sh /data/svn/scripts/"
@@ -1311,8 +1317,9 @@ class Container(models.Model):
                             'memory_limit': '500m',
                             'environment': {"uuid": str(self.scene.suid),
                                             "folder": posdir},
-                            'name': "{}-{}".format(self.container_type,
-                                                   str(self.scene.suid)),
+                            'name': "{}-{}-{}".format(self.container_type,
+                                                      str(self.scene.suid),
+                                                      random_postfix),
                             'folders': [simdir,
                                         posdir],
                             'command': " ".join(["/data/run.sh",
@@ -1327,8 +1334,9 @@ class Container(models.Model):
                            'memory_limit': '100m',
                            'environment': {"uuid": str(self.scene.suid),
                                            "folder": simdir},
-                           'name': "{}-{}".format(self.container_type,
-                                                  str(self.scene.suid)),
+                           'name': "{}-{}-{}".format(self.container_type,
+                                                     str(self.scene.suid),
+                                                     random_postfix),
                            'folders': [predir,
                                        simdir],
                            'command': "/data/run.sh /data/svn/scripts/"
@@ -1341,8 +1349,9 @@ class Container(models.Model):
                              'memory_limit': '200m',
                              'environment': {"uuid": str(self.scene.suid),
                                              "folder": syndir},
-                             'name': "{}-{}".format(self.container_type,
-                                                    str(self.scene.suid)),
+                             'name': "{}-{}-{}".format(self.container_type,
+                                                       str(self.scene.suid),
+                                                       random_postfix),
                              'folders': [],  # sync doesn't need new folders
                              'command': "/data/run.sh cleanup"
                              },
@@ -1352,11 +1361,12 @@ class Container(models.Model):
                             '{0}:/data/input:ro'.format(simdir),
                             '{0}:/data/output:z'.format(prodir)
                         ],
-                        'memory_limit': '700m',
+                        'memory_limit': '1g',
                         'environment': {"uuid": str(self.scene.suid),
                                         "folder": prodir},
-                        'name': "{}-{}".format(self.container_type,
-                                               str(self.scene.suid)),
+                        'name': "{}-{}-{}".format(self.container_type,
+                                                  str(self.scene.suid),
+                                                  random_postfix),
                         'folders': [prodir,
                                     simdir],
                         'command': ' '.join([
@@ -1386,10 +1396,13 @@ class Container(models.Model):
         )
 
         self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + "Container was created \n"
+        self.container_log += str(self.task_starttime) + \
+            "Container was created \n"
 
         self.task_uuid = result.id
         self.save()
+
+        return random_postfix
 
     def _start_container(self):
         # a container can only be started if it is in 'created' or 'exited'
@@ -1402,7 +1415,8 @@ class Container(models.Model):
         result = do_docker_start.apply_async(args=(self.docker_id,),
                                              expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + "Container was started \n"
+        self.container_log += str(self.task_starttime) + \
+            "Container was started \n"
 
         self.task_uuid = result.id
         self.save()
@@ -1420,7 +1434,8 @@ class Container(models.Model):
         result = do_docker_stop.apply_async(args=(self.docker_id,),
                                             expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + "Container was stopped \n"
+        self.container_log += str(self.task_starttime) + \
+            "Container was stopped \n"
 
         self.task_uuid = result.id
         self.save()
@@ -1439,7 +1454,8 @@ class Container(models.Model):
         )
 
         self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + "Container was removed \n"
+        self.container_log += str(self.task_starttime) + \
+            "Container was removed \n"
 
         self.task_uuid = result.id
         self.save()
