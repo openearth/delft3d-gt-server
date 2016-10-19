@@ -72,9 +72,9 @@ class ManagementTest(TestCase):
         TODO: Add test case with timeout error as return_value
         """
         client = mockClient.return_value
-        client.containers.return_value = [{'Id': 'abcdefg',
+        client.containers.return_value = [{'Id': 'abcdefg', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'preprocess'}}},
-                                          {'Id': 'orphan',
+                                          {'Id': 'orphan', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'preprocess'}}}]
 
         def inspect(container=''):
@@ -105,9 +105,9 @@ class ManagementTest(TestCase):
         TODO: Add test case with timeout error as return_value
         """
         client = mockClient.return_value
-        client.containers.return_value = [{'Id': 'abcdefg',
+        client.containers.return_value = [{'Id': 'abcdefg', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'preprocess'}}},
-                                          {'Id': 'orphan',
+                                          {'Id': 'orphan', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'preprocess'}}}]
 
         # Give non existing label, so this container should be ignored

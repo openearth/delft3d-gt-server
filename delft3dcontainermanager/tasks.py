@@ -41,9 +41,14 @@ def get_docker_ps(self):
       {...},
     ]
     """
+    # if there are more ignore states we should catch the exception
+    # in the inspect call. We filter because Docker Swarm can have disconnected
+    # nodes which are seen, but cannot be inspected.
+    ignore_states = ['Host Down']
     client = Client(base_url='http://localhost:4000')
-    containers = client.containers(all=True)
-    containers_id = [container['Id'] for container in containers]
+    containers = client.containers(all=True)  # filter here does not work
+    filtered_containers = [c for c in containers if c['Status'] not in ignore_states]
+    containers_id = [container['Id'] for container in filtered_containers]
     inspected_containers = [client.inspect_container(
         container_id) for container_id in containers_id]
     return inspected_containers
@@ -171,7 +176,7 @@ def do_docker_remove(self, container_id, force=False):
                     folder = os.path.split(value)[0]  # root
                     break
             with open(os.path.join(folder,
-                    'docker_{}.log'.format(name)), 'wb') as f:
+                                   'docker_{}.log'.format(name)), 'wb') as f:
                 f.write(log)
         except:
             logging.error("Failed at writing docker log.")
