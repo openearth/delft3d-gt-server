@@ -41,10 +41,12 @@ def get_docker_ps(self):
       {...},
     ]
     """
-    used_states = ['created', 'restarting', 'running', 'paused', 'exited']
+    # if there are more ignore states we should catch the exception
+    # in the inspect call
+    ignore_states = ['Host Down']
     client = Client(base_url='http://localhost:4000')
     containers = client.containers(all=True)  # filter here does not work
-    filtered_containers = [c for c in containers if c['Status'] in used_states]
+    filtered_containers = [c for c in containers if c['Status'] not in ignore_states]
     containers_id = [container['Id'] for container in filtered_containers]
     inspected_containers = [client.inspect_container(
         container_id) for container_id in containers_id]
