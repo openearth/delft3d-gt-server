@@ -226,6 +226,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         parameters = self.request.query_params.getlist('parameter', [])
         template = self.request.query_params.getlist('template', [])
         shared = self.request.query_params.getlist('shared', [])
+        users = self.request.query_params.getlist('users', [])
 
         # explained later
         temp_workaround = False
@@ -322,6 +323,10 @@ class SceneViewSet(viewsets.ModelViewSet):
             lookup = {"private": "p", "company": "c", "public": "w"}
             wanted = [lookup[share] for share in shared if share in lookup]
             queryset = queryset.filter(shared__in=wanted)
+
+        if len(users) > 0:
+            userids = [int(user) for user in users if user.isdigit()]
+            queryset = queryset.filter(owner__in=userids)
 
         # self.queryset = queryset
 
