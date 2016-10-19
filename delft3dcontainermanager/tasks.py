@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 
 import os
+import logging
+from shutil import rmtree
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from docker import Client
@@ -39,9 +41,14 @@ def get_docker_ps(self):
       {...},
     ]
     """
-    client = Client(base_url='unix://var/run/docker.sock')
-    containers = client.containers(all=True)
-    containers_id = [container['Id'] for container in containers]
+    # if there are more ignore states we should catch the exception
+    # in the inspect call. We filter because Docker Swarm can have disconnected
+    # nodes which are seen, but cannot be inspected.
+    ignore_states = ['Host Down']
+    client = Client(base_url='http://localhost:4000')
+    containers = client.containers(all=True)  # filter here does not work
+    filtered_containers = [c for c in containers if c['Status'] not in ignore_states]
+    containers_id = [container['Id'] for container in filtered_containers]
     inspected_containers = [client.inspect_container(
         container_id) for container_id in containers_id]
     return inspected_containers
@@ -52,7 +59,7 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
     """
     Retrieve the log of a container and return container id and log
     """
-    client = Client(base_url='unix://var/run/docker.sock')
+    client = Client(base_url='http://localhost:4000')
     log = client.logs(
         container=str(container_id),
         stream=False,
@@ -66,7 +73,7 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
 
 @shared_task(bind=True, throws=(HTTPError))
 def do_docker_create(self, label, parameters, environment, name, image,
-                     volumes, folders, command):
+                     volumes, memory_limit, folders, command):
     """
     Create necessary directories in a working directory
     for the mounts in the containers.
@@ -102,8 +109,9 @@ def do_docker_create(self, label, parameters, environment, name, image,
             config.write(f)  # Yes, the ConfigParser writes to f
 
     # Create docker container
-    client = Client(base_url='unix://var/run/docker.sock')
-    config = client.create_host_config(binds=volumes)
+    client = Client(base_url='http://localhost:4000')
+    # We could also pass mem_reservation since docker-py 1.10
+    config = client.create_host_config(binds=volumes, mem_limit=memory_limit)
     container = client.create_container(
         image,  # docker image
         name=name,
@@ -121,7 +129,7 @@ def do_docker_start(self, container_id):
     """
     Start a container with a specific id and id
     """
-    client = Client(base_url='unix://var/run/docker.sock')
+    client = Client(base_url='http://localhost:4000')
     client.start(container=container_id)
     return container_id, ""
 
@@ -131,18 +139,48 @@ def do_docker_stop(self, container_id, timeout=10):
     """
     Stop a container with a specific id and return id
     """
-    client = Client(base_url='unix://var/run/docker.sock')
+    client = Client(base_url='http://localhost:4000')
     client.stop(container=container_id, timeout=timeout)
+
     return container_id, ""
 
 
 @shared_task(bind=True, throws=(HTTPError))
 def do_docker_remove(self, container_id, force=False):
     """
-    Remove a container with a specific id and return id
+    Remove a container with a specific id and return id.
+    Try to write the docker log output as well.
     """
-    client = Client(base_url='unix://var/run/docker.sock')
+
+    # Commented out removing folders in this task
+    # functionality could be moved, therefore not removed
+
+    client = Client(base_url='http://localhost:4000')
+    info = client.inspect_container(container=container_id)
+    log = client.logs(
+        container=str(container_id),
+        stream=False,
+        stdout=True,
+        stderr=True,
+        timestamps=True,
+    )
     client.remove_container(container=container_id, force=force)
+
+    if isinstance(info, dict):
+        try:
+            name = info['Name'].split('-')[0].strip('/')  # type
+            envs = info['Config']['Env']
+            for env in envs:
+                key, value = env.split("=")
+                if key == 'folder':
+                    folder = os.path.split(value)[0]  # root
+                    break
+            with open(os.path.join(folder,
+                                   'docker_{}.log'.format(name)), 'wb') as f:
+                f.write(log)
+        except:
+            logging.error("Failed at writing docker log.")
+
     return container_id, ""
 
 

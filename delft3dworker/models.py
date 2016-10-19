@@ -3,10 +3,13 @@ from __future__ import absolute_import
 import copy
 import hashlib
 import io
+import json
 import logging
 import math
 import os
+import random
 import shutil
+import string
 import uuid
 import zipfile
 
@@ -19,6 +22,8 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
 from django.utils.timezone import now
+
+from model_utils import Choices
 
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_groups_with_perms
@@ -246,36 +251,58 @@ class Scene(models.Model):
     shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True)
 
-    phases = (
-        (0, 'New'),
-        (1, 'Creating containers...'),
-        (2, 'Created containers'),
-        (3, 'Starting preprocessing...'),
-        (4, 'Running preprocessing...'),
-        (5, 'Finished preprocessing'),
-        (6, 'Idle: waiting for user input'),
-        (7, 'Starting simulation...'),
-        (8, 'Running simulation...'),
-        (9, 'Finished simulation'),
-        (10, 'Stopping simulation...'),
-        (11, 'Starting postprocessing...'),
-        (12, 'Running postprocessing...'),
-        (13, 'Finished postprocessing'),
-        (14, 'Starting export...'),
-        (15, 'Running export...'),
-        (16, 'Finished export'),
-        (17, 'Starting container remove...'),
-        (18, 'Removing containers...'),
-        (19, 'Containers removed'),
-        (20, 'Finished'),
+    phases = Choices(
+        # Create container models
+        (0, 'new', 'New'),
 
-        (1000, 'Starting Abort...'),
-        (1001, 'Aborting...'),
-        (1002, 'Finished Abort'),
-        (1003, 'Queued')
+        # Preprocessing container
+        (2, 'preproc_create', 'Allocating preprocessing resources'),
+        (3, 'preproc_start', 'Starting preprocessing'),
+        (4, 'preproc_run', 'Running preprocessing'),
+        (5, 'preproc_fin', 'Finished preprocessing'),
+
+        # User input wait phase
+        (6, 'idle', 'Idle: waiting for user input'),
+
+        # Simulation container
+        (10, 'sim_create', 'Allocating simulation resources'),
+        (11, 'sim_start', 'Starting simulation'),
+        (12, 'sim_run', 'Running simulation'),
+        (13, 'sim_fin', 'Finished simulation'),
+        (14, 'sim_stop', 'Stopping simulation'),
+
+        # Postprocessing container
+        (20, 'postproc_create', 'Allocating postprocessing resources'),
+        (21, 'postproc_start', 'Starting postprocessing'),
+        (22, 'postproc_run', 'Running postprocessing'),
+        (23, 'postproc_fin', 'Finished postprocessing'),
+
+        # Export container
+        (30, 'exp_create', 'Allocating export resources'),
+        (31, 'exp_start', 'Starting export'),
+        (32, 'exp_run', 'Running export'),
+        (33, 'exp_fin', 'Finished export'),
+
+        # Remove containers
+        (17, 'cont_rem_start', 'Starting container remove'),
+        (18, 'cont_rem_run', 'Removing containers'),
+        (19, 'cont_rem_fin', 'Containers removed'),
+
+        # Sync container
+        (40, 'sync_create', 'Allocating synchronization resources'),
+        (41, 'sync_start', 'Started synchronization'),
+        (42, 'sync_run', 'Running synchronization'),
+        (43, 'sync_fin', 'Finished synchronization'),
+
+        # Other phases
+        (50, 'fin', 'Finished'),
+        (1000, 'abort_start', 'Starting Abort'),
+        (1001, 'abort_run', 'Aborting'),
+        (1002, 'abort_fin', 'Finished Abort'),
+        (1003, 'queued', 'Queued')
     )
 
-    phase = models.PositiveSmallIntegerField(default=0, choices=phases)
+    phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
 
     # PROPERTY METHODS
 
@@ -288,15 +315,15 @@ class Scene(models.Model):
 
     def start(self):
         # only allow a start when Scene is 'Idle' or 'Finished'
-        if self.phase in (6, 20):
-            self.shift_to_phase(1003)   # shift to Queued
+        if self.phase in (self.phases.idle, self.phases.fin):
+            self.shift_to_phase(self.phases.queued)   # shift to Queued
 
         return {"task_id": None, "scene_id": None}
 
     def abort(self):
         # Stop simulation
-        if self.phase >= 7 and self.phase <= 9:
-            self.shift_to_phase(10)   # stop Simulation
+        if self.phase >= self.phases.sim_start and self.phase <= self.phases.sim_fin:
+            self.shift_to_phase(self.phases.sim_stop)   # stop Simulation
 
         return {
             "task_id": None,
@@ -348,18 +375,6 @@ class Scene(models.Model):
 
                 # Could be dynamic or tuple of extensions
                 if (
-                    'export_d3doutput' in options
-                ) and (
-                    root.endswith('simulation')
-                ) and (
-                    not f.startswith('TMP')
-                ) and (
-                    ext in ['.dat', '.def', '.nc']
-                ):
-                    add = True
-
-                # Could be dynamic or tuple of extensions
-                if (
                     'export_images' in options
                 ) and (
                     ext in ['.png', '.jpg', '.gif']
@@ -367,7 +382,10 @@ class Scene(models.Model):
                     add = True
 
                 if 'export_thirdparty' in options and (
-                        'export' in root):
+                        'export' in root
+                ) and (
+                    ext in ['.gz', ]
+                ):
                     add = True
 
                 # Zip movie
@@ -420,11 +438,16 @@ class Scene(models.Model):
                 "images": [],
                 "location": "process/"
             }
+            self.info["subenvironment_images"] = {
+                "images": [],
+                "location": "postprocess/"
+            }
             self.info["logfile"] = {
                 "file": "",
                 "location": "simulation/"
             }
             self.info["procruns"] = 0
+            self.info["postprocess_output"] = {}
 
             self.fileurl = os.path.join(
                 settings.WORKER_FILEURL, str(self.suid), '')
@@ -473,110 +496,121 @@ class Scene(models.Model):
 
     def update_and_phase_shift(self):
 
-        # ### PHASE: New
-        if self.phase == 0:
+        if self.phase == self.phases.new:
 
-            # what do we do? - create containers
             preprocess_container = Container.objects.create(
                 scene=self,
                 container_type='preprocess',
-                desired_state='created',
+                desired_state='non-existent',
             )
             preprocess_container.save()
             delft3d_container = Container.objects.create(
                 scene=self,
                 container_type='delft3d',
-                desired_state='created',
+                desired_state='non-existent',
             )
             delft3d_container.save()
             process_container = Container.objects.create(
                 scene=self,
                 container_type='process',
-                desired_state='created',
+                desired_state='non-existent',
             )
             process_container.save()
             export_container = Container.objects.create(
                 scene=self,
                 container_type='export',
-                desired_state='created',
+                desired_state='non-existent',
             )
             export_container.save()
+            postprocess_container = Container.objects.create(
+                scene=self,
+                container_type='postprocess',
+                desired_state='non-existent',
+            )
+            postprocess_container.save()
+            sync_clean_container = Container.objects.create(
+                scene=self,
+                container_type='sync_cleanup',
+                desired_state='non-existent',
+            )
+            sync_clean_container.save()
 
-            # when do we shift? - always
-            self.shift_to_phase(1)  # shift to Creating...
-
-            return
-
-        # ### PHASE: Creating...
-        if self.phase == 1:
-
-            # what do we do? - and now we wait...
-
-            # when do we shift? - when all containers are created
-            done = True
-            for container in self.container_set.all():
-                done = done and (container.docker_state == 'created')
-
-            if done:
-                self.shift_to_phase(2)  # shift to Created containers
+            self.shift_to_phase(self.phases.preproc_create)
 
             return
 
-        # ### PHASE: Created containers
-        if self.phase == 2:
+        elif self.phase == self.phases.preproc_create:
 
-            # what do we do? - nothing
+            container = self.container_set.get(container_type='preprocess')
+            container.set_desired_state('created')
 
-            # when do we shift? - always
-            self.shift_to_phase(3)  # shift to Starting preprocessing...
+            if (container.docker_state != 'non-existent'):
+                self.shift_to_phase(self.phases.preproc_start)
 
             return
 
-        # ### PHASE: Starting preprocessing...
-        if self.phase == 3:
+        elif self.phase == self.phases.preproc_start:
 
-            # what do we do? - tell preprocess to start
             container = self.container_set.get(container_type='preprocess')
             container.set_desired_state('running')
 
-            # when do we shift? - preprocess is running
             if (container.docker_state == 'running'):
-                self.shift_to_phase(4)  # shift to Running preprocessing...
+                self.shift_to_phase(self.phases.preproc_run)
 
-            # when do we shift? - preprocess is exited
-            if (container.docker_state == 'exited'):
+            elif (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
-                self.shift_to_phase(5)  # shift to Created containers
+                self.shift_to_phase(self.phases.preproc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.preproc_create)
+                logging.error("Lost preprocess container!")
 
             return
 
-        # ### PHASE: Running preprocessing...
-        if self.phase == 4:
+        elif self.phase == self.phases.preproc_run:
 
-            # what do we do? - and now we wait...
-
-            # when do we shift? - preprocess is done
             container = self.container_set.get(container_type='preprocess')
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
-                self.shift_to_phase(5)  # shift to Created containers
+                self.shift_to_phase(self.phases.preproc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.preproc_start)
+                logging.error("Lost preprocess container!")
 
             return
 
-        # ### PHASE: Finished preprocessing
-        if self.phase == 5:
+        elif self.phase == self.phases.preproc_fin:
 
-            # what do we do? - nothing
+            container = self.container_set.get(container_type='preprocess')
+            container.set_desired_state('non-existent')
 
-            # when do we shift? - preprocess is done
-            self.shift_to_phase(6)  # shift to Idle
+            if (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.idle)
 
             return
 
-        # ### PHASE: Starting simulation...
-        if self.phase == 7:
+        elif self.phase == self.phases.sim_create:
 
-            # what do we do? - tell simulation containers to start
+            delft3d_container = self.container_set.get(
+                container_type='delft3d')
+            if delft3d_container.docker_state == 'non-existent':
+                delft3d_container.set_desired_state('created')
+
+            processing_container = self.container_set.get(
+                container_type='process')
+            if processing_container.docker_state == 'non-existent':
+                processing_container.set_desired_state('created')
+
+            if (delft3d_container.docker_state != 'non-existent' and
+                    processing_container.docker_state != 'non-existent'):
+                self.shift_to_phase(self.phases.sim_start)
+
+            return
+
+        elif self.phase == self.phases.sim_start:
 
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
@@ -586,53 +620,63 @@ class Scene(models.Model):
                 container_type='process')
             processing_container.set_desired_state('running')
 
-            # when do we shift? - simulation containers are running
             if (delft3d_container.docker_state == 'running'):
-                self.shift_to_phase(8)  # shift to Running simulation...
+                self.shift_to_phase(self.phases.sim_run)
+
+            # If container disappeared, shift back
+            elif (delft3d_container.docker_state == 'non-existent' or
+                  processing_container.docker_state == 'non-existent'):
+                logging.error("Lost sim or process container!")
+                self.shift_to_phase(self.phases.sim_create)
 
             return
 
-        # ### PHASE: Running simulation...
-        if self.phase == 8:
+        elif self.phase == self.phases.sim_run:
 
-            # what do we do? - update progress
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
             processing_container = self.container_set.get(
                 container_type='process')
 
-            self._local_scan()  # update images and logfile
+            self._local_scan_process()  # update images and logfile
 
             self.progress = delft3d_container.container_progress
             self.save()
 
-            # when do we shift? - simulation container is done
             if (delft3d_container.docker_state == 'exited'):
                 delft3d_container.set_desired_state('exited')
                 processing_container.set_desired_state('exited')
-                self.shift_to_phase(9)  # shift to Finished simulation
+                self.shift_to_phase(self.phases.sim_fin)
+
+            # If container disappeared, shift back
+            elif (delft3d_container.docker_state == 'non-existent' or
+                  processing_container.docker_state == 'non-existent'):
+                logging.error("Lost sim/process container!")
+                self.shift_to_phase(self.phases.sim_create)
 
             return
 
-        # ### PHASE: Finished simulation
-        if self.phase == 9:
-
-            # what do we do? - update progress one last time
+        elif self.phase == self.phases.sim_fin:
 
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
-            self.progress = delft3d_container.container_progress
-            self.save()
+            delft3d_container.set_desired_state('non-existent')
 
-            # when do we shift? - always
-            self.shift_to_phase(14)  # shift to Starting export...
+            processing_container = self.container_set.get(
+                container_type='process')
+            processing_container.set_desired_state('non-existent')
+
+            if (delft3d_container.docker_state != 'non-existent'):
+                self.progress = delft3d_container.container_progress
+                self.save()
+
+            else:
+                self.shift_to_phase(self.phases.postproc_create)
 
             return
 
-        # ### PHASE: Stopping simulation...
-        if self.phase == 10:
+        elif self.phase == self.phases.sim_stop:
 
-            # what do we do? - tell simulation and processing to stop
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
             delft3d_container.set_desired_state('exited')
@@ -641,86 +685,147 @@ class Scene(models.Model):
                 container_type='process')
             processing_container.set_desired_state('exited')
 
-            # when do we shift? - delft3d is exited
             if (delft3d_container.docker_state == 'exited' and
                     processing_container.docker_state == 'exited'):
-                self.shift_to_phase(14)  # shift to Starting export...
+                self.shift_to_phase(self.phases.sim_fin)
+
+            # If container disappeared, shift forward
+            elif (delft3d_container.docker_state == 'non-existent' or
+                    processing_container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.sim_fin)
 
             return
 
-        # ### PHASE: Starting export...
-        if self.phase == 14:
+        elif self.phase == self.phases.postproc_create:
 
-            # what do we do? - tell export to start
+            container = self.container_set.get(container_type='postprocess')
+            container.set_desired_state('created')
+
+            if (container.docker_state != 'non-existent'):
+                self.shift_to_phase(self.phases.postproc_start)
+
+            return
+
+        elif self.phase == self.phases.postproc_start:
+
+            container = self.container_set.get(container_type='postprocess')
+            container.set_desired_state('running')
+
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(self.phases.postproc_run)
+
+            elif (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.postproc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.postproc_create)
+                logging.error("Lost postprocess container!")
+
+            return
+
+        elif self.phase == self.phases.postproc_run:
+
+            container = self.container_set.get(container_type='postprocess')
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.postproc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.postproc_create)
+                logging.error("Lost postprocess container!")
+
+            return
+
+        elif self.phase == self.phases.postproc_fin:
+
+            container = self.container_set.get(container_type='postprocess')
+            container.set_desired_state('non-existent')
+
+            if (container.docker_state == 'non-existent'):
+                self._local_scan_postprocess()  # scan for new images
+                self._parse_postprocessing()  # parse output.ini
+                self.shift_to_phase(self.phases.exp_create)
+
+            return
+
+        elif self.phase == self.phases.exp_create:
+
+            container = self.container_set.get(container_type='export')
+            container.set_desired_state('created')
+
+            if (container.docker_state != 'non-existent'):
+                self.shift_to_phase(self.phases.exp_start)
+
+            return
+
+        elif self.phase == self.phases.exp_start:
+
             container = self.container_set.get(container_type='export')
             container.set_desired_state('running')
 
-            # when do we shift? - export is running
             if (container.docker_state == 'running'):
-                self.shift_to_phase(15)  # shift to Running export...
+                self.shift_to_phase(self.phases.exp_run)
 
-            # when do we shift? - export is exited
-            if (container.docker_state == 'exited'):
+            elif (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
-                self.shift_to_phase(16)  # shift to Finish export
+                self.shift_to_phase(self.phases.exp_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.exp_create)
+                logging.error("Lost export container!")
 
             return
 
-        # ### PHASE: Running export...
-        if self.phase == 15:
+        elif self.phase == self.phases.exp_run:
 
-            # what do we do? - and now we wait...
-
-            # when do we shift? - export is done
             container = self.container_set.get(container_type='export')
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
-                self.shift_to_phase(16)  # shift to Finish export
+                self.shift_to_phase(self.phases.exp_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.exp_create)
+                logging.error("Lost export container!")
 
             return
 
-        # ### PHASE: Finished export
-        if self.phase == 16:
+        elif self.phase == self.phases.exp_fin:
 
-            # what do we do? - nothing
+            container = self.container_set.get(container_type='export')
+            container.set_desired_state('non-existent')
 
-            # when do we shift? - export is done
-            self.shift_to_phase(20)  # shift to Idle
+            if (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.sync_create)  # shift to sync
 
             return
 
-        # ### PHASE: Starting container remove...
-        if self.phase == 17:
+        elif self.phase == self.phases.cont_rem_start:
 
-            # what do we do? - tell containers to harakiri
             for container in self.container_set.all():
                 container.set_desired_state('non-existent')
 
-            # when do we shift? - always
-            self.shift_to_phase(18)  # Removing containers...
+            self.shift_to_phase(self.phases.cont_rem_run)
 
             return
 
-        # ### PHASE: Removing containers...
-        if self.phase == 18:
+        elif self.phase == self.phases.cont_rem_run:
 
-            # what do we do? - and now we wait...
-
-            # when do we shift? - containers are gone
             done = True
             for container in self.container_set.all():
                 done = done and (container.docker_state == 'non-existent')
 
             if done:
-                self.shift_to_phase(19)  # shift to Containers removed
+                self.shift_to_phase(self.phases.cont_rem_fin)
 
             return
 
+        elif self.phase == self.phases.abort_start:
 
-        # ### PHASE: Starting Abort...
-        if self.phase == 1000:
-
-            # what do we do? - tell containers to stop
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
             delft3d_container.set_desired_state('exited')
@@ -729,53 +834,104 @@ class Scene(models.Model):
                 container_type='process')
             processing_container.set_desired_state('exited')
 
-            # when do we shift? - always
-            self.shift_to_phase(1001)  # shift to Aborting...
+            self.shift_to_phase(self.phases.abort_run)
 
             return
 
-        # ### PHASE: Aborting...
-        if self.phase == 1001:
+        elif self.phase == self.phases.abort_run:
 
-            # what do we do? - and now we wait...
-
-            # when do we shift? - containers are gone
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
             processing_container = self.container_set.get(
                 container_type='process')
 
             if (delft3d_container.docker_state == 'exited'):
-                self.shift_to_phase(1002)  # shift to Finished Aborting
+                self.shift_to_phase(self.phases.abort_fin)
 
             return
 
-        # ### PHASE: Finished Aborting
-        if self.phase == 1002:
+        elif self.phase == self.phases.abort_fin:
+            delft3d_container = self.container_set.get(
+                container_type='delft3d')
+            delft3d_container.set_desired_state('non-existent')
 
-            # what do we do? - nothing
+            processing_container = self.container_set.get(
+                container_type='process')
+            processing_container.set_desired_state('non-existent')
 
-            # when do we shift? - always
-            self.shift_to_phase(6)  # shift to Idle
+            if (delft3d_container.docker_state == 'non-existent' and
+                    processing_container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.idle)
 
             return
 
-        # ### PHASE: Queued
-        if self.phase == 1003:
+        elif self.phase == self.phases.sync_create:
 
-            # what do we do? - check running simulations
+            container = self.container_set.get(container_type='sync_cleanup')
+            container.set_desired_state('created')
+
+            if (container.docker_state != 'non-existent'):
+                self.shift_to_phase(self.phases.sync_start)
+
+            return
+
+        elif self.phase == self.phases.sync_start:
+
+            container = self.container_set.get(container_type='sync_cleanup')
+            container.set_desired_state('running')
+
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(self.phases.sync_run)
+
+            elif (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.sync_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.sync_create)
+                logging.error("Lost sync container!")
+
+            return
+
+        elif self.phase == self.phases.sync_run:
+
+            container = self.container_set.get(container_type='sync_cleanup')
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.sync_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.sync_create)
+                logging.error("Lost sync container!")
+
+            return
+
+        elif self.phase == self.phases.sync_fin:
+
+            container = self.container_set.get(container_type='sync_cleanup')
+            container.set_desired_state('non-existent')
+
+            if (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.fin)
+
+            return
+
+        elif self.phase == self.phases.queued:
+
             scene_phases = Scene.objects.values_list('phase', flat=True)
 
             number_simulations = sum(
-                (i >= 7 and i <= 10) for i in scene_phases)
+                (i >= self.phases.sim_create and i <= self.phases.sim_stop) for i in scene_phases)
 
-            # when do we shift? - if space is available
             if number_simulations < settings.MAX_SIMULATIONS:
-                self.shift_to_phase(7)
+                self.shift_to_phase(self.phases.sim_create)
 
             return
 
-        return
+        else:
+            return
 
     def shift_to_phase(self, new_phase):
         self.phase = new_phase
@@ -796,10 +952,9 @@ class Scene(models.Model):
     def _update_state_and_save(self):
 
         # TODO: write _update_state_and_save method
-
         return self.state
 
-    def _local_scan(self):
+    def _local_scan_process(self):
         for root, dirs, files in os.walk(
             os.path.join(self.workingdir, 'process')
         ):
@@ -837,6 +992,39 @@ class Scene(models.Model):
                         self.info["logfile"]["file"] = f
                         break
 
+    def _local_scan_postprocess(self):
+        for root, dirs, files in os.walk(
+            os.path.join(self.workingdir, 'postprocess')
+        ):
+            for f in sorted(files):
+                name, ext = os.path.splitext(f)
+                if ext in ('.png', '.jpg', '.gif'):
+                    # TODO use get to check image list and
+                    # make this code less deep in if/for statements
+                    if ("subenvironment" in name and
+                        f not in self.info[
+                            "subenvironment_images"]["images"]):
+                        self.info["subenvironment_images"][
+                            "images"].append(f)
+                    else:
+                        # Other images ?
+                        pass
+        self.save()
+
+    # Run this after post processing
+    def _parse_postprocessing(self):
+        outputfn = os.path.join(self.workingdir, 'postprocess', 'output.json')
+        if os.path.exists(outputfn):
+            with open(outputfn) as f:
+                try:
+                    output_dict = json.load(f)
+                except:
+                    logging.error("Error parsing postprocessing output.json")
+            self.info["postprocess_output"].update(output_dict)
+        else:
+            logging.error("Couldn't find postprocessing output.json")
+        self.save()
+
     def __unicode__(self):
         return self.name
 
@@ -863,6 +1051,7 @@ class Container(models.Model):
         ('process', 'process'),
         ('postprocess', 'postprocess'),
         ('export', 'export'),
+        ('sync_cleanup', 'sync_cleanup'),
     )
 
     container_type = models.CharField(
@@ -896,6 +1085,7 @@ class Container(models.Model):
     container_progress = models.PositiveSmallIntegerField(default=0)
 
     docker_log = models.TextField(blank=True, default='')
+    container_log = models.TextField(blank=True, default='')
 
     # CONTROL METHODS
 
@@ -910,7 +1100,6 @@ class Container(models.Model):
         Get the result from the last task it executed, given that there is a
         result. If the task is not ready, don't do anything.
         """
-
         if self.task_uuid is None:
             return
 
@@ -936,8 +1125,8 @@ class Container(models.Model):
                     self.docker_log = docker_log
                     progress = log_progress_parser(self.docker_log,
                                                    self.container_type)
-                    self.container_progress = math.ceil(progress) if \
-                        progress is not None else 0
+                    if progress is not None:
+                        self.container_progress = math.ceil(progress)
                 else:
                     logging.warn("Can't parse docker log of {}".
                                  format(self.container_type))
@@ -1085,15 +1274,27 @@ class Container(models.Model):
         prodir = os.path.join(workingdir, 'process')
         posdir = os.path.join(workingdir, 'postprocess')
         expdir = os.path.join(workingdir, 'export')
+        syndir = workingdir
 
         # Specific settings for each container type
         # TODO It would be more elegant to put these
         # hard-coded settings in a separate file.
+
+        # Random string in order to avoid naming conflicts.
+        # We want new containers when old ones fail in Docker Swarm
+        # but Docker Swarm still recognizes the old names.
+        random_postfix = ''.join(random.SystemRandom().choice(
+            string.ascii_uppercase + string.digits) for _ in range(5))
+
         kwargs = {
             'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
                         'volumes': ['{0}:/data'.format(simdir)],
-                        'name': "{}-{}".format(self.container_type,
-                                               str(self.scene.suid)),
+                        'memory_limit': '3g',  # 75% of t2.medium
+                        'environment': {"uuid": str(self.scene.suid),
+                                        "folder": simdir},
+                        'name': "{}-{}-{}".format(self.container_type,
+                                                  str(self.scene.suid),
+                                                  random_postfix),
                         'folders': [simdir],
                         'command': ""},
 
@@ -1101,8 +1302,12 @@ class Container(models.Model):
                        'volumes': [
                            '{0}:/data/output:z'.format(expdir),
                            '{0}:/data/input:ro'.format(simdir)],
-                       'name': "{}-{}".format(self.container_type,
-                                              str(self.scene.suid)),
+                       'memory_limit': '400m',
+                       'environment': {"uuid": str(self.scene.suid),
+                                       "folder": expdir},
+                       'name': "{}-{}-{}".format(self.container_type,
+                                                 str(self.scene.suid),
+                                                 random_postfix),
                        'folders': [expdir,
                                    simdir],
                        'command': "/data/run.sh /data/svn/scripts/"
@@ -1112,42 +1317,69 @@ class Container(models.Model):
             'postprocess': {'image': settings.POSTPROCESS_IMAGE_NAME,
                             'volumes': [
                                 '{0}:/data/output:z'.format(posdir),
-                                '{0}:/data/input:ro'.format(workingdir)],
-                            'name': "{}-{}".format(self.container_type,
-                                                   str(self.scene.suid)),
-                            'folders': [workingdir,
+                                '{0}:/data/input:ro'.format(simdir)],
+                            'memory_limit': '500m',
+                            'environment': {"uuid": str(self.scene.suid),
+                                            "folder": posdir},
+                            'name': "{}-{}-{}".format(self.container_type,
+                                                      str(self.scene.suid),
+                                                      random_postfix),
+                            'folders': [simdir,
                                         posdir],
-                            'command': "",
+                            'command': " ".join(["/data/run.sh",
+                                                 "/data/svn/scripts/postprocess/subenvironment.py",
+                                                 "/data/svn/scripts/postprocess/sedimentproperties.py"])
                             },
 
             'preprocess': {'image': settings.PREPROCESS_IMAGE_NAME,
                            'volumes': [
                                '{0}:/data/output:z'.format(simdir),
                                '{0}:/data/input:ro'.format(predir)],
-                           'name': "{}-{}".format(self.container_type,
-                                                  str(self.scene.suid)),
+                           'memory_limit': '100m',
+                           'environment': {"uuid": str(self.scene.suid),
+                                           "folder": simdir},
+                           'name': "{}-{}-{}".format(self.container_type,
+                                                     str(self.scene.suid),
+                                                     random_postfix),
                            'folders': [predir,
                                        simdir],
                            'command': "/data/run.sh /data/svn/scripts/"
-                           "preprocessing/preprocessing.py"
+                           "preprocess/preprocess.py"
                            },
+
+            'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
+                             'volumes': [
+                                 '{0}:/data/input:z'.format(syndir)],
+                             'memory_limit': '200m',
+                             'environment': {"uuid": str(self.scene.suid),
+                                             "folder": syndir},
+                             'name': "{}-{}-{}".format(self.container_type,
+                                                       str(self.scene.suid),
+                                                       random_postfix),
+                             'folders': [],  # sync doesn't need new folders
+                             'command': "/data/run.sh cleanup"
+                             },
 
             'process': {'image': settings.PROCESS_IMAGE_NAME,
                         'volumes': [
                             '{0}:/data/input:ro'.format(simdir),
                             '{0}:/data/output:z'.format(prodir)
                         ],
-                        'name': "{}-{}".format(self.container_type,
-                                               str(self.scene.suid)),
+                        'memory_limit': '1g',
+                        'environment': {"uuid": str(self.scene.suid),
+                                        "folder": prodir},
+                        'name': "{}-{}-{}".format(self.container_type,
+                                                  str(self.scene.suid),
+                                                  random_postfix),
                         'folders': [prodir,
                                     simdir],
                         'command': ' '.join([
                             "/data/run.sh ",
-                            "/data/svn/scripts/postprocessing/"
+                            "/data/svn/scripts/process/"
                             "channel_network_proc.py",
-                            "/data/svn/scripts/postprocessing/"
+                            "/data/svn/scripts/process/"
                             "delta_fringe_proc.py",
-                            "/data/svn/scripts/postprocessing/"
+                            "/data/svn/scripts/process/"
                             "sediment_fraction_proc.py",
                             "/data/svn/scripts/visualisation/"
                             "channel_network_viz.py",
@@ -1159,18 +1391,23 @@ class Container(models.Model):
         }
 
         parameters = self.scene.parameters
-        environment = {"uuid": str(self.scene.suid)}
         label = {"type": self.container_type}
 
         result = do_docker_create.apply_async(
-            args=(label, parameters, environment),
+            args=(label, parameters),
             kwargs=kwargs[self.container_type],
             expires=settings.TASK_EXPIRE_TIME
         )
 
         self.task_starttime = now()
+        self.container_log += str(self.task_starttime) + \
+            "Container was created \n"
+
         self.task_uuid = result.id
         self.save()
+
+        # Return name because of random part at the end
+        return kwargs[self.container_type]['name']
 
     def _start_container(self):
         # a container can only be started if it is in 'created' or 'exited'
@@ -1183,6 +1420,9 @@ class Container(models.Model):
         result = do_docker_start.apply_async(args=(self.docker_id,),
                                              expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
+        self.container_log += str(self.task_starttime) + \
+            "Container was started \n"
+
         self.task_uuid = result.id
         self.save()
 
@@ -1199,6 +1439,9 @@ class Container(models.Model):
         result = do_docker_stop.apply_async(args=(self.docker_id,),
                                             expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
+        self.container_log += str(self.task_starttime) + \
+            "Container was stopped \n"
+
         self.task_uuid = result.id
         self.save()
 
@@ -1216,6 +1459,9 @@ class Container(models.Model):
         )
 
         self.task_starttime = now()
+        self.container_log += str(self.task_starttime) + \
+            "Container was removed \n"
+
         self.task_uuid = result.id
         self.save()
 

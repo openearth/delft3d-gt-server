@@ -10,7 +10,8 @@ django-generic-json-views==0.7
 django-jsonfield==0.9.19
 djangorestframework==3.3.3
 django-guardian==1.4.4
-docker-py==1.7.2
+django-model-utils==2.6
+docker-py==1.10.3
 kombu==3.0.34
 Mako==1.0.3
 markdown==2.6.6

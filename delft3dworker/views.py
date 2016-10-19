@@ -103,74 +103,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     queryset = Scenario.objects.none()
 
     def get_queryset(self):
-        """
-        Optionally restricts the returned purchases to a given parameter,
-        by filtering against a `parameter` query parameter in the URL.
-
-        Possible values:
-            # filters on key occurance
-            - parameter="parameter
-            # filters on key occurance and value
-            - parameter="parameter,value"
-            # filters on key occurance and value between min & max
-            - parameter="parameter,minvalue,maxvalue"
-
-            TODO: This method needs to be rewritten, badly
-        """
-
-        template = Template.objects.all()[0]
-
-        # make scenario's to store shared scene's under
-        # TODO: make a better solution for this (this is obvious VIEW logic
-        # which is now solved in the MODEL)
-
-        try:
-            company_scenario, created = Scenario.objects.get_or_create(
-                owner=self.request.user,
-                name="Shared with company",
-            )
-        except Scenario.MultipleObjectsReturned:
-            multiple = Scenario.objects.filter(
-                owner=self.request.user, name="Shared with company")
-            company_scenario = multiple[0]
-            for superfluos in multiple[1:]:
-                superfluos.delete(True)
-            created = False
-
-        if created:
-            assign_perm('add_scenario', self.request.user, company_scenario)
-            assign_perm('change_scenario', self.request.user, company_scenario)
-            assign_perm('delete_scenario', self.request.user, company_scenario)
-            assign_perm('view_scenario', self.request.user, company_scenario)
-        for scene in get_objects_for_user(
-                self.request.user, 'view_scene', Scene).filter(shared='c'):
-            scene.scenario.add(company_scenario)
-
-        try:
-            world_scenario, created = Scenario.objects.get_or_create(
-                owner=self.request.user,
-                name="Shared with world",
-            )
-        except Scenario.MultipleObjectsReturned:
-            multiple = Scenario.objects.filter(
-                owner=self.request.user, name="Shared with world")
-            world_scenario = multiple[0]
-            for superfluos in multiple[1:]:
-                superfluos.delete(True)
-            created = False
-
-        if created:
-            assign_perm('add_scenario', self.request.user, world_scenario)
-            assign_perm('change_scenario', self.request.user, world_scenario)
-            assign_perm('delete_scenario', self.request.user, world_scenario)
-            assign_perm('view_scenario', self.request.user, world_scenario)
-        for scene in get_objects_for_user(
-                self.request.user, 'view_scene', Scene).filter(shared='w'):
-            scene.scenario.remove(company_scenario)
-            scene.scenario.add(world_scenario)
-
-        # build queryset
-
         queryset = Scenario.objects.all()
 
         return queryset.order_by('name')
@@ -294,9 +226,10 @@ class SceneViewSet(viewsets.ModelViewSet):
         parameters = self.request.query_params.getlist('parameter', [])
         template = self.request.query_params.getlist('template', [])
         shared = self.request.query_params.getlist('shared', [])
+        users = self.request.query_params.getlist('users', [])
 
         # explained later
-        temp_workaraound = False
+        temp_workaround = False
 
         if len(parameters) > 0:
             # Processing user input
@@ -305,6 +238,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                 for parameter in parameters:
 
                     p = parameter.split(',')
+                    p = [val for val in p if val != '']
 
                     # Key, min, max lookup
                     if len(p) == 3:
@@ -340,7 +274,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                             queryset = queryset.filter(pk__in=wanted)
                         except ValueError:
                             pass  # no floats? no results
-                            temp_workaraound = True
+                            temp_workaround = True
 
                     # The front-end is supposed to provide sediment
                     # compositions as follows:
@@ -351,8 +285,8 @@ class SceneViewSet(viewsets.ModelViewSet):
                     #
                     # ...?parameter=composition,sand-clay,mud
                     #
-                    # hence this temp_workaraound:
-                    if temp_workaraound or len(p) > 3:
+                    # hence this temp_workaround:
+                    if temp_workaround or len(p) == 2 or len(p) > 3:
                         key = p[0]
                         values = p[1:]
                         wanted = []
@@ -389,6 +323,10 @@ class SceneViewSet(viewsets.ModelViewSet):
             lookup = {"private": "p", "company": "c", "public": "w"}
             wanted = [lookup[share] for share in shared if share in lookup]
             queryset = queryset.filter(shared__in=wanted)
+
+        if len(users) > 0:
+            userids = [int(user) for user in users if user.isdigit()]
+            queryset = queryset.filter(owner__in=userids)
 
         # self.queryset = queryset
 

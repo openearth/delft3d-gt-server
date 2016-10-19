@@ -120,16 +120,15 @@ class ApiAccessTestCase(TestCase):
     def test_search(self):
         # User Foo can access own models
 
-        # 3 = 1 + 2 created ones for published models
         self.assertEqual(
-            len(self._request(ScenarioViewSet, self.user_foo)), 3)
+            len(self._request(ScenarioViewSet, self.user_foo)), 1)
 
         self.assertEqual(
             len(self._request(SceneViewSet, self.user_foo)), 2)
 
         # User Bar can access only two own models (because Bar owns none)
         self.assertEqual(
-            len(self._request(ScenarioViewSet, self.user_bar)), 2)
+            len(self._request(ScenarioViewSet, self.user_bar)), 0)
         self.assertEqual(
             len(self._request(SceneViewSet, self.user_bar)), 0)
 
@@ -401,11 +400,26 @@ class SceneSearchTestCase(TestCase):
 
         self.assertEqual(len(self._request(search_query_parameter_a)), 2)
         self.assertEqual(len(self._request(search_query_parameter_b)), 2)
-        self.assertEqual(len(self._request(search_query_parameter_c)), 2)
-        self.assertEqual(len(self._request(search_query_parameter_d)), 2)
+        self.assertEqual(len(self._request(search_query_parameter_c)), 0)
+        self.assertEqual(len(self._request(search_query_parameter_d)), 0)
         self.assertEqual(len(self._request(search_query_parameter_e)), 1)
         self.assertEqual(len(self._request(search_query_parameter_f)), 2)
         self.assertEqual(len(self._request(search_query_parameter_g)), 0)
+
+        # user searches
+        search_query_users_1 = {'users': []}
+        search_query_users_2 = {'users': [""]}
+        search_query_users_3 = {'users': ["a"]}
+        search_query_users_4 = {'users': ["1"]}
+        search_query_users_5 = {'users': ["2"]}
+        search_query_users_6 = {'users': ["1","2"]}
+
+        self.assertEqual(len(self._request(search_query_users_1)), 2)
+        self.assertEqual(len(self._request(search_query_users_2)), 0)
+        self.assertEqual(len(self._request(search_query_users_3)), 0)
+        self.assertEqual(len(self._request(search_query_users_4)), 2)
+        self.assertEqual(len(self._request(search_query_users_5)), 0)
+        self.assertEqual(len(self._request(search_query_users_6)), 2)
 
     def test_search_hack(self):
         """
@@ -413,12 +427,12 @@ class SceneSearchTestCase(TestCase):
         """
 
         query = {'parameter': "hack,no-dice"}
-        self.assertEqual(len(self._request(query)), 2)
+        self.assertEqual(len(self._request(query)), 0)
 
         query = {'parameter': "hack,mud"}
-        self.assertEqual(len(self._request(query)), 2)
+        self.assertEqual(len(self._request(query)), 1)
         query = {'parameter': "hack,grease"}
-        self.assertEqual(len(self._request(query)), 2)
+        self.assertEqual(len(self._request(query)), 1)
 
         query = {'parameter': "hack"}
         self.assertEqual(len(self._request(query)), 2)
@@ -621,15 +635,15 @@ class ScenarioSearchTestCase(TestCase):
         """
 
         query = {'search': "DoesNotExist"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
         query = {'search': "1"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
         query = {'search': "2"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
         query = {'search': "es"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
     def test_search_name(self):
         """
@@ -653,10 +667,10 @@ class ScenarioSearchTestCase(TestCase):
         """
 
         query = {'template': "Template 1"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
         query = {'template': "Template 2"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
     def test_search_param(self):
         """
@@ -664,7 +678,7 @@ class ScenarioSearchTestCase(TestCase):
         """
 
         query = {'parameter': "anything"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
     def test_search_param_val(self):
         """
@@ -672,7 +686,7 @@ class ScenarioSearchTestCase(TestCase):
         """
 
         query = {'parameter': "anything,1"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
     def test_search_param_valrange(self):
         """
@@ -680,25 +694,25 @@ class ScenarioSearchTestCase(TestCase):
         """
 
         query = {'parameter': "a,0,1"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
         query = {'parameter': "a,0,1.9999"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
         query = {'parameter': "a,5,6"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
         query = {'parameter': "a,1,2"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
         query = {'parameter': "a,1.0,2"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
         query = {'parameter': "a,1,2.01"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
         query = {'parameter': "a,1.00,2.01"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
         query = {'parameter': "a,4,5"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
         query = {'parameter': "a,1,5"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
     def test_search_hack(self):
         """
@@ -706,24 +720,24 @@ class ScenarioSearchTestCase(TestCase):
         """
 
         query = {'parameter': "hack,grease"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
         query = {'parameter': "hack"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
         query = {'parameter': "hack,sand-clay"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
         query = {'parameter': "hack,mud,grease"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
         query = {'parameter': "hack,mud,grease,more"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
         query = {'parameter': "hack,no-dice"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
         query = {'parameter': "hack,mud"}
-        self.assertEqual(len(self._request(query)), 6)
+        self.assertEqual(len(self._request(query)), 4)
 
     def _request(self, query):
         url = reverse('scenario-list')

@@ -52,6 +52,7 @@ coverage.xml
 
 # Django stuff:
 *.log
+delft3dcontainermanager/provisionedsettings.py
 delft3dgtmain/provisionedsettings.py
 test
 

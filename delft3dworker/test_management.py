@@ -72,13 +72,13 @@ class ManagementTest(TestCase):
         TODO: Add test case with timeout error as return_value
         """
         client = mockClient.return_value
-        client.containers.return_value = [{'Id': 'abcdefg',
+        client.containers.return_value = [{'Id': 'abcdefg', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'preprocess'}}},
-                                          {'Id': 'orphan',
+                                          {'Id': 'orphan', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'preprocess'}}}]
 
-        def inspect(arg):
-            return {'Id': arg, 'Config': {'Labels': {'type': 'preprocess'}}}
+        def inspect(container=''):
+            return {'Id': container, 'Config': {'Labels': {'type': 'preprocess'}}}
 
         client.inspect_container.side_effect = inspect
 
@@ -105,14 +105,14 @@ class ManagementTest(TestCase):
         TODO: Add test case with timeout error as return_value
         """
         client = mockClient.return_value
-        client.containers.return_value = [{'Id': 'abcdefg',
+        client.containers.return_value = [{'Id': 'abcdefg', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'preprocess'}}},
-                                          {'Id': 'orphan',
+                                          {'Id': 'orphan', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'preprocess'}}}]
 
         # Give non existing label, so this container should be ignored
-        def inspect(arg):
-            return {'Id': arg, 'Config': {'Labels': {'type': 'notfromhere'}}}
+        def inspect(container=''):
+            return {'Id': container, 'Config': {'Labels': {'type': 'notfromhere'}}}
 
         client.inspect_container.side_effect = inspect
 
