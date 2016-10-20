@@ -265,13 +265,25 @@ class SceneViewSet(viewsets.ModelViewSet):
                             # 1.9 So we loop manually (bad performance!)
                             wanted = []
                             for scene in queryset:
+
+                                # filter on input parameters
                                 value = scene.parameters.get(
                                     key, {}).get('value', 'None')
-                                if (minvalue <= value <= maxvalue) or (
-                                        value == 'None'):
+                                if (value != 'None') and (
+                                        minvalue <= value <= maxvalue):
                                     wanted.append(scene.id)
 
+                                # filter on postprocessing output
+                                postprocess_output = scene.info.get(
+                                    'postprocess_output')
+
+                                if key in postprocess_output:
+                                    value = postprocess_output[key]
+                                    if (minvalue <= value <= maxvalue):
+                                        wanted.append(scene.id)
+
                             queryset = queryset.filter(pk__in=wanted)
+
                         except ValueError:
                             pass  # no floats? no results
                             temp_workaround = True
