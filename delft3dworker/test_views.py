@@ -337,6 +337,13 @@ class SceneSearchTestCase(TestCase):
             shared='p',
         )
         self.scene_1.scenario.add(self.scenario)
+        self.scene_1.info = {
+            'postprocess_output': {
+                'postproc_x': 0.1
+            }
+        }
+        self.scene_1.save()
+
         self.scene_2 = Scene.objects.create(
             name='Testscene 2',
             owner=self.user_bar,
@@ -348,6 +355,13 @@ class SceneSearchTestCase(TestCase):
             shared='p',
         )
         self.scene_2.scenario.add(self.scenario)
+        self.scene_2.info = {
+            'postprocess_output': {
+                'postproc_x': 0.9,
+                'postproc_y': 0.5
+            }
+        }
+        self.scene_2.save()
 
         # Object general
         assign_perm('view_scenario', self.user_bar, self.scenario)
@@ -406,13 +420,26 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_parameter_f)), 2)
         self.assertEqual(len(self._request(search_query_parameter_g)), 0)
 
+        # postprocessing searches
+        search_query_postproc_1 = {'parameter': "postproc_x,0,0"}
+        search_query_postproc_2 = {'parameter': "postproc_x,0,0.5"}
+        search_query_postproc_3 = {'parameter': "postproc_x,0.5,1"}
+        search_query_postproc_4 = {'parameter': "postproc_x,0,1"}
+        search_query_postproc_5 = {'parameter': "postproc_y,0,1"}
+
+        self.assertEqual(len(self._request(search_query_postproc_1)), 0)
+        self.assertEqual(len(self._request(search_query_postproc_2)), 1)
+        self.assertEqual(len(self._request(search_query_postproc_3)), 1)
+        self.assertEqual(len(self._request(search_query_postproc_4)), 2)
+        self.assertEqual(len(self._request(search_query_postproc_5)), 1)
+
         # user searches
         search_query_users_1 = {'users': []}
         search_query_users_2 = {'users': [""]}
         search_query_users_3 = {'users': ["a"]}
         search_query_users_4 = {'users': ["1"]}
         search_query_users_5 = {'users': ["2"]}
-        search_query_users_6 = {'users': ["1","2"]}
+        search_query_users_6 = {'users': ["1", "2"]}
 
         self.assertEqual(len(self._request(search_query_users_1)), 2)
         self.assertEqual(len(self._request(search_query_users_2)), 0)
