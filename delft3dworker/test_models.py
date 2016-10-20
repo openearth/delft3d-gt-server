@@ -966,7 +966,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'preprocess/preprocess.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
-                    'memory_limit': '200m',
+                    'memory_limit': '100m',
                     'image': 'dummy_preprocessing',
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
@@ -994,7 +994,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'preprocess/preprocess.py',
                     'folders': ['test/{}/preprocess'.format(self.scene.suid),
                                 'test/{}/simulation'.format(self.scene.suid)],
-                    'memory_limit': '200m',
+                    'memory_limit': '100m',
                     'image': 'dummy_preprocessing',
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
