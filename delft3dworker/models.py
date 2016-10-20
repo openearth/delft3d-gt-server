@@ -1302,7 +1302,7 @@ class Container(models.Model):
                        'volumes': [
                            '{0}:/data/output:z'.format(expdir),
                            '{0}:/data/input:ro'.format(simdir)],
-                       'memory_limit': '400m',
+                       'memory_limit': '1000m',
                        'environment': {"uuid": str(self.scene.suid),
                                        "folder": expdir},
                        'name': "{}-{}-{}".format(self.container_type,
@@ -1318,7 +1318,7 @@ class Container(models.Model):
                             'volumes': [
                                 '{0}:/data/output:z'.format(posdir),
                                 '{0}:/data/input:ro'.format(simdir)],
-                            'memory_limit': '500m',
+                            'memory_limit': '1500m',
                             'environment': {"uuid": str(self.scene.suid),
                                             "folder": posdir},
                             'name': "{}-{}-{}".format(self.container_type,
@@ -1335,7 +1335,7 @@ class Container(models.Model):
                            'volumes': [
                                '{0}:/data/output:z'.format(simdir),
                                '{0}:/data/input:ro'.format(predir)],
-                           'memory_limit': '100m',
+                           'memory_limit': '200m',
                            'environment': {"uuid": str(self.scene.suid),
                                            "folder": simdir},
                            'name': "{}-{}-{}".format(self.container_type,
@@ -1350,7 +1350,7 @@ class Container(models.Model):
             'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
                              'volumes': [
                                  '{0}:/data/input:z'.format(syndir)],
-                             'memory_limit': '200m',
+                             'memory_limit': '500m',
                              'environment': {"uuid": str(self.scene.suid),
                                              "folder": syndir},
                              'name': "{}-{}-{}".format(self.container_type,
@@ -1365,7 +1365,7 @@ class Container(models.Model):
                             '{0}:/data/input:ro'.format(simdir),
                             '{0}:/data/output:z'.format(prodir)
                         ],
-                        'memory_limit': '1g',
+                        'memory_limit': '1500m',
                         'environment': {"uuid": str(self.scene.suid),
                                         "folder": prodir},
                         'name': "{}-{}-{}".format(self.container_type,
