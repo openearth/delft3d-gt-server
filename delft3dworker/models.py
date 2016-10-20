@@ -1375,18 +1375,7 @@ class Container(models.Model):
                                     simdir],
                         'command': ' '.join([
                             "/data/run.sh ",
-                            "/data/svn/scripts/process/"
-                            "channel_network_proc.py",
-                            "/data/svn/scripts/process/"
-                            "delta_fringe_proc.py",
-                            "/data/svn/scripts/process/"
-                            "sediment_fraction_proc.py",
-                            "/data/svn/scripts/visualisation/"
-                            "channel_network_viz.py",
-                            "/data/svn/scripts/visualisation/"
-                            "delta_fringe_viz.py",
-                            "/data/svn/scripts/visualisation/"
-                            "sediment_fraction_viz.py"
+                            "/data/svn/scripts/wrapper/visualize_all.py"
                         ])},
         }
 
