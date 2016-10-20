@@ -20,6 +20,7 @@ class ManagementTest(TestCase):
     def setUp(self):
         self.scene = Scene.objects.create(
             name='Scene',
+            phase=Scene.phases.new
         )
         self.container_1_1 = Container.objects.create(
             scene=self.scene,
@@ -40,6 +41,7 @@ class ManagementTest(TestCase):
         # a freshly created Scene
         self.scene_new = Scene.objects.create(
             name='Scene_New',
+            phase=Scene.phases.fin
         )
         self.container_1_1_new = Container.objects.create(
             scene=self.scene_new,
@@ -121,3 +123,10 @@ class ManagementTest(TestCase):
 
         # Docker container not in database
         assert not client.remove_container.called
+
+    @patch('delft3dworker.management.commands.'
+           'containersync_sceneupdate.Scene._local_scan_process')
+    def test_scanbucket_command(self, mocklocalscan):
+        call_command('scanbucket')
+
+        self.assertEqual(mocklocalscan.call_count, 1)
