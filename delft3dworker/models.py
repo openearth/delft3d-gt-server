@@ -1318,7 +1318,7 @@ class Container(models.Model):
                             'volumes': [
                                 '{0}:/data/output:z'.format(posdir),
                                 '{0}:/data/input:ro'.format(simdir)],
-                            'memory_limit': '1500m',
+                            'memory_limit': '3000m',
                             'environment': {"uuid": str(self.scene.suid),
                                             "folder": posdir},
                             'name': "{}-{}-{}".format(self.container_type,
@@ -1365,7 +1365,7 @@ class Container(models.Model):
                             '{0}:/data/input:ro'.format(simdir),
                             '{0}:/data/output:z'.format(prodir)
                         ],
-                        'memory_limit': '1500m',
+                        'memory_limit': '3000m',
                         'environment': {"uuid": str(self.scene.suid),
                                         "folder": prodir},
                         'name': "{}-{}-{}".format(self.container_type,
