@@ -45,12 +45,19 @@ def get_docker_ps(self):
     # in the inspect call. We filter because Docker Swarm can have disconnected
     # nodes which are seen, but cannot be inspected.
     ignore_states = ['Host Down']
+    inspected_containers = []
+
     client = Client(base_url='http://localhost:4000')
     containers = client.containers(all=True)  # filter here does not work
     filtered_containers = [c for c in containers if c['Status'] not in ignore_states]
     containers_id = [container['Id'] for container in filtered_containers]
-    inspected_containers = [client.inspect_container(
-        container_id) for container_id in containers_id]
+
+    for container_id in containers_id:
+        try:
+            inspect = client.inspect_container(container_id)
+            inspected_containers.append(inspect)
+        except Exception, e:
+            logging.error("Could not inspect {}: {}".format(container_id, str(e)))
     return inspected_containers
 
 
