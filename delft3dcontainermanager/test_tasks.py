@@ -31,14 +31,35 @@ class TaskTest(TestCase):
         mock.assert_called_with('containersync_sceneupdate')
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
-    def test_get_docker_ps(self, mockClient):
+    @patch('delft3dcontainermanager.tasks.logging.error', **mock_options)
+    def test_get_docker_ps(self, mockLogging, mockClient):
         """
         Assert that the docker_ps task
         calls the docker client.containers() function.
         """
-        get_docker_ps.delay()
-        mockClient.return_value.containers.assert_called_with(all=True)
+        containers = [{'Id':'Aaa', 'Status':'Running'},
+                      {'Id':'Bbb', 'Status':'Host Down'},
+                      {'Id':'Ccc', 'Status':'Up'},
+                     ]
 
+        def inspect(container=''):
+            if container == 'Ccc':
+                raise
+            else:
+                return {'Id': container, 'Config': {'Labels': {'type': 'preprocess'}}}
+
+        mockClient.return_value.containers.return_value = containers
+        mockClient.return_value.inspect_container.side_effect = inspect
+
+        get_docker_ps.delay()
+        # Call docker ps for all containers, but only once
+        mockClient.return_value.containers.assert_called_with(all=True)
+        self.assertEqual(mockClient.return_value.containers.call_count, 1)
+        # Call inspect for all but Host Down container
+        self.assertEqual(mockClient.return_value.inspect_container.call_count, 2)
+        # Log error only for Ccc container
+        self.assertEqual(mockLogging.call_count, 1)
+    
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_get_docker_log(self, mockClient):
         """
