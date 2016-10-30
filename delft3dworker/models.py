@@ -1163,14 +1163,6 @@ class Container(models.Model):
             self.task_uuid = None
             self.save()
 
-        # Pending means not queued yet or unknown
-        # so celery is probably down
-        # elif result.state == "PENDING":
-        #     logging.warn("Celery task is unknown or celery is down.")
-        #     result.revoke()
-        #     self.task_uuid = None
-        #     self.save()
-
         # Forget task after 5 minutes
         elif time_passed.seconds > settings.TASK_EXPIRE_TIME:
             logging.warn(

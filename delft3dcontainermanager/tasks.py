@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import os
 import logging
-from time import sleep
 from shutil import rmtree
 from celery import shared_task
 from celery_once import QueueOnce
