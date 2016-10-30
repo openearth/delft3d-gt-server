@@ -2,9 +2,10 @@ from __future__ import absolute_import
 
 import os
 
-from six.moves import configparser
 from django.test import TestCase
+from fakeredis import FakeStrictRedis
 from mock import patch
+from six.moves import configparser
 
 from delft3dcontainermanager.tasks import delft3dgt_pulse
 from delft3dcontainermanager.tasks import get_docker_ps
@@ -22,13 +23,17 @@ class TaskTest(TestCase):
     }
 
     @patch('delft3dcontainermanager.tasks.call_command')
-    def test_delft3dgt_pulse(self, mock):
+    @patch('delft3dcontainermanager.tasks.QueueOnce.redis')
+    def test_delft3dgt_pulse(self, mockredis, mockcall):
         """
         Assert that de delft3dgt_pulse task
         calls the containersync_sceneupdate() function.
         """
+        fake = FakeStrictRedis()
+        mockredis.return_value = fake
+
         delft3dgt_pulse.delay()
-        mock.assert_called_with('containersync_sceneupdate')
+        mockcall.assert_called_with('containersync_sceneupdate')
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     @patch('delft3dcontainermanager.tasks.logging.error', **mock_options)

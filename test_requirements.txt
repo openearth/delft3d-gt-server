@@ -13,6 +13,7 @@ djangorestframework==3.3.3
 django-guardian==1.4.4
 django-model-utils==2.6
 docker-py==1.10.3
+fakeredis==0.8.1
 kombu==3.0.34
 Mako==1.0.3
 markdown==2.6.6
