@@ -38,7 +38,7 @@ USE_TZ = True
 
 # ######
 # Celery
-# ######q
+# ######
 
 # Disabling rate limits altogether is recommended if you don't have any tasks
 # using them. This is because the rate limit subsystem introduces quite a lot

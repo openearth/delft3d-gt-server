@@ -2,22 +2,28 @@ from __future__ import absolute_import
 
 import os
 import logging
+from time import sleep
 from shutil import rmtree
 from celery import shared_task
+from celery_once import QueueOnce
 from celery.utils.log import get_task_logger
 from docker import Client
 from requests.exceptions import HTTPError
 from six.moves import configparser
+from django.core.cache import cache
 from django.core.management import call_command
+from django.conf import settings  # noqa
 
 logger = get_task_logger(__name__)
 
 
-@shared_task(bind=True)
+@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60})
 def delft3dgt_pulse(self):
     """
     This task runs the containersync_sceneupdate management command.
     This command updates the states in container and scene model
+
+    A lock is implemented to ensure it's only run one at a time
     """
     call_command('containersync_sceneupdate')
     return
@@ -47,9 +53,10 @@ def get_docker_ps(self):
     ignore_states = ['Host Down']
     inspected_containers = []
 
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     containers = client.containers(all=True)  # filter here does not work
-    filtered_containers = [c for c in containers if c['Status'] not in ignore_states]
+    filtered_containers = [c for c in containers if c[
+        'Status'] not in ignore_states]
     containers_id = [container['Id'] for container in filtered_containers]
 
     for container_id in containers_id:
@@ -57,7 +64,8 @@ def get_docker_ps(self):
             inspect = client.inspect_container(container_id)
             inspected_containers.append(inspect)
         except Exception, e:
-            logging.error("Could not inspect {}: {}".format(container_id, str(e)))
+            logging.error("Could not inspect {}: {}".format(
+                container_id, str(e)))
     return inspected_containers
 
 
@@ -66,7 +74,7 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
     """
     Retrieve the log of a container and return container id and log
     """
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     log = client.logs(
         container=str(container_id),
         stream=False,
@@ -116,7 +124,7 @@ def do_docker_create(self, label, parameters, environment, name, image,
             config.write(f)  # Yes, the ConfigParser writes to f
 
     # Create docker container
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     # We could also pass mem_reservation since docker-py 1.10
     config = client.create_host_config(binds=volumes, mem_limit=memory_limit)
     container = client.create_container(
@@ -136,7 +144,7 @@ def do_docker_start(self, container_id):
     """
     Start a container with a specific id and id
     """
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     client.start(container=container_id)
     return container_id, ""
 
@@ -146,7 +154,7 @@ def do_docker_stop(self, container_id, timeout=10):
     """
     Stop a container with a specific id and return id
     """
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     client.stop(container=container_id, timeout=timeout)
 
     return container_id, ""
@@ -162,7 +170,7 @@ def do_docker_remove(self, container_id, force=False):
     # Commented out removing folders in this task
     # functionality could be moved, therefore not removed
 
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     info = client.inspect_container(container=container_id)
     log = client.logs(
         container=str(container_id),
