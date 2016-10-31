@@ -2,9 +2,11 @@ from __future__ import absolute_import
 
 import os
 
-from six.moves import configparser
 from django.test import TestCase
+from fakeredis import FakeStrictRedis
 from mock import patch
+from six.moves import configparser
+from time import time
 
 from delft3dcontainermanager.tasks import delft3dgt_pulse
 from delft3dcontainermanager.tasks import get_docker_ps
@@ -16,19 +18,49 @@ from delft3dcontainermanager.tasks import do_docker_remove
 from delft3dcontainermanager.tasks import do_docker_sync_filesystem
 
 
+class AsyncTaskTest(TestCase):
+
+    @patch('delft3dcontainermanager.tasks.call_command')
+    @patch('delft3dcontainermanager.tasks.QueueOnce.redis', new_callable=FakeStrictRedis)
+    def test_delft3dgt_pulse(self, mockredis, mockcall):
+        """
+        Assert that de delft3dgt_pulse task
+        calls the containersync_sceneupdate() only once.
+        """
+
+        delft3dgt_pulse.delay()
+
+        # Fakeredis stores at module level
+        fake = FakeStrictRedis()
+        # Set redis key with TTL 100 seconds from now
+        # so subsequent tasks won't run
+        fake.set('qo_delft3dcontainermanager.tasks.delft3dgt_pulse',
+                 int(time()) + 100)
+
+        delft3dgt_pulse.delay()
+        delft3dgt_pulse.delay()
+
+        mockcall.assert_called_with('containersync_sceneupdate')
+        self.assertEqual(mockcall.call_count, 1)
+
+
 class TaskTest(TestCase):
     mock_options = {
         'autospec': True,
     }
 
     @patch('delft3dcontainermanager.tasks.call_command')
-    def test_delft3dgt_pulse(self, mock):
+    @patch('delft3dcontainermanager.tasks.QueueOnce.redis')
+    def test_delft3dgt_pulse(self, mockredis, mockcall):
         """
         Assert that de delft3dgt_pulse task
         calls the containersync_sceneupdate() function.
         """
+        fake = FakeStrictRedis()
+        mockredis.return_value = fake
+
         delft3dgt_pulse.delay()
-        mock.assert_called_with('containersync_sceneupdate')
+        mockcall.assert_called_with('containersync_sceneupdate')
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     @patch('delft3dcontainermanager.tasks.logging.error', **mock_options)
@@ -37,10 +69,10 @@ class TaskTest(TestCase):
         Assert that the docker_ps task
         calls the docker client.containers() function.
         """
-        containers = [{'Id':'Aaa', 'Status':'Running'},
-                      {'Id':'Bbb', 'Status':'Host Down'},
-                      {'Id':'Ccc', 'Status':'Up'},
-                     ]
+        containers = [{'Id': 'Aaa', 'Status': 'Running'},
+                      {'Id': 'Bbb', 'Status': 'Host Down'},
+                      {'Id': 'Ccc', 'Status': 'Up'},
+                      ]
 
         def inspect(container=''):
             if container == 'Ccc':
@@ -56,10 +88,11 @@ class TaskTest(TestCase):
         mockClient.return_value.containers.assert_called_with(all=True)
         self.assertEqual(mockClient.return_value.containers.call_count, 1)
         # Call inspect for all but Host Down container
-        self.assertEqual(mockClient.return_value.inspect_container.call_count, 2)
+        self.assertEqual(
+            mockClient.return_value.inspect_container.call_count, 2)
         # Log error only for Ccc container
         self.assertEqual(mockLogging.call_count, 1)
-    
+
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     def test_get_docker_log(self, mockClient):
         """

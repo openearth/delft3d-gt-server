@@ -376,9 +376,15 @@ class ScenarioZeroPhaseTestCase(TestCase):
 
     def test_phase_00(self):
         scene = Scene.objects.create(name='scene')
-        scene.phase = scene.phases.new
 
+        scene.phase = scene.phases.new
         scene.update_and_phase_shift()
+
+        # Even if multiple tasks run new or scene is 
+        # put into new again, only one container is created
+        scene.phase = scene.phases.new
+        scene.update_and_phase_shift()
+
         self.assertEqual(scene.phase, scene.phases.preproc_create)
 
         self.assertEqual(
