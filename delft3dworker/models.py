@@ -498,42 +498,53 @@ class Scene(models.Model):
 
         if self.phase == self.phases.new:
 
-            preprocess_container = Container.objects.create(
-                scene=self,
-                container_type='preprocess',
-                desired_state='non-existent',
-            )
-            preprocess_container.save()
-            delft3d_container = Container.objects.create(
-                scene=self,
-                container_type='delft3d',
-                desired_state='non-existent',
-            )
-            delft3d_container.save()
-            process_container = Container.objects.create(
-                scene=self,
-                container_type='process',
-                desired_state='non-existent',
-            )
-            process_container.save()
-            export_container = Container.objects.create(
-                scene=self,
-                container_type='export',
-                desired_state='non-existent',
-            )
-            export_container.save()
-            postprocess_container = Container.objects.create(
-                scene=self,
-                container_type='postprocess',
-                desired_state='non-existent',
-            )
-            postprocess_container.save()
-            sync_clean_container = Container.objects.create(
-                scene=self,
-                container_type='sync_cleanup',
-                desired_state='non-existent',
-            )
-            sync_clean_container.save()
+            if not self.container_set.filter(container_type='preprocess').exists():
+                preprocess_container = Container.objects.create(
+                    scene=self,
+                    container_type='preprocess',
+                    desired_state='non-existent',
+                )
+                preprocess_container.save()
+
+            if not self.container_set.filter(container_type='delft3d').exists():
+                delft3d_container = Container.objects.create(
+                    scene=self,
+                    container_type='delft3d',
+                    desired_state='non-existent',
+                )
+                delft3d_container.save()
+
+            if not self.container_set.filter(container_type='process').exists():
+                process_container = Container.objects.create(
+                    scene=self,
+                    container_type='process',
+                    desired_state='non-existent',
+                )
+                process_container.save()
+
+            if not self.container_set.filter(container_type='export').exists():
+                export_container = Container.objects.create(
+                    scene=self,
+                    container_type='export',
+                    desired_state='non-existent',
+                )
+                export_container.save()
+
+            if not self.container_set.filter(container_type='postprocess').exists():
+                postprocess_container = Container.objects.create(
+                    scene=self,
+                    container_type='postprocess',
+                    desired_state='non-existent',
+                )
+                postprocess_container.save()
+
+            if not self.container_set.filter(container_type='sync_cleanup').exists():
+                sync_clean_container = Container.objects.create(
+                    scene=self,
+                    container_type='sync_cleanup',
+                    desired_state='non-existent',
+                )
+                sync_clean_container.save()
 
             self.shift_to_phase(self.phases.preproc_create)
 
@@ -622,6 +633,18 @@ class Scene(models.Model):
 
             if (delft3d_container.docker_state == 'running'):
                 self.shift_to_phase(self.phases.sim_run)
+
+            # If there are startup errors, the container will exit
+            # before the next beat and the phase will be stuck if 
+            # this state is not handled explicitly.
+            elif (delft3d_container.docker_state == 'exited'):
+                self._local_scan_process()  # update images and logfile
+                self.progress = delft3d_container.container_progress
+                self.save()
+
+                delft3d_container.set_desired_state('exited')
+                processing_container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.sim_fin)
 
             # If container disappeared, shift back
             elif (delft3d_container.docker_state == 'non-existent' or
@@ -1137,14 +1160,6 @@ class Container(models.Model):
                     "Task of Container [{}] resulted in {}: {}".
                     format(self, result.state, error))
 
-            self.task_uuid = None
-            self.save()
-
-        # Pending means not queued yet or unknown
-        # so celery is probably down
-        elif result.state == "PENDING":
-            logging.warn("Celery task is unknown or celery is down.")
-            result.revoke()
             self.task_uuid = None
             self.save()
 

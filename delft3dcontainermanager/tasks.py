@@ -4,6 +4,7 @@ import os
 import logging
 from shutil import rmtree
 from celery import shared_task
+from celery_once import QueueOnce
 from celery.utils.log import get_task_logger
 from docker import Client
 from requests.exceptions import HTTPError
@@ -13,11 +14,13 @@ from django.core.management import call_command
 logger = get_task_logger(__name__)
 
 
-@shared_task(bind=True)
+@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60})
 def delft3dgt_pulse(self):
     """
     This task runs the containersync_sceneupdate management command.
     This command updates the states in container and scene model
+
+    A lock is implemented to ensure it's only run one at a time
     """
     call_command('containersync_sceneupdate')
     return
@@ -49,7 +52,8 @@ def get_docker_ps(self):
 
     client = Client(base_url='http://localhost:4000')
     containers = client.containers(all=True)  # filter here does not work
-    filtered_containers = [c for c in containers if c['Status'] not in ignore_states]
+    filtered_containers = [c for c in containers if c[
+        'Status'] not in ignore_states]
     containers_id = [container['Id'] for container in filtered_containers]
 
     for container_id in containers_id:
@@ -57,7 +61,8 @@ def get_docker_ps(self):
             inspect = client.inspect_container(container_id)
             inspected_containers.append(inspect)
         except Exception, e:
-            logging.error("Could not inspect {}: {}".format(container_id, str(e)))
+            logging.error("Could not inspect {}: {}".format(
+                container_id, str(e)))
     return inspected_containers
 
 
