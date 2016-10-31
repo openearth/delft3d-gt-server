@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import os
 
-from celery import current_app
 from django.test import TestCase
 from fakeredis import FakeStrictRedis
 from mock import patch
