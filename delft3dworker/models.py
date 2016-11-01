@@ -1127,7 +1127,7 @@ class Container(models.Model):
             return
 
         result = AsyncResult(id=str(self.task_uuid))
-        time_passed = self.task_starttime - now()
+        time_passed = now() - self.task_starttime
         if result.ready():
 
             if result.successful():
@@ -1164,10 +1164,10 @@ class Container(models.Model):
             self.save()
 
         # Forget task after 5 minutes
-        elif time_passed.seconds > settings.TASK_EXPIRE_TIME:
+        elif time_passed.total_seconds() > settings.TASK_EXPIRE_TIME:
             logging.warn(
                 "Celery task expired after {} seconds".format(
-                    time_passed.seconds))
+                    time_passed.total_seconds()))
             result.revoke()
             self.task_uuid = None
             self.save()

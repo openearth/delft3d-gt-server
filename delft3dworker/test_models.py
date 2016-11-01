@@ -4,6 +4,7 @@ import json
 import os
 import uuid
 import zipfile
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -380,7 +381,7 @@ class ScenarioZeroPhaseTestCase(TestCase):
         scene.phase = scene.phases.new
         scene.update_and_phase_shift()
 
-        # Even if multiple tasks run new or scene is 
+        # Even if multiple tasks run new or scene is
         # put into new again, only one container is created
         scene.phase = scene.phases.new
         scene.update_and_phase_shift()
@@ -847,7 +848,15 @@ class ContainerTestCase(TestCase):
         self.assertEqual(self.container.task_uuid, uuid.UUID(
             '6764743a-3d63-4444-8e7b-bc938bff7792'))
 
+        # Time has passed, task should expire
+        self.container.task_starttime = now() - timedelta(seconds=settings.TASK_EXPIRE_TIME * 2)
+        self.container.update_task_result()
+        self.assertEqual(self.container.task_uuid, None)
+
         # Set up: task is now finished with Failure
+        self.container.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.container.task_starttime = now()
         async_result.ready.return_value = True
         async_result.result = (
             '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
@@ -858,7 +867,7 @@ class ContainerTestCase(TestCase):
         self.container.update_task_result()
 
         # check that warning is logged
-        self.assertEqual(mocked_warn_method.call_count, 2)
+        self.assertEqual(mocked_warn_method.call_count, 3)
 
         # Set up: task is now finished
         self.container.task_uuid = uuid.UUID(
