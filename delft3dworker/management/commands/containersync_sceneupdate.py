@@ -50,13 +50,14 @@ class Command(BaseCommand):
         """
         Synchronise local Django Container models with remote Docker containers
         """
-        ps = get_docker_ps.delay()
+        ps = get_docker_ps.apply_async(queue='priority')
 
         containers_docker = None
         try:
             containers_docker = ps.get(timeout=30)
         except celery.exceptions.TimeoutError as e:
             logging.exception("get_docker_ps timed out (30 seconds)")
+            ps.revoke()
 
         if containers_docker is None:
             # Apparently something is wrong with the remote docker or celery
