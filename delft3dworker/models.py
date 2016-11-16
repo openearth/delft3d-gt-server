@@ -317,6 +317,8 @@ class Scene(models.Model):
     # UI CONTROL METHODS
 
     def start(self):
+        self.date_started = now()
+
         # only allow a start when Scene is 'Idle' or 'Finished'
         if self.phase in (self.phases.idle, self.phases.fin):
             self.shift_to_phase(self.phases.queued)   # shift to Queued

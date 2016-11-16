@@ -229,6 +229,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         created_after = self.request.query_params.get('created_after', '')
         created_before = self.request.query_params.get('created_before', '')
+        started_after = self.request.query_params.get('started_after', '')
+        started_before = self.request.query_params.get('started_before', '')
 
         # explained later
         temp_workaround = False
@@ -343,14 +345,24 @@ class SceneViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(owner__in=userids)
 
         if created_after != '':
-            after_date = parse_datetime(created_after)
-            if after_date:
-                queryset = queryset.filter(date_created__gte=after_date)
+            created_after_date = parse_datetime(created_after)
+            if created_after_date:
+                queryset = queryset.filter(date_created__gte=created_after_date)
 
         if created_before != '':
-            before_date = parse_datetime(created_before)
-            if before_date:
-                queryset = queryset.filter(date_created__lte=before_date)
+            created_before_date = parse_datetime(created_before)
+            if created_before_date:
+                queryset = queryset.filter(date_created__lte=created_before_date)
+
+        if started_after != '':
+            started_after_date = parse_datetime(started_after)
+            if started_after_date:
+                queryset = queryset.filter(date_started__gte=started_after_date)
+
+        if started_before != '':
+            started_before_date = parse_datetime(started_before)
+            if started_before_date:
+                queryset = queryset.filter(date_started__lte=started_before_date)
 
         # self.queryset = queryset
 
