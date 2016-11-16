@@ -7,8 +7,6 @@ import django_filters
 import json
 import logging
 
-from datetime import datetime
-
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
@@ -16,6 +14,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import CreateView
 from django.views.generic import DeleteView
@@ -228,6 +227,9 @@ class SceneViewSet(viewsets.ModelViewSet):
         shared = self.request.query_params.getlist('shared', [])
         users = self.request.query_params.getlist('users', [])
 
+        created_after = self.request.query_params.get('created_after', '')
+        created_before = self.request.query_params.get('created_before', '')
+
         # explained later
         temp_workaround = False
 
@@ -339,6 +341,16 @@ class SceneViewSet(viewsets.ModelViewSet):
         if len(users) > 0:
             userids = [int(user) for user in users if user.isdigit()]
             queryset = queryset.filter(owner__in=userids)
+
+        if created_after != '':
+            after_date = parse_datetime(created_after)
+            if after_date:
+                queryset = queryset.filter(date_created__gte=after_date)
+
+        if created_before != '':
+            before_date = parse_datetime(created_before)
+            if before_date:
+                queryset = queryset.filter(date_created__lte=before_date)
 
         # self.queryset = queryset
 

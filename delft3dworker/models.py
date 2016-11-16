@@ -236,6 +236,9 @@ class Scene(models.Model):
 
     scenario = models.ManyToManyField(Scenario, blank=True)
 
+    date_created = models.DateTimeField(default=now, blank=True)
+    date_started = models.DateTimeField(blank=True, null=True)
+
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
     parameters = JSONField(blank=True)  # {"dt":20}
@@ -635,7 +638,7 @@ class Scene(models.Model):
                 self.shift_to_phase(self.phases.sim_run)
 
             # If there are startup errors, the container will exit
-            # before the next beat and the phase will be stuck if 
+            # before the next beat and the phase will be stuck if
             # this state is not handled explicitly.
             elif (delft3d_container.docker_state == 'exited'):
                 self._local_scan_process()  # update images and logfile

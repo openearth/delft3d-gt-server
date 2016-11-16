@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+from datetime import datetime
+
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
@@ -329,6 +331,7 @@ class SceneSearchTestCase(TestCase):
         self.scene_1 = Scene.objects.create(
             name='Testscene 1',
             owner=self.user_bar,
+            date_created=datetime(2333, 1, 1, 0, 0, 0, 0),
             parameters={
                 'a': {'value': 2},
                 'hack': {'value': 'mud'},
@@ -347,6 +350,7 @@ class SceneSearchTestCase(TestCase):
         self.scene_2 = Scene.objects.create(
             name='Testscene 2',
             owner=self.user_bar,
+            date_created=datetime(2666, 1, 1, 0, 0, 0, 0),
             parameters={
                 'a': {'value': 3},
                 'hack': {'value': 'grease'},
@@ -377,10 +381,7 @@ class SceneSearchTestCase(TestCase):
         # Refetch to empty permissions cache
         self.user_bar = User.objects.get(pk=self.user_bar.pk)
 
-    def test_search(self):
-        """
-        Test search options
-        """
+    def test_search_props(self):
 
         # Exact matches
         search_query_exact_a = {'name': "Testscene 1"}
@@ -392,6 +393,8 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_exact_b)), 0)
         self.assertEqual(len(self._request(search_query_exact_c)), 1)
 
+    def test_search_search(self):
+
         # Partial matches from beginning of line
         search_query_partial_a = {'search': "Te"}
         search_query_partial_b = {'search': "Tes"}
@@ -402,6 +405,8 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_partial_a)), 2)
         self.assertEqual(len(self._request(search_query_partial_b)), 2)
         self.assertEqual(len(self._request(search_query_partial_c)), 2)
+
+    def test_search_params(self):
 
         # Parameter searches
         search_query_parameter_a = {'parameter': "a"}
@@ -433,6 +438,8 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_postproc_4)), 2)
         self.assertEqual(len(self._request(search_query_postproc_5)), 1)
 
+    def test_search_user(self):
+
         # user searches
         search_query_users_1 = {'users': []}
         search_query_users_2 = {'users': [""]}
@@ -447,6 +454,30 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_users_4)), 2)
         self.assertEqual(len(self._request(search_query_users_5)), 0)
         self.assertEqual(len(self._request(search_query_users_6)), 2)
+
+    def test_search_date(self):
+
+        # creation date searches
+        search_query_date_before_1 = {'created_before': '2000-01-01T00:00:00.000000Z'}
+        search_query_date_before_2 = {'created_before': '2500-01-01T00:00:00.000000Z'}
+        search_query_date_before_3 = {'created_before': '3000-01-01T00:00:00.000000Z'}
+        search_query_date_before_4 = {'created_before': 'aksjdfg'}
+
+        self.assertEqual(len(self._request(search_query_date_before_1)), 0)
+        self.assertEqual(len(self._request(search_query_date_before_2)), 1)
+        self.assertEqual(len(self._request(search_query_date_before_3)), 2)
+        self.assertEqual(len(self._request(search_query_date_before_4)), 2)
+
+        # creation date searches
+        search_query_date_after1 = {'created_after': '2000-01-01T00:00:00.000000Z'}
+        search_query_date_after2 = {'created_after': '2500-01-01T00:00:00.000000Z'}
+        search_query_date_after3 = {'created_after': '3000-01-01T00:00:00.000000Z'}
+        search_query_date_after4 = {'created_after': 'aksjdfg'}
+
+        self.assertEqual(len(self._request(search_query_date_after1)), 2)
+        self.assertEqual(len(self._request(search_query_date_after2)), 1)
+        self.assertEqual(len(self._request(search_query_date_after3)), 0)
+        self.assertEqual(len(self._request(search_query_date_after4)), 2)
 
     def test_search_hack(self):
         """
