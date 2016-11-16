@@ -248,3 +248,6 @@ if 'test' in sys.argv:
 
     # max number of simulations
     MAX_SIMULATIONS = 1
+
+    # docker connection
+    DOCKER_URL = 'http://localhost:4000'
