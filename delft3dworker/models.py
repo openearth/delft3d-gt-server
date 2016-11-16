@@ -318,6 +318,7 @@ class Scene(models.Model):
 
     def start(self):
         self.date_started = now()
+        self.save()
 
         # only allow a start when Scene is 'Idle' or 'Finished'
         if self.phase in (self.phases.idle, self.phases.fin):
