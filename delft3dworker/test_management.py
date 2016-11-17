@@ -143,4 +143,3 @@ class ManagementTest(TestCase):
         call_command('scanbucket')
 
         self.assertEqual(mocklocalscan.call_count, 1)
-# 

@@ -1,16 +1,17 @@
 from __future__ import absolute_import
 
+import logging
+import os
+from shutil import rmtree
+from six.moves import configparser
+
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from celery_once import QueueOnce
 from django.core.management import call_command
 from docker import Client
 from requests.exceptions import HTTPError
-from shutil import rmtree
-from six.moves import configparser
-from time import sleep
-import logging
-import os
+
 
 logger = get_task_logger(__name__)
 
@@ -34,7 +35,6 @@ def get_docker_ps(self):
     an array of dictionaries. The array looks like this:
 
     [
-      {'Command': '/bin/sleep 30',
       'Created': 1412574844,
       'Id': '6e276c9e6e5759e12a6a9214efec6439f80b4f37618e1a6547f28a3da34db07a',
       'Image': 'busybox:buildroot-2014.02',
