@@ -1,6 +1,7 @@
-import celery
+from celery.result import AsyncResult
 import logging
 from django.core.management import BaseCommand
+from time import sleep
 
 from delft3dcontainermanager.tasks import get_docker_ps
 from delft3dcontainermanager.tasks import do_docker_remove
@@ -50,13 +51,24 @@ class Command(BaseCommand):
         """
         Synchronise local Django Container models with remote Docker containers
         """
-        ps = get_docker_ps.delay()
 
         containers_docker = None
-        try:
-            containers_docker = ps.get(timeout=30)
-        except celery.exceptions.TimeoutError as e:
-            logging.exception("get_docker_ps timed out (30 seconds)")
+
+        # Get latest docker ps task
+        ps = AsyncResult(id='docker_ps_beat')
+
+        #  If it is forgotten, create a new one
+        if ps._cache is None:
+            logging.info("Calling docker ps once more")
+            ps = get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
+            sleep(2)  # and give it some time to complete
+
+        # If the task finished successfully, parse results, forget the task
+        if ps.successful():
+            containers_docker = ps.result
+            ps.forget()
+        else:
+            logging.warning("Docker ps hasn't finished yet")
 
         if containers_docker is None:
             # Apparently something is wrong with the remote docker or celery
