@@ -64,11 +64,16 @@ class TaskTest(TestCase):
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     @patch('delft3dcontainermanager.tasks.logging.error', **mock_options)
-    def test_get_docker_ps(self, mockLogging, mockClient):
+    @patch('delft3dcontainermanager.tasks.QueueOnce.redis')
+    def test_get_docker_ps(self, mockredis, mockLogging, mockClient):
         """
         Assert that the docker_ps task
         calls the docker client.containers() function.
         """
+
+        fake = FakeStrictRedis()
+        mockredis.return_value = fake
+
         containers = [{'Id': 'Aaa', 'Status': 'Running'},
                       {'Id': 'Bbb', 'Status': 'Host Down'},
                       {'Id': 'Ccc', 'Status': 'Up'},
