@@ -2,13 +2,21 @@ from __future__ import absolute_import
 
 import os
 import logging
-from shutil import rmtree
+
 from celery import shared_task
-from celery_once import QueueOnce
 from celery.utils.log import get_task_logger
+
+from celery_once import QueueOnce
+
 from docker import Client
+
 from requests.exceptions import HTTPError
+
+from shutil import rmtree
+
 from six.moves import configparser
+
+from django.conf import settings
 from django.core.management import call_command
 
 logger = get_task_logger(__name__)
