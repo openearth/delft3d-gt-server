@@ -1,23 +1,17 @@
 from __future__ import absolute_import
 
-import os
 import logging
+import os
+from shutil import rmtree
+from six.moves import configparser
 
 from celery import shared_task
 from celery.utils.log import get_task_logger
-
 from celery_once import QueueOnce
-
+from django.core.management import call_command
 from docker import Client
-
 from requests.exceptions import HTTPError
 
-from shutil import rmtree
-
-from six.moves import configparser
-
-from django.conf import settings
-from django.core.management import call_command
 
 logger = get_task_logger(__name__)
 
@@ -34,7 +28,7 @@ def delft3dgt_pulse(self):
     return
 
 
-@shared_task(bind=True, throws=(HTTPError))
+@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60}, throws=(HTTPError))
 def get_docker_ps(self):
     """
     Retrieve all running docker containers and return them in
@@ -71,6 +65,7 @@ def get_docker_ps(self):
         except Exception, e:
             logging.error("Could not inspect {}: {}".format(
                 container_id, str(e)))
+
     return inspected_containers
 
 
