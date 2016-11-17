@@ -54,19 +54,19 @@ class Command(BaseCommand):
 
         containers_docker = None
 
-        # Get latest docker ps task
+        # Get the last docker ps task
         ps = AsyncResult(id='docker_ps_beat')
 
-        #  If it is forgotten, create a new one
-        if ps._cache is None:
-            logging.info("Calling docker ps once more")
-            ps = get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
-            sleep(2)  # and give it some time to complete
-
-        # If the task finished successfully, parse results, forget the task
+        # If the task finished successfully, parse results, call again
         if ps.successful():
             containers_docker = ps.result
-            ps.forget()
+            get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
+
+        # If it's never started, call docker ps
+        elif ps.state == 'PENDING':
+            get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
+
+        # Otherwise we're waiting until successful
         else:
             logging.warning("Docker ps hasn't finished yet")
 
