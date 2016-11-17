@@ -4,6 +4,8 @@ from django.core.management import call_command
 
 from django.test import TestCase
 
+from fakeredis import FakeStrictRedis
+
 from mock import patch
 
 from StringIO import StringIO
@@ -70,7 +72,8 @@ class ManagementTest(TestCase):
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     @patch('delft3dworker.management.commands.'
            'containersync_sceneupdate.AsyncResult')
-    def test_containersync_sceneupdate(self, mockAsync, mockClient, mockContainerupdate):
+    @patch('delft3dcontainermanager.tasks.QueueOnce.redis', new_callable=FakeStrictRedis)
+    def test_containersync_sceneupdate(self, mockRedis, mockAsync, mockClient, mockContainerupdate):
         """
         Test match matrix for docker containers and model containers
         TODO: Add test case with timeout error as return_value
@@ -108,7 +111,8 @@ class ManagementTest(TestCase):
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     @patch('delft3dworker.management.commands.'
            'containersync_sceneupdate.AsyncResult')
-    def test_containersync_scenekill(self, mockAsync, mockClient, mockContainerupdate):
+    @patch('delft3dcontainermanager.tasks.QueueOnce.redis', new_callable=FakeStrictRedis)
+    def test_containersync_scenekill(self, mockRedis, mockAsync, mockClient, mockContainerupdate):
         """
         Test match matrix for docker containers and model containers
         TODO: Add test case with timeout error as return_value
