@@ -35,6 +35,7 @@ def get_docker_ps(self):
     an array of dictionaries. The array looks like this:
 
     [
+      {'Command': '/bin/sleep 30',
       'Created': 1412574844,
       'Id': '6e276c9e6e5759e12a6a9214efec6439f80b4f37618e1a6547f28a3da34db07a',
       'Image': 'busybox:buildroot-2014.02',

@@ -57,13 +57,14 @@ class Command(BaseCommand):
         # Get the last docker ps task
         ps = AsyncResult(id='docker_ps_beat')
 
-        # If the task finished successfully, parse results, call again
-        if ps.successful():
-            containers_docker = ps.result
-            get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
-
         # If it's never started, call docker ps
-        elif ps.state == 'PENDING':
+        if ps.state == 'PENDING':
+            get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
+            sleep(3)  # and sleep to allow it to finish
+
+        # If the task finished successfully, parse results, call again
+        elif ps.successful():
+            containers_docker = ps.result
             get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
 
         # Otherwise we're waiting until successful
