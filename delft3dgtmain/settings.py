@@ -246,5 +246,10 @@ if 'test' in sys.argv:
     PROCESS_IMAGE_NAME = 'dummy_processing'
     EXPORT_IMAGE_NAME = 'dummy_export'
 
+    # versions
+    REPOS_URL = 'http://example.com/repos'
+    SVN_REV = '123'
+    DELFT3D_VERSION = 'Delft3D version 123456'
+
     # max number of simulations
     MAX_SIMULATIONS = 1
