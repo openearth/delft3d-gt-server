@@ -121,7 +121,7 @@ class TaskTest(TestCase):
         memory_limit = '1g'
         command = "echo test"
         config = {}
-        environment = None
+        environment = {'a': 1, 'b': 2}
         label = {"type": "delft3d"}
         folder = ['input', 'output']
         name = 'test-8172318273'
@@ -132,7 +132,7 @@ class TaskTest(TestCase):
                       }
         mockClient.return_value.create_host_config.return_value = config
 
-        do_docker_create.delay(label, parameters, None, name,
+        do_docker_create.delay(label, parameters, environment, name,
                                image, volumes, memory_limit, folders, command)
 
         # Assert that docker is called
