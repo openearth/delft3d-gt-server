@@ -191,6 +191,19 @@ class SceneTestCase(TestCase):
         self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
         self.export = ['export/export.something']
 
+    def test_version(self):
+        self.assertDictEqual(self.scene.version(), {})
+        for i, container_type in enumerate(['preprocess', 'delft3d']):
+            self.scene.container_set.add(Container(container_type=container_type,
+                                                   delft3d_version='123456',
+                                                   svn_repos_url='http://example.com',
+                                                   svn_revision='123'))
+            version_dict = self.scene.version()
+            self.assertEqual(len(version_dict.keys()), i+1)
+            self.assertEqual(version_dict[container_type]['svn_repos_url'], 'http://example.com')
+            for key in ('delft3d_version', 'svn_repos_url', 'svn_revision'):
+                self.assertIn(key, version_dict[container_type].keys())
+
     def test_after_publishing_rights_are_revoked(self):
         self.assertEqual(self.scene.shared, 'p')
         self.assertTrue(self.user_a.has_perm('view_scene', self.scene))

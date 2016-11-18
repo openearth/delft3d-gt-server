@@ -314,6 +314,14 @@ class Scene(models.Model):
             ('view_scene', 'View Scene'),
         )
 
+    def version(self):
+        version_dict = {}
+        for container in self.container_set.all():
+            version_dict[container.container_type] = {'delft3d_version': container.delft3d_version,
+                                                      'svn_repos_url': container.svn_repos_url,
+                                                      'svn_revision': container.svn_revision}
+        return version_dict
+
     # UI CONTROL METHODS
 
     def start(self):
