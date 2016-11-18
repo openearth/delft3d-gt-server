@@ -194,13 +194,12 @@ class SceneTestCase(TestCase):
     def test_version(self):
         self.assertDictEqual(self.scene.version(), {})
         for i, container_type in enumerate(['preprocess', 'delft3d']):
-            self.scene.container_set.add(Container(container_type=container_type,
-                                                   delft3d_version='123456',
-                                                   svn_repos_url='http://example.com',
-                                                   svn_revision='123'))
+            self.scene.container_set.add(Container(container_type=container_type))
             version_dict = self.scene.version()
             self.assertEqual(len(version_dict.keys()), i+1)
-            self.assertEqual(version_dict[container_type]['svn_repos_url'], 'http://example.com')
+            self.assertEqual(version_dict[container_type]['delft3d_version'], settings.DELFT3D_VERSION)
+            self.assertEqual(version_dict[container_type]['svn_repos_url'], settings.REPOS_URL)
+            self.assertEqual(version_dict[container_type]['svn_revision'], settings.SVN_REV)
             for key in ('delft3d_version', 'svn_repos_url', 'svn_revision'):
                 self.assertIn(key, version_dict[container_type].keys())
 
