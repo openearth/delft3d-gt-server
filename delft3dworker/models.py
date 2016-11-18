@@ -1116,6 +1116,10 @@ class Container(models.Model):
     docker_log = models.TextField(blank=True, default='')
     container_log = models.TextField(blank=True, default='')
 
+    svn_repos_url = models.URLField(default=settings.REPOS_URL)
+    svn_revision = models.CharField(max_length=25, default=settings.SVN_REV)
+    delft3d_version = models.CharField(max_length=64, default=settings.DELFT3D_VERSION)
+
     # CONTROL METHODS
 
     def set_desired_state(self, desired_state):
@@ -1325,7 +1329,9 @@ class Container(models.Model):
                            '{0}:/data/input:ro'.format(simdir)],
                        'memory_limit': '1000m',
                        'environment': {"uuid": str(self.scene.suid),
-                                       "folder": expdir},
+                                       "folder": expdir,
+                                       "REPOS_URL": self.svn_repos_url,
+                                       "SVN_REV": self.svn_revision},
                        'name': "{}-{}-{}".format(self.container_type,
                                                  str(self.scene.suid),
                                                  random_postfix),
@@ -1341,7 +1347,9 @@ class Container(models.Model):
                                 '{0}:/data/input:ro'.format(simdir)],
                             'memory_limit': '3000m',
                             'environment': {"uuid": str(self.scene.suid),
-                                            "folder": posdir},
+                                            "folder": posdir,
+                                            "REPOS_URL": self.svn_repos_url,
+                                            "SVN_REV": self.svn_revision},
                             'name': "{}-{}-{}".format(self.container_type,
                                                       str(self.scene.suid),
                                                       random_postfix),
@@ -1358,7 +1366,9 @@ class Container(models.Model):
                                '{0}:/data/input:ro'.format(predir)],
                            'memory_limit': '200m',
                            'environment': {"uuid": str(self.scene.suid),
-                                           "folder": simdir},
+                                           "folder": simdir,
+                                            "REPOS_URL": self.svn_repos_url,
+                                            "SVN_REV": self.svn_revision},
                            'name': "{}-{}-{}".format(self.container_type,
                                                      str(self.scene.suid),
                                                      random_postfix),
@@ -1373,7 +1383,9 @@ class Container(models.Model):
                                  '{0}:/data/input:z'.format(syndir)],
                              'memory_limit': '500m',
                              'environment': {"uuid": str(self.scene.suid),
-                                             "folder": syndir},
+                                             "folder": syndir,
+                                             "REPOS_URL": self.svn_repos_url,
+                                             "SVN_REV": self.svn_revision},
                              'name': "{}-{}-{}".format(self.container_type,
                                                        str(self.scene.suid),
                                                        random_postfix),
@@ -1388,7 +1400,9 @@ class Container(models.Model):
                         ],
                         'memory_limit': '3000m',
                         'environment': {"uuid": str(self.scene.suid),
-                                        "folder": prodir},
+                                        "folder": prodir,
+                                        "REPOS_URL": self.svn_repos_url,
+                                        "SVN_REV": self.svn_revision},
                         'name': "{}-{}-{}".format(self.container_type,
                                                   str(self.scene.suid),
                                                   random_postfix),
