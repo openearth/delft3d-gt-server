@@ -1117,8 +1117,8 @@ class Container(models.Model):
     container_log = models.TextField(blank=True, default='')
 
     svn_repos_url = models.URLField(default=settings.REPOS_URL)
-    svn_revision = models.CharField(max_length=25, default=settings.SVN_REV)
-    delft3d_version = models.CharField(max_length=64, default=settings.DELFT3D_VERSION)
+    svn_revision = models.CharField(max_length=16, default=settings.SVN_REV)
+    delft3d_version = models.CharField(max_length=128, default=settings.DELFT3D_VERSION)
 
     # CONTROL METHODS
 
