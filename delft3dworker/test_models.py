@@ -985,7 +985,9 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'image': 'dummy_preprocessing',
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
-                                        self.scene.workingdir, 'simulation')},
+                                        self.scene.workingdir, 'simulation'),
+                                    'REPOS_URL': settings.REPOS_URL,
+                                    'SVN_REV': settings.SVN_REV},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
@@ -1013,7 +1015,9 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'image': 'dummy_preprocessing',
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
-                                        self.scene.workingdir, 'simulation')},
+                                        self.scene.workingdir, 'simulation'),
+                                    'REPOS_URL': settings.REPOS_URL,
+                                    'SVN_REV': settings.SVN_REV},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
