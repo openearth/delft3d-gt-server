@@ -75,7 +75,7 @@ class SceneSerializer(serializers.ModelSerializer):
             'task_id',
             'workingdir',
             'phase',
-            'version'
+            'versions'
         )
 
 

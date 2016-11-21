@@ -314,12 +314,10 @@ class Scene(models.Model):
             ('view_scene', 'View Scene'),
         )
 
-    def version(self):
+    def versions(self):
         version_dict = {}
         for container in self.container_set.all():
-            version_dict[container.container_type] = {'delft3d_version': container.delft3d_version,
-                                                      'svn_repos_url': container.svn_repos_url,
-                                                      'svn_revision': container.svn_revision}
+            version_dict[container.container_type] = container.version
         return version_dict
 
     # UI CONTROL METHODS
@@ -1124,9 +1122,7 @@ class Container(models.Model):
     docker_log = models.TextField(blank=True, default='')
     container_log = models.TextField(blank=True, default='')
 
-    svn_repos_url = models.URLField(default=settings.REPOS_URL)
-    svn_revision = models.CharField(max_length=16, default=settings.SVN_REV)
-    delft3d_version = models.CharField(max_length=128, default=settings.DELFT3D_VERSION)
+    version = JSONField(default='{}')
 
     # CONTROL METHODS
 
@@ -1337,9 +1333,7 @@ class Container(models.Model):
                            '{0}:/data/input:ro'.format(simdir)],
                        'memory_limit': '1000m',
                        'environment': {"uuid": str(self.scene.suid),
-                                       "folder": expdir,
-                                       "REPOS_URL": self.svn_repos_url,
-                                       "SVN_REV": self.svn_revision},
+                                       "folder": expdir},
                        'name': "{}-{}-{}".format(self.container_type,
                                                  str(self.scene.suid),
                                                  random_postfix),
@@ -1355,9 +1349,7 @@ class Container(models.Model):
                                 '{0}:/data/input:ro'.format(simdir)],
                             'memory_limit': '3000m',
                             'environment': {"uuid": str(self.scene.suid),
-                                            "folder": posdir,
-                                            "REPOS_URL": self.svn_repos_url,
-                                            "SVN_REV": self.svn_revision},
+                                            "folder": posdir},
                             'name': "{}-{}-{}".format(self.container_type,
                                                       str(self.scene.suid),
                                                       random_postfix),
@@ -1374,9 +1366,7 @@ class Container(models.Model):
                                '{0}:/data/input:ro'.format(predir)],
                            'memory_limit': '200m',
                            'environment': {"uuid": str(self.scene.suid),
-                                           "folder": simdir,
-                                            "REPOS_URL": self.svn_repos_url,
-                                            "SVN_REV": self.svn_revision},
+                                           "folder": simdir},
                            'name': "{}-{}-{}".format(self.container_type,
                                                      str(self.scene.suid),
                                                      random_postfix),
@@ -1391,9 +1381,7 @@ class Container(models.Model):
                                  '{0}:/data/input:z'.format(syndir)],
                              'memory_limit': '500m',
                              'environment': {"uuid": str(self.scene.suid),
-                                             "folder": syndir,
-                                             "REPOS_URL": self.svn_repos_url,
-                                             "SVN_REV": self.svn_revision},
+                                             "folder": syndir},
                              'name': "{}-{}-{}".format(self.container_type,
                                                        str(self.scene.suid),
                                                        random_postfix),
@@ -1408,9 +1396,7 @@ class Container(models.Model):
                         ],
                         'memory_limit': '3000m',
                         'environment': {"uuid": str(self.scene.suid),
-                                        "folder": prodir,
-                                        "REPOS_URL": self.svn_repos_url,
-                                        "SVN_REV": self.svn_revision},
+                                        "folder": prodir},
                         'name': "{}-{}-{}".format(self.container_type,
                                                   str(self.scene.suid),
                                                   random_postfix),
@@ -1421,6 +1407,14 @@ class Container(models.Model):
                             "/data/svn/scripts/wrapper/visualize_all.py"
                         ])},
         }
+
+        if self.container_type == 'delft3d':
+            self.version = {'delft3d_version': settings.DELFT3D_VERSION}
+        else:
+            self.version = {'REPOS_URL': settings.REPOS_URL,
+                            'SVN_REV': settings.SVN_REV}
+            # add svn version information to environment variables of python container
+            kwargs[self.container_type]['environment'].update(self.version)
 
         parameters = self.scene.parameters
         label = {"type": self.container_type}
