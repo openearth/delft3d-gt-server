@@ -29,14 +29,14 @@ class Command(BaseCommand):
         self._update_container_tasks()
 
         # STEP II : Get latest container statuses
-        self._get_latest_docker_status()
+        if self._get_latest_docker_status():
 
-        # STEP III : Update Scenes and their Phases
-        # Controls container desired states
-        self._update_scene_phases()
+            # STEP III : Update Scenes and their Phases
+            # Controls container desired states
+            self._update_scene_phases()
 
-        # STEP IV : Synchronise Django Container Models and Docker containers
-        self._fix_container_state_mismatches_or_log()
+            # STEP IV : Synchronise Container Models with docker containers
+            self._fix_container_state_mismatches_or_log()
 
     def _update_container_tasks(self):
         """
@@ -52,39 +52,31 @@ class Command(BaseCommand):
         Synchronise local Django Container models with remote Docker containers
         """
 
-        containers_docker = None
+        ps = get_docker_ps.apply_async(queue='priority')
 
-        # Get the last docker ps task
-        ps = AsyncResult(id='docker_ps_beat')
+        # Wait until the task finished successfully
+        # or return if waiting too long
+        checked = 0
+        while not ps.successful():
+            sleep(1)
 
-        # If it's never started, call docker ps
-        if ps.state == 'PENDING':
-            get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
-            sleep(3)  # and sleep to allow it to finish
+            # if things take too long, revoke the task and return
+            checked += 1
+            if checked >= 30:
+                ps.revoke()
+                return False
 
-        # If the task finished successfully, parse results, call again
-        elif ps.successful():
-            containers_docker = ps.result
-            get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
-
-        # Otherwise we're waiting until successful
-        else:
-            logging.warning("Docker ps hasn't finished yet")
-
-        if containers_docker is None:
-            # Apparently something is wrong with the remote docker or celery
-            # To prevent new task creation by Containers exit beat.
-            return
-
+        # task is succesful, so we're getting the result and create a set
+        containers_docker = ps.result
         docker_dict = {x['Id']: x for x in containers_docker}
         docker_set = set(docker_dict.keys())
 
         # retrieve container from database
-        container_set = set(
-            Container.objects.values_list('docker_id', flat=True))
+        container_set = set(Container.objects.exclude(
+            docker_id__exact='').values_list('docker_id', flat=True))
 
         # Work out matching matrix
-        #       docker  yes non
+        #       docker  yes no
         # model x
         # yes           1_1 1_0
         # no            0_1 0_0
@@ -113,12 +105,17 @@ class Command(BaseCommand):
                 'Labels' in info['Config'] and
                     'type' in info['Config']['Labels']):
                 type = info['Config']['Labels']['type']
-                if type in [choice[0] for choice in Container.CONTAINER_TYPE_CHOICES]:
-                    self.stderr.write(
-                        "Docker container {} not found in database!".format(container))
+
+                choices = Container.CONTAINER_TYPE_CHOICES
+                if type in [choice[0] for choice in choices]:
+                    msg = "Docker container {} not found in database!".format(
+                        container)
+                    self.stderr.write(msg)
                     do_docker_remove.delay(container, force=True)
             else:
                 logging.info("Found non-delft3dgt docker container, ignoring.")
+
+        return True  # successful
 
     def _update_scene_phases(self):
         """
