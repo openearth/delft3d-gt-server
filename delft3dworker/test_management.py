@@ -87,7 +87,7 @@ class ManagementTest(TestCase):
         client.inspect_container.side_effect = inspect
 
         out = StringIO()
-        call_command('containersync_sceneupdate', stdout=out, stderr=out)
+        call_command('containersync_sceneupdate', stderr=out)
 
         # Docker container not in database
         self.assertIn(
