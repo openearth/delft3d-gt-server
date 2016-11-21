@@ -65,10 +65,10 @@ class Command(BaseCommand):
             sleep(3)  # and sleep to allow it to finish
 
         # If the task finished successfully, parse results, call again
-        elif ps.successful():
+        if ps.successful():
             containers_docker = ps.result
             logging.info("Docker succesfull {}".format(str(containers_docker)[:30]))
-            ps.forget()
+            ps.forget()  # Otherwise we're always successful
 
         # Otherwise we're waiting until successful
         else:
@@ -88,7 +88,7 @@ class Command(BaseCommand):
             Container.objects.values_list('docker_id', flat=True))
 
         # Work out matching matrix
-        #       docker  yes non
+        #       docker  yes no
         # model x
         # yes           1_1 1_0
         # no            0_1 0_0
