@@ -200,7 +200,6 @@ class SceneTestCase(TestCase):
         mocked_task.return_value = result
         result.id = task_uuid
 
-        # call method, check if do_docker_create is called once, uuid updates
         self.assertDictEqual(self.scene.versions(), {})
         for i, container_type in enumerate(['preprocess', 'delft3d', 'process', 'postprocess', 'export', 'sync_cleanup']):
             container = Container(container_type=container_type)
