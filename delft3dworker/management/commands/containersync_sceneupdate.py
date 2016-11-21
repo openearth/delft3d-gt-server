@@ -56,16 +56,19 @@ class Command(BaseCommand):
 
         # Get the last docker ps task
         ps = AsyncResult(id='docker_ps_beat')
+        logging.info("Docker is {}".format(ps.status))
 
         # If it's never started, call docker ps
         if ps.state == 'PENDING':
-            get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
+            logging.info("Docker pending")
+            ps = get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
             sleep(3)  # and sleep to allow it to finish
 
         # If the task finished successfully, parse results, call again
         elif ps.successful():
             containers_docker = ps.result
-            get_docker_ps.apply_async(queue='priority', task_id='docker_ps_beat')
+            logging.info("Docker succesfull {}".format(str(containers_docker)[:30]))
+            ps.forget()
 
         # Otherwise we're waiting until successful
         else:
@@ -74,6 +77,7 @@ class Command(BaseCommand):
         if containers_docker is None:
             # Apparently something is wrong with the remote docker or celery
             # To prevent new task creation by Containers exit beat.
+            logging.warning("Containers is none")
             return
 
         docker_dict = {x['Id']: x for x in containers_docker}
@@ -100,9 +104,11 @@ class Command(BaseCommand):
         # Update state of all matching containers
         container_match = m_1_1 | m_1_0
         for con_id in container_match:
+            logging.info("Found match {}".format(con_id))
             snapshot = docker_dict[
                 con_id] if con_id in docker_dict else None
             for c in Container.objects.filter(docker_id=con_id):
+                logging.info("Updating match {}".format(con_id))
                 c.update_from_docker_snapshot(snapshot)
 
         # Call error for mismatch
