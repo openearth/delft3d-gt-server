@@ -37,6 +37,11 @@ EXPORT_DUMMY_IMAGE_NAME = 'dummy_export'
 
 WORKER_FILEDIR = '/data/container/files'
 
+# versions
+REPOS_URL = 'http://'
+SVN_REV = '<revision number>'
+DELFT3D_VERSION = 'Delft3D <version number>'
+
 BROKER_URL = 'redis://'
 CELERY_RESULT_BACKEND = 'redis://'
 

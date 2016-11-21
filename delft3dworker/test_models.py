@@ -191,6 +191,34 @@ class SceneTestCase(TestCase):
         self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
         self.export = ['export/export.something']
 
+    @patch('delft3dcontainermanager.tasks.do_docker_create.apply_async',
+           autospec=True)
+    def test_versions(self, mocked_task):
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        result = Mock()
+        mocked_task.return_value = result
+        result.id = task_uuid
+
+        self.assertDictEqual(self.scene.versions(), {})
+        for i, container_type in enumerate(['preprocess', 'delft3d', 'process', 'postprocess', 'export', 'sync_cleanup']):
+            container = Container(container_type=container_type)
+            self.scene.container_set.add(container)
+            name = container._create_container()
+            version_dict = self.scene.versions()
+            self.assertEqual(len(version_dict.keys()), i+1)
+            if container_type == 'delft3d':
+                self.assertIn('delft3d_version', version_dict[container_type])
+                self.assertNotIn('REPOS_URL', version_dict[container_type])
+                self.assertNotIn('SVN_REV', version_dict[container_type])
+                self.assertEqual(version_dict[container_type]['delft3d_version'], settings.DELFT3D_VERSION)
+            else:
+                self.assertNotIn('delft3d_version', version_dict[container_type])
+                self.assertIn('REPOS_URL', version_dict[container_type])
+                self.assertIn('SVN_REV', version_dict[container_type])
+                self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
+                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_REV)
+
     def test_after_publishing_rights_are_revoked(self):
         self.assertEqual(self.scene.shared, 'p')
         self.assertTrue(self.user_a.has_perm('view_scene', self.scene))
@@ -985,7 +1013,9 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'image': 'dummy_preprocessing',
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
-                                        self.scene.workingdir, 'simulation')},
+                                        self.scene.workingdir, 'simulation'),
+                                    'REPOS_URL': settings.REPOS_URL,
+                                    'SVN_REV': settings.SVN_REV},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
@@ -1013,7 +1043,9 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'image': 'dummy_preprocessing',
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
-                                        self.scene.workingdir, 'simulation')},
+                                        self.scene.workingdir, 'simulation'),
+                                    'REPOS_URL': settings.REPOS_URL,
+                                    'SVN_REV': settings.SVN_REV},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(

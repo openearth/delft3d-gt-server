@@ -314,6 +314,12 @@ class Scene(models.Model):
             ('view_scene', 'View Scene'),
         )
 
+    def versions(self):
+        version_dict = {}
+        for container in self.container_set.all():
+            version_dict[container.container_type] = container.version
+        return version_dict
+
     # UI CONTROL METHODS
 
     def start(self):
@@ -1116,6 +1122,8 @@ class Container(models.Model):
     docker_log = models.TextField(blank=True, default='')
     container_log = models.TextField(blank=True, default='')
 
+    version = JSONField(default='{}')
+
     # CONTROL METHODS
 
     def set_desired_state(self, desired_state):
@@ -1399,6 +1407,14 @@ class Container(models.Model):
                             "/data/svn/scripts/wrapper/visualize_all.py"
                         ])},
         }
+
+        if self.container_type == 'delft3d':
+            self.version = {'delft3d_version': settings.DELFT3D_VERSION}
+        else:
+            self.version = {'REPOS_URL': settings.REPOS_URL,
+                            'SVN_REV': settings.SVN_REV}
+            # add svn version information to environment variables of python container
+            kwargs[self.container_type]['environment'].update(self.version)
 
         parameters = self.scene.parameters
         label = {"type": self.container_type}
