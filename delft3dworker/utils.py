@@ -1,5 +1,12 @@
 import re
 import sys
+from django.conf import settings
+
+
+def version_default():
+    # default value for JSONField of Container model
+    return {'REPOS_URL': settings.REPOS_URL,
+            'SVN_REV': settings.SVN_REV}
 
 
 def log_progress_parser(log, container_type):
