@@ -2,8 +2,8 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
-import delft3dworker.models
 import jsonfield.fields
+import delft3dworker.utils
 
 
 class Migration(migrations.Migration):
@@ -16,6 +16,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='container',
             name='version',
-            field=jsonfield.fields.JSONField(default=delft3dworker.models.version_default),
+            field=jsonfield.fields.JSONField(default=delft3dworker.utils.version_default),
         ),
     ]
