@@ -34,19 +34,13 @@ from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
 # Postgresql 9.4
 
-from delft3dworker.utils import log_progress_parser
+from delft3dworker.utils import log_progress_parser, version_default
 
 from delft3dcontainermanager.tasks import do_docker_create
 from delft3dcontainermanager.tasks import do_docker_remove
 from delft3dcontainermanager.tasks import do_docker_start
 from delft3dcontainermanager.tasks import do_docker_stop
 from delft3dcontainermanager.tasks import get_docker_log
-
-
-def version_default():
-    # default value for JSONField of Container model
-    return {'REPOS_URL': settings.REPOS_URL,
-            'SVN_REV': settings.SVN_REV}
 
 
 # ################################### SCENARIO, SCENE & CONTAINER
