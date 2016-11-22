@@ -565,7 +565,7 @@ class ScenarioPhasesTestCase(TestCase):
         container.save()
 
         self.scene.update_and_phase_shift()
-        self.assertEqual(self.scene.phase, self.p.sim_fin)
+        self.assertEqual(self.scene.phase, self.p.sim_last_proc)
 
     def test_phase_sim_fin(self):
         self.scene.phase = self.p.sim_fin
