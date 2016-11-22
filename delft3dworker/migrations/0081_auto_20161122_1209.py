@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
+import delft3dworker.models
 import jsonfield.fields
 
 
@@ -15,6 +16,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='container',
             name='version',
-            field=jsonfield.fields.JSONField(default={b'REPOS_URL': b'http://delft3dgt.openearth.nl/repos/trunk', b'SVN_REV': b'374'}),
+            field=jsonfield.fields.JSONField(default=delft3dworker.models.version_default),
         ),
     ]

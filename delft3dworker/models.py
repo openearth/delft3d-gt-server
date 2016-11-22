@@ -43,6 +43,12 @@ from delft3dcontainermanager.tasks import do_docker_stop
 from delft3dcontainermanager.tasks import get_docker_log
 
 
+def version_default():
+    # default value for JSONField of Container model
+    return {'REPOS_URL': settings.REPOS_URL,
+            'SVN_REV': settings.SVN_REV}
+
+
 # ################################### SCENARIO, SCENE & CONTAINER
 
 class Scenario(models.Model):
@@ -1122,8 +1128,7 @@ class Container(models.Model):
     docker_log = models.TextField(blank=True, default='')
     container_log = models.TextField(blank=True, default='')
 
-    version = JSONField(default={'REPOS_URL': settings.REPOS_URL,
-                                 'SVN_REV': settings.SVN_REV})
+    version = JSONField(default=version_default)
 
     # CONTROL METHODS
 
