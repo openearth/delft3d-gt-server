@@ -339,54 +339,11 @@ class SceneTestCase(TestCase):
             accept_global_perms=False
         )), 1)
 
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_images(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.images:
-    #         open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
+    def test_reset_scene(self):
 
-    #     stream, fn = self.scene.export(['export_images'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 3)
+        # TODO: write these tests
 
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_sim(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.simulation:
-    #         open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-    #         # print(os.path.join(os.getcwd(), self.wd, f))
-    #     stream, fn = self.scene.export(['export_input'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 1)
-
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_movies(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.movies:
-    #         # Also make some data
-    #         if 'big' in f:
-    #            open(os.path.join(os.getcwd(), self.wd, f), 'a').write('TEST')
-    #         else:
-    #             open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-    #         # print(os.path.join(os.getcwd(), self.wd, f))
-
-    #     stream, fn = self.scene.export(['export_movie'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 1)
-
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_export(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.export:
-    #         open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-
-    #     stream, fn = self.scene.export(['export_thirdparty'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 1)
+        pass
 
     def test_start_scene(self):
 

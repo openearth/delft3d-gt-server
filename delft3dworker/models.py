@@ -322,6 +322,17 @@ class Scene(models.Model):
 
     # UI CONTROL METHODS
 
+    def reset(self):
+        self.date_started = None
+        self.progress = 0
+        self.save()
+
+        # only allow a start when Scene is 'Finished'
+        if self.phase == (self.phases.fin):
+            self.shift_to_phase(self.phases.new)   # shift to Queued
+
+        return {"task_id": None, "scene_id": None}
+
     def start(self):
         self.date_started = now()
         self.save()
