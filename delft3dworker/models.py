@@ -1122,7 +1122,8 @@ class Container(models.Model):
     docker_log = models.TextField(blank=True, default='')
     container_log = models.TextField(blank=True, default='')
 
-    version = JSONField(default='{}')
+    version = JSONField(default={'REPOS_URL': settings.REPOS_URL,
+                                 'SVN_REV': settings.SVN_REV})
 
     # CONTROL METHODS
 
@@ -1409,10 +1410,11 @@ class Container(models.Model):
         }
 
         if self.container_type == 'delft3d':
+            # overwrite default version field with delft3d_version
             self.version = {'delft3d_version': settings.DELFT3D_VERSION}
+            # this is not needed as environment variable in the container, so no further action needed
         else:
-            self.version = {'REPOS_URL': settings.REPOS_URL,
-                            'SVN_REV': settings.SVN_REV}
+            # use default version field
             # add svn version information to environment variables of python container
             kwargs[self.container_type]['environment'].update(self.version)
 
