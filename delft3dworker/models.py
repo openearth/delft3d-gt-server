@@ -337,6 +337,10 @@ class Scene(models.Model):
         if self.phase >= self.phases.sim_start and self.phase <= self.phases.sim_fin:
             self.shift_to_phase(self.phases.sim_stop)   # stop Simulation
 
+        # Abort queue
+        if self.phase == self.phases.queued:
+            self.shift_to_phase(self.phases.idle)  # get out of queue
+
         return {
             "task_id": None,
             "state": None,
