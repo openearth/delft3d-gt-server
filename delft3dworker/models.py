@@ -672,7 +672,7 @@ class Scene(models.Model):
 
                 delft3d_container.set_desired_state('exited')
                 processing_container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sim_fin)
+                self.shift_to_phase(self.phases.sim_last_proc)
 
             # If container disappeared, shift back
             elif (delft3d_container.docker_state == 'non-existent' or
@@ -710,14 +710,14 @@ class Scene(models.Model):
         elif self.phase == self.phases.sim_last_proc:
             processing_container = self.container_set.get(
                 container_type='process')
-            
+
             if processing_container.docker_state == 'exited':
                 processing_container.set_desired_state('exited')
                 self.shift_to_phase(self.phases.sim_fin)
-            
+
             elif processing_container.docker_state == 'non-existent':
                 self.shift_to_phase(self.phases.sim_create)
-            
+
             else:
                 logging.error("Stuck in {}".format(self.phase))
 

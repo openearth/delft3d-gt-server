@@ -599,6 +599,50 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene.update_and_phase_shift()
         self.assertEqual(self.scene.phase, self.p.sim_last_proc)
 
+    def test_phase_sim_last_proc(self):
+        self.scene.phase = self.p.sim_last_proc
+        container = self.scene.container_set.get(container_type='delft3d')
+        container.docker_state = 'exited'
+        container.save()
+        container = self.scene.container_set.get(container_type='process')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_fin)
+
+    def test_phase_sim_lost_proc(self):
+        # Race condition were connection was lost a long time
+        # Processing disappeared and Delft3D is finished already
+        # we shouldn't restart Delft3D
+        self.scene.phase = self.p.sim_run
+        d_container = self.scene.container_set.get(container_type='delft3d')
+        d_container.docker_state = 'running'
+        d_container.save()
+        p_container = self.scene.container_set.get(container_type='process')
+        p_container.docker_state = 'non-existent'
+        p_container.save()
+
+        # Create process
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_create)
+        p_container.docker_state = 'created'
+        p_container.save()
+
+        # In the meantime, delft3d has finished
+        d_container.docker_state = 'exited'
+        d_container.save()
+
+        # Start process
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_start)
+        # self.assertEqual(d_container.desired_state, 'exited')
+        p_container.docker_state = 'running'
+        p_container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_last_proc)
+
     def test_phase_sim_fin(self):
         self.scene.phase = self.p.sim_fin
 
