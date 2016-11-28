@@ -322,13 +322,22 @@ class Scene(models.Model):
 
     # UI CONTROL METHODS
 
-    def start(self):
-        self.date_started = now()
-        self.save()
+    def reset(self):
+        # only allow a start when Scene is 'Finished'
+        if self.phase == self.phases.fin:
+            self.shift_to_phase(self.phases.new)   # shift to Queued
+            self.date_started = None
+            self.progress = 0
+            self.save()
 
-        # only allow a start when Scene is 'Idle' or 'Finished'
-        if self.phase in (self.phases.idle, self.phases.fin):
+        return {"task_id": None, "scene_id": None}
+
+    def start(self):
+        # only allow a start when Scene is 'Idle'
+        if self.phase == self.phases.idle:
             self.shift_to_phase(self.phases.queued)   # shift to Queued
+            self.date_started = now()
+            self.save()
 
         return {"task_id": None, "scene_id": None}
 

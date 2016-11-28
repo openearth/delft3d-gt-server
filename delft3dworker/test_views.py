@@ -281,6 +281,37 @@ class SceneTestCase(APITestCase):
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    @patch('delft3dworker.models.Scene.reset', autospec=True)
+    def test_scene_reset(self, mocked_scene_method):
+        # reset view
+        url = reverse('scene-reset', args=[self.scene_1.pk])
+
+        # bar cannot see
+        self.client.login(username='bar', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(mocked_scene_method.call_count, 0)
+
+        # foo can reset
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mocked_scene_method.assert_called_with(self.scene_1)
+
+    @patch('delft3dworker.models.Scene.reset', autospec=True)
+    def test_scene_no_reset_after_publish(self, mocked_scene_method):
+        # the scene is published
+        self.scene_1.publish_company(self.user_foo)
+
+        # reset view
+        url = reverse('scene-reset', args=[self.scene_1.pk])
+
+        # foo cannot reset (forbidden)
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(mocked_scene_method.call_count, 0)
+
     @patch('delft3dworker.models.Scene.start', autospec=True)
     def test_scene_start(self, mocked_scene_method):
         # start view
@@ -498,6 +529,7 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_date_before_04)), 0)
         self.assertEqual(len(self._request(search_query_date_before_05)), 2)
 
+        self.scene_1.shift_to_phase(self.scene_1.phases.idle)
         self.scene_1.start()
 
         search_query_date_before_06 = {'started_before': '2000-01-01T00:00:00.000000Z'}

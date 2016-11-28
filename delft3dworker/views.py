@@ -369,6 +369,15 @@ class SceneViewSet(viewsets.ModelViewSet):
         return queryset.order_by('name')
 
     @detail_route(methods=["put"])  # denied after publish to company/world
+    def reset(self, request, pk=None):
+
+        scene = self.get_object()
+        scene.reset()
+        serializer = self.get_serializer(scene)
+
+        return Response(serializer.data)
+
+    @detail_route(methods=["put"])  # denied after publish to company/world
     def start(self, request, pk=None):
 
         scene = self.get_object()

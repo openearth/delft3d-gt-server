@@ -339,66 +339,98 @@ class SceneTestCase(TestCase):
             accept_global_perms=False
         )), 1)
 
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_images(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.images:
-    #         open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-
-    #     stream, fn = self.scene.export(['export_images'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 3)
-
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_sim(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.simulation:
-    #         open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-    #         # print(os.path.join(os.getcwd(), self.wd, f))
-    #     stream, fn = self.scene.export(['export_input'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 1)
-
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_movies(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.movies:
-    #         # Also make some data
-    #         if 'big' in f:
-    #            open(os.path.join(os.getcwd(), self.wd, f), 'a').write('TEST')
-    #         else:
-    #             open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-    #         # print(os.path.join(os.getcwd(), self.wd, f))
-
-    #     stream, fn = self.scene.export(['export_movie'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 1)
-
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_export(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.export:
-    #         open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-
-    #     stream, fn = self.scene.export(['export_thirdparty'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 1)
-
     def test_start_scene(self):
+        started_date = None
 
-        # TODO: write these tests
+        # a scene should only start when it's idle: check for each phase
+        for phase in self.scene.phases:
 
-        pass
+            #  shift scene to phase
+            self.scene.shift_to_phase(phase[0])
 
-    def test_stop_scene(self):
+            # start scene
+            self.scene.start()
 
-        # TODO: write these tests
+            # check that phase is unshifted unless Idle: then it becomes queued
+            self.assertEqual(
+                self.scene.phase,
+                self.scene.phases.queued if (
+                    phase[0] == self.scene.phases.idle) else phase[0]
+            )
 
-        pass
+            # check date_started is untouched unless started from Idle state
+            if phase[0] < self.scene.phases.idle:
+
+                self.assertEqual(self.scene.date_started, started_date)
+
+            if phase[0] == self.scene.phases.idle:
+
+                self.assertTrue(self.scene.date_started <= now())
+                started_date = self.scene.date_started  # store started date
+
+            else:
+
+                self.assertEqual(self.scene.date_started, started_date)
+
+    def test_abort_scene(self):
+
+        # abort is more complex
+        for phase in self.scene.phases:
+
+            #  shift scene to phase
+            self.scene.shift_to_phase(phase[0])
+
+            # abort scene
+            self.scene.abort()
+
+            # if the phase is after simulation start and before stopped
+            if (phase[0] >= self.scene.phases.sim_start) and (
+                phase[0] <= self.scene.phases.sim_fin):
+                # check that phase is shifted to stopped
+                self.assertEqual(self.scene.phase, self.scene.phases.sim_stop)
+
+            # if the phase is queued
+            elif phase[0] == self.scene.phases.queued:
+                # check that phase is shifted to idle
+                self.assertEqual(self.scene.phase, self.scene.phases.idle)
+
+            # else
+            else:
+                # check the abort is ignored
+                self.assertEqual(self.scene.phase, phase[0])
+
+    def test_reset_scene(self):
+        date_started = now()
+        progress = 10
+
+        # a scene should only start when it's idle: check for each phase
+        for phase in self.scene.phases:
+
+            #  shift scene to phase
+            self.scene.date_started = date_started
+            self.scene.progress = progress
+            self.scene.shift_to_phase(phase[0])
+
+            # start scene
+            self.scene.reset()
+
+            # check that phase is unshifted unless Finished: then it becomes New
+            self.assertEqual(
+                self.scene.phase,
+                self.scene.phases.new if (
+                    phase[0] == self.scene.phases.fin) else phase[0]
+            )
+
+            # check properties are untouched unless reset from finished state
+            if phase[0] == self.scene.phases.fin:
+                self.assertEqual(self.scene.date_started, None)
+                self.assertEqual(self.scene.progress, 0)
+                self.assertEqual(self.scene.phase, self.scene.phases.new)
+
+            else:
+                self.assertEqual(self.scene.date_started, date_started)
+                self.assertEqual(self.scene.progress, progress)
+                self.assertEqual(self.scene.phase, phase[0])
 
 
 class ScenarioZeroPhaseTestCase(TestCase):
