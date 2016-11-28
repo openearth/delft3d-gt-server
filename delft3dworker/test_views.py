@@ -529,6 +529,7 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_date_before_04)), 0)
         self.assertEqual(len(self._request(search_query_date_before_05)), 2)
 
+        self.scene_1.shift_to_phase(self.scene_1.phases.idle)
         self.scene_1.start()
 
         search_query_date_before_06 = {'started_before': '2000-01-01T00:00:00.000000Z'}
