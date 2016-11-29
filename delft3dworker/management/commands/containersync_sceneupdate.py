@@ -123,7 +123,10 @@ class Command(BaseCommand):
         shift Scene phase
         """
 
-        for scene in Scene.objects.all():
+        # ordering is done on start date (first, and id second):
+        # if a simulation slot is available, we want simulations to start
+        # in order of their date_started
+        for scene in Scene.objects.all().order_by('date_started','id'):
             scene.update_and_phase_shift()
 
     def _fix_container_state_mismatches_or_log(self):
