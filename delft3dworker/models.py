@@ -271,6 +271,7 @@ class Scene(models.Model):
         (10, 'sim_create', 'Allocating simulation resources'),
         (11, 'sim_start', 'Starting simulation'),
         (12, 'sim_run', 'Running simulation'),
+        (15, 'sim_last_proc', 'Finishing simulation'),
         (13, 'sim_fin', 'Finished simulation'),
         (14, 'sim_stop', 'Stopping simulation'),
 
@@ -650,7 +651,9 @@ class Scene(models.Model):
 
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
-            delft3d_container.set_desired_state('running')
+            # If we've already ran, don't start again
+            if delft3d_container.docker_state == 'created':
+                delft3d_container.set_desired_state('running')
 
             processing_container = self.container_set.get(
                 container_type='process')
@@ -669,7 +672,7 @@ class Scene(models.Model):
 
                 delft3d_container.set_desired_state('exited')
                 processing_container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sim_fin)
+                self.shift_to_phase(self.phases.sim_last_proc)
 
             # If container disappeared, shift back
             elif (delft3d_container.docker_state == 'non-existent' or
@@ -693,8 +696,7 @@ class Scene(models.Model):
 
             if (delft3d_container.docker_state == 'exited'):
                 delft3d_container.set_desired_state('exited')
-                processing_container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sim_fin)
+                self.shift_to_phase(self.phases.sim_last_proc)
 
             # If container disappeared, shift back
             elif (delft3d_container.docker_state == 'non-existent' or
@@ -703,6 +705,21 @@ class Scene(models.Model):
                 self.shift_to_phase(self.phases.sim_create)
 
             return
+
+        # Ensure one extra heartbeat to start processing one last time
+        elif self.phase == self.phases.sim_last_proc:
+            processing_container = self.container_set.get(
+                container_type='process')
+
+            if processing_container.docker_state == 'exited':
+                processing_container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.sim_fin)
+
+            elif processing_container.docker_state == 'non-existent':
+                self.shift_to_phase(self.phases.sim_create)
+
+            else:
+                logging.error("Stuck in {}".format(self.phase))
 
         elif self.phase == self.phases.sim_fin:
 
