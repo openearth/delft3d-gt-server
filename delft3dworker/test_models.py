@@ -611,7 +611,7 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene.update_and_phase_shift()
         self.assertEqual(self.scene.phase, self.p.sim_fin)
 
-    def test_phase_sim_last_proc(self):
+    def test_phase_sim_lost_proc(self):
         # Race condition were connection was lost a long time
         # Processing disappeared and Delft3D is finished already
         # we shouldn't restart Delft3D
