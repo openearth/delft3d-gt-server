@@ -61,6 +61,8 @@ class SceneSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'name',
+            'date_created',
+            'date_started',
             'state',
             'progress',
             'owner',
@@ -72,7 +74,8 @@ class SceneSerializer(serializers.ModelSerializer):
             'parameters',
             'task_id',
             'workingdir',
-            'phase'
+            'phase',
+            'versions'
         )
 
 

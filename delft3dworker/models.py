@@ -34,7 +34,7 @@ from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
 # Postgresql 9.4
 
-from delft3dworker.utils import log_progress_parser
+from delft3dworker.utils import log_progress_parser, version_default
 
 from delft3dcontainermanager.tasks import do_docker_create
 from delft3dcontainermanager.tasks import do_docker_remove
@@ -236,6 +236,9 @@ class Scene(models.Model):
 
     scenario = models.ManyToManyField(Scenario, blank=True)
 
+    date_created = models.DateTimeField(default=now, blank=True)
+    date_started = models.DateTimeField(blank=True, null=True)
+
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True)
     parameters = JSONField(blank=True)  # {"dt":20}
@@ -268,6 +271,7 @@ class Scene(models.Model):
         (10, 'sim_create', 'Allocating simulation resources'),
         (11, 'sim_start', 'Starting simulation'),
         (12, 'sim_run', 'Running simulation'),
+        (15, 'sim_last_proc', 'Finishing simulation'),
         (13, 'sim_fin', 'Finished simulation'),
         (14, 'sim_stop', 'Stopping simulation'),
 
@@ -311,12 +315,30 @@ class Scene(models.Model):
             ('view_scene', 'View Scene'),
         )
 
+    def versions(self):
+        version_dict = {}
+        for container in self.container_set.all():
+            version_dict[container.container_type] = container.version
+        return version_dict
+
     # UI CONTROL METHODS
 
+    def reset(self):
+        # only allow a start when Scene is 'Finished'
+        if self.phase == self.phases.fin:
+            self.shift_to_phase(self.phases.new)   # shift to Queued
+            self.date_started = None
+            self.progress = 0
+            self.save()
+
+        return {"task_id": None, "scene_id": None}
+
     def start(self):
-        # only allow a start when Scene is 'Idle' or 'Finished'
-        if self.phase in (self.phases.idle, self.phases.fin):
+        # only allow a start when Scene is 'Idle'
+        if self.phase == self.phases.idle:
             self.shift_to_phase(self.phases.queued)   # shift to Queued
+            self.date_started = now()
+            self.save()
 
         return {"task_id": None, "scene_id": None}
 
@@ -324,6 +346,10 @@ class Scene(models.Model):
         # Stop simulation
         if self.phase >= self.phases.sim_start and self.phase <= self.phases.sim_fin:
             self.shift_to_phase(self.phases.sim_stop)   # stop Simulation
+
+        # Abort queue
+        if self.phase == self.phases.queued:
+            self.shift_to_phase(self.phases.idle)  # get out of queue
 
         return {
             "task_id": None,
@@ -625,7 +651,9 @@ class Scene(models.Model):
 
             delft3d_container = self.container_set.get(
                 container_type='delft3d')
-            delft3d_container.set_desired_state('running')
+            # If we've already ran, don't start again
+            if delft3d_container.docker_state == 'created':
+                delft3d_container.set_desired_state('running')
 
             processing_container = self.container_set.get(
                 container_type='process')
@@ -635,7 +663,7 @@ class Scene(models.Model):
                 self.shift_to_phase(self.phases.sim_run)
 
             # If there are startup errors, the container will exit
-            # before the next beat and the phase will be stuck if 
+            # before the next beat and the phase will be stuck if
             # this state is not handled explicitly.
             elif (delft3d_container.docker_state == 'exited'):
                 self._local_scan_process()  # update images and logfile
@@ -644,7 +672,7 @@ class Scene(models.Model):
 
                 delft3d_container.set_desired_state('exited')
                 processing_container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sim_fin)
+                self.shift_to_phase(self.phases.sim_last_proc)
 
             # If container disappeared, shift back
             elif (delft3d_container.docker_state == 'non-existent' or
@@ -668,8 +696,7 @@ class Scene(models.Model):
 
             if (delft3d_container.docker_state == 'exited'):
                 delft3d_container.set_desired_state('exited')
-                processing_container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sim_fin)
+                self.shift_to_phase(self.phases.sim_last_proc)
 
             # If container disappeared, shift back
             elif (delft3d_container.docker_state == 'non-existent' or
@@ -678,6 +705,21 @@ class Scene(models.Model):
                 self.shift_to_phase(self.phases.sim_create)
 
             return
+
+        # Ensure one extra heartbeat to start processing one last time
+        elif self.phase == self.phases.sim_last_proc:
+            processing_container = self.container_set.get(
+                container_type='process')
+
+            if processing_container.docker_state == 'exited':
+                processing_container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.sim_fin)
+
+            elif processing_container.docker_state == 'non-existent':
+                self.shift_to_phase(self.phases.sim_create)
+
+            else:
+                logging.error("Stuck in {}".format(self.phase))
 
         elif self.phase == self.phases.sim_fin:
 
@@ -1110,6 +1152,8 @@ class Container(models.Model):
     docker_log = models.TextField(blank=True, default='')
     container_log = models.TextField(blank=True, default='')
 
+    version = JSONField(default=version_default)
+
     # CONTROL METHODS
 
     def set_desired_state(self, desired_state):
@@ -1393,6 +1437,15 @@ class Container(models.Model):
                             "/data/svn/scripts/wrapper/visualize_all.py"
                         ])},
         }
+
+        if self.container_type == 'delft3d':
+            # overwrite default version field with delft3d_version
+            self.version = {'delft3d_version': settings.DELFT3D_VERSION}
+            # this is not needed as environment variable in the container, so no further action needed
+        else:
+            # use default version field
+            # add svn version information to environment variables of python container
+            kwargs[self.container_type]['environment'].update(self.version)
 
         parameters = self.scene.parameters
         label = {"type": self.container_type}

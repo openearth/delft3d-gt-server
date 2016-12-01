@@ -191,6 +191,34 @@ class SceneTestCase(TestCase):
         self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
         self.export = ['export/export.something']
 
+    @patch('delft3dcontainermanager.tasks.do_docker_create.apply_async',
+           autospec=True)
+    def test_versions(self, mocked_task):
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        result = Mock()
+        mocked_task.return_value = result
+        result.id = task_uuid
+
+        self.assertDictEqual(self.scene.versions(), {})
+        for i, container_type in enumerate(['preprocess', 'delft3d', 'process', 'postprocess', 'export', 'sync_cleanup']):
+            container = Container(container_type=container_type)
+            self.scene.container_set.add(container)
+            name = container._create_container()
+            version_dict = self.scene.versions()
+            self.assertEqual(len(version_dict.keys()), i+1)
+            if container_type == 'delft3d':
+                self.assertIn('delft3d_version', version_dict[container_type])
+                self.assertNotIn('REPOS_URL', version_dict[container_type])
+                self.assertNotIn('SVN_REV', version_dict[container_type])
+                self.assertEqual(version_dict[container_type]['delft3d_version'], settings.DELFT3D_VERSION)
+            else:
+                self.assertNotIn('delft3d_version', version_dict[container_type])
+                self.assertIn('REPOS_URL', version_dict[container_type])
+                self.assertIn('SVN_REV', version_dict[container_type])
+                self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
+                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_REV)
+
     def test_after_publishing_rights_are_revoked(self):
         self.assertEqual(self.scene.shared, 'p')
         self.assertTrue(self.user_a.has_perm('view_scene', self.scene))
@@ -311,66 +339,98 @@ class SceneTestCase(TestCase):
             accept_global_perms=False
         )), 1)
 
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_images(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.images:
-    #         open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-
-    #     stream, fn = self.scene.export(['export_images'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 3)
-
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_sim(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.simulation:
-    #         open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-    #         # print(os.path.join(os.getcwd(), self.wd, f))
-    #     stream, fn = self.scene.export(['export_input'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 1)
-
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_movies(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.movies:
-    #         # Also make some data
-    #         if 'big' in f:
-    #            open(os.path.join(os.getcwd(), self.wd, f), 'a').write('TEST')
-    #         else:
-    #             open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-    #         # print(os.path.join(os.getcwd(), self.wd, f))
-
-    #     stream, fn = self.scene.export(['export_movie'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 1)
-
-    # Broken: Models don't create directories anymore, so this test fails
-    # TODO: Fix these tests
-    # def test_export_export(self):
-    #     # Mimick touch for creating empty files
-    #     for f in self.export:
-    #         open(os.path.join(os.getcwd(), self.wd, f), 'a').close()
-
-    #     stream, fn = self.scene.export(['export_thirdparty'])
-    #     zf = zipfile.ZipFile(stream)
-    #     self.assertEqual(len(zf.namelist()), 1)
-
     def test_start_scene(self):
+        started_date = None
 
-        # TODO: write these tests
+        # a scene should only start when it's idle: check for each phase
+        for phase in self.scene.phases:
 
-        pass
+            #  shift scene to phase
+            self.scene.shift_to_phase(phase[0])
 
-    def test_stop_scene(self):
+            # start scene
+            self.scene.start()
 
-        # TODO: write these tests
+            # check that phase is unshifted unless Idle: then it becomes queued
+            self.assertEqual(
+                self.scene.phase,
+                self.scene.phases.queued if (
+                    phase[0] == self.scene.phases.idle) else phase[0]
+            )
 
-        pass
+            # check date_started is untouched unless started from Idle state
+            if phase[0] < self.scene.phases.idle:
+
+                self.assertEqual(self.scene.date_started, started_date)
+
+            if phase[0] == self.scene.phases.idle:
+
+                self.assertTrue(self.scene.date_started <= now())
+                started_date = self.scene.date_started  # store started date
+
+            else:
+
+                self.assertEqual(self.scene.date_started, started_date)
+
+    def test_abort_scene(self):
+
+        # abort is more complex
+        for phase in self.scene.phases:
+
+            #  shift scene to phase
+            self.scene.shift_to_phase(phase[0])
+
+            # abort scene
+            self.scene.abort()
+
+            # if the phase is after simulation start and before stopped
+            if (phase[0] >= self.scene.phases.sim_start) and (
+                phase[0] <= self.scene.phases.sim_fin):
+                # check that phase is shifted to stopped
+                self.assertEqual(self.scene.phase, self.scene.phases.sim_stop)
+
+            # if the phase is queued
+            elif phase[0] == self.scene.phases.queued:
+                # check that phase is shifted to idle
+                self.assertEqual(self.scene.phase, self.scene.phases.idle)
+
+            # else
+            else:
+                # check the abort is ignored
+                self.assertEqual(self.scene.phase, phase[0])
+
+    def test_reset_scene(self):
+        date_started = now()
+        progress = 10
+
+        # a scene should only start when it's idle: check for each phase
+        for phase in self.scene.phases:
+
+            #  shift scene to phase
+            self.scene.date_started = date_started
+            self.scene.progress = progress
+            self.scene.shift_to_phase(phase[0])
+
+            # start scene
+            self.scene.reset()
+
+            # check that phase is unshifted unless Finished: then it becomes New
+            self.assertEqual(
+                self.scene.phase,
+                self.scene.phases.new if (
+                    phase[0] == self.scene.phases.fin) else phase[0]
+            )
+
+            # check properties are untouched unless reset from finished state
+            if phase[0] == self.scene.phases.fin:
+                self.assertEqual(self.scene.date_started, None)
+                self.assertEqual(self.scene.progress, 0)
+                self.assertEqual(self.scene.phase, self.scene.phases.new)
+
+            else:
+                self.assertEqual(self.scene.date_started, date_started)
+                self.assertEqual(self.scene.progress, progress)
+                self.assertEqual(self.scene.phase, phase[0])
 
 
 class ScenarioZeroPhaseTestCase(TestCase):
@@ -537,7 +597,51 @@ class ScenarioPhasesTestCase(TestCase):
         container.save()
 
         self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_last_proc)
+
+    def test_phase_sim_last_proc(self):
+        self.scene.phase = self.p.sim_last_proc
+        container = self.scene.container_set.get(container_type='delft3d')
+        container.docker_state = 'exited'
+        container.save()
+        container = self.scene.container_set.get(container_type='process')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene.update_and_phase_shift()
         self.assertEqual(self.scene.phase, self.p.sim_fin)
+
+    def test_phase_sim_lost_proc(self):
+        # Race condition were connection was lost a long time
+        # Processing disappeared and Delft3D is finished already
+        # we shouldn't restart Delft3D
+        self.scene.phase = self.p.sim_run
+        d_container = self.scene.container_set.get(container_type='delft3d')
+        d_container.docker_state = 'running'
+        d_container.save()
+        p_container = self.scene.container_set.get(container_type='process')
+        p_container.docker_state = 'non-existent'
+        p_container.save()
+
+        # Create process
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_create)
+        p_container.docker_state = 'created'
+        p_container.save()
+
+        # In the meantime, delft3d has finished
+        d_container.docker_state = 'exited'
+        d_container.save()
+
+        # Start process
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_start)
+        # self.assertEqual(d_container.desired_state, 'exited')
+        p_container.docker_state = 'running'
+        p_container.save()
+
+        self.scene.update_and_phase_shift()
+        self.assertEqual(self.scene.phase, self.p.sim_last_proc)
 
     def test_phase_sim_fin(self):
         self.scene.phase = self.p.sim_fin
@@ -985,7 +1089,9 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'image': 'dummy_preprocessing',
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
-                                        self.scene.workingdir, 'simulation')},
+                                        self.scene.workingdir, 'simulation'),
+                                    'REPOS_URL': settings.REPOS_URL,
+                                    'SVN_REV': settings.SVN_REV},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
@@ -1013,7 +1119,9 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'image': 'dummy_preprocessing',
                     'environment': {'uuid': str(self.scene.suid),
                                     'folder': os.path.join(
-                                        self.scene.workingdir, 'simulation')},
+                                        self.scene.workingdir, 'simulation'),
+                                    'REPOS_URL': settings.REPOS_URL,
+                                    'SVN_REV': settings.SVN_REV},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(

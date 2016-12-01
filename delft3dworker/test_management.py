@@ -4,6 +4,8 @@ from django.core.management import call_command
 
 from django.test import TestCase
 
+from fakeredis import FakeStrictRedis
+
 from mock import patch
 
 from StringIO import StringIO
@@ -68,20 +70,20 @@ class ManagementTest(TestCase):
     @patch('delft3dworker.management.commands.'
            'containersync_sceneupdate.Container.update_from_docker_snapshot')
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
-    def test_containersync_sceneupdate(self, mockClient, mockContainerupdate):
+    @patch('delft3dcontainermanager.tasks.QueueOnce.redis', new_callable=FakeStrictRedis)
+    def test_containersync_sceneupdate(self, mockRedis, mockClient, mockContainerupdate):
         """
         Test match matrix for docker containers and model containers
         TODO: Add test case with timeout error as return_value
         """
+        def inspect(container=''):
+           return {'Id': container, 'Config': {'Labels': {'type': 'preprocess'}}}
+
         client = mockClient.return_value
         client.containers.return_value = [{'Id': 'abcdefg', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'preprocess'}}},
                                           {'Id': 'orphan', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'preprocess'}}}]
-
-        def inspect(container=''):
-            return {'Id': container, 'Config': {'Labels': {'type': 'preprocess'}}}
-
         client.inspect_container.side_effect = inspect
 
         out = StringIO()
@@ -94,29 +96,34 @@ class ManagementTest(TestCase):
             container='orphan', force=True)
 
         # Docker container in database
-        self.assertEqual(mockContainerupdate.call_count, 6)
+        self.assertEqual(mockContainerupdate.call_count, 2)
         mockContainerupdate.assert_called_with(
-            {'Id': 'abcdefg', 'Config': {'Labels': {'type': 'preprocess'}}})
+            {'Config': {'Labels': {'type': 'preprocess'}}, 'Id': 'abcdefg'})
 
     @patch('delft3dworker.management.commands.'
            'containersync_sceneupdate.Container.update_from_docker_snapshot')
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
-    def test_containersync_scenekill(self, mockClient, mockContainerupdate):
+    @patch('delft3dworker.management.commands.'
+           'containersync_sceneupdate.AsyncResult')
+    @patch('delft3dcontainermanager.tasks.QueueOnce.redis', new_callable=FakeStrictRedis)
+    def test_containersync_scenekill(self, mockRedis, mockAsync, mockClient, mockContainerupdate):
         """
         Test match matrix for docker containers and model containers
         TODO: Add test case with timeout error as return_value
         """
         client = mockClient.return_value
         client.containers.return_value = [{'Id': 'abcdefg', 'Status': 'running',
-                                           'Config': {'Labels': {'type': 'preprocess'}}},
+                                           'Config': {'Labels': {'type': 'notfromhere'}}},
                                           {'Id': 'orphan', 'Status': 'running',
-                                           'Config': {'Labels': {'type': 'preprocess'}}}]
+                                           'Config': {'Labels': {'type': 'notfromhere'}}}]
 
-        # Give non existing label, so this container should be ignored
-        def inspect(container=''):
-            return {'Id': container, 'Config': {'Labels': {'type': 'notfromhere'}}}
+        def getresult():
+            return {'status': 'SUCCESS'}
 
-        client.inspect_container.side_effect = inspect
+        # Mock celery result
+        result = mockAsync.return_value
+        result._get_task_meta.side_effect = getresult
+        result.result = client.containers.return_value
 
         out = StringIO()
         call_command('containersync_sceneupdate', stderr=out)
