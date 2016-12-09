@@ -6,6 +6,7 @@ from __future__ import absolute_import
 import django_filters
 import json
 import logging
+import datetime
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
@@ -14,7 +15,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import CreateView
 from django.views.generic import DeleteView
@@ -345,24 +346,24 @@ class SceneViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(owner__in=userids)
 
         if created_after != '':
-            created_after_date = parse_datetime(created_after)
+            created_after_date = parse_date(created_after)
             if created_after_date:
                 queryset = queryset.filter(date_created__gte=created_after_date)
 
         if created_before != '':
-            created_before_date = parse_datetime(created_before)
+            created_before_date = parse_date(created_before)
             if created_before_date:
-                queryset = queryset.filter(date_created__lte=created_before_date)
+                queryset = queryset.filter(date_created__lte=created_before_date + datetime.timedelta(days=1))
 
         if started_after != '':
-            started_after_date = parse_datetime(started_after)
+            started_after_date = parse_date(started_after)
             if started_after_date:
                 queryset = queryset.filter(date_started__gte=started_after_date)
 
         if started_before != '':
-            started_before_date = parse_datetime(started_before)
+            started_before_date = parse_date(started_before)
             if started_before_date:
-                queryset = queryset.filter(date_started__lte=started_before_date)
+                queryset = queryset.filter(date_started__lte=started_before_date + datetime.timedelta(days=1))
 
         # self.queryset = queryset
 
