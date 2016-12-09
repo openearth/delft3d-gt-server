@@ -489,9 +489,9 @@ class SceneSearchTestCase(TestCase):
     def test_search_creation_date(self):
 
         # creation date before searches
-        search_query_date_before_1 = {'created_before': '2000-01-01T00:00:00.000000Z'}
-        search_query_date_before_2 = {'created_before': '2500-01-01T00:00:00.000000Z'}
-        search_query_date_before_3 = {'created_before': '3000-01-01T00:00:00.000000Z'}
+        search_query_date_before_1 = {'created_before': '2000-01-01'}
+        search_query_date_before_2 = {'created_before': '2500-01-01'}
+        search_query_date_before_3 = {'created_before': '3000-01-01'}
         search_query_date_before_4 = {'created_before': 'aksjdfg'}
 
         self.assertEqual(len(self._request(search_query_date_before_1)), 0)
@@ -500,9 +500,9 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_date_before_4)), 2)
 
         # creation date after searches
-        search_query_date_after_1 = {'created_after': '2000-01-01T00:00:00.000000Z'}
-        search_query_date_after_2 = {'created_after': '2500-01-01T00:00:00.000000Z'}
-        search_query_date_after_3 = {'created_after': '3000-01-01T00:00:00.000000Z'}
+        search_query_date_after_1 = {'created_after': '2000-01-01'}
+        search_query_date_after_2 = {'created_after': '2500-01-01'}
+        search_query_date_after_3 = {'created_after': '3000-01-01'}
         search_query_date_after_4 = {'created_after': 'aksjdfg'}
 
         self.assertEqual(len(self._request(search_query_date_after_1)), 2)
@@ -513,16 +513,16 @@ class SceneSearchTestCase(TestCase):
     def test_search_start_date(self):
 
         # creation date before searches
-        search_query_date_before_00 = {'started_before': '2000-01-01T00:00:00.000000Z'}
-        search_query_date_before_01 = {'started_before': '3000-01-01T00:00:00.000000Z'}
+        search_query_date_before_00 = {'started_before': '2000-01-01'}
+        search_query_date_before_01 = {'started_before': '3000-01-01'}
         search_query_date_before_02 = {'started_before': 'aksjdfg'}
 
         self.assertEqual(len(self._request(search_query_date_before_00)), 0)
         self.assertEqual(len(self._request(search_query_date_before_01)), 0)
         self.assertEqual(len(self._request(search_query_date_before_02)), 2)
 
-        search_query_date_before_03 = {'started_after': '2000-01-01T00:00:00.000000Z'}
-        search_query_date_before_04 = {'started_after': '3000-01-01T00:00:00.000000Z'}
+        search_query_date_before_03 = {'started_after': '2000-01-01'}
+        search_query_date_before_04 = {'started_after': '3000-01-01'}
         search_query_date_before_05 = {'started_after': 'aksjdfg'}
 
         self.assertEqual(len(self._request(search_query_date_before_03)), 0)
@@ -532,14 +532,14 @@ class SceneSearchTestCase(TestCase):
         self.scene_1.shift_to_phase(self.scene_1.phases.idle)
         self.scene_1.start()
 
-        search_query_date_before_06 = {'started_before': '2000-01-01T00:00:00.000000Z'}
-        search_query_date_before_07 = {'started_before': '3000-01-01T00:00:00.000000Z'}
+        search_query_date_before_06 = {'started_before': '2000-01-01'}
+        search_query_date_before_07 = {'started_before': '3000-01-01'}
 
         self.assertEqual(len(self._request(search_query_date_before_06)), 0)
         self.assertEqual(len(self._request(search_query_date_before_07)), 1)
 
-        search_query_date_before_08 = {'started_after': '2000-01-01T00:00:00.000000Z'}
-        search_query_date_before_09 = {'started_after': '3000-01-01T00:00:00.000000Z'}
+        search_query_date_before_08 = {'started_after': '2000-01-01'}
+        search_query_date_before_09 = {'started_after': '3000-01-01'}
 
         self.assertEqual(len(self._request(search_query_date_before_08)), 1)
         self.assertEqual(len(self._request(search_query_date_before_09)), 0)

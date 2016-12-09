@@ -351,9 +351,9 @@ class SceneViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(date_created__gte=created_after_date)
 
         if created_before != '':
-            created_before_date = parse_date(created_before) + datetime.timedelta(days=1)
+            created_before_date = parse_date(created_before)
             if created_before_date:
-                queryset = queryset.filter(date_created__lte=created_before_date)
+                queryset = queryset.filter(date_created__lte=created_before_date + datetime.timedelta(days=1))
 
         if started_after != '':
             started_after_date = parse_date(started_after)
@@ -361,9 +361,9 @@ class SceneViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(date_started__gte=started_after_date)
 
         if started_before != '':
-            started_before_date = parse_date(started_before) + datetime.timedelta(days=1)
+            started_before_date = parse_date(started_before)
             if started_before_date:
-                queryset = queryset.filter(date_started__lte=started_before_date)
+                queryset = queryset.filter(date_started__lte=started_before_date + datetime.timedelta(days=1))
 
         # self.queryset = queryset
 
