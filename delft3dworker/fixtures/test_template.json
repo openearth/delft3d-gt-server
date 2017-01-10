@@ -160,7 +160,9 @@
               "description": "Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
               "default": "medium-sand",
               "id": "composition",
-              "validators": {},
+              "validators": {
+                "required": true
+              },
               "type": "select",
               "options": [
                 {
