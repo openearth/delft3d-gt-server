@@ -28,7 +28,8 @@ def delft3dgt_pulse(self):
     return
 
 
-@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60}, throws=(HTTPError))
+@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60},
+             throws=(HTTPError))
 def get_docker_ps(self):
     """
     Retrieve all running docker containers and return them in

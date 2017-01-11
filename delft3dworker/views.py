@@ -22,8 +22,6 @@ from django.views.generic import DeleteView
 from django.views.generic import View
 
 from guardian.shortcuts import assign_perm
-from guardian.shortcuts import get_objects_for_user
-from guardian.decorators import permission_required_or_403
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'delft3dcontainermanager',
     'delft3dworker',
     'delft3dgtfrontend',
+    'delft3dgtprotectedservices',
 ]
 
 MIDDLEWARE_CLASSES = [

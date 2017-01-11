@@ -30,6 +30,10 @@ urlpatterns = [
     url(r'^',
         include('delft3dworker.urls')),
 
+    # Delft3D-GT Protected Services
+    url(r'^',
+        include('delft3dgtprotectedservices.urls')),
+
     # Delft3D-GT Frontend
     url(r'^',
         include('delft3dgtfrontend.urls')),
