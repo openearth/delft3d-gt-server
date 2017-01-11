@@ -25,7 +25,4 @@ urlpatterns = (
     url(r'^api/v1/', include(router.urls)),
     url(r'^api-auth/',
         include('rest_framework.urls', namespace='rest_framework')),
-
-    # DATA
-    url(r'^data(?P<path>.*)$', login_required(serve), {
-        'document_root': '/data/', }))
+    )
