@@ -410,10 +410,16 @@ class SceneViewSet(viewsets.ModelViewSet):
     @list_route(methods=["post"])  # denied after publish to world
     def publish_company_all(self, request):
         queryset = Scene.objects.filter(owner=self.request.user).filter(
-            suid__in=request.POST.getlist('suid'))
+                suid__in=request.data['suid'])
 
-        for scene in queryset:
-            scene.publish_company(request.user)
+        try:
+            for scene in queryset:
+                scene.publish_company(request.user)
+        except ValueError, e:
+            return Response(
+                {'status': e.message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response({'status': 'Published scenes to company'})
 
@@ -430,12 +436,18 @@ class SceneViewSet(viewsets.ModelViewSet):
         return Response({'status': 'Published scene to world'})
 
     @list_route(methods=["post"])  # denied after publish to world
-    def publish_world(self, request):
+    def publish_world_all(self, request):
         queryset = Scene.objects.filter(owner=self.request.user).filter(
-            suid__in=request.POST.getlist('suid'))
+            suid__in=request.data['suid'])
 
-        for scene in queryset:
-            scene.publish_world(request.user)
+        try:
+            for scene in queryset:
+                scene.publish_world(request.user)
+        except ValueError, e:
+            return Response(
+                {'status': e.message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response({'status': 'Published scenes to world'})
 
