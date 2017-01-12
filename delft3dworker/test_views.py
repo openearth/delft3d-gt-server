@@ -343,6 +343,18 @@ class SceneTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(mocked_scene_method.call_count, 0)
 
+    @patch('delft3dworker.models.Scene.publish_world', autospec=True)
+    @patch('delft3dworker.models.Scene.publish_company', autospec=True)
+    def test_multiple_scenes_publish(self, mocked_scene_method_company,
+        mocked_scene_method_world):
+        # start view
+        url = reverse('scene-publish-company-all')
+        self.client.login(username='foo', password='secret')
+        response = self.client.post(url, {'suid':[]}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # TODO write tests!
+        self.assertTrue(False)
 
 class SceneSearchTestCase(TestCase):
     """

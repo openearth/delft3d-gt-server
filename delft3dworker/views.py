@@ -4,7 +4,6 @@ Views for the ui.
 from __future__ import absolute_import
 
 import django_filters
-import json
 import logging
 import datetime
 
@@ -12,7 +11,6 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.http import HttpResponse
-from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.utils.dateparse import parse_date
@@ -22,8 +20,7 @@ from django.views.generic import DeleteView
 from django.views.generic import View
 
 from guardian.shortcuts import assign_perm
-from json_views.views import JSONDetailView
-from json_views.views import JSONListView
+from guardian.shortcuts import get_objects_for_user
 
 from rest_framework import filters
 from rest_framework import status
@@ -218,7 +215,6 @@ class SceneViewSet(viewsets.ModelViewSet):
             TODO: This method needs to be rewritten, badly
         """
         queryset = Scene.objects.all()
-        # self.queryset = queryset
 
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
@@ -346,24 +342,28 @@ class SceneViewSet(viewsets.ModelViewSet):
         if created_after != '':
             created_after_date = parse_date(created_after)
             if created_after_date:
-                queryset = queryset.filter(date_created__gte=created_after_date)
+                queryset = queryset.filter(
+                    date_created__gte=created_after_date)
 
         if created_before != '':
             created_before_date = parse_date(created_before)
             if created_before_date:
-                queryset = queryset.filter(date_created__lte=created_before_date + datetime.timedelta(days=1))
+                queryset = queryset.filter(
+                    date_created__lte=created_before_date + datetime.timedelta(
+                        days=1))
 
         if started_after != '':
             started_after_date = parse_date(started_after)
             if started_after_date:
-                queryset = queryset.filter(date_started__gte=started_after_date)
+                queryset = queryset.filter(
+                    date_started__gte=started_after_date)
 
         if started_before != '':
             started_before_date = parse_date(started_before)
             if started_before_date:
-                queryset = queryset.filter(date_started__lte=started_before_date + datetime.timedelta(days=1))
-
-        # self.queryset = queryset
+                queryset = queryset.filter(
+                    date_started__lte=started_before_date + datetime.timedelta(
+                        days=1))
 
         return queryset.order_by('name')
 
@@ -407,6 +407,16 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scene to company'})
 
+    @list_route(methods=["post"])  # denied after publish to world
+    def publish_company_all(self, request):
+        queryset = Scene.objects.filter(owner=self.request.user).filter(
+            suid__in=request.POST.getlist('suid'))
+
+        for scene in queryset:
+            scene.publish_company(request.user)
+
+        return Response({'status': 'Published scenes to company'})
+
     @detail_route(methods=["post"])  # denied after publish to world
     def publish_world(self, request, pk=None):
         published = self.get_object().publish_world(request.user)
@@ -418,6 +428,16 @@ class SceneViewSet(viewsets.ModelViewSet):
             )
 
         return Response({'status': 'Published scene to world'})
+
+    @list_route(methods=["post"])  # denied after publish to world
+    def publish_world(self, request):
+        queryset = Scene.objects.filter(owner=self.request.user).filter(
+            suid__in=request.POST.getlist('suid'))
+
+        for scene in queryset:
+            scene.publish_world(request.user)
+
+        return Response({'status': 'Published scenes to world'})
 
     @detail_route(methods=["get"])
     def export(self, request, pk=None):

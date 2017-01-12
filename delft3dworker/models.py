@@ -489,6 +489,9 @@ class Scene(models.Model):
     # SHARING
 
     def publish_company(self, user):
+        if self.phase != self.phases.fin:
+            return
+
         remove_perm('change_scene', user, self)  # revoke PUT rights
         remove_perm('delete_scene', user, self)  # revoke POST rights
 
@@ -504,6 +507,9 @@ class Scene(models.Model):
         self.save()
 
     def publish_world(self, user):
+        if self.phase != self.phases.fin:
+            return
+
         remove_perm('add_scene', user, self)  # revoke POST rights
         remove_perm('change_scene', user, self)  # revoke PUT rights
         remove_perm('delete_scene', user, self)  # revoke DELETE rights
