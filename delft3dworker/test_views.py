@@ -359,7 +359,9 @@ class SceneTestCase(APITestCase):
 
         # try as bar
         self.client.login(username='bar', password='secret')
-        response = self.client.post(url, {'suid':['11111111-1111-1111-1111-111111111111']}, format='json')
+        response = self.client.post(url, {'suid':[
+            '11111111-1111-1111-1111-111111111111'
+        ]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_company.call_count, 0)
 
@@ -367,28 +369,28 @@ class SceneTestCase(APITestCase):
         self.client.login(username='foo', password='secret')
 
         # view can handle no suids in data
-        response = self.client.post(url, {'suid':[]}, format='json')
+        response = self.client.post(url, {'suid':[]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_company.call_count, 0)
 
         # view can handle wrong suids in data
         response = self.client.post(url, {'suid':[
             'something-rather-strange'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(mocked_scene_method_company.call_count, 0)
 
         # view can handle wrong suids in data
         response = self.client.post(url, {'suid':[
             '00000000-0000-0000-0000-000000000000'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_company.call_count, 0)
 
         # view can handle proper suids in data
         response = self.client.post(url, {'suid':[
             '11111111-1111-1111-1111-111111111111'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_company.call_count, 1)
 
@@ -396,7 +398,7 @@ class SceneTestCase(APITestCase):
         response = self.client.post(url, {'suid':[
             '11111111-1111-1111-1111-111111111111',
             '22222222-2222-2222-2222-222222222222'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_company.call_count, 3)
 
@@ -405,7 +407,7 @@ class SceneTestCase(APITestCase):
             '00000000-0000-0000-0000-000000000000',
             '11111111-1111-1111-1111-111111111111',
             '22222222-2222-2222-2222-222222222222'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_company.call_count, 5)
 
@@ -415,7 +417,7 @@ class SceneTestCase(APITestCase):
             '11111111-1111-1111-1111-111111111111',
             '22222222-2222-2222-2222-222222222222',
             'something-rather-strange'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(mocked_scene_method_company.call_count, 5)
 
@@ -426,7 +428,9 @@ class SceneTestCase(APITestCase):
 
         # try as bar
         self.client.login(username='bar', password='secret')
-        response = self.client.post(url, {'suid':['11111111-1111-1111-1111-111111111111']}, format='json')
+        response = self.client.post(url, {'suid':[
+            '11111111-1111-1111-1111-111111111111'
+        ]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_world.call_count, 0)
 
@@ -434,28 +438,28 @@ class SceneTestCase(APITestCase):
         self.client.login(username='foo', password='secret')
 
         # view can handle no suids in data
-        response = self.client.post(url, {'suid':[]}, format='json')
+        response = self.client.post(url, {'suid':[]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_world.call_count, 0)
 
         # view can handle wrong suids in data
         response = self.client.post(url, {'suid':[
             'something-rather-strange'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(mocked_scene_method_world.call_count, 0)
 
         # view can handle wrong suids in data
         response = self.client.post(url, {'suid':[
             '00000000-0000-0000-0000-000000000000'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_world.call_count, 0)
 
         # view can handle proper suids in data
         response = self.client.post(url, {'suid':[
             '11111111-1111-1111-1111-111111111111'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_world.call_count, 1)
 
@@ -463,7 +467,7 @@ class SceneTestCase(APITestCase):
         response = self.client.post(url, {'suid':[
             '11111111-1111-1111-1111-111111111111',
             '22222222-2222-2222-2222-222222222222'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_world.call_count, 3)
 
@@ -472,7 +476,7 @@ class SceneTestCase(APITestCase):
             '00000000-0000-0000-0000-000000000000',
             '11111111-1111-1111-1111-111111111111',
             '22222222-2222-2222-2222-222222222222'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mocked_scene_method_world.call_count, 5)
 
@@ -482,7 +486,7 @@ class SceneTestCase(APITestCase):
             '11111111-1111-1111-1111-111111111111',
             '22222222-2222-2222-2222-222222222222',
             'something-rather-strange'
-        ]}, format='json')
+        ]})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(mocked_scene_method_world.call_count, 5)
 

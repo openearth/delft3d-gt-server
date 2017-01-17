@@ -357,28 +357,15 @@ class Scene(models.Model):
             "info": None
         }
 
-    def export(self, options):
-        # Alternatives to this implementation are:
-        # - django-zip-view (sets mimetype and content-disposition)
-        # - django-filebrowser (filtering and more elegant browsing)
-
-        # from:
-        # http://stackoverflow.com/questions/67454/serving-dynamically-generated-zip-archives-in-django
-
-        zip_filename = '{}.zip'.format(slugify(self.name))
-
-        # Open BytesIO to grab in-memory ZIP contents
-        # (be explicit about bytes)
-        stream = io.BytesIO()
-
-        # The zip compressor
-        zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
-
+    def export(self, zipfile, options):
         # Add files here.
         # If you run out of memory you have 2 options:
         # - stream
         # - zip in a subprocess shell with zip
         # - zip to temporary file
+
+        files_added = False
+
         for root, dirs, files in os.walk(self.workingdir):
             for f in files:
                 name, ext = os.path.splitext(f)
@@ -425,13 +412,12 @@ class Scene(models.Model):
                     add = True
 
                 if add:
+                    files_added = True
                     abs_path = os.path.join(root, f)
-                    rel_path = os.path.relpath(abs_path, self.workingdir)
-                    zf.write(abs_path, rel_path)
+                    rel_path = os.path.join(slugify(self.name), os.path.relpath(abs_path, self.workingdir))
+                    zipfile.write(abs_path, rel_path)
 
-        # Must close zip for all contents to be written
-        zf.close()
-        return stream, zip_filename
+        return files_added
 
     # CRUD METHODS
 

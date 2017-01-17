@@ -3,17 +3,20 @@ Views for the ui.
 """
 from __future__ import absolute_import
 
-import django_filters
-import logging
 import datetime
+import django_filters
+import io
+import logging
+import zipfile
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
 from django.utils.dateparse import parse_date
+from django.utils.decorators import method_decorator
+from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import CreateView
 from django.views.generic import DeleteView
@@ -410,7 +413,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     @list_route(methods=["post"])  # denied after publish to world
     def publish_company_all(self, request):
         queryset = Scene.objects.filter(owner=self.request.user).filter(
-                suid__in=request.data['suid'])
+                suid__in=request.data.getlist('suid', []))
 
         try:
             for scene in queryset:
@@ -438,7 +441,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     @list_route(methods=["post"])  # denied after publish to world
     def publish_world_all(self, request):
         queryset = Scene.objects.filter(owner=self.request.user).filter(
-            suid__in=request.data['suid'])
+            suid__in=request.data.getlist('suid', []))
 
         try:
             for scene in queryset:
@@ -453,30 +456,80 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @detail_route(methods=["get"])
     def export(self, request, pk=None):
-        scene = self.get_object()
+        # Alternatives to this implementation are:
+        # - django-zip-view (sets mimetype and content-disposition)
+        # - django-filebrowser (filtering and more elegant browsing)
+
+        # from:
+        # http://stackoverflow.com/questions/67454/serving-dynamically-generated-zip-archives-in-django
 
         options = self.request.query_params.getlist('options', [])
-        # What we will export, now ; separated (doesn't work), should be list
-        # as in https://delft3dgt-local:8000/api/v1/scenes/44/
-        # export/?options=export_images&options=export_input
-
-        if len(options) > 0:
-            stream, filename = scene.export(options)
-
-            resp = HttpResponse(
-                stream.getvalue(),
-                content_type="application/x-zip-compressed"
-            )
-            resp[
-                'Content-Disposition'] = 'attachment; filename={}'.format(
-                    filename
-            )
-
-            return resp
-        else:
+        if len(options) == 0:
             return Response({'status': 'No export options given'},
-                            status=status.HTTP_400_BAD_REQUEST)
+                status=status.HTTP_400_BAD_REQUEST)
 
+        scene = self.get_object()
+
+        # The zip compressor
+        # Open BytesIO to grab in-memory ZIP contents
+        # (be explicit about bytes)
+        stream = io.BytesIO()
+        zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
+        files_added = scene.export(zf, options)
+        zf.close()
+
+        if not files_added:
+            return Response({'status': 'Empty zip file: selected files do not exist'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        resp = HttpResponse(
+            stream.getvalue(),
+            content_type="application/x-zip-compressed"
+        )
+        resp[
+            'Content-Disposition'] = 'attachment; filename={}'.format(
+                '{}.zip'.format(slugify(scene.name))
+        )
+
+        return resp
+
+    @list_route(methods=["get"])
+    def export_all(self, request):
+        # Alternatives to this implementation are:
+        # - django-zip-view (sets mimetype and content-disposition)
+        # - django-filebrowser (filtering and more elegant browsing)
+
+        # from:
+        # http://stackoverflow.com/questions/67454/serving-dynamically-generated-zip-archives-in-django
+
+        options = self.request.query_params.getlist('options', [])
+        if len(options) == 0:
+            return Response({'status': 'No export options given'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = Scene.objects.filter(owner=self.request.user).filter(
+            suid__in=request.query_params.getlist('suid', []))
+
+        # The zip compressor
+        # Open BytesIO to grab in-memory ZIP contents
+        # (be explicit about bytes)
+        stream = io.BytesIO()
+        zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
+        files_added = False
+        for scene in queryset:
+            files_added = files_added or scene.export(zf, options)
+        zf.close()
+
+        if not files_added:
+            return Response({'status': 'Empty zip file: selected files do not exist'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        resp = HttpResponse(
+            stream.getvalue(),
+            content_type="application/x-zip-compressed"
+        )
+        resp['Content-Disposition'] = 'attachment; filename=Delft3DGTFiles.zip'
+        return resp
 
 class SearchFormViewSet(viewsets.ModelViewSet):
     """
