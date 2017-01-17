@@ -1385,9 +1385,10 @@ class Container(models.Model):
                                                       random_postfix),
                             'folders': [simdir,
                                         posdir],
-                            'command': " ".join(["/data/run.sh",
-                                                 "/data/svn/scripts/postprocess/subenvironment.py",
-                                                 "/data/svn/scripts/postprocess/sedimentproperties.py"])
+                            'command': " ".join([
+                                "/data/run.sh",
+                                "/data/svn/scripts/wrapper/postprocess.py"
+                            ])
                             },
 
             'preprocess': {'image': settings.PREPROCESS_IMAGE_NAME,
@@ -1434,8 +1435,9 @@ class Container(models.Model):
                                     simdir],
                         'command': ' '.join([
                             "/data/run.sh ",
-                            "/data/svn/scripts/wrapper/visualize_all.py"
-                        ])},
+                            "/data/svn/scripts/wrapper/process.py"
+                        ])
+                        },
         }
 
         if self.container_type == 'delft3d':
