@@ -517,7 +517,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
         files_added = False
         for scene in queryset:
-            files_added = files_added or scene.export(zf, options)
+            files_added = scene.export(zf, options) or files_added
         zf.close()
 
         if not files_added:

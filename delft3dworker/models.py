@@ -475,6 +475,8 @@ class Scene(models.Model):
     # SHARING
 
     def publish_company(self, user):
+        if self.shared != "p":
+            return
         if self.phase != self.phases.fin:
             return
 
