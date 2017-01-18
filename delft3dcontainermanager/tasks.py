@@ -28,7 +28,8 @@ def delft3dgt_pulse(self):
     return
 
 
-@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60}, throws=(HTTPError))
+@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60},
+             throws=(HTTPError))
 def get_docker_ps(self):
     """
     Retrieve all running docker containers and return them in
@@ -52,7 +53,7 @@ def get_docker_ps(self):
     ignore_states = ['Host Down']
     inspected_containers = []
 
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     containers = client.containers(all=True)  # filter here does not work
     filtered_containers = [c for c in containers if c[
         'Status'] not in ignore_states]
@@ -74,7 +75,7 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
     """
     Retrieve the log of a container and return container id and log
     """
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     log = client.logs(
         container=str(container_id),
         stream=False,
@@ -124,7 +125,7 @@ def do_docker_create(self, label, parameters, environment, name, image,
             config.write(f)  # Yes, the ConfigParser writes to f
 
     # Create docker container
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     # We could also pass mem_reservation since docker-py 1.10
     config = client.create_host_config(binds=volumes, mem_limit=memory_limit)
     container = client.create_container(
@@ -144,7 +145,7 @@ def do_docker_start(self, container_id):
     """
     Start a container with a specific id and id
     """
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     client.start(container=container_id)
     return container_id, ""
 
@@ -154,7 +155,7 @@ def do_docker_stop(self, container_id, timeout=10):
     """
     Stop a container with a specific id and return id
     """
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     client.stop(container=container_id, timeout=timeout)
 
     return container_id, ""
@@ -170,7 +171,7 @@ def do_docker_remove(self, container_id, force=False):
     # Commented out removing folders in this task
     # functionality could be moved, therefore not removed
 
-    client = Client(base_url='http://localhost:4000')
+    client = Client(base_url='unix:///var/run/docker.sock')
     info = client.inspect_container(container=container_id)
     log = client.logs(
         container=str(container_id),
