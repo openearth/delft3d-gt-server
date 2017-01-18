@@ -3,27 +3,27 @@ Views for the ui.
 """
 from __future__ import absolute_import
 
-import django_filters
-import json
-import logging
 import datetime
+import django_filters
+import io
+import logging
+import zipfile
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.http import HttpResponse
-from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
 from django.utils.dateparse import parse_date
+from django.utils.decorators import method_decorator
+from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import CreateView
 from django.views.generic import DeleteView
 from django.views.generic import View
 
 from guardian.shortcuts import assign_perm
-from json_views.views import JSONDetailView
-from json_views.views import JSONListView
+from guardian.shortcuts import get_objects_for_user
 
 from rest_framework import filters
 from rest_framework import status
@@ -218,7 +218,6 @@ class SceneViewSet(viewsets.ModelViewSet):
             TODO: This method needs to be rewritten, badly
         """
         queryset = Scene.objects.all()
-        # self.queryset = queryset
 
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
@@ -346,24 +345,28 @@ class SceneViewSet(viewsets.ModelViewSet):
         if created_after != '':
             created_after_date = parse_date(created_after)
             if created_after_date:
-                queryset = queryset.filter(date_created__gte=created_after_date)
+                queryset = queryset.filter(
+                    date_created__gte=created_after_date)
 
         if created_before != '':
             created_before_date = parse_date(created_before)
             if created_before_date:
-                queryset = queryset.filter(date_created__lte=created_before_date + datetime.timedelta(days=1))
+                queryset = queryset.filter(
+                    date_created__lte=created_before_date + datetime.timedelta(
+                        days=1))
 
         if started_after != '':
             started_after_date = parse_date(started_after)
             if started_after_date:
-                queryset = queryset.filter(date_started__gte=started_after_date)
+                queryset = queryset.filter(
+                    date_started__gte=started_after_date)
 
         if started_before != '':
             started_before_date = parse_date(started_before)
             if started_before_date:
-                queryset = queryset.filter(date_started__lte=started_before_date + datetime.timedelta(days=1))
-
-        # self.queryset = queryset
+                queryset = queryset.filter(
+                    date_started__lte=started_before_date + datetime.timedelta(
+                        days=1))
 
         return queryset.order_by('name')
 
@@ -407,6 +410,22 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scene to company'})
 
+    @list_route(methods=["post"])  # denied after publish to world
+    def publish_company_all(self, request):
+        queryset = Scene.objects.filter(owner=self.request.user).filter(
+                suid__in=request.data.getlist('suid', []))
+
+        try:
+            for scene in queryset:
+                scene.publish_company(request.user)
+        except ValueError, e:
+            return Response(
+                {'status': e.message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response({'status': 'Published scenes to company'})
+
     @detail_route(methods=["post"])  # denied after publish to world
     def publish_world(self, request, pk=None):
         published = self.get_object().publish_world(request.user)
@@ -419,32 +438,98 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scene to world'})
 
+    @list_route(methods=["post"])  # denied after publish to world
+    def publish_world_all(self, request):
+        queryset = Scene.objects.filter(owner=self.request.user).filter(
+            suid__in=request.data.getlist('suid', []))
+
+        try:
+            for scene in queryset:
+                scene.publish_world(request.user)
+        except ValueError, e:
+            return Response(
+                {'status': e.message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response({'status': 'Published scenes to world'})
+
     @detail_route(methods=["get"])
     def export(self, request, pk=None):
-        scene = self.get_object()
+        # Alternatives to this implementation are:
+        # - django-zip-view (sets mimetype and content-disposition)
+        # - django-filebrowser (filtering and more elegant browsing)
+
+        # from:
+        # http://stackoverflow.com/questions/67454/serving-dynamically-generated-zip-archives-in-django
 
         options = self.request.query_params.getlist('options', [])
-        # What we will export, now ; separated (doesn't work), should be list
-        # as in https://delft3dgt-local:8000/api/v1/scenes/44/
-        # export/?options=export_images&options=export_input
-
-        if len(options) > 0:
-            stream, filename = scene.export(options)
-
-            resp = HttpResponse(
-                stream.getvalue(),
-                content_type="application/x-zip-compressed"
-            )
-            resp[
-                'Content-Disposition'] = 'attachment; filename={}'.format(
-                    filename
-            )
-
-            return resp
-        else:
+        if len(options) == 0:
             return Response({'status': 'No export options given'},
-                            status=status.HTTP_400_BAD_REQUEST)
+                status=status.HTTP_400_BAD_REQUEST)
 
+        scene = self.get_object()
+
+        # The zip compressor
+        # Open BytesIO to grab in-memory ZIP contents
+        # (be explicit about bytes)
+        stream = io.BytesIO()
+        zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
+        files_added = scene.export(zf, options)
+        zf.close()
+
+        if not files_added:
+            return Response({'status': 'Empty zip file: selected files do not exist'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        resp = HttpResponse(
+            stream.getvalue(),
+            content_type="application/x-zip-compressed"
+        )
+        resp[
+            'Content-Disposition'] = 'attachment; filename={}'.format(
+                '{}.zip'.format(slugify(scene.name))
+        )
+
+        return resp
+
+    @list_route(methods=["get"])
+    def export_all(self, request):
+        # Alternatives to this implementation are:
+        # - django-zip-view (sets mimetype and content-disposition)
+        # - django-filebrowser (filtering and more elegant browsing)
+
+        # from:
+        # http://stackoverflow.com/questions/67454/serving-dynamically-generated-zip-archives-in-django
+
+        options = self.request.query_params.getlist('options', [])
+        if len(options) == 0:
+            return Response({'status': 'No export options given'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = Scene.objects.filter(owner=self.request.user).filter(
+            suid__in=request.query_params.getlist('suid', []))
+
+        # The zip compressor
+        # Open BytesIO to grab in-memory ZIP contents
+        # (be explicit about bytes)
+        stream = io.BytesIO()
+        zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
+        files_added = False
+        for scene in queryset:
+            files_added = scene.export(zf, options) or files_added
+        zf.close()
+
+        if not files_added:
+            return Response({'status': 'Empty zip file: selected files do not exist'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        resp = HttpResponse(
+            stream.getvalue(),
+            content_type="application/x-zip-compressed"
+        )
+        resp['Content-Disposition'] = 'attachment; filename=Delft3DGTFiles.zip'
+        return resp
 
 class SearchFormViewSet(viewsets.ModelViewSet):
     """
