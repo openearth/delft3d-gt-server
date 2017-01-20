@@ -11,17 +11,19 @@ import datetime
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
+from django.db.models import Q
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
 from django.utils.dateparse import parse_date
+from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import CreateView
 from django.views.generic import DeleteView
 from django.views.generic import View
 
 from guardian.shortcuts import assign_perm
+
 from json_views.views import JSONDetailView
 from json_views.views import JSONListView
 
@@ -33,6 +35,7 @@ from rest_framework.decorators import detail_route
 from rest_framework.decorators import list_route
 from rest_framework.response import Response
 
+from delft3dworker.models import Container
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
@@ -218,13 +221,14 @@ class SceneViewSet(viewsets.ModelViewSet):
             TODO: This method needs to be rewritten, badly
         """
         queryset = Scene.objects.all()
-        # self.queryset = queryset
 
         # Filter on parameter
         parameters = self.request.query_params.getlist('parameter', [])
         template = self.request.query_params.getlist('template', [])
         shared = self.request.query_params.getlist('shared', [])
         users = self.request.query_params.getlist('users', [])
+
+        versions = self.request.query_params.get('versions', "\{\}")
 
         created_after = self.request.query_params.get('created_after', '')
         created_before = self.request.query_params.get('created_before', '')
@@ -343,6 +347,17 @@ class SceneViewSet(viewsets.ModelViewSet):
             userids = [int(user) for user in users if user.isdigit()]
             queryset = queryset.filter(owner__in=userids)
 
+        if versions != "\{\}":
+            try:
+                version_dict = json.loads(versions)
+            except ValueError:
+                version_dict = {}
+            f = Q()
+            for key, values in version_dict.iteritems():
+                for value in values:
+                    f = f | Q(container__version__contains={key: value})
+            queryset = queryset.filter(f)
+
         if created_after != '':
             created_after_date = parse_date(created_after)
             if created_after_date:
@@ -362,8 +377,6 @@ class SceneViewSet(viewsets.ModelViewSet):
             started_before_date = parse_date(started_before)
             if started_before_date:
                 queryset = queryset.filter(date_started__lte=started_before_date + datetime.timedelta(days=1))
-
-        # self.queryset = queryset
 
         return queryset.order_by('name')
 
@@ -444,6 +457,17 @@ class SceneViewSet(viewsets.ModelViewSet):
         else:
             return Response({'status': 'No export options given'},
                             status=status.HTTP_400_BAD_REQUEST)
+
+    @list_route(methods=["get"])
+    def versions(self, request):
+        queryset = Container.objects.all()
+
+        resp = {}
+        for container in queryset:
+            for key, val in container.version.iteritems():
+                    resp.setdefault(key, set([])).add(val)
+
+        return Response(resp)
 
 
 class SearchFormViewSet(viewsets.ModelViewSet):
