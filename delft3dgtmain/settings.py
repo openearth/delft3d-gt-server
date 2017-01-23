@@ -254,3 +254,6 @@ if 'test' in sys.argv:
 
     # max number of simulations
     MAX_SIMULATIONS = 1
+
+    # Docker URL this setting is from the delf3dcontainermanger app
+    DOCKER_URL = 'unix:///var/run/docker.sock'
