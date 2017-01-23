@@ -173,9 +173,18 @@ class SceneTestCase(APITestCase):
 
         # create Scene instance and assign permissions for user_foo
         self.scene_1 = Scene.objects.create(
-            name="Test main workflow",
+            suid="11111111-1111-1111-1111-111111111111",
+            name="Test main workflow 1",
             owner=self.user_foo,
-            shared='p',
+            shared="p",
+            phase=Scene.phases.fin
+        )
+        self.scene_2 = Scene.objects.create(
+            suid="22222222-2222-2222-2222-222222222222",
+            name="Test main workflow 2",
+            owner=self.user_foo,
+            shared="p",
+            phase=Scene.phases.fin
         )
         for perm in ['view_scene', 'add_scene',
                      'change_scene', 'delete_scene']:
@@ -343,6 +352,144 @@ class SceneTestCase(APITestCase):
         response = self.client.put(url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(mocked_scene_method.call_count, 0)
+
+    @patch('delft3dworker.models.Scene.publish_company', autospec=True)
+    def test_multiple_scenes_publish_company(self, mocked_scene_method_company):
+        # start view
+        url = reverse('scene-publish-company-all')
+
+        # try as bar
+        self.client.login(username='bar', password='secret')
+        response = self.client.post(url, {'suid':[
+            '11111111-1111-1111-1111-111111111111'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_company.call_count, 0)
+
+        # try as foo
+        self.client.login(username='foo', password='secret')
+
+        # view can handle no suids in data
+        response = self.client.post(url, {'suid':[]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_company.call_count, 0)
+
+        # view can handle wrong suids in data
+        response = self.client.post(url, {'suid':[
+            'something-rather-strange'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(mocked_scene_method_company.call_count, 0)
+
+        # view can handle wrong suids in data
+        response = self.client.post(url, {'suid':[
+            '00000000-0000-0000-0000-000000000000'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_company.call_count, 0)
+
+        # view can handle proper suids in data
+        response = self.client.post(url, {'suid':[
+            '11111111-1111-1111-1111-111111111111'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_company.call_count, 1)
+
+        # view can handle multiple suids in data
+        response = self.client.post(url, {'suid':[
+            '11111111-1111-1111-1111-111111111111',
+            '22222222-2222-2222-2222-222222222222'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_company.call_count, 3)
+
+        # view can handle mixed suids in data
+        response = self.client.post(url, {'suid':[
+            '00000000-0000-0000-0000-000000000000',
+            '11111111-1111-1111-1111-111111111111',
+            '22222222-2222-2222-2222-222222222222'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_company.call_count, 5)
+
+        # view will not publish at all when at least one suid in the list is wrong
+        response = self.client.post(url, {'suid':[
+            '00000000-0000-0000-0000-000000000000',
+            '11111111-1111-1111-1111-111111111111',
+            '22222222-2222-2222-2222-222222222222',
+            'something-rather-strange'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(mocked_scene_method_company.call_count, 5)
+
+    @patch('delft3dworker.models.Scene.publish_world', autospec=True)
+    def test_multiple_scenes_publish_world(self, mocked_scene_method_world):
+        # start view
+        url = reverse('scene-publish-world-all')
+
+        # try as bar
+        self.client.login(username='bar', password='secret')
+        response = self.client.post(url, {'suid':[
+            '11111111-1111-1111-1111-111111111111'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_world.call_count, 0)
+
+        # try as foo
+        self.client.login(username='foo', password='secret')
+
+        # view can handle no suids in data
+        response = self.client.post(url, {'suid':[]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_world.call_count, 0)
+
+        # view can handle wrong suids in data
+        response = self.client.post(url, {'suid':[
+            'something-rather-strange'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(mocked_scene_method_world.call_count, 0)
+
+        # view can handle wrong suids in data
+        response = self.client.post(url, {'suid':[
+            '00000000-0000-0000-0000-000000000000'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_world.call_count, 0)
+
+        # view can handle proper suids in data
+        response = self.client.post(url, {'suid':[
+            '11111111-1111-1111-1111-111111111111'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_world.call_count, 1)
+
+        # view can handle multiple suids in data
+        response = self.client.post(url, {'suid':[
+            '11111111-1111-1111-1111-111111111111',
+            '22222222-2222-2222-2222-222222222222'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_world.call_count, 3)
+
+        # view can handle mixed suids in data
+        response = self.client.post(url, {'suid':[
+            '00000000-0000-0000-0000-000000000000',
+            '11111111-1111-1111-1111-111111111111',
+            '22222222-2222-2222-2222-222222222222'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mocked_scene_method_world.call_count, 5)
+
+        # view will not publish at all when at least one suid in the list is wrong
+        response = self.client.post(url, {'suid':[
+            '00000000-0000-0000-0000-000000000000',
+            '11111111-1111-1111-1111-111111111111',
+            '22222222-2222-2222-2222-222222222222',
+            'something-rather-strange'
+        ]})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(mocked_scene_method_world.call_count, 5)
 
 
 class SceneSearchTestCase(TestCase):
