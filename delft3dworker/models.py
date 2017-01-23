@@ -1667,14 +1667,18 @@ class Template(models.Model):
     meta = JSONField(blank=True)
     sections = JSONField(blank=True)
 
-    def save(self, *args, **kwargs):
-        returnval = super(Template, self).save(*args, **kwargs)
+    # The following method is disabled as it adds to much garbage
+    # to the MAIN search template
+    # TODO: implement proper search template which uses REST list_views
 
-        # update the MAIN search form after any template save
-        searchform, created = SearchForm.objects.get_or_create(name="MAIN")
-        searchform.update()
+    # def save(self, *args, **kwargs):
+    #     returnval = super(Template, self).save(*args, **kwargs)
 
-        return returnval
+    #     # update the MAIN search form after any template save
+    #     searchform, created = SearchForm.objects.get_or_create(name="MAIN")
+    #     searchform.update()
+
+    #     return returnval
 
     def __unicode__(self):
         return self.name
