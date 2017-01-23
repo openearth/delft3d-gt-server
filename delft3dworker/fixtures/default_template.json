@@ -100,14 +100,14 @@
             {
               "name": "Base level change",
               "validators": {
-                "max": 3.0,
-                "min": -3.0
+                "max": 80,
+                "min": -80
               },
               "factor": true,
-              "units": "m",
+              "units": "%",
               "type": "numeric",
               "id": "baselevel",
-              "description": "Positive values define 'a base level rise', negative values define 'a base level fall'. The magnitude of this value should be based on simulation stop time: the larger the stop time value, the larger the magnitude of this value can be."
+              "description": "Positive values define 'a base level rise', negative values define 'a base level fall'."
             }
           ],
           "name": "Forcing"
@@ -285,15 +285,15 @@
               "name": "Base level change",
               "default": 0,
               "validators": {
-                "max": 3.0,
+                "max": 80.0,
                 "required": true,
-                "min": -3.0
+                "min": -80.0
               },
               "factor": true,
-              "units": "m",
+              "units": "%",
               "type": "numeric",
               "id": "baselevel",
-              "description": "Positive values define 'a base level rise', negative values define 'a base level fall'. The magnitude of this value should be based on simulation stop time: the larger the stop time value, the larger the magnitude of this value can be."
+              "description": "This is a percentage of the level change produced by the basin slope.<br><br>Click on the button below to see a table with the absolute values."
             }
           ],
           "name": "Forcing"
