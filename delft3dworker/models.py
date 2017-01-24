@@ -1354,7 +1354,8 @@ class Container(models.Model):
             'export': {'image': settings.EXPORT_IMAGE_NAME,
                        'volumes': [
                            '{0}:/data/output:z'.format(expdir),
-                           '{0}:/data/input:ro'.format(simdir)],
+                           '{0}:/data/input:ro'.format(simdir),
+                           '{0}:/data/input_postproc:ro'.format(posdir)],
                        'memory_limit': '1000m',
                        'environment': {"uuid": str(self.scene.suid),
                                        "folder": expdir},
