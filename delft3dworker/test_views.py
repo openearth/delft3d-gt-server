@@ -526,7 +526,7 @@ class SceneSearchTestCase(TestCase):
         }
         self.scene_1.save()
         container_1 = Container.objects.create(
-            version={'d3d': 1},
+            version={'ppsvn': 1, 'd3d': 'a'},
             scene=self.scene_1
         )
 
@@ -550,7 +550,11 @@ class SceneSearchTestCase(TestCase):
         }
         self.scene_2.save()
         container_2 = Container.objects.create(
-            version={'d3d': 2, 'other': 'a'},
+            version={'ppsvn': 2},
+            scene=self.scene_2
+        )
+        container_3 = Container.objects.create(
+            version={'ppsvn': 2, 'd3d': 'b'},
             scene=self.scene_2
         )
 
@@ -733,26 +737,32 @@ class SceneSearchTestCase(TestCase):
         query = {'versions': "{}"}
         self.assertEqual(len(self._request(query)), 2)
 
-        query = {'versions': '{"d3d":[1]}'}
+        query = {'versions': '{"ppsvn":None}'}
+        self.assertEqual(len(self._request(query)), 2)
+
+        query = {'versions': '{"ppsvn":[1]}'}
         self.assertEqual(len(self._request(query)), 1)
 
-        query = {'versions': '{"d3d":[2]}'}
+        query = {'versions': '{"ppsvn":[2]}'}
         self.assertEqual(len(self._request(query)), 1)
 
-        query = {'versions': '{"d3d":[1,2]}'}
+        query = {'versions': '{"ppsvn":[1,2]}'}
         self.assertEqual(len(self._request(query)), 2)
 
-        query = {'versions': '{"d3d":[1,2], "other": "a"}'}
-        self.assertEqual(len(self._request(query)), 2)
-
-        query = {'versions': '{"d3d":[1], "other": "a"}'}
-        self.assertEqual(len(self._request(query)), 2)
-
-        query = {'versions': '{"d3d":[2], "other": "a"}'}
+        query = {'versions': '{"ppsvn":[1,2], "d3d": "a"}'}
         self.assertEqual(len(self._request(query)), 1)
 
-        query = {'versions': '{"d3d":None}'}
-        self.assertEqual(len(self._request(query)), 2)
+        query = {'versions': '{"ppsvn":[1,2], "d3d": "[a]"}'}
+        self.assertEqual(len(self._request(query)), 1)
+
+        query = {'versions': '{"ppsvn":[1], "d3d": "[a]"}'}
+        self.assertEqual(len(self._request(query)), 1)
+
+        query = {'versions': '{"ppsvn":[1], "d3d": "[b]"}'}
+        self.assertEqual(len(self._request(query)), 0)
+
+        query = {'versions': '{"ppsvn":[2], "d3d": "[a, b]"}'}
+        self.assertEqual(len(self._request(query)), 1)
 
     def _request(self, query):
         url = reverse('scene-list')

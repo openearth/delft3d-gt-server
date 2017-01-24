@@ -100,14 +100,14 @@
             {
               "name": "Base level change",
               "validators": {
-                "max": 80.0,
-                "min": -80.0
+                "max": 80,
+                "min": -80
               },
               "factor": true,
               "units": "%",
               "type": "numeric",
               "id": "baselevel",
-              "description": "This is a percentage of the level change produced by the basin slope.<br><br>Click on the button below to see a table with the absolute values."
+              "description": "Positive values define 'a base level rise', negative values define 'a base level fall'."
             }
           ],
           "name": "Forcing"
@@ -121,24 +121,28 @@
               "type": "select",
               "options": [
                 {
-                  "text": "coarse sand",
+                  "text": "coarse-sand",
                   "value": "coarse-sand"
                 },
                 {
-                  "text": "medium sand",
+                  "text": "medium-sand",
                   "value": "medium-sand"
                 },
                 {
-                  "text": "fine sand",
+                  "text": "fine-sand",
                   "value": "fine-sand"
                 },
                 {
-                  "text": "very fine sand",
-                  "value": "very-fine-sand"
+                  "text": "coarse-silt",
+                  "value": "coarse-silt"
                 },
                 {
-                  "text": "coarse silt",
-                  "value": "coarse-silt"
+                  "text": "medium-silt",
+                  "value": "medium-silt"
+                },
+                {
+                  "text": "fine-silt",
+                  "value": "fine-silt"
                 }
               ],
               "name": "Sediment classes"
@@ -306,24 +310,28 @@
               "type": "select",
               "options": [
                 {
-                  "text": "coarse sand",
+                  "text": "coarse-sand",
                   "value": "coarse-sand"
                 },
                 {
-                  "text": "medium sand",
+                  "text": "medium-sand",
                   "value": "medium-sand"
                 },
                 {
-                  "text": "fine sand",
+                  "text": "fine-sand",
                   "value": "fine-sand"
                 },
                 {
-                  "text": "very fine sand",
-                  "value": "very-fine-sand"
+                  "text": "coarse-silt",
+                  "value": "coarse-silt"
                 },
                 {
-                  "text": "coarse silt",
-                  "value": "coarse-silt"
+                  "text": "medium-silt",
+                  "value": "medium-silt"
+                },
+                {
+                  "text": "fine-silt",
+                  "value": "fine-silt"
                 }
               ],
               "name": "Sediment classes"

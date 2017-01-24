@@ -352,11 +352,12 @@ class SceneViewSet(viewsets.ModelViewSet):
                 version_dict = json.loads(versions)
             except ValueError:
                 version_dict = {}
-            f = Q()
+
             for key, values in version_dict.iteritems():
+                f = Q()
                 for value in values:
                     f = f | Q(container__version__contains={key: value})
-            queryset = queryset.filter(f)
+                queryset = queryset.filter(f).distinct()
 
         if created_after != '':
             created_after_date = parse_date(created_after)
@@ -384,7 +385,7 @@ class SceneViewSet(viewsets.ModelViewSet):
                     date_started__lte=started_before_date + datetime.timedelta(
                         days=1))
 
-        return queryset.order_by('name')
+        return queryset.distinct().order_by('name')
 
     @detail_route(methods=["put"])  # denied after publish to company/world
     def reset(self, request, pk=None):
