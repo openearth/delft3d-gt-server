@@ -115,7 +115,7 @@
         {
           "variables": [
             {
-              "description": "Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
+              "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
               "id": "composition",
               "validators": {},
               "type": "select",
@@ -134,7 +134,7 @@
                 },
                 {
                   "text": "very fine sand",
-                  "value": "very-fine-sand"
+                  "value": "veryfine-sand"
                 },
                 {
                   "text": "coarse silt",
@@ -145,7 +145,7 @@
             }
           ],
           "name": "Sediment composition",
-          "description": "Sediment can consist of a mixture of different classes. Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
         }
       ],
       "name": "MAIN"
@@ -297,7 +297,7 @@
         {
           "variables": [
             {
-              "description": "Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
+              "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
               "default": "medium-sand",
               "id": "composition",
               "validators": {
@@ -319,7 +319,7 @@
                 },
                 {
                   "text": "very fine sand",
-                  "value": "very-fine-sand"
+                  "value": "veryfine-sand"
                 },
                 {
                   "text": "coarse silt",
@@ -330,7 +330,7 @@
             }
           ],
           "name": "Sediment composition",
-          "description": "Sediment can consist of a mixture of different classes. Read <a href='/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
         }
       ],
       "name": "River dominated delta"
