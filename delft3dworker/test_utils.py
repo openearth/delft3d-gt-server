@@ -40,3 +40,8 @@ INFO:root:Finished
         log = """INFO:root:Finished"""
         progress = log_progress_parser(log, 'delft3d')
         self.assertTrue(progress is None)
+
+        # python log parsing
+        log = """INFO:preprocess:writing /data/output/a.dep"""
+        progress = log_progress_parser(log, 'python')
+        self.assertTrue(progress is None)
