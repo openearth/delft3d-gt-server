@@ -4,7 +4,7 @@ backports.ssl-match-hostname==3.5.0.1
 billiard==3.3.0.23
 celery==3.1.21
 celery-once==0.1.4
-Django==1.8.11
+Django==1.8.*
 django-crispy-forms==1.6.0
 django-filter==0.13.0
 django-generic-json-views==0.7
