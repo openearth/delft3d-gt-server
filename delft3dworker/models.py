@@ -380,9 +380,13 @@ class Scene(models.Model):
                 ) and (
                     not f.startswith('TMP')
                 ) and (
-                    ext in ['.bcc', '.bch', '.bct', '.bnd', '.dep', '.enc',
-                            '.fil', '.grd', '.ini', '.mdf', '.mdw', '.mor',
-                            '.obs', '.sed', '.sh', '.tr1', '.url', '.xml']
+                    (
+                        ext in ['.bcc', '.bch', '.bct', '.bnd', '.dep', '.enc',
+                               '.fil', '.grd', '.ini', '.mdf', '.mdw', '.mor',
+                               '.obs', '.sed', '.sh', '.url', '.xml']
+                    ) or (
+                        ext.startswith('.tr')
+                    )
                 ):
                     add = True
 
