@@ -10,7 +10,7 @@ django-filter==0.13.0
 django-generic-json-views==0.7
 django-jsonfield==0.9.19
 djangorestframework==3.3.3
-django-guardian==1.4.4
+django-guardian==1.4.6
 django-model-utils==2.6
 docker-py==1.10.3
 fakeredis==0.8.1
