@@ -64,6 +64,7 @@ def thredds_static(request, loc):
 
     # redirect to nginx thredds
     response = HttpResponse()
-    response["X-Accel-Redirect"] = "/protected_thredds/{0}".format(loc)
+    response["X-Accel-Redirect"] = "/protected_thredds/{0}?{1}".format(
+        loc, request.META.get("QUERY_STRING", ""))
 
     return response
