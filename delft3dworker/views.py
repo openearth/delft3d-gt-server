@@ -43,7 +43,8 @@ from delft3dworker.models import SearchForm
 from delft3dworker.permissions import ViewObjectPermissions
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
-from delft3dworker.serializers import SceneSerializer
+from delft3dworker.serializers import SceneFullSerializer
+from delft3dworker.serializers import SceneSparseSerializer
 from delft3dworker.serializers import SearchFormSerializer
 from delft3dworker.serializers import TemplateSerializer
 from delft3dworker.serializers import UserSerializer
@@ -168,7 +169,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows scenes to be viewed or edited.
     """
-    serializer_class = SceneSerializer
+    serializer_class = SceneSparseSerializer
     filter_backends = (
         filters.DjangoFilterBackend,
         filters.SearchFilter,
@@ -192,6 +193,13 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     # If we overwrite get queryset
     queryset = Scene.objects.none()
+
+    def get_serializer_class(self):
+        """Override serializer for lite list."""
+        if self.action == 'list':
+            return SceneSparseSerializer
+        else:
+            return SceneFullSerializer
 
     def perform_create(self, serializer):
         if serializer.is_valid():

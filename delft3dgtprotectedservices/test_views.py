@@ -59,7 +59,7 @@ class ProctectedServicesTestCase(TestCase):
         self.client.login(username='foo', password='secret')
 
         loc = 'test'
-        response = self.client.get("/thredds/{0}".format(loc))
+        response = self.client.get("/thredds/{0}?a=1&b=2".format(loc))
         # /thredds/* should redirect to /protected_thredds/*
-        self.assertEqual(response["X-Accel-Redirect"], "/protected_thredds/{0}".format(loc))
+        self.assertEqual(response["X-Accel-Redirect"], "/protected_thredds/{0}?a=1&b=2".format(loc))
         self.assertEqual(response.status_code, 200)
