@@ -46,7 +46,7 @@ class GroupSerializer(serializers.ModelSerializer):
         )
 
 
-class SceneSerializer(serializers.ModelSerializer):
+class SceneFullSerializer(serializers.ModelSerializer):
     """
     A default REST Framework ModelSerializer for the Scene model
     source: http://www.django-rest-framework.org/api-guide/serializers/
@@ -59,23 +59,43 @@ class SceneSerializer(serializers.ModelSerializer):
     class Meta:
         model = Scene
         fields = (
-            'id',
-            'name',
             'date_created',
             'date_started',
-            'state',
-            'progress',
-            'owner',
-            'shared',
-            'suid',
-            'scenario',
             'fileurl',
+            'id',
             'info',
+            'name',
+            'owner',
             'parameters',
-            'task_id',
-            'workingdir',
             'phase',
-            'versions'
+            'progress',
+            'scenario',
+            'shared',
+            'state',
+            'suid',
+            'task_id',
+            'versions',
+            'workingdir'
+        )
+
+
+class SceneSparseSerializer(serializers.ModelSerializer):
+    """
+    A default REST Framework ModelSerializer for the Scene model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    state = serializers.CharField(source='get_phase_display', read_only=True)
+
+    class Meta:
+        model = Scene
+        fields = (
+            'id',
+            'name',
+            'owner',
+            'progress',
+            'shared',
+            'state'
         )
 
 
