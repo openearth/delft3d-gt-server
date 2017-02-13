@@ -48,7 +48,9 @@ class GroupSerializer(serializers.ModelSerializer):
 
 class SceneFullSerializer(serializers.ModelSerializer):
     """
-    A default REST Framework ModelSerializer for the Scene model
+    A default REST Framework ModelSerializer for the Scene model, which
+    is used for detail views of scenes, providing all valuable data of
+    a single model to the frontend.
     source: http://www.django-rest-framework.org/api-guide/serializers/
     """
 
@@ -81,7 +83,9 @@ class SceneFullSerializer(serializers.ModelSerializer):
 
 class SceneSparseSerializer(serializers.ModelSerializer):
     """
-    A default REST Framework ModelSerializer for the Scene model
+    A default REST Framework ModelSerializer for the Scene model, which
+    is used for list views of scenes, providing only essential data in
+    a list of many models to the frontend.
     source: http://www.django-rest-framework.org/api-guide/serializers/
     """
 
