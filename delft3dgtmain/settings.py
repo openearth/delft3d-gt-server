@@ -191,10 +191,6 @@ REST_FRAMEWORK = {
     ]
 }
 
-# EMAIL backend
-
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
 # import provisioned settings
 try:
     from provisionedsettings import *
