@@ -16,8 +16,8 @@
               "id": "simstoptime",
               "name": "Stop time",
               "validators": {
-                "max": 160,
-                "min": 0
+                "max": 200,
+                "min": 1
               }
             },
             {
@@ -77,7 +77,7 @@
             {
               "name": "Tidal amplitude",
               "validators": {
-                "max": 3,
+                "max": 2,
                 "min": 0
               },
               "factor": true,
@@ -100,8 +100,8 @@
             {
               "name": "Base level change",
               "validators": {
-                "max": 80.0,
-                "min": -80.0
+                "max": 10.0,
+                "min": -10.0
               },
               "factor": true,
               "units": "%",
@@ -180,9 +180,9 @@
               "name": "Stop time",
               "default": 60,
               "validators": {
-                "max": 160,
+                "max": 200,
                 "required": true,
-                "min": 0
+                "min": 1
               },
               "units": "days",
               "type": "numeric",
@@ -208,7 +208,7 @@
           "variables": [
             {
               "name": "Basin slope",
-              "default": 0.0143,
+              "default": 0.1,
               "validators": {
                 "max": 0.3,
                 "required": true,
@@ -246,7 +246,7 @@
                 "min": 0
               },
               "factor": true,
-              "units": "m³/s",
+              "units": "m\u00b3/s",
               "type": "numeric",
               "id": "riverdischarge"
             },
@@ -254,7 +254,7 @@
               "name": "Tidal amplitude",
               "default": 1,
               "validators": {
-                "max": 3,
+                "max": 2,
                 "required": true,
                 "min": 0
               },
@@ -281,9 +281,9 @@
               "name": "Base level change",
               "default": 0,
               "validators": {
-                "max": 80.0,
+                "max": 10.0,
                 "required": true,
-                "min": -80.0
+                "min": -10.0
               },
               "factor": true,
               "units": "%",
