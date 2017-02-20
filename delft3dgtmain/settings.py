@@ -191,7 +191,6 @@ REST_FRAMEWORK = {
     ]
 }
 
-
 # import provisioned settings
 try:
     from provisionedsettings import *

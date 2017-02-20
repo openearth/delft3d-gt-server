@@ -47,3 +47,7 @@ CELERY_RESULT_BACKEND = 'redis://'
 
 # max number of simulations
 MAX_SIMULATIONS = 1
+
+# EMAIL backend
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
