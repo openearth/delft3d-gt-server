@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 
 from delft3dworker.models import Scene
 
+
 @login_required
 def files(request, simulation_uuid, loc):
 
