@@ -1,3 +1,5 @@
+import base64
+
 from uuid import UUID
 
 from django.contrib.auth import authenticate
@@ -8,7 +10,6 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 
 from delft3dworker.models import Scene
-
 
 @login_required
 def files(request, simulation_uuid, loc):
@@ -34,7 +35,6 @@ def files(request, simulation_uuid, loc):
     return response
 
 
-@login_required
 def thredds(request, simulation_uuid, loc):
 
     # try UUID or 404
@@ -45,6 +45,18 @@ def thredds(request, simulation_uuid, loc):
 
     # get scene or 404
     scene = get_object_or_404(Scene, suid=uuid)
+
+    # Check for basic auth info and log user in
+    if 'HTTP_AUTHORIZATION' in request.META:
+        auth = request.META['HTTP_AUTHORIZATION'].split()
+        if len(auth) == 2:
+            if auth[0].lower() == "basic":
+                uname, passwd = base64.b64decode(auth[1]).split(':')
+                user = authenticate(username=uname, password=passwd)
+                if user is not None:
+                    if user.is_active:
+                        login(request, user)
+                        request.user = user
 
     # return 403 if not allowed
     if not request.user.has_perm("view_scene", scene):
@@ -64,7 +76,8 @@ def thredds_static(request, loc):
 
     # redirect to nginx thredds
     response = HttpResponse()
-    response["X-Accel-Redirect"] = "/protected_thredds/{0}?{1}".format(
-        loc, request.META.get("QUERY_STRING", ""))
+    response["X-Accel-Redirect"] = (
+        "/protected_thredds/{0}?{1}"
+    ).format(loc, request.GET.urlencode())
 
     return response
