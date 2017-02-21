@@ -532,7 +532,8 @@ class SceneViewSet(viewsets.ModelViewSet):
             return Response({'status': 'No export options given'},
                 status=status.HTTP_400_BAD_REQUEST)
 
-        queryset = Scene.objects.filter(owner=self.request.user).filter(
+        queryset = get_objects_for_user(self.request.user, 'delft3dworker.view_scene',
+            accept_global_perms=False).filter(
             suid__in=request.query_params.getlist('suid', []))
 
         # The zip compressor
