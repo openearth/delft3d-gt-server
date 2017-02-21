@@ -1360,7 +1360,7 @@ class Container(models.Model):
                            '{0}:/data/output:z'.format(expdir),
                            '{0}:/data/input:ro'.format(simdir),
                            '{0}:/data/input_postproc:ro'.format(posdir)],
-                       'memory_limit': '1000m',
+                       'memory_limit': '2000m',
                        'environment': {"uuid": str(self.scene.suid),
                                        "folder": expdir},
                        'name': "{}-{}-{}".format(self.container_type,
