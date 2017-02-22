@@ -246,7 +246,7 @@
                 "min": 0
               },
               "factor": true,
-              "units": "m³/s",
+              "units": "m\u00b3/s",
               "type": "numeric",
               "id": "riverdischarge"
             },
