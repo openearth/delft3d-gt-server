@@ -37,7 +37,7 @@ def files(request, simulation_uuid, loc):
     return response
 
 
-def thredds(request, simulation_uuid, loc):
+def thredds(request, folder, simulation_uuid, loc):
 
     # try UUID or 404
     try:
@@ -67,8 +67,8 @@ def thredds(request, simulation_uuid, loc):
     # redirect to nginx thredds
     response = HttpResponse()
     response["X-Accel-Redirect"] = (
-        "/protected_thredds/catalog/files/{0}/{1}?{2}"
-    ).format(simulation_uuid, loc, request.META.get("QUERY_STRING", ""))
+        "/protected_thredds/{0}/files/{1}/{2}?{3}"
+    ).format(folder, simulation_uuid, loc, request.META.get("QUERY_STRING", ""))
 
     return response
 
