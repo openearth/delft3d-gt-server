@@ -9,6 +9,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 
+
 from delft3dworker.models import Scene
 
 
@@ -67,18 +68,33 @@ def thredds(request, simulation_uuid, loc):
     response = HttpResponse()
     response["X-Accel-Redirect"] = (
         "/protected_thredds/catalog/files/{0}/{1}?{2}"
-    ).format(simulation_uuid, loc, request.GET.urlencode())
+    ).format(simulation_uuid, loc, request.META.get("QUERY_STRING", ""))
 
     return response
 
 
-@login_required
 def thredds_static(request, loc):
+
+    # Check for basic auth info and log user in
+    if 'HTTP_AUTHORIZATION' in request.META:
+        auth = request.META['HTTP_AUTHORIZATION'].split()
+        if len(auth) == 2:
+            if auth[0].lower() == "basic":
+                uname, passwd = base64.b64decode(auth[1]).split(':')
+                user = authenticate(username=uname, password=passwd)
+                if user is not None:
+                    if user.is_active:
+                        login(request, user)
+                        request.user = user
+
+
+    if not request.user.is_authenticated():
+        return HttpResponse(status=403)
 
     # redirect to nginx thredds
     response = HttpResponse()
     response["X-Accel-Redirect"] = (
         "/protected_thredds/{0}?{1}"
-    ).format(loc, request.GET.urlencode())
+    ).format(loc, request.META.get("QUERY_STRING", ""))
 
     return response
