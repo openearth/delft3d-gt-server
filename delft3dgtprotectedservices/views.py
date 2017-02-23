@@ -37,6 +37,20 @@ def files(request, simulation_uuid, loc):
     return response
 
 
+@login_required
+def thredds_catalog(request):
+
+    if not request.user.is_superuser:
+        return HttpResponse(status=403)
+
+    # redirect to nginx thredds
+    response = HttpResponse()
+    response["X-Accel-Redirect"] = (
+        "/catalog/files/catalog.html"
+    ).format(loc, request.META.get("QUERY_STRING", ""))
+
+    return response
+
 def thredds(request, folder, simulation_uuid, loc):
 
     # try UUID or 404
