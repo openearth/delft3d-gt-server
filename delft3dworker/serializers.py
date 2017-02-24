@@ -94,6 +94,7 @@ class SceneSparseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Scene
         fields = (
+            'suid',
             'id',
             'name',
             'owner',
