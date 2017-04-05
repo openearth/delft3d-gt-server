@@ -1419,6 +1419,19 @@ class Container(models.Model):
                              'command': "/data/run.sh cleanup"
                              },
 
+            'sync_rerun': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
+                           'volumes': [
+                               '{0}:/data/output:z'.format(syndir)],
+                           'memory_limit': '500m',
+                           'environment': {"uuid": str(self.scene.suid),
+                                           "folder": syndir},
+                           'name': "{}-{}-{}".format(self.container_type,
+                                                     str(self.scene.suid),
+                                                     random_postfix),
+                           'folders': [],  # sync doesn't need new folders
+                           'command': "/data/run.sh rerun"
+                           },
+
             'process': {'image': settings.PROCESS_IMAGE_NAME,
                         'volumes': [
                             '{0}:/data/input:ro'.format(simdir),
