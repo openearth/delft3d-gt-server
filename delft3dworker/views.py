@@ -184,8 +184,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     filter_class = SceneFilter
 
     # Searchfilter backend for field &search=
-    # Filters on fields below beginning with value (^)
-    search_fields = ('$name',)
+    search_fields = ('name',)
 
     # Permissions backend which we could use in filter
     permission_classes = (permissions.IsAuthenticated,
