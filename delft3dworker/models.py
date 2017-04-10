@@ -34,7 +34,7 @@ from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
 # Postgresql 9.4
 
-from delft3dworker.utils import log_progress_parser, version_default
+from delft3dworker.utils import log_progress_parser, version_default, get_version
 
 from delft3dcontainermanager.tasks import do_docker_create
 from delft3dcontainermanager.tasks import do_docker_remove
@@ -382,8 +382,8 @@ class Scene(models.Model):
                 ) and (
                     (
                         ext in ['.bcc', '.bch', '.bct', '.bnd', '.dep', '.enc',
-                               '.fil', '.grd', '.ini', '.mdf', '.mdw', '.mor',
-                               '.obs', '.sed', '.sh', '.url', '.xml']
+                                '.fil', '.grd', '.ini', '.mdf', '.mdw', '.mor',
+                                '.obs', '.sed', '.sh', '.url', '.xml']
                     ) or (
                         ext.startswith('.tr')
                     )
@@ -418,7 +418,8 @@ class Scene(models.Model):
                 if add:
                     files_added = True
                     abs_path = os.path.join(root, f)
-                    rel_path = os.path.join(slugify(self.name), os.path.relpath(abs_path, self.workingdir))
+                    rel_path = os.path.join(slugify(self.name),
+                                            os.path.relpath(abs_path, self.workingdir))
                     zipfile.write(abs_path, rel_path)
 
         return files_added
@@ -1336,6 +1337,9 @@ class Container(models.Model):
         # Specific settings for each container type
         # TODO It would be more elegant to put these
         # hard-coded settings in a separate file.
+        #
+        # Also have a template that comes from
+        # provisioning, to match the needed environment variables
 
         # Random string in order to avoid naming conflicts.
         # We want new containers when old ones fail in Docker Swarm
@@ -1439,14 +1443,8 @@ class Container(models.Model):
                         },
         }
 
-        if self.container_type == 'delft3d':
-            # overwrite default version field with delft3d_version
-            self.version = {'delft3d_version': settings.DELFT3D_VERSION}
-            # this is not needed as environment variable in the container, so no further action needed
-        else:
-            # use default version field
-            # add svn version information to environment variables of python container
-            kwargs[self.container_type]['environment'].update(self.version)
+        self.version = get_version(self.container_type)
+        kwargs[self.container_type]['environment'].update(self.version)
 
         parameters = self.scene.parameters
         label = {"type": self.container_type}

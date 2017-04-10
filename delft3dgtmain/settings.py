@@ -249,6 +249,10 @@ if 'test' in sys.argv:
     # versions
     REPOS_URL = 'http://example.com/repos'
     SVN_REV = '123'
+    SVN_PRE_REV = '124'
+    SVN_PROC_REV = '125'
+    SVN_POST_REV = '126'
+    SVN_EXP_REV = '127'
     DELFT3D_VERSION = 'Delft3D version 123456'
 
     # max number of simulations
