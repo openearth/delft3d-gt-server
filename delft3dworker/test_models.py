@@ -114,6 +114,22 @@ class ScenarioControlTestCase(TestCase):
         self.scenario_multi.start(self.user_foo)
         self.assertEqual(mocked_scene_method.call_count, 3)
 
+    @patch('delft3dworker.models.Scene.redo_proc', autospec=True)
+    def redo_proc(self, mocked_scene_method):
+        """
+        Test if redo_proc is called when processing for scenario is started
+        """
+        self.scenario_multi.redo_proc(self.user_foo)
+        self.asserEqual(mocked_scene_method.call_count, 3)
+
+    @patch('delft3dworker.models.Scene.redo_postproc', autospec=True)
+    def redo_postproc(self, mocked_scene_method):
+        """
+        Test if redo_postproc is called when postprocessing for scenario is started
+        """
+        self.scenario_multi.redo_postproc(self.user_foo)
+        self.asserEqual(mocked_scene_method.call_count, 3)
+
     @patch('delft3dworker.models.Scene.abort', autospec=True)
     def test_abort(self, mocked_scene_method):
         """
@@ -178,13 +194,15 @@ class SceneTestCase(TestCase):
             name='Scene 1',
             owner=self.user_a,
             shared='p',
-            phase=Scene.phases.fin
+            phase=Scene.phases.fin,
+            workflow=Scene.workflows.main
         )
         self.scene_2 = Scene.objects.create(
             name='Scene 2',
             owner=self.user_a,
             shared='p',
-            phase=Scene.phases.idle
+            phase=Scene.phases.idle,
+            workflow=Scene.workflows.main
         )
         self.wd = self.scene_1.workingdir
 
@@ -213,7 +231,7 @@ class SceneTestCase(TestCase):
         result.id = task_uuid
 
         self.assertDictEqual(self.scene_1.versions(), {})
-        for i, container_type in enumerate(['preprocess', 'delft3d', 'process', 'postprocess', 'export', 'sync_cleanup']):
+        for i, container_type in enumerate(['preprocess', 'delft3d', 'process', 'postprocess', 'export', 'sync_cleanup', 'sync_rerun']):
             container = Container(container_type=container_type)
             self.scene_1.container_set.add(container)
             name = container._create_container()
