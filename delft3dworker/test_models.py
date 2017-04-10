@@ -405,6 +405,50 @@ class SceneTestCase(TestCase):
 
                 self.assertEqual(self.scene_1.date_started, started_date)
 
+    def test_redo_proc(self):
+        started_date = None
+
+        # a scene should only start redo processing when phase is finished
+        for phase in self.scene_1.phases:
+
+            #  shift scene to phase
+            self.scene_1.shift_to_phase(phase[0])
+
+            # start scene
+            self.scene_1.redo_proc()
+
+            # check that phase is unshifted unless finished: then it becomes queued
+            self.assertEqual(
+                self.scene_1.phase,
+                self.scene_1.phases.queued if (
+                    phase[0] == self.scene_1.phases.fin) else phase[0]
+            )
+
+            # check date_started is untouched
+            self.assertEqual(self.scene_1.date_started, started_date)
+
+    def test_redo_postproc(self):
+        started_date = None
+
+        # a scene should only start redo postprocessing when phase is finished
+        for phase in self.scene_1.phases:
+
+            #  shift scene to phase
+            self.scene_1.shift_to_phase(phase[0])
+
+            # start scene
+            self.scene_1.redo_postproc()
+
+            # check that phase is unshifted unless finished: then it becomes queued
+            self.assertEqual(
+                self.scene_1.phase,
+                self.scene_1.phases.queued if (
+                    phase[0] == self.scene_1.phases.fin) else phase[0]
+            )
+
+            # check date_started is untouched
+            self.assertEqual(self.scene_1.date_started, started_date)
+
     def test_abort_scene(self):
 
         # abort is more complex
