@@ -418,8 +418,8 @@ class Scene(models.Model):
                 if add:
                     files_added = True
                     abs_path = os.path.join(root, f)
-                    rel_path = os.path.join(
-                        slugify(self.name), os.path.relpath(abs_path, self.workingdir))
+                    rel_path = os.path.join(slugify(self.name),
+                                            os.path.relpath(abs_path, self.workingdir))
                     zipfile.write(abs_path, rel_path)
 
         return files_added
@@ -1337,8 +1337,8 @@ class Container(models.Model):
         # Specific settings for each container type
         # TODO It would be more elegant to put these
         # hard-coded settings in a separate file.
-        # 
-        # Also have a template that comes from 
+        #
+        # Also have a template that comes from
         # provisioning, to match the needed environment variables
 
         # Random string in order to avoid naming conflicts.
@@ -1352,7 +1352,7 @@ class Container(models.Model):
                         'volumes': ['{0}:/data'.format(simdir)],
                         'memory_limit': '3g',  # 75% of t2.medium
                         'environment': {"uuid": str(self.scene.suid),
-                                        "folder": simdir, },
+                                        "folder": simdir},
                         'name': "{}-{}-{}".format(self.container_type,
                                                   str(self.scene.suid),
                                                   random_postfix),
@@ -1366,7 +1366,7 @@ class Container(models.Model):
                            '{0}:/data/input_postproc:ro'.format(posdir)],
                        'memory_limit': '2000m',
                        'environment': {"uuid": str(self.scene.suid),
-                                       "folder": expdir, },
+                                       "folder": expdir},
                        'name': "{}-{}-{}".format(self.container_type,
                                                  str(self.scene.suid),
                                                  random_postfix),
@@ -1382,7 +1382,7 @@ class Container(models.Model):
                                 '{0}:/data/input:ro'.format(simdir)],
                             'memory_limit': '3000m',
                             'environment': {"uuid": str(self.scene.suid),
-                                            "folder": posdir, },
+                                            "folder": posdir},
                             'name': "{}-{}-{}".format(self.container_type,
                                                       str(self.scene.suid),
                                                       random_postfix),
@@ -1400,7 +1400,7 @@ class Container(models.Model):
                                '{0}:/data/input:ro'.format(predir)],
                            'memory_limit': '200m',
                            'environment': {"uuid": str(self.scene.suid),
-                                           "folder": simdir, },
+                                           "folder": simdir},
                            'name': "{}-{}-{}".format(self.container_type,
                                                      str(self.scene.suid),
                                                      random_postfix),
@@ -1415,7 +1415,7 @@ class Container(models.Model):
                                  '{0}:/data/input:z'.format(syndir)],
                              'memory_limit': '500m',
                              'environment': {"uuid": str(self.scene.suid),
-                                             "folder": syndir, },
+                                             "folder": syndir},
                              'name': "{}-{}-{}".format(self.container_type,
                                                        str(self.scene.suid),
                                                        random_postfix),
@@ -1430,7 +1430,7 @@ class Container(models.Model):
                         ],
                         'memory_limit': '3000m',
                         'environment': {"uuid": str(self.scene.suid),
-                                        "folder": prodir, },
+                                        "folder": prodir},
                         'name': "{}-{}-{}".format(self.container_type,
                                                   str(self.scene.suid),
                                                   random_postfix),
