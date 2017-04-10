@@ -810,7 +810,7 @@ class Scene(models.Model):
                 self.shift_to_phase(self.phases.sim_fin)
 
             return
-###
+
         elif self.phase == self.phases.proc_create:
 
             container = self.container_set.get(container_type='process')
@@ -1137,9 +1137,9 @@ class Scene(models.Model):
 
             # If sync for rerun is finished, shift to postporcessing phase from the "default" workflow.
             if (container.docker_state == 'non-existent'):
-                if self.workflow == 'redo_proc':
+                if self.workflow == self.workflows.redo_proc:
                     self.shift_to_phase(self.phases.proc_create)
-                if self.workflow == 'redo_postproc':
+                if self.workflow == self.workflows.redo_postproc:
                     self.shift_to_phase(self.phases.postproc_create)
 
             return
