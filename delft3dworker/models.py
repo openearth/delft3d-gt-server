@@ -124,16 +124,16 @@ class Scenario(models.Model):
                 scene.start()
         return "started"
 
-    def rerun_proc(self, user):
+    def redo_proc(self, user):
         for scene in self.scene_set.all():
             if user.has_perm('delft3dworker.change_scene', scene):
-                scene.rerun_proc()
+                scene.redo_proc()
         return "started"
 
-    def rerun_postproc(self, user):
+    def redo_postproc(self, user):
         for scene in self.scene_set.all():
             if user.has_perm('delft3dworker.change_scene', scene):
-                scene.rerun_postproc()
+                scene.redo_postproc()
         return "started"
 
     def abort(self, user):
@@ -266,6 +266,14 @@ class Scene(models.Model):
     shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True)
 
+    workflows = Choices(
+        (0, 'main', 'main workflow'),
+        (1, 'redo_proc', 'redo processing workflow'),
+        (2, 'redo_postproc', 'redo postprocessing workflow')
+    )
+
+    workflow = models.PositiveSmallIntegerField(default=workflows.main, choices=workflows)
+
     phases = Choices(
         # Create container models
         (0, 'new', 'New'),
@@ -286,6 +294,12 @@ class Scene(models.Model):
         (15, 'sim_last_proc', 'Finishing simulation'),
         (13, 'sim_fin', 'Finished simulation'),
         (14, 'sim_stop', 'Stopping simulation'),
+
+        # Processing container
+        (60, 'proc_create', 'Allocating processing resources'),
+        (61, 'proc_start', 'Starting processing'),
+        (62, 'proc_run', 'Running processing'),
+        (63, 'proc_fin', 'Finished processing'),
 
         # Postprocessing container
         (20, 'postproc_create', 'Allocating postprocessing resources'),
@@ -310,17 +324,11 @@ class Scene(models.Model):
         (42, 'sync_run', 'Running synchronization'),
         (43, 'sync_fin', 'Finished synchronization'),
 
-        # Sync back simulation results to rerun processing
-        (50, 'sync_rerun_proc_create', 'Allocating synchronization resources')
-        (51, 'sync_rerun_proc_start', 'Started synchronization')
-        (52, 'sync_rerun_proc_run', 'Running synchronization')
-        (53, 'sync_rerun_proc_fin', 'Finished synchronization')
-
-        # Sync back simulation results to rerun postprocessing and export
-        (60, 'sync_rerun_postproc_create', 'Allocating synchronization resources')
-        (61, 'sync_rerun_postproc_start', 'Started synchronization')
-        (62, 'sync_rerun_postproc_run', 'Running synchronization')
-        (63, 'sync_rerun_postproc_fin', 'Finished synchronization')
+        # Sync back simulation results to rerun processing or postprocessing
+        (50, 'sync_redo_create', 'Allocating synchronization resources'),
+        (51, 'sync_redo_start', 'Started synchronization'),
+        (52, 'sync_redo_run', 'Running synchronization'),
+        (53, 'sync_redo_fin', 'Finished synchronization'),
 
         # Other phases
         (500, 'fin', 'Finished'),
@@ -366,20 +374,22 @@ class Scene(models.Model):
 
         return {"task_id": None, "scene_id": None}
 
-    def rerun_proc(self):
+    def redo_proc(self):
         # only allow a start when Scene is 'Finished'
         if self.phase == self.phases.fin:
             # Maybe shift to seperate Que if load on Swarm is to high?
-            self.shift_to_phase(self.phases.sync_rerun_proc_create)
+            self.shift_to_phase(self.phases.queued)
+            self.workflow = self.workflows.redo_proc
             self.save()
 
         return {"task_id": None, "scene_id": None}
 
-    def rerun_postproc(self):
+    def redo_postproc(self):
         # only allow a start when Scene is 'Finished'
         if self.phase == self.phases.fin:
             # Maybe shift to seperate Que if load on Swarm is to high
-            self.shift_to_phase(self.phases.sync_rerun_postproc_create)
+            self.shift_to_phase(self.phases.queued)
+            self.workflow = self.workflows.redo_postproc
             self.save()
 
         return {"task_id": None, "scene_id": None}
@@ -800,6 +810,60 @@ class Scene(models.Model):
                 self.shift_to_phase(self.phases.sim_fin)
 
             return
+###
+        elif self.phase == self.phases.proc_create:
+
+            container = self.container_set.get(container_type='process')
+            container.set_desired_state('created')
+
+            if (container.docker_state != 'non-existent'):
+                self.shift_to_phase(self.phases.proc_start)
+
+            return
+
+        elif self.phase == self.phases.proc_start:
+
+            container = self.container_set.get(container_type='process')
+            container.set_desired_state('running')
+
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(self.phases.proc_run)
+
+            elif (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.proc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.proc_create)
+                logging.error("Lost process container!")
+
+            return
+
+        elif self.phase == self.phases.proc_run:
+
+            container = self.container_set.get(container_type='process')
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.proc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.proc_create)
+                logging.error("Lost process container!")
+
+            return
+
+        elif self.phase == self.phases.proc_fin:
+
+            container = self.container_set.get(container_type='process')
+            container.set_desired_state('non-existent')
+
+            if (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.cont_rem_run)
+
+            return
+
 
         elif self.phase == self.phases.postproc_create:
 
@@ -1023,57 +1087,60 @@ class Scene(models.Model):
 
             return
 
-        elif self.phase == self.phases.sync_rerun_postproc_create:
+        elif self.phase == self.phases.sync_redo_create:
 
             container = self.container_set.get(container_type='sync_rerun')
             container.set_desired_state('created')
 
             if (container.docker_state != 'non-existent'):
-                self.shift_to_phase(self.phases.sync_rerun_postproc_start)
+                self.shift_to_phase(self.phases.sync_redo_start)
 
             return
 
-        elif self.phase == self.phases.sync_rerun_postproc_start:
+        elif self.phase == self.phases.sync_redo_start:
 
             container = self.container_set.get(container_type='sync_rerun')
             container.set_desired_state('running')
 
             if (container.docker_state == 'running'):
-                self.shift_to_phase(self.phases.sync_rerun_postproc_run)
+                self.shift_to_phase(self.phases.sync_redo_run)
 
             elif (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sync_rerun_postproc_fin)
+                self.shift_to_phase(self.phases.sync_redo_fin)
 
             # If container disappeared, shift back
             elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.sync_rerun_postproc_create)
+                self.shift_to_phase(self.phases.sync_redo_create)
                 logging.error("Lost sync_rerun container!")
 
             return
 
-        elif self.phase == self.phases.sync_rerun_postproc_run:
+        elif self.phase == self.phases.sync_redo_run:
 
             container = self.container_set.get(container_type='sync_rerun')
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
-                self.shift_to_phase(self.sync_rerun_postproc_fin)
+                self.shift_to_phase(self.sync_redo_fin)
 
             # If container disappeared, shift back
             elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.sync_rerun_postproc_create)
+                self.shift_to_phase(self.phases.sync_redo_create)
                 logging.error("Lost sync_rerun container!")
 
             return
 
-        elif self.phase == self.phases.sync_rerun_postproc_fin:
+        elif self.phase == self.phases.sync_redo_fin:
 
             container = self.container_set.get(container_type='sync_rerun')
             container.set_desired_state('non-existent')
 
             # If sync for rerun is finished, shift to postporcessing phase from the "default" workflow.
             if (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.postproc_create)
+                if self.workflow == 'redo_proc':
+                    self.shift_to_phase(self.phases.proc_create)
+                if self.workflow == 'redo_postproc':
+                    self.shift_to_phase(self.phases.postproc_create)
 
             return
 
@@ -1085,7 +1152,11 @@ class Scene(models.Model):
                 (i >= self.phases.sim_create and i <= self.phases.sim_stop) for i in scene_phases)
 
             if number_simulations < settings.MAX_SIMULATIONS:
-                self.shift_to_phase(self.phases.sim_create)
+                if self.workflow==self.workflows.main:
+                    self.shift_to_phase(self.phases.sim_create)
+                elif (self.workflow==self.workflows.redo_proc or
+                    self.workflow==self.workflows.redo_postproc):
+                    self.shift_to_phase(self.phases.sync_redo_create)
 
             return
 
