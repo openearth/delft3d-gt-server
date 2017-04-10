@@ -764,6 +764,10 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moved to phase 14 when simulation container is
         # exited
 
+    # TODO: add phase_proc_create, phase_proc_start, phase_proc_run, phase_proc_fin
+    # TODO: add sync_redo_create, sync_redo_start, sync_redo_run, sync_redo_fin
+    # sync_redo_fin can shift to phase_proc_start or phase_postproc_start depending on workflow
+
     def test_phase_postproc_create(self):
         # Started postprocessing
         self.scene_1.phase = self.p.postproc_create
@@ -959,6 +963,8 @@ class ScenarioPhasesTestCase(TestCase):
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.sim_create)
+
+        # TODO: test shifts for the 3 different workflows.
 
         # check if scene stays in phase 1003 when there are too many
         # simulations already running
