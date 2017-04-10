@@ -6,8 +6,38 @@ from django.conf import settings
 def version_default():
     # default value for JSONField of Container model
     return {'REPOS_URL': settings.REPOS_URL,
-            'SVN_REV': settings.SVN_REV}
+            'SVN_REV': settings.SVN_REV,
+            'PRE_REV': settings.SVN_PRE_REV,
+            'PROC_REV': settings.SVN_PROC_REV,
+            'POST_REV': settings.SVN_POST_REV,
+            'EXP_REV': settings.SVN_EXP_REV,
+            'delft3d_version': settings.DELFT3D_VERSION}
 
+
+def get_version(container_type):
+    container_types = {
+        'delft3d': {
+            "delft3d_version": settings.DELFT3D_VERSION},
+
+        'export': {
+            'REPOS_URL': settings.REPOS_URL,
+            'SVN_REV': settings.SVN_EXP_REV, },
+
+        'postprocess': {
+            'REPOS_URL': settings.REPOS_URL,
+            'SVN_REV': settings.SVN_POST_REV, },
+
+        'preprocess': {
+            'REPOS_URL': settings.REPOS_URL,
+            'SVN_REV': settings.SVN_PRE_REV, },
+
+        'sync_cleanup': {},
+
+        'process': {
+            'REPOS_URL': settings.REPOS_URL,
+            'SVN_REV': settings.SVN_PROC_REV, },
+    }
+    return container_types[container_type] if container_type in container_types else {}
 
 def log_progress_parser(log, container_type):
     lines = log.splitlines()

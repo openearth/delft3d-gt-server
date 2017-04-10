@@ -242,12 +242,36 @@ class SceneTestCase(TestCase):
                 self.assertNotIn('REPOS_URL', version_dict[container_type])
                 self.assertNotIn('SVN_REV', version_dict[container_type])
                 self.assertEqual(version_dict[container_type]['delft3d_version'], settings.DELFT3D_VERSION)
-            else:
+            elif container_type == 'process':
                 self.assertNotIn('delft3d_version', version_dict[container_type])
                 self.assertIn('REPOS_URL', version_dict[container_type])
                 self.assertIn('SVN_REV', version_dict[container_type])
                 self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
-                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_REV)
+                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_PROC_REV)            
+            elif container_type == 'preprocess':
+                self.assertNotIn('delft3d_version', version_dict[container_type])
+                self.assertIn('REPOS_URL', version_dict[container_type])
+                self.assertIn('SVN_REV', version_dict[container_type])
+                self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
+                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_PRE_REV)            
+            elif container_type == 'postprocess':
+                self.assertNotIn('delft3d_version', version_dict[container_type])
+                self.assertIn('REPOS_URL', version_dict[container_type])
+                self.assertIn('SVN_REV', version_dict[container_type])
+                self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
+                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_POST_REV)
+            elif container_type == 'export':
+                self.assertNotIn('delft3d_version', version_dict[container_type])
+                self.assertIn('REPOS_URL', version_dict[container_type])
+                self.assertIn('SVN_REV', version_dict[container_type])
+                self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
+                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_EXP_REV)
+            elif container_type == 'sync_cleanup':
+                self.assertNotIn('delft3d_version', version_dict[container_type])
+                self.assertNotIn('REPOS_URL', version_dict[container_type])
+                self.assertNotIn('SVN_REV', version_dict[container_type])
+            else:
+                pass
 
     def test_after_publishing_rights_are_revoked(self):
         self.assertEqual(self.scene_1.shared, 'p')
@@ -1174,7 +1198,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                                     'folder': os.path.join(
                                         self.scene_1.workingdir, 'simulation'),
                                     'REPOS_URL': settings.REPOS_URL,
-                                    'SVN_REV': settings.SVN_REV},
+                                    'SVN_REV': settings.SVN_PRE_REV},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
@@ -1204,7 +1228,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                                     'folder': os.path.join(
                                         self.scene_1.workingdir, 'simulation'),
                                     'REPOS_URL': settings.REPOS_URL,
-                                    'SVN_REV': settings.SVN_REV},
+                                    'SVN_REV': settings.SVN_PRE_REV},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
