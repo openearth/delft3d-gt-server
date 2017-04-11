@@ -623,6 +623,14 @@ class Scene(models.Model):
                 )
                 sync_clean_container.save()
 
+            if not self.container_set.filter(container_type='sync_rerun').exists():
+                sync_run_container = Container.objects.create(
+                    scene=self,
+                    container_type='sync_rerun',
+                    desired_state='non-existent',
+                )
+                sync_run_container.save()
+
             self.shift_to_phase(self.phases.preproc_create)
 
             return
@@ -1283,6 +1291,7 @@ class Container(models.Model):
         ('postprocess', 'postprocess'),
         ('export', 'export'),
         ('sync_cleanup', 'sync_cleanup'),
+        ('sync_rerun', 'sync_rerun'),
     )
 
     container_type = models.CharField(
