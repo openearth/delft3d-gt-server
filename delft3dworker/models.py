@@ -872,8 +872,9 @@ class Scene(models.Model):
             container = self.container_set.get(container_type='process')
             container.set_desired_state('non-existent')
 
+            # Done with redo processing, sync results
             if (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.cont_rem_run)
+                self.shift_to_phase(self.phases.sync_create)
 
             return
 
