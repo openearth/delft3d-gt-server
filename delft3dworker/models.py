@@ -340,6 +340,7 @@ class Scene(models.Model):
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
+    version = models.ForeignKey(Version_SVN)
 
     # PROPERTY METHODS
 
@@ -351,7 +352,7 @@ class Scene(models.Model):
     def versions(self):
         version_dict = {}
         for container in self.container_set.all():
-            version_dict[container.container_type] = container.version
+            version_dict[container.container_type] = container.`
         return version_dict
 
     # UI CONTROL METHODS
@@ -1341,8 +1342,6 @@ class Container(models.Model):
     docker_log = models.TextField(blank=True, default='')
     container_log = models.TextField(blank=True, default='')
 
-    version = JSONField(default=version_default)
-
     # CONTROL METHODS
 
     def set_desired_state(self, desired_state):
@@ -1646,6 +1645,7 @@ class Container(models.Model):
                         },
         }
 
+        # Set SVN_REV and REPOS_URL a.o.
         self.version = get_version(self.container_type)
         kwargs[self.container_type]['environment'].update(self.version)
 
@@ -1893,3 +1893,26 @@ class Template(models.Model):
         permissions = (
             ('view_template', 'View Template'),
         )
+
+
+class Version_SVN(models.Model):
+    """
+    Store releases used in the Delft3D-GT svn repository.
+
+    Every scene has a version_svn, if there's a newer (higher id)
+    version_svn available, the scene is outdated.
+
+    By comparing svn folders and files (versions field) the specific
+    workflow can be determined in the scene.
+
+    The revision and url can be used in the Docker Python env
+    """
+    release = models.CharField(max_length=256)  # tag/release name
+    revision = models.PositiveSmallIntegerField()  # svn_version
+    versions = JSONField(default='{}')  # folder revisions
+    url = models.URLField(max_length=200)  # repos_url
+    changelog = models.CharField(max_length=256)  # release notes
+
+    def outdated(self):
+        """Return bool if there are newer releases available."""
+        return Version_SVN.objects.last().id > self.id

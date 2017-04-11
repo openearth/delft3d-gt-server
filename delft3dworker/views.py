@@ -575,12 +575,11 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @list_route(methods=["get"])
     def versions(self, request):
-        queryset = Container.objects.all()
+        queryset = Version_SVN.objects.all()
 
         resp = {}
-        for container in queryset:
-            for key, val in container.version.iteritems():
-                    resp.setdefault(key, set([])).add(val)
+        for version in queryset:
+            resp[version.id] = version.values()
 
         return Response(resp)
 
