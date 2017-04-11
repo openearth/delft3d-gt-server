@@ -272,7 +272,8 @@ class Scene(models.Model):
         (2, 'redo_postproc', 'redo postprocessing workflow')
     )
 
-    workflow = models.PositiveSmallIntegerField(default=workflows.main, choices=workflows)
+    workflow = models.PositiveSmallIntegerField(
+        default=workflows.main, choices=workflows)
 
     phases = Choices(
         # Create container models
@@ -820,6 +821,9 @@ class Scene(models.Model):
 
             return
 
+        ##########
+        # REDO Processing
+
         elif self.phase == self.phases.proc_create:
 
             container = self.container_set.get(container_type='process')
@@ -873,6 +877,8 @@ class Scene(models.Model):
 
             return
 
+        #############
+        # Postprocessing
 
         elif self.phase == self.phases.postproc_create:
 
@@ -1096,6 +1102,9 @@ class Scene(models.Model):
 
             return
 
+        #############
+        # REDO PHASES
+
         elif self.phase == self.phases.sync_redo_create:
 
             container = self.container_set.get(container_type='sync_rerun')
@@ -1144,7 +1153,8 @@ class Scene(models.Model):
             container = self.container_set.get(container_type='sync_rerun')
             container.set_desired_state('non-existent')
 
-            # If sync for rerun is finished, shift to postporcessing phase from the "default" workflow.
+            # If sync for rerun is finished, shift to postporcessing phase from
+            # the "default" workflow.
             if (container.docker_state == 'non-existent'):
                 if self.workflow == self.workflows.redo_proc:
                     self.shift_to_phase(self.phases.proc_create)
@@ -1152,6 +1162,9 @@ class Scene(models.Model):
                     self.shift_to_phase(self.phases.postproc_create)
 
             return
+
+        #############
+        # QUEUED
 
         elif self.phase == self.phases.queued:
 
@@ -1161,10 +1174,10 @@ class Scene(models.Model):
                 (i >= self.phases.sim_create and i <= self.phases.sim_stop) for i in scene_phases)
 
             if number_simulations < settings.MAX_SIMULATIONS:
-                if self.workflow==self.workflows.main:
+                if self.workflow == self.workflows.main:
                     self.shift_to_phase(self.phases.sim_create)
-                elif (self.workflow==self.workflows.redo_proc or
-                    self.workflow==self.workflows.redo_postproc):
+                elif (self.workflow == self.workflows.redo_proc or
+                      self.workflow == self.workflows.redo_postproc):
                     self.shift_to_phase(self.phases.sync_redo_create)
 
             return
