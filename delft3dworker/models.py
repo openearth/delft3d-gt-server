@@ -1140,7 +1140,7 @@ class Scene(models.Model):
             container = self.container_set.get(container_type='sync_rerun')
             if (container.docker_state == 'exited'):
                 container.set_desired_state('exited')
-                self.shift_to_phase(self.sync_redo_fin)
+                self.shift_to_phase(self.phases.sync_redo_fin)
 
             # If container disappeared, shift back
             elif (container.docker_state == 'non-existent'):
