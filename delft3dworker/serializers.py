@@ -57,6 +57,7 @@ class SceneFullSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
 
     state = serializers.CharField(source='get_phase_display', read_only=True)
+    outdated = serializers.BooleanField(source='is_outdated', read_only=True)
 
     class Meta:
         model = Scene
@@ -77,7 +78,8 @@ class SceneFullSerializer(serializers.ModelSerializer):
             'suid',
             'task_id',
             'versions',
-            'workingdir'
+            'workingdir',
+            'outdated'
         )
 
 

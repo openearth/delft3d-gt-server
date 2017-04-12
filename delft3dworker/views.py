@@ -145,17 +145,9 @@ class ScenarioViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @detail_route(methods=["put"])  # denied after publish to company/world
-    def redo_proc(self, request, pk=None):
+    def redo(self, request, pk=None):
         scenario = self.get_object()
-        scenario.redo_proc(request.user)
-        serializer = self.get_serializer(scenario)
-
-        return Response(serializer.data)
-
-    @detail_route(methods=["put"])  # denied after publish to company/world
-    def redo_postproc(self, request, pk=None):
-        scenario = self.get_object()
-        scenario.redo_postproc(request.user)
+        scenario.redo(request.user)
         serializer = self.get_serializer(scenario)
 
         return Response(serializer.data)

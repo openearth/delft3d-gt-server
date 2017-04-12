@@ -29,6 +29,18 @@ def delft3dgt_pulse(self):
     return
 
 
+@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60})
+def delft3dgt_latest_svn(self):
+    """
+    This task runs the containersync_sceneupdate management command.
+    This command updates the states in container and scene model
+
+    A lock is implemented to ensure it's only run one at a time
+    """
+    call_command('get_latest_svn_releases')
+    return
+
+
 @shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60},
              throws=(HTTPError))
 def get_docker_ps(self):

@@ -43,7 +43,44 @@ from delft3dcontainermanager.tasks import do_docker_stop
 from delft3dcontainermanager.tasks import get_docker_log
 
 
-# ################################### SCENARIO, SCENE & CONTAINER
+# ################################### VERSION_SVN, SCENARIO, SCENE & CONTAINER
+
+
+class Version_SVN(models.Model):
+    """
+    Store releases used in the Delft3D-GT svn repository.
+
+    Every scene has a version_svn, if there's a newer (higher id)
+    version_svn available, the scene is outdated.
+
+    By comparing svn folders and files (versions field) the specific
+    workflow can be determined in the scene.
+
+    The revision and url can be used in the Docker Python env
+    """
+    release = models.CharField(max_length=256, db_index=True)  # tag/release name
+    revision = models.PositiveSmallIntegerField(db_index=True)  # svn_version
+    versions = JSONField(default='{}')  # folder revisions
+    url = models.URLField(max_length=200)  # repos_url
+    changelog = models.CharField(max_length=256)  # release notes
+    reviewed = models.BooleanField(default=settings.REQUIRE_REVIEW)
+
+    def outdated(self):
+        """Return bool if there are newer releases available."""
+        return Version_SVN.objects.filter(reviewed=True).order_by('-revision')[0].revision > self.revision
+
+    def compare_outdated(self):
+        """Compare folder revisions with latest release."""
+        outdated_folders = []
+
+        latest = Version_SVN.objects.filter(
+            reviewed=True).order_by('-revision')[0].versions
+        for folder, revision in self.versions.items():
+            if latest.setdefault(folder, -1) > revision:
+                outdated_folders.append(folder)
+
+        return outdated_folders
+
 
 class Scenario(models.Model):
 
@@ -124,17 +161,11 @@ class Scenario(models.Model):
                 scene.start()
         return "started"
 
-    def redo_proc(self, user):
+    def redo(self, user):
         for scene in self.scene_set.all():
             if user.has_perm('delft3dworker.change_scene', scene):
-                scene.redo_proc()
-        return "started"
-
-    def redo_postproc(self, user):
-        for scene in self.scene_set.all():
-            if user.has_perm('delft3dworker.change_scene', scene):
-                scene.redo_postproc()
-        return "started"
+                scene.redo()
+        return "redoing"
 
     def abort(self, user):
         for scene in self.scene_set.all():
@@ -269,7 +300,8 @@ class Scene(models.Model):
     workflows = Choices(
         (0, 'main', 'main workflow'),
         (1, 'redo_proc', 'redo processing workflow'),
-        (2, 'redo_postproc', 'redo postprocessing workflow')
+        (2, 'redo_postproc', 'redo postprocessing workflow'),
+        (3, 'redo_proc_postproc', 'redo processing and postprocessing workflow')
     )
 
     workflow = models.PositiveSmallIntegerField(
@@ -350,10 +382,12 @@ class Scene(models.Model):
         )
 
     def versions(self):
-        version_dict = {}
-        for container in self.container_set.all():
-            version_dict[container.container_type] = container.`
+        version_dict = self.version.values()
+        version_dict['delft3d_version'] = settings.DELFT3D_VERSION
         return version_dict
+
+    def is_outdated(self):
+        return self.version.outdated()
 
     # UI CONTROL METHODS
 
@@ -376,25 +410,27 @@ class Scene(models.Model):
 
         return {"task_id": None, "scene_id": None}
 
-    def redo_proc(self):
-        # only allow a start when Scene is 'Finished'
-        if self.phase == self.phases.fin:
-            # Maybe shift to seperate Que if load on Swarm is to high?
-            self.shift_to_phase(self.phases.queued)
-            self.workflow = self.workflows.redo_proc
-            self.save()
+    def redo(self):
+        # only allow a redo when Scene is 'Finished'
+        # and there's a new version available
+        if self.phase == self.phases.fin and self.is_outdated():
 
-        return {"task_id": None, "scene_id": None}
+            outdated_folders = self.version.compare_outdated()
 
-    def redo_postproc(self):
-        # only allow a start when Scene is 'Finished'
-        if self.phase == self.phases.fin:
+            if ('postprocess' in outdated_folders or 'export' in outdated_folders) and ('process' in outdated_folders or 'visualisation' in outdated_folders):
+                self.workflow = self.workflows.redo_proc_postproc
+
+            elif ('postprocess' in outdated_folders or 'export' in outdated_folders):
+                self.workflow = self.workflows.redo_postproc
+
+            elif ('process' in outdated_folders or 'visualisation' in outdated_folders):
+                self.workflow = self.workflows.redo_proc
+
             # Maybe shift to seperate Que if load on Swarm is to high
             self.shift_to_phase(self.phases.queued)
-            self.workflow = self.workflows.redo_postproc
             self.save()
 
-        return {"task_id": None, "scene_id": None}
+            return {"task_id": None, "scene_id": None}
 
     def abort(self):
         # Stop simulation
@@ -875,7 +911,10 @@ class Scene(models.Model):
 
             # Done with redo processing, sync results
             if (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.sync_create)
+                if self.workflow == self.workflows.redo_proc_postproc:
+                    self.shift_to_phase(self.phases.postproc_create)
+                else:
+                    self.shift_to_phase(self.phases.sync_create)
 
             return
 
@@ -1160,8 +1199,10 @@ class Scene(models.Model):
             if (container.docker_state == 'non-existent'):
                 if self.workflow == self.workflows.redo_proc:
                     self.shift_to_phase(self.phases.proc_create)
-                if self.workflow == self.workflows.redo_postproc:
+                elif self.workflow == self.workflows.redo_postproc:
                     self.shift_to_phase(self.phases.postproc_create)
+                elif self.workflow == self.workflows.redo_proc_postproc:
+                    self.shift_to_phase(self.phases.redo_proc_postproc)
 
             return
 
@@ -1179,7 +1220,8 @@ class Scene(models.Model):
                 if self.workflow == self.workflows.main:
                     self.shift_to_phase(self.phases.sim_create)
                 elif (self.workflow == self.workflows.redo_proc or
-                      self.workflow == self.workflows.redo_postproc):
+                      self.workflow == self.workflows.redo_postproc or
+                      self.workflow == self.workflows.redo_proc_postproc):
                     self.shift_to_phase(self.phases.sync_redo_create)
 
             return
@@ -1646,8 +1688,9 @@ class Container(models.Model):
         }
 
         # Set SVN_REV and REPOS_URL a.o.
-        self.version = get_version(self.container_type)
-        kwargs[self.container_type]['environment'].update(self.version)
+        version = self.scene.version.values()
+        kwargs[self.container_type]['environment'].update({'REPOS_URL': version['url'],
+                                                           'SVN_REV': version['revision']})
 
         parameters = self.scene.parameters
         label = {"type": self.container_type}
@@ -1893,26 +1936,3 @@ class Template(models.Model):
         permissions = (
             ('view_template', 'View Template'),
         )
-
-
-class Version_SVN(models.Model):
-    """
-    Store releases used in the Delft3D-GT svn repository.
-
-    Every scene has a version_svn, if there's a newer (higher id)
-    version_svn available, the scene is outdated.
-
-    By comparing svn folders and files (versions field) the specific
-    workflow can be determined in the scene.
-
-    The revision and url can be used in the Docker Python env
-    """
-    release = models.CharField(max_length=256)  # tag/release name
-    revision = models.PositiveSmallIntegerField()  # svn_version
-    versions = JSONField(default='{}')  # folder revisions
-    url = models.URLField(max_length=200)  # repos_url
-    changelog = models.CharField(max_length=256)  # release notes
-
-    def outdated(self):
-        """Return bool if there are newer releases available."""
-        return Version_SVN.objects.last().id > self.id
