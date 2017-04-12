@@ -1093,13 +1093,25 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.idle)
 
-    def test_phase_queued(self):
+    def test_phase_queued_main_workflow(self):
         self.scene_1.phase = self.p.queued
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.sim_create)
 
-        # TODO: test shifts for the 3 different workflows.
+    def test_phase_queued_proc_workflow(self):
+        self.scene_1.phase = self.p.queued
+        self.scene_1.workflow = self.w.redo_proc
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
+
+    def test_phase_queued_postproc_workflow(self):
+        self.scene_1.phase = self.p.queued
+        self.scene_1.workflow = self.w.redo_postproc
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
 
         # check if scene stays in phase 1003 when there are too many
         # simulations already running
