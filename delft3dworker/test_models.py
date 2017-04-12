@@ -586,6 +586,7 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1 = Scene.objects.create(name='scene 1')
         self.scene_1.update_and_phase_shift()
         self.p = self.scene_1.phases  # shorthand
+        self.w = self.scene_1.workflows
 
     def test_phase_new(self):
         self.scene_1.phase = self.p.new
@@ -788,9 +789,119 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moved to phase 14 when simulation container is
         # exited
 
-    # TODO: add phase_proc_create, phase_proc_start, phase_proc_run, phase_proc_fin
-    # TODO: add sync_redo_create, sync_redo_start, sync_redo_run, sync_redo_fin
-    # sync_redo_fin can shift to phase_proc_start or phase_postproc_start depending on workflow
+    def test_phase_proc_create(self):
+        # Started processing
+        self.scene_1.phase = self.p.proc_create
+        container = self.scene_1.container_set.get(container_type='process')
+        container.docker_state = 'created'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.proc_start)
+
+    def test_phase_proc_start(self):
+        # Started processing
+        self.scene_1.phase = self.p.proc_start
+        container = self.scene_1.container_set.get(container_type='process')
+        container.docker_state = 'running'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.proc_run)
+
+    def test_phase_proc_run(self):
+        self.scene_1.phase = self.p.proc_run
+        container = self.scene_1.container_set.get(container_type='process')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.proc_fin)
+
+    def test_phase_postproc_fin(self):
+        # Finished processing
+        self.scene_1.phase = self.p.proc_fin
+
+        container = self.scene_1.container_set.get(container_type='process')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.proc_fin)
+
+        container = self.scene_1.container_set.get(container_type='process')
+        container.docker_state = 'non-existent'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_create)
+
+    def test_phase_sync_redo_create(self):
+        # Started sync
+        self.scene_1.phase = self.p.sync_redo_create
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'created'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_start)
+
+    def test_phase_sync_rerun_start(self):
+        # Started sync
+        self.scene_1.phase = self.p.sync_redo_start
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'running'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_run)
+
+    def test_phase_sync_rerun_run(self):
+        self.scene_1.phase = self.p.sync_redo_run
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_fin)
+
+    def test_phase_sync_rerun_fin_proc_workflow(self):
+        # Finished sync
+        self.scene_1.phase = self.p.sync_redo_fin
+        self.scene_1.workflow = self.w.redo_proc
+
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_fin)
+
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'non-existent'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.proc_create)
+
+    def test_phase_sync_rerun_fin_postproc_workflow(self):
+        # Finished sync
+        self.scene_1.phase = self.p.sync_redo_fin
+        self.scene_1.workflow = self.w.redo_postproc
+
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_fin)
+
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'non-existent'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.postproc_create)
 
     def test_phase_postproc_create(self):
         # Started postprocessing
@@ -982,13 +1093,25 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.idle)
 
-    def test_phase_queued(self):
+    def test_phase_queued_main_workflow(self):
         self.scene_1.phase = self.p.queued
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.sim_create)
 
-        # TODO: test shifts for the 3 different workflows.
+    def test_phase_queued_proc_workflow(self):
+        self.scene_1.phase = self.p.queued
+        self.scene_1.workflow = self.w.redo_proc
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
+
+    def test_phase_queued_postproc_workflow(self):
+        self.scene_1.phase = self.p.queued
+        self.scene_1.workflow = self.w.redo_postproc
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
 
         # check if scene stays in phase 1003 when there are too many
         # simulations already running
