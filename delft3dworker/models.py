@@ -52,9 +52,9 @@ def default_svn_version():
     if count == 0:
         version = Version_SVN(release='baseline', revision=settings.SVN_REV, url=settings.REPOS_URL, versions={}, changelog='default release')
         version.save()
-        return version
+        return version.id
     else:
-        return Version_SVN.objects.last()
+        return Version_SVN.objects.last().id
 
 
 class Version_SVN(models.Model):
