@@ -48,13 +48,13 @@ from delft3dcontainermanager.tasks import get_docker_log
 
 def default_svn_version():
     """Ensure there's always a row in the svn model."""
-    count = Version_SVN.objects.all().count()
+    count = Version_SVN.objects.count()
     if count == 0:
-        version = Version_SVN(tag='baseline', revision=settings.SVN_REV, url=settings.REPOS_URL, versions={}, changelog='default release')
+        version = Version_SVN(release='baseline', revision=settings.SVN_REV, url=settings.REPOS_URL, versions={}, changelog='default release')
         version.save()
         return version
     else:
-        return Version_SVN.objects.all().last()
+        return Version_SVN.objects.last()
 
 
 class Version_SVN(models.Model):
