@@ -46,6 +46,17 @@ from delft3dcontainermanager.tasks import get_docker_log
 # ################################### VERSION_SVN, SCENARIO, SCENE & CONTAINER
 
 
+def default_svn_version():
+    """Ensure there's always a row in the svn model."""
+    count = Version_SVN.objects.all().count()
+    if count == 0:
+        version = Version_SVN(tag='baseline', revision=settings.SVN_REV, url=settings.REPOS_URL, versions={}, changelog='default release')
+        version.save()
+        return version
+    else:
+        return Version_SVN.objects.all().last()
+
+
 class Version_SVN(models.Model):
     """
     Store releases used in the Delft3D-GT svn repository.
@@ -58,7 +69,8 @@ class Version_SVN(models.Model):
 
     The revision and url can be used in the Docker Python env
     """
-    release = models.CharField(max_length=256, db_index=True)  # tag/release name
+    release = models.CharField(
+        max_length=256, db_index=True)  # tag/release name
     revision = models.PositiveSmallIntegerField(db_index=True)  # svn_version
     versions = JSONField(default='{}')  # folder revisions
     url = models.URLField(max_length=200)  # repos_url
@@ -372,7 +384,7 @@ class Scene(models.Model):
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
-    version = models.ForeignKey(Version_SVN)
+    version = models.ForeignKey(Version_SVN, default=default_svn_version)
 
     # PROPERTY METHODS
 
@@ -388,6 +400,7 @@ class Scene(models.Model):
 
     def is_outdated(self):
         return self.version.outdated()
+
 
     # UI CONTROL METHODS
 
