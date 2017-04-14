@@ -416,7 +416,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     @detail_route(methods=["put"])  # denied after publish to company/world
     def redo_proc(self, request, pk=None):
         scene = self.get_object()
-        scene.redo_proc(request.user)
+        scene.redo_proc()
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
@@ -424,7 +424,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     @detail_route(methods=["put"])  # denied after publish to company/world
     def redo_postproc(self, request, pk=None):
         scene = self.get_object()
-        scene.redo_postproc(request.user)
+        scene.redo_postproc()
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
