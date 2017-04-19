@@ -10,7 +10,9 @@ class Migration(migrations.Migration):
         ('delft3dworker', '0083_auto_20170412_0907'),
     ]
 
-    migrations.RunSQL(
-    [("UPDATE delft3dworker_scene SET phase = 500 WHERE phase = 50;")],
-    [("UPDATE delft3dworker_scene SET phase = 50 WHERE phase = 500;")],
-    )
+    operations = [
+        migrations.RunSQL(
+            [("UPDATE delft3dworker_scene SET phase = 500 WHERE phase = 50;")],
+            [("UPDATE delft3dworker_scene SET phase = 50 WHERE phase = 500;")],
+        )
+    ]
