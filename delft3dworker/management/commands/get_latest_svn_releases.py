@@ -26,6 +26,7 @@ class Command(BaseCommand):
         # Connect external repos and update
         # Could've used local repos file:/// without user & pass
         r = svn.remote.RemoteClient(settings.REPOS_URL + '/tags/')
+        updates_available = False
 
         folders = r.list(extended=True)
         for folder in folders:
@@ -34,9 +35,9 @@ class Command(BaseCommand):
 
                 # Does this tag already exist?
                 if not Version_SVN.objects.filter(release=tag).exists():
-                # if 1 == 1:
                     # Get general info
-                    t = svn.remote.RemoteClient(settings.REPOS_URL + '/tags/' + tag)
+                    t = svn.remote.RemoteClient(
+                        settings.REPOS_URL + '/tags/' + tag)
                     info = t.info()
                     revision = info['commit#revision']
                     log = list(t.log_default(stop_on_copy=True))[0].msg
@@ -44,13 +45,19 @@ class Command(BaseCommand):
 
                     # Get revisions for all folders in the script folder
                     versions = {}
-                    e = svn.remote.RemoteClient(settings.REPOS_URL + '/tags/' + tag + '/scripts/')
+                    e = svn.remote.RemoteClient(
+                        settings.REPOS_URL + '/tags/' + tag + '/scripts/')
                     entries = e.list(extended=True)
                     for entry in entries:
                         if entry['is_directory']:
                             versions[entry['name']] = entry['commit_revision']
 
                     # Create model
-                    print(tag, revision, versions, url, log)
-                    version = Version_SVN(release=tag, revision=revision, versions=versions, url=url, changelog=log)
+                    updates_available = True
+                    logging.info("Creating tag {}".format(tag))
+                    version=Version_SVN(
+                        release=tag, revision=revision, versions=versions, url=url, changelog=log)
                     version.save()
+
+        if not updates_available:
+            logging.info("No updates found.")

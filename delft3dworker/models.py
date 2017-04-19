@@ -50,7 +50,8 @@ def default_svn_version():
     """Ensure there's always a row in the svn model."""
     count = Version_SVN.objects.count()
     if count == 0:
-        version = Version_SVN(release='trunk', revision=settings.SVN_REV, url=settings.REPOS_URL, versions={}, changelog='default release')
+        version = Version_SVN(release='trunk', revision=settings.SVN_REV,
+                              url=settings.REPOS_URL + '/trunk/', versions={}, changelog='default release')
         version.save()
         return version.id
     else:
@@ -76,6 +77,14 @@ class Version_SVN(models.Model):
     url = models.URLField(max_length=200)  # repos_url
     changelog = models.CharField(max_length=256)  # release notes
     reviewed = models.BooleanField(default=settings.REQUIRE_REVIEW)
+
+    class Meta:
+        ordering = ["-revision"]
+        verbose_name = "SVN version"
+        verbose_name_plural = "SVN versions"
+
+    def __unicode__(self):
+        return self.release
 
     def outdated(self):
         """Return bool if there are newer releases available."""
@@ -400,7 +409,6 @@ class Scene(models.Model):
 
     def is_outdated(self):
         return self.version.outdated()
-
 
     # UI CONTROL METHODS
 
