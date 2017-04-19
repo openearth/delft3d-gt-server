@@ -96,8 +96,8 @@ class Version_SVN(models.Model):
 
         latest = Version_SVN.objects.filter(
             reviewed=True).order_by('-revision')[0].versions
-        for folder, revision in self.versions.items():
-            if latest.setdefault(folder, -1) > revision:
+        for folder, revision in latest.items():
+            if self.versions.setdefault(folder, -1) < revision:
                 outdated_folders.append(folder)
 
         return outdated_folders
