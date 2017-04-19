@@ -1622,7 +1622,7 @@ class Container(models.Model):
                            'name': "{}-{}-{}".format(self.container_type,
                                                      str(self.scene.suid),
                                                      random_postfix),
-                           'folders': [],  # sync doesn't need new folders
+                           'folders': [simdir],  # sync doesn't need new folders
                            'command': "/data/run.sh rerun"
                            },
 
