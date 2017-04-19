@@ -11,6 +11,6 @@ class Migration(migrations.Migration):
     ]
 
     migrations.RunSQL(
-    [("UPDATE delft3dworker_scene SET phase = 500 WHERE phase = 50")],
-    [("UPDATE delft3dworker_scene SET phase = 50 WHERE phase = 500")],
-)
+    [("UPDATE delft3dworker_scene SET phase = 500 WHERE phase = 50;")],
+    [("UPDATE delft3dworker_scene SET phase = 50 WHERE phase = 500;")],
+    )
