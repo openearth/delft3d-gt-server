@@ -50,7 +50,7 @@ def default_svn_version():
     """Ensure there's always a row in the svn model."""
     count = Version_SVN.objects.count()
     if count == 0:
-        version = Version_SVN(release='baseline', revision=settings.SVN_REV, url=settings.REPOS_URL, versions={}, changelog='default release')
+        version = Version_SVN(release='trunk', revision=settings.SVN_REV, url=settings.REPOS_URL, versions={}, changelog='default release')
         version.save()
         return version.id
     else:
@@ -394,7 +394,7 @@ class Scene(models.Model):
         )
 
     def versions(self):
-        version_dict = self.version.values()
+        version_dict = self.version.__dict__
         version_dict['delft3d_version'] = settings.DELFT3D_VERSION
         return version_dict
 

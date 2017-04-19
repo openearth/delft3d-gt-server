@@ -571,7 +571,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         resp = {}
         for version in queryset:
-            resp[version.id] = version.values()
+            resp[version.id] = version.__dict__
 
         return Response(resp)
 

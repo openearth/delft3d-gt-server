@@ -1,9 +1,11 @@
 from celery.result import AsyncResult
 import logging
+import os
+
 from django.conf import settings  # noqa
 from django.core.management import BaseCommand
 from os.path import join
-import svn.local
+import svn.remote
 
 from delft3dworker.models import Version_SVN
 
@@ -13,9 +15,17 @@ class Command(BaseCommand):
     VERSION_SVN models based on the available tags."""
 
     def handle(self, *args, **options):
-        # Connect local repos and update
-        r = svn.local.LocalClient(settings.SVN_PATH)
-        r.update()
+
+        # Handle svn credentials
+        user = os.environ.get('SVN_USER')
+        password = os.environ.get('SVN_PASS')
+        if user is None or password is None:
+            logging.error("No credentials found.")
+            return
+
+        # Connect external repos and update
+        # Could've used local repos file:/// without user & pass
+        r = svn.remote.RemoteClient(settings.REPOS_URL + '/tags/')
 
         folders = r.list(extended=True)
         for folder in folders:
@@ -24,22 +34,23 @@ class Command(BaseCommand):
 
                 # Does this tag already exist?
                 if not Version_SVN.objects.filter(release=tag).exists():
-
+                # if 1 == 1:
                     # Get general info
-                    t = svn.local.LocalClient(join(settings.SVN_PATH, tag))
+                    t = svn.remote.RemoteClient(settings.REPOS_URL + '/tags/' + tag)
                     info = t.info()
-                    log = t.log_default(stop_on_copy=False).msg
+                    revision = info['commit#revision']
+                    log = list(t.log_default(stop_on_copy=True))[0].msg
                     url = settings.REPOS_URL + '/tags/' + tag
 
                     # Get revisions for all folders in the script folder
                     versions = {}
-                    e = svn.local.LocalClient(join(settings.SVN_PATH, tag, 'scripts'))
+                    e = svn.remote.RemoteClient(settings.REPOS_URL + '/tags/' + tag + '/scripts/')
                     entries = e.list(extended=True)
                     for entry in entries:
                         if entry['is_directory']:
                             versions[entry['name']] = entry['commit_revision']
 
                     # Create model
-                    version = Version_SVN(
-                        release=tag, revision=info.revision, versions=versions, url=url, changelog=log)
+                    print(tag, revision, versions, url, log)
+                    version = Version_SVN(release=tag, revision=revision, versions=versions, url=url, changelog=log)
                     version.save()
