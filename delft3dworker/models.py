@@ -1724,7 +1724,7 @@ class Container(models.Model):
         }
 
         # Set SVN_REV and REPOS_URL a.o.
-        version = self.scene.version.values()
+        version = model_to_dict(self.scene.version)
         kwargs[self.container_type]['environment'].update({'REPOS_URL': version['url'],
                                                            'SVN_REV': version['revision']})
 

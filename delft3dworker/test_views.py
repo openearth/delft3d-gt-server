@@ -526,7 +526,6 @@ class SceneSearchTestCase(TestCase):
         }
         self.scene_1.save()
         container_1 = Container.objects.create(
-            version={'ppsvn': 1, 'd3d': 'a'},
             scene=self.scene_1
         )
 
@@ -550,11 +549,9 @@ class SceneSearchTestCase(TestCase):
         }
         self.scene_2.save()
         container_2 = Container.objects.create(
-            version={'ppsvn': 2},
             scene=self.scene_2
         )
         container_3 = Container.objects.create(
-            version={'ppsvn': 2, 'd3d': 'b'},
             scene=self.scene_2
         )
 
@@ -726,156 +723,11 @@ class SceneSearchTestCase(TestCase):
         query = {'parameter': "hack,mud,grease,more"}
         self.assertEqual(len(self._request(query)), 2)
 
-    def test_search_versions(self):
-        """
-        Test search options
-        """
-
-        query = {'versions': "argh"}
-        self.assertEqual(len(self._request(query)), 2)
-
-        query = {'versions': "{}"}
-        self.assertEqual(len(self._request(query)), 2)
-
-        query = {'versions': '{"ppsvn":None}'}
-        self.assertEqual(len(self._request(query)), 2)
-
-        query = {'versions': '{"ppsvn":[1]}'}
-        self.assertEqual(len(self._request(query)), 1)
-
-        query = {'versions': '{"ppsvn":[2]}'}
-        self.assertEqual(len(self._request(query)), 1)
-
-        query = {'versions': '{"ppsvn":[1,2]}'}
-        self.assertEqual(len(self._request(query)), 2)
-
-        query = {'versions': '{"ppsvn":[1,2], "d3d": "a"}'}
-        self.assertEqual(len(self._request(query)), 1)
-
-        query = {'versions': '{"ppsvn":[1,2], "d3d": "[a]"}'}
-        self.assertEqual(len(self._request(query)), 1)
-
-        query = {'versions': '{"ppsvn":[1], "d3d": "[a]"}'}
-        self.assertEqual(len(self._request(query)), 1)
-
-        query = {'versions': '{"ppsvn":[1], "d3d": "[b]"}'}
-        self.assertEqual(len(self._request(query)), 0)
-
-        query = {'versions': '{"ppsvn":[2], "d3d": "[a, b]"}'}
-        self.assertEqual(len(self._request(query)), 1)
-
     def _request(self, query):
         url = reverse('scene-list')
         self.client.login(username='bar', password='secret')
         response = self.client.get(url, query, format='json')
         return response.data
-
-
-class SceneVersionTestCase(APITestCase):
-    """
-    SceneVersionTestCase
-    Tests the Scenario Django REST API
-    """
-
-    def setUp(self):
-        user_bar = User.objects.create_user(
-            username='bar',
-            password='secret'
-        )
-        scenario = Scenario.objects.create(
-            name='Testscenario',
-            owner=user_bar,
-        )
-
-        scene_1 = Scene.objects.create(
-            name='Testscene 1',
-            owner=user_bar
-        )
-        scene_1.scenario.add(scenario)
-
-        scene_2 = Scene.objects.create(
-            name='Testscene 1',
-            owner=user_bar
-        )
-        scene_2.scenario.add(scenario)
-        container_2_1 = Container.objects.create(
-            version={ 'd3dversion': '1' },
-            scene=scene_2
-        )
-
-        scene_3 = Scene.objects.create(
-            name='Testscene 1',
-            owner=user_bar
-        )
-        scene_3.scenario.add(scenario)
-        container_3_1 = Container.objects.create(
-            version={ 'd3dversion': '2' },
-            scene=scene_3
-        )
-
-        scene_4 = Scene.objects.create(
-            name='Testscene 1',
-            owner=user_bar
-        )
-        scene_4.scenario.add(scenario)
-        container_4_1 = Container.objects.create(
-            version={ 'd3dversion': '1' },
-            scene=scene_4
-        )
-        container_4_2 = Container.objects.create(
-            version={ 'svnversion': 'a' },
-            scene=scene_4
-        )
-
-        scene_5 = Scene.objects.create(
-            name='Testscene 1',
-            owner=user_bar
-        )
-        scene_5.scenario.add(scenario)
-        container_5_1 = Container.objects.create(
-            version={ 'd3dversion': '1' },
-            scene=scene_5
-        )
-        container_5_2 = Container.objects.create(
-            version={ 'svnversion': 'b' },
-            scene=scene_5
-        )
-        container_5_3 = Container.objects.create(
-            version={ 'anything': 'I' },
-            scene=scene_5
-        )
-
-        # Object general
-        assign_perm('view_scenario', user_bar, scenario)
-        assign_perm('view_scene', user_bar, scene_1)
-        assign_perm('view_scene', user_bar, scene_2)
-        assign_perm('view_scene', user_bar, scene_3)
-        assign_perm('view_scene', user_bar, scene_4)
-        assign_perm('view_scene', user_bar, scene_5)
-
-        # Model general
-        user_bar.user_permissions.add(
-            Permission.objects.get(codename='view_scenario'))
-        user_bar.user_permissions.add(
-            Permission.objects.get(codename='view_scene'))
-
-        # Refetch to empty permissions cache
-        user_bar = User.objects.get(pk=user_bar.pk)
-
-    def test_get_versions(self):
-        # detail view
-        url = reverse('scene-versions')
-
-        # foo can see
-        self.client.login(username='bar', password='secret')
-        response = self.client.get(url, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response.render()
-        self.assertEqual(response.data, {
-            'svnversion': set(['a', 'b']),
-            'd3dversion': set(['1', '2']),
-            'anything': set(['I'])
-        })
 
 
 class ScenarioTestCase(APITestCase):

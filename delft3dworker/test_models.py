@@ -25,6 +25,7 @@ from delft3dworker.models import Container
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 from delft3dworker.models import User
+from delft3dworker.models import Version_SVN
 
 
 class ScenarioTestCase(TestCase):
@@ -221,58 +222,6 @@ class SceneTestCase(TestCase):
         self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
         self.export = ['export/export.something']
 
-    @patch('delft3dcontainermanager.tasks.do_docker_create.apply_async',
-           autospec=True)
-    def test_versions(self, mocked_task):
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
-
-        result = Mock()
-        mocked_task.return_value = result
-        result.id = task_uuid
-
-        self.assertDictEqual(self.scene_1.versions(), {})
-        for i, container_type in enumerate(['preprocess', 'delft3d', 'process', 'postprocess', 'export', 'sync_cleanup', 'sync_rerun']):
-            container = Container(container_type=container_type)
-            self.scene_1.container_set.add(container)
-            name = container._create_container()
-            version_dict = self.scene_1.versions()
-            self.assertEqual(len(version_dict.keys()), i+1)
-            if container_type == 'delft3d':
-                self.assertIn('delft3d_version', version_dict[container_type])
-                self.assertNotIn('REPOS_URL', version_dict[container_type])
-                self.assertNotIn('SVN_REV', version_dict[container_type])
-                self.assertEqual(version_dict[container_type]['delft3d_version'], settings.DELFT3D_VERSION)
-            elif container_type == 'process':
-                self.assertNotIn('delft3d_version', version_dict[container_type])
-                self.assertIn('REPOS_URL', version_dict[container_type])
-                self.assertIn('SVN_REV', version_dict[container_type])
-                self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
-                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_PROC_REV)            
-            elif container_type == 'preprocess':
-                self.assertNotIn('delft3d_version', version_dict[container_type])
-                self.assertIn('REPOS_URL', version_dict[container_type])
-                self.assertIn('SVN_REV', version_dict[container_type])
-                self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
-                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_PRE_REV)            
-            elif container_type == 'postprocess':
-                self.assertNotIn('delft3d_version', version_dict[container_type])
-                self.assertIn('REPOS_URL', version_dict[container_type])
-                self.assertIn('SVN_REV', version_dict[container_type])
-                self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
-                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_POST_REV)
-            elif container_type == 'export':
-                self.assertNotIn('delft3d_version', version_dict[container_type])
-                self.assertIn('REPOS_URL', version_dict[container_type])
-                self.assertIn('SVN_REV', version_dict[container_type])
-                self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
-                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_EXP_REV)
-            elif container_type == 'sync_cleanup':
-                self.assertNotIn('delft3d_version', version_dict[container_type])
-                self.assertNotIn('REPOS_URL', version_dict[container_type])
-                self.assertNotIn('SVN_REV', version_dict[container_type])
-            else:
-                pass
-
     def test_after_publishing_rights_are_revoked(self):
         self.assertEqual(self.scene_1.shared, 'p')
         self.assertTrue(self.user_a.has_perm('view_scene', self.scene_1))
@@ -429,8 +378,10 @@ class SceneTestCase(TestCase):
 
                 self.assertEqual(self.scene_1.date_started, started_date)
 
-    def test_redo_proc(self):
+    def test_redo(self):
         started_date = None
+
+        Version_SVN.objects.create(release='', revision=10000, versions={}, url='', changelog='')
 
         # a scene should only start redo processing when phase is finished
         for phase in self.scene_1.phases:
@@ -439,7 +390,7 @@ class SceneTestCase(TestCase):
             self.scene_1.shift_to_phase(phase[0])
 
             # start scene
-            self.scene_1.redo_proc()
+            self.scene_1.redo()
 
             # check that phase is unshifted unless finished: then it becomes queued
             self.assertEqual(
@@ -451,27 +402,6 @@ class SceneTestCase(TestCase):
             # check date_started is untouched
             self.assertEqual(self.scene_1.date_started, started_date)
 
-    def test_redo_postproc(self):
-        started_date = None
-
-        # a scene should only start redo postprocessing when phase is finished
-        for phase in self.scene_1.phases:
-
-            #  shift scene to phase
-            self.scene_1.shift_to_phase(phase[0])
-
-            # start scene
-            self.scene_1.redo_postproc()
-
-            # check that phase is unshifted unless finished: then it becomes queued
-            self.assertEqual(
-                self.scene_1.phase,
-                self.scene_1.phases.queued if (
-                    phase[0] == self.scene_1.phases.fin) else phase[0]
-            )
-
-            # check date_started is untouched
-            self.assertEqual(self.scene_1.date_started, started_date)
 
     def test_abort_scene(self):
 
@@ -1320,8 +1250,8 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'environment': {'uuid': str(self.scene_1.suid),
                                     'folder': os.path.join(
                                         self.scene_1.workingdir, 'simulation'),
-                                    'REPOS_URL': settings.REPOS_URL,
-                                    'SVN_REV': settings.SVN_PRE_REV},
+                                    'REPOS_URL': u'{}{}'.format(settings.REPOS_URL, '/trunk/'),
+                                    'SVN_REV': int(settings.SVN_REV)},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
@@ -1350,8 +1280,8 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'environment': {'uuid': str(self.scene_1.suid),
                                     'folder': os.path.join(
                                         self.scene_1.workingdir, 'simulation'),
-                                    'REPOS_URL': settings.REPOS_URL,
-                                    'SVN_REV': settings.SVN_PRE_REV},
+                                    'REPOS_URL': u'{}{}'.format(settings.REPOS_URL, '/trunk/'),
+                                    'SVN_REV': int(settings.SVN_REV)},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
