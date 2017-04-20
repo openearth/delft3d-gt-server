@@ -1,11 +1,10 @@
-from celery.result import AsyncResult
 import logging
 import os
 
 from django.conf import settings  # noqa
 from django.core.management import BaseCommand
-from os.path import join
-import svn.remote
+from svn.remote import RemoteClient
+# from svn.exception import SvnException
 
 from delft3dworker.models import Version_SVN
 
@@ -25,7 +24,12 @@ class Command(BaseCommand):
 
         # Connect external repos and update
         # Could've used local repos file:/// without user & pass
-        r = svn.remote.RemoteClient(settings.REPOS_URL + '/tags/')
+        try:
+            r = RemoteClient(settings.REPOS_URL + '/tags/')
+        except:
+            logging.error("Error {} connecting to {}".format(e, settings.REPOS_URL))
+            return
+
         updates_available = False
 
         folders = r.list(extended=True)
@@ -36,7 +40,7 @@ class Command(BaseCommand):
                 # Does this tag already exist?
                 if not Version_SVN.objects.filter(release=tag).exists():
                     # Get general info
-                    t = svn.remote.RemoteClient(
+                    t = RemoteClient(
                         settings.REPOS_URL + '/tags/' + tag)
                     info = t.info()
                     revision = info['commit#revision']
@@ -45,7 +49,7 @@ class Command(BaseCommand):
 
                     # Get revisions for all folders in the script folder
                     versions = {}
-                    e = svn.remote.RemoteClient(
+                    e = RemoteClient(
                         settings.REPOS_URL + '/tags/' + tag + '/scripts/')
                     entries = e.list(extended=True)
                     for entry in entries:
@@ -55,6 +59,7 @@ class Command(BaseCommand):
                     # Create model
                     updates_available = True
                     logging.info("Creating tag {}".format(tag))
+                    print(tag, revision, versions, url, log)
                     version=Version_SVN(
                         release=tag, revision=revision, versions=versions, url=url, changelog=log)
                     version.save()

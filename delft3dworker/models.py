@@ -96,7 +96,7 @@ class Version_SVN(models.Model):
         outdated_folders = []
 
         latest = Version_SVN.objects.filter(
-            reviewed=True).order_by('-revision')[0].versions
+            reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0].versions
         for folder, revision in latest.items():
             if self.versions.setdefault(folder, -1) < revision:
                 outdated_folders.append(folder)
@@ -411,6 +411,29 @@ class Scene(models.Model):
     def is_outdated(self):
         return self.version.outdated()
 
+    def outdated_workflow(self):
+        outdated_folders = self.version.compare_outdated()
+
+        if ('postprocess' in outdated_folders or 'export' in outdated_folders) and ('process' in outdated_folders or 'visualisation' in outdated_folders):
+            return self.workflows.redo_proc_postproc
+
+        elif ('postprocess' in outdated_folders or 'export' in outdated_folders):
+            return self.workflows.redo_postproc
+
+        elif ('process' in outdated_folders or 'visualisation' in outdated_folders):
+            return self.workflows.redo_proc
+
+        elif len(outdated_folders) == 0:  # no folders, but outdated -> trunk, redo all
+            return self.workflows.redo_proc_postproc
+
+        else:
+            logging.error("Unable to resolve workflow for outdated scene. Folders: {}".format(outdated_folders))
+            return None
+
+    def outdated_changelog(self):
+        return Version_SVN.objects.filter(
+            reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0].changelog
+
     # UI CONTROL METHODS
 
     def reset(self):
@@ -437,18 +460,9 @@ class Scene(models.Model):
         # and there's a new version available
         if self.phase == self.phases.fin and self.is_outdated():
 
-            outdated_folders = self.version.compare_outdated()
+            self.workflow = self.outdated_workflow()
 
-            if ('postprocess' in outdated_folders or 'export' in outdated_folders) and ('process' in outdated_folders or 'visualisation' in outdated_folders):
-                self.workflow = self.workflows.redo_proc_postproc
-
-            elif ('postprocess' in outdated_folders or 'export' in outdated_folders):
-                self.workflow = self.workflows.redo_postproc
-
-            elif ('process' in outdated_folders or 'visualisation' in outdated_folders):
-                self.workflow = self.workflows.redo_proc
-
-            # Maybe shift to seperate Que if load on Swarm is to high
+            # Maybe shift to seperate Queue if load on Swarm is to high
             self.shift_to_phase(self.phases.queued)
             self.save()
 
