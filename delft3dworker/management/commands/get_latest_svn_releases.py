@@ -4,7 +4,7 @@ import os
 from django.conf import settings  # noqa
 from django.core.management import BaseCommand
 from svn.remote import RemoteClient
-# from svn.exception import SvnException
+from svn.common import SvnException
 
 from delft3dworker.models import Version_SVN
 
@@ -26,7 +26,7 @@ class Command(BaseCommand):
         # Could've used local repos file:/// without user & pass
         try:
             r = RemoteClient(settings.REPOS_URL + '/tags/')
-        except:
+        except SvnException as e:
             logging.error("Error {} connecting to {}".format(e, settings.REPOS_URL))
             return
 
