@@ -22,6 +22,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
 from django.utils.timezone import now
+from django.forms.models import model_to_dict
 
 from model_utils import Choices
 
@@ -88,7 +89,7 @@ class Version_SVN(models.Model):
 
     def outdated(self):
         """Return bool if there are newer releases available."""
-        return Version_SVN.objects.filter(reviewed=True).order_by('-revision')[0].revision > self.revision
+        return Version_SVN.objects.filter(reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0].revision > self.revision
 
     def compare_outdated(self):
         """Compare folder revisions with latest release."""
@@ -403,7 +404,7 @@ class Scene(models.Model):
         )
 
     def versions(self):
-        version_dict = self.version.__dict__
+        version_dict = model_to_dict(self.version)
         version_dict['delft3d_version'] = settings.DELFT3D_VERSION
         return version_dict
 

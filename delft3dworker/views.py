@@ -14,6 +14,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db.models import Q
+from django.forms.models import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
@@ -571,7 +572,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         resp = {}
         for version in queryset:
-            resp[version.id] = version.__dict__
+            resp[version.id] = model_to_dict(version)
 
         return Response(resp)
 
