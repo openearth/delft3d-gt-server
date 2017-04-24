@@ -465,7 +465,7 @@ class Scene(models.Model):
 
             if workflow is not None:
                 self.workflow = workflow
-
+                self.date_started = now()
                 # Maybe shift to seperate Queue if load on Swarm is to high
                 self.shift_to_phase(self.phases.queued)
                 self.save()
