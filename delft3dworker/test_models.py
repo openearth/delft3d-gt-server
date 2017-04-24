@@ -59,6 +59,10 @@ class Version_SVNTestCase(TestCase):
         outdated_folders = self.tag2.compare_outdated()
         self.assertEqual(outdated_folders, ['postprocess'])
 
+    def tearDown(self):
+        settings.REQUIRE_REVIEW = False
+
+
 class ScenarioTestCase(TestCase):
 
     def setUp(self):
