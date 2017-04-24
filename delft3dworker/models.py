@@ -89,15 +89,24 @@ class Version_SVN(models.Model):
 
     def outdated(self):
         """Return bool if there are newer releases available."""
-        return Version_SVN.objects.filter(reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0].revision > self.revision
+        if settings.REQUIRE_REVIEW:
+            return Version_SVN.objects.filter(reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0].revision > self.revision
+        else:
+            return Version_SVN.objects.all().order_by('-revision')[0].revision > self.revision
+
+    def latest(self):
+        """Return latest model."""
+        if settings.REQUIRE_REVIEW:
+            return Version_SVN.objects.filter(reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0]
+        else:
+            return Version_SVN.objects.all().order_by('-revision')[0]
 
     def compare_outdated(self):
         """Compare folder revisions with latest release."""
         outdated_folders = []
 
-        latest = Version_SVN.objects.filter(
-            reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0].versions
-        for folder, revision in latest.items():
+        latest_versions = self.latest().versions
+        for folder, revision in latest_versions.items():
             if self.versions.setdefault(folder, -1) < revision:
                 outdated_folders.append(folder)
 
@@ -413,7 +422,7 @@ class Scene(models.Model):
 
     def outdated_workflow(self):
         outdated_folders = self.version.compare_outdated()
-
+        print(outdated_folders)
         if ('postprocess' in outdated_folders or 'export' in outdated_folders) and ('process' in outdated_folders or 'visualisation' in outdated_folders):
             return self.workflows.redo_proc_postproc
 
@@ -423,12 +432,14 @@ class Scene(models.Model):
         elif ('process' in outdated_folders or 'visualisation' in outdated_folders):
             return self.workflows.redo_proc
 
-        # Default model is trunk with a revision number, but without any folder revisions
+        # Default model is trunk with a revision number, but without any folder
+        # revisions
         elif len(outdated_folders) == 0:
             return self.workflows.redo_proc_postproc
 
         else:
-            logging.error("Unable to resolve workflow for outdated scene. Folders: {}".format(outdated_folders))
+            logging.error("Unable to resolve workflow for outdated scene. Folders: {}".format(
+                outdated_folders))
             return None
 
     def outdated_changelog(self):
@@ -468,6 +479,7 @@ class Scene(models.Model):
                 self.date_started = now()
                 # Maybe shift to seperate Queue if load on Swarm is to high
                 self.shift_to_phase(self.phases.queued)
+                self.version = self.version.latest()
                 self.save()
 
             return {"task_id": None, "scene_id": None}
