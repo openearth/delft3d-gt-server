@@ -1268,13 +1268,21 @@ class Scene(models.Model):
             number_simulations = sum(
                 (i >= self.phases.sim_create and i <= self.phases.sim_stop) for i in scene_phases)
 
-            if number_simulations < settings.MAX_SIMULATIONS:
-                if self.workflow == self.workflows.main:
-                    self.shift_to_phase(self.phases.sim_create)
-                elif (self.workflow == self.workflows.redo_proc or
-                      self.workflow == self.workflows.redo_postproc or
-                      self.workflow == self.workflows.redo_proc_postproc):
-                    self.shift_to_phase(self.phases.sync_redo_create)
+            number_processing = sum(
+                (i >= self.phases.proc_create and i <=
+                 self.phases.proc_fin for i in scene_phases)
+            )
+
+            nodes_available = settings.MAX_SIMULATIONS * 2 - \
+                (number_simulations * 2 + number_processing)
+
+            if (self.workflow == self.workflows.main and
+                    nodes_available >= 2):
+                self.shift_to_phase(self.phases.sim_create)
+            elif ((self.workflow == self.workflows.redo_proc or
+                   self.workflow == self.workflows.redo_postproc) and
+                  nodes_available >= 1):
+                self.shift_to_phase(self.phases.sync_redo_create)
 
             return
 
