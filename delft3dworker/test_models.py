@@ -28,6 +28,37 @@ from delft3dworker.models import User
 from delft3dworker.models import Version_SVN
 
 
+class Version_SVNTestCase(TestCase):
+
+    def setUp(self):
+        self.trunk = Version_SVN.objects.create(
+            release='trunk', revision=500, reviewed=False, url='', changelog='',
+            versions={})
+        self.tag1 = Version_SVN.objects.create(
+            release='trunk', revision=100, reviewed=False, url='', changelog='',
+            versions={'process':200, 'postprocess':300, 'export': 250})
+        self.tag2 = Version_SVN.objects.create(
+            release='trunk', revision=200, reviewed=True, url='', changelog='',
+            versions={'process':200, 'postprocess':300, 'export': 250})
+        self.tag3 = Version_SVN.objects.create(
+            release='trunk', revision=300, reviewed=True, url='', changelog='',
+            versions={'process':200, 'postprocess':305, 'export': 250})
+
+    def test_outdated(self):
+        settings.REQUIRE_REVIEW = False
+        self.assertTrue(self.tag3.outdated())
+        settings.REQUIRE_REVIEW = True
+        self.assertTrue(not self.tag3.outdated())
+
+    def test_compare_outdated(self):
+        settings.REQUIRE_REVIEW = False
+        outdated_folders = self.tag2.compare_outdated()
+        self.assertEqual(outdated_folders, [])  # trunk is empty
+
+        settings.REQUIRE_REVIEW = True
+        outdated_folders = self.tag2.compare_outdated()
+        self.assertEqual(outdated_folders, ['postprocess'])
+
 class ScenarioTestCase(TestCase):
 
     def setUp(self):
@@ -272,7 +303,8 @@ class SceneTestCase(TestCase):
 
         # publish company
         scenes[0].publish_company(self.user_a)
-        scenes[1].publish_company(self.user_a)  # should not publish as scene is in idle state
+        # should not publish as scene is in idle state
+        scenes[1].publish_company(self.user_a)
 
         self.assertEqual(len(get_objects_for_user(
             self.user_b,
@@ -289,7 +321,8 @@ class SceneTestCase(TestCase):
 
         # publish world
         scenes[0].publish_world(self.user_a)
-        scenes[1].publish_world(self.user_a)  # should not publish as scene is in idle state
+        # should not publish as scene is in idle state
+        scenes[1].publish_world(self.user_a)
 
         self.assertEqual(len(get_objects_for_user(
             self.user_b,
@@ -330,7 +363,8 @@ class SceneTestCase(TestCase):
 
         # publish world
         scenes[0].publish_world(self.user_a)
-        scenes[1].publish_world(self.user_a)  # should not publish as scene is in idle state
+        # should not publish as scene is in idle state
+        scenes[1].publish_world(self.user_a)
 
         self.assertEqual(len(get_objects_for_user(
             self.user_b,
@@ -381,7 +415,8 @@ class SceneTestCase(TestCase):
     def test_redo(self):
         started_date = None
 
-        Version_SVN.objects.create(release='', revision=10000, versions={}, url='', changelog='')
+        Version_SVN.objects.create(
+            release='', revision=10000, versions={}, url='', changelog='')
 
         # a scene should only start redo processing when phase is finished
         for phase in self.scene_1.phases:
@@ -392,7 +427,8 @@ class SceneTestCase(TestCase):
             # start scene
             self.scene_1.redo()
 
-            # check that phase is unshifted unless finished: then it becomes queued
+            # check that phase is unshifted unless finished: then it becomes
+            # queued
             self.assertEqual(
                 self.scene_1.phase,
                 self.scene_1.phases.queued if (
@@ -401,7 +437,6 @@ class SceneTestCase(TestCase):
 
             # check date_started is untouched
             self.assertEqual(self.scene_1.date_started, started_date)
-
 
     def test_abort_scene(self):
 
@@ -416,9 +451,10 @@ class SceneTestCase(TestCase):
 
             # if the phase is after simulation start and before stopped
             if (phase[0] >= self.scene_1.phases.sim_start) and (
-                phase[0] <= self.scene_1.phases.sim_fin):
+                    phase[0] <= self.scene_1.phases.sim_fin):
                 # check that phase is shifted to stopped
-                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_stop)
+                self.assertEqual(self.scene_1.phase,
+                                 self.scene_1.phases.sim_stop)
 
             # if the phase is queued
             elif phase[0] == self.scene_1.phases.queued:
@@ -957,7 +993,8 @@ class ScenarioPhasesTestCase(TestCase):
         self.assertEqual(self.scene_1.phase, self.p.sync_create)
 
         self.scene_1.phase = self.p.sync_start
-        container = self.scene_1.container_set.get(container_type='sync_cleanup')
+        container = self.scene_1.container_set.get(
+            container_type='sync_cleanup')
         container.docker_state = 'running'
         container.save()
 
@@ -982,14 +1019,16 @@ class ScenarioPhasesTestCase(TestCase):
     def test_phase_sync_fin(self):
         self.scene_1.phase = self.p.sync_fin
 
-        container = self.scene_1.container_set.get(container_type='sync_cleanup')
+        container = self.scene_1.container_set.get(
+            container_type='sync_cleanup')
         container.docker_state = 'exited'
         container.save()
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.sync_fin)
 
-        container = self.scene_1.container_set.get(container_type='sync_cleanup')
+        container = self.scene_1.container_set.get(
+            container_type='sync_cleanup')
         container.docker_state = 'non-existent'
         container.save()
 
