@@ -461,11 +461,14 @@ class Scene(models.Model):
         # and there's a new version available
         if self.phase == self.phases.fin and self.is_outdated():
 
-            self.workflow = self.outdated_workflow()
+            workflow = self.outdated_workflow()
 
-            # Maybe shift to seperate Queue if load on Swarm is to high
-            self.shift_to_phase(self.phases.queued)
-            self.save()
+            if workflow is not None:
+                self.workflow = workflow
+
+                # Maybe shift to seperate Queue if load on Swarm is to high
+                self.shift_to_phase(self.phases.queued)
+                self.save()
 
             return {"task_id": None, "scene_id": None}
 
