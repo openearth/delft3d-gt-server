@@ -85,7 +85,7 @@ class Version_SVN(models.Model):
         verbose_name_plural = "SVN versions"
 
     def __unicode__(self):
-        return self.release
+        return "Release {} at revision {}".format(self.release, self.revision)
 
     def outdated(self):
         """Return bool if there are newer releases available."""
@@ -423,7 +423,8 @@ class Scene(models.Model):
         elif ('process' in outdated_folders or 'visualisation' in outdated_folders):
             return self.workflows.redo_proc
 
-        elif len(outdated_folders) == 0:  # no folders, but outdated -> trunk, redo all
+        # Default model is trunk with a revision number, but without any folder revisions
+        elif len(outdated_folders) == 0:
             return self.workflows.redo_proc_postproc
 
         else:

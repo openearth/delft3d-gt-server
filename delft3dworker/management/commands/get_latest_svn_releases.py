@@ -27,7 +27,8 @@ class Command(BaseCommand):
         try:
             r = RemoteClient(settings.REPOS_URL + '/tags/')
         except SvnException as e:
-            logging.error("Error {} connecting to {}".format(e, settings.REPOS_URL))
+            logging.error("Error {} connecting to {}".format(
+                e, settings.REPOS_URL))
             return
 
         updates_available = False
@@ -41,7 +42,7 @@ class Command(BaseCommand):
                 if not Version_SVN.objects.filter(release=tag).exists():
                     # Get general info
                     t = RemoteClient(
-                        settings.REPOS_URL + '/tags/' + tag)
+                        settings.REPOS_URL + '/tags/' + tag, username=user, password=password)
                     info = t.info()
                     revision = info['commit#revision']
                     log = list(t.log_default(stop_on_copy=True))[0].msg
@@ -59,8 +60,7 @@ class Command(BaseCommand):
                     # Create model
                     updates_available = True
                     logging.info("Creating tag {}".format(tag))
-                    print(tag, revision, versions, url, log)
-                    version=Version_SVN(
+                    version = Version_SVN(
                         release=tag, revision=revision, versions=versions, url=url, changelog=log)
                     version.save()
 
