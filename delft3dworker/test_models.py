@@ -453,9 +453,8 @@ class SceneTestCase(TestCase):
             # start scene
             self.scene_1.redo()
 
-            # check that phase is unshifted unless finished and outdated: then it becomes
-            # queued
-            # 
+            # check that phase is unshifted unless finished and outdated: 
+            # then it becomes queued
             if phase[0] == self.scene_1.phases.fin:
 
                 # Old version, update ->  queued
