@@ -57,6 +57,9 @@ class SceneFullSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
 
     state = serializers.CharField(source='get_phase_display', read_only=True)
+    outdated = serializers.BooleanField(source='is_outdated', read_only=True)
+    outdated_workflow = serializers.SerializerMethodField()
+    outdated_changelog = serializers.CharField(read_only=True)
 
     class Meta:
         model = Scene
@@ -77,9 +80,14 @@ class SceneFullSerializer(serializers.ModelSerializer):
             'suid',
             'task_id',
             'versions',
-            'workingdir'
+            'workingdir',
+            'outdated',
+            'outdated_workflow',
+            'outdated_changelog'
         )
 
+    def get_outdated_workflow(self, obj):
+        return obj.workflows[obj.outdated_workflow()]
 
 class SceneSparseSerializer(serializers.ModelSerializer):
     """

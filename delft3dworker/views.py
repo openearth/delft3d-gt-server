@@ -14,6 +14,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db.models import Q
+from django.forms.models import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
@@ -413,17 +414,9 @@ class SceneViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @detail_route(methods=["put"])  # denied after publish to company/world
-    def redo_proc(self, request, pk=None):
+    def redo(self, request, pk=None):
         scene = self.get_object()
-        scene.redo_proc()
-        serializer = self.get_serializer(scene)
-
-        return Response(serializer.data)
-
-    @detail_route(methods=["put"])  # denied after publish to company/world
-    def redo_postproc(self, request, pk=None):
-        scene = self.get_object()
-        scene.redo_postproc()
+        scene.redo(request.user)
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
@@ -574,12 +567,11 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @list_route(methods=["get"])
     def versions(self, request):
-        queryset = Container.objects.all()
+        queryset = Version_SVN.objects.all()
 
         resp = {}
-        for container in queryset:
-            for key, val in container.version.iteritems():
-                    resp.setdefault(key, set([])).add(val)
+        for version in queryset:
+            resp[version.id] = model_to_dict(version)
 
         return Response(resp)
 
