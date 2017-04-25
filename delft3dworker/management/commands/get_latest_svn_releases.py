@@ -25,7 +25,8 @@ class Command(BaseCommand):
         # Connect external repos and update
         # Could've used local repos file:/// without user & pass
         try:
-            r = RemoteClient(settings.REPOS_URL + '/tags/')
+            r = RemoteClient(settings.REPOS_URL + '/tags/',
+                             username=user, password=password)
         except SvnException as e:
             logging.error("Error {} connecting to {}".format(
                 e, settings.REPOS_URL))
@@ -51,7 +52,7 @@ class Command(BaseCommand):
                     # Get revisions for all folders in the script folder
                     versions = {}
                     e = RemoteClient(
-                        settings.REPOS_URL + '/tags/' + tag + '/scripts/')
+                        settings.REPOS_URL + '/tags/' + tag + '/scripts/', username=user, password=password)
                     entries = e.list(extended=True)
                     for entry in entries:
                         if entry['is_directory']:
