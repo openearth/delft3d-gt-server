@@ -415,9 +415,9 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @detail_route(methods=["put"])  # denied after publish to company/world
     def redo(self, request, pk=None):
-        scenario = self.get_object()
-        scenario.redo(request.user)
-        serializer = self.get_serializer(scenario)
+        scene = self.get_object()
+        scene.redo(request.user)
+        serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
 
