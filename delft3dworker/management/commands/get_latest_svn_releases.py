@@ -47,6 +47,8 @@ class Command(BaseCommand):
                     info = t.info()
                     revision = info['commit#revision']
                     log = list(t.log_default(stop_on_copy=True))[0].msg
+                    if len(log) > 256:  # Character limit on changelog field
+                        log = log[:256]
                     url = settings.REPOS_URL + '/tags/' + tag
 
                     # Get revisions for all folders in the script folder
