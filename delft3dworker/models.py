@@ -53,7 +53,8 @@ def default_svn_version():
     if count == 0:
         logging.info("Creatingn default svn trunk model")
         version = Version_SVN(release='trunk', revision=settings.SVN_REV,
-                              url=settings.REPOS_URL + '/trunk/', versions={}, changelog='default release')
+                              url=settings.REPOS_URL + '/trunk/', versions={},
+                              changelog='default release', reviewed=settings.REQUIRE_REVIEW)
         version.save()
         return version.id
     else:
@@ -89,7 +90,7 @@ class Version_SVN(models.Model):
     versions = JSONField(default='{}')  # folder revisions
     url = models.URLField(max_length=200)  # repos_url
     changelog = models.CharField(max_length=256)  # release notes
-    reviewed = models.BooleanField(default=settings.REQUIRE_REVIEW)
+    reviewed = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-revision"]
@@ -482,7 +483,6 @@ class Scene(models.Model):
             if workflow is not None:
                 self.workflow = workflow
                 self.date_started = now()
-                # Maybe shift to seperate Queue if load on Swarm is to high
                 self.shift_to_phase(self.phases.queued)
                 self.version = Version_SVN.objects.latest()
                 self.save()
