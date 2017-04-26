@@ -66,7 +66,7 @@ class Version_SVN_Manager(models.Manager):
     def latest(self):
         """Return latest model."""
         if settings.REQUIRE_REVIEW:
-            return self.get_queryset().filter(reviewed=settings.REQUIRE_REVIEW).first()
+            return self.get_queryset().filter(reviewed=True).first()
         else:
             return self.get_queryset().all().first()
 
