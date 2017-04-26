@@ -1259,7 +1259,7 @@ class Scene(models.Model):
                 elif self.workflow == self.workflows.redo_postproc:
                     self.shift_to_phase(self.phases.postproc_create)
                 elif self.workflow == self.workflows.redo_proc_postproc:
-                    self.shift_to_phase(self.phases.redo_proc_postproc)
+                    self.shift_to_phase(self.phases.proc_create)
 
             return
 
@@ -1285,7 +1285,8 @@ class Scene(models.Model):
                     nodes_available >= 2):
                 self.shift_to_phase(self.phases.sim_create)
             elif ((self.workflow == self.workflows.redo_proc or
-                   self.workflow == self.workflows.redo_postproc) and
+                   self.workflow == self.workflows.redo_postproc or
+                   self.workflow == self.workflows.redo_proc_postproc) and
                   nodes_available >= 1):
                 self.shift_to_phase(self.phases.sync_redo_create)
 
