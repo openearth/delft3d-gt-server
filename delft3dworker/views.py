@@ -41,6 +41,7 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
+from delft3dworker.models import Version_SVN
 from delft3dworker.permissions import ViewObjectPermissions
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
@@ -236,8 +237,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         shared = self.request.query_params.getlist('shared', [])
         users = self.request.query_params.getlist('users', [])
 
-        versions = self.request.query_params.get('versions', "\{\}")
-
+        outdated = self.request.query_params.get('outdated', None)
         created_after = self.request.query_params.get('created_after', '')
         created_before = self.request.query_params.get('created_before', '')
         started_after = self.request.query_params.get('started_after', '')
@@ -355,17 +355,12 @@ class SceneViewSet(viewsets.ModelViewSet):
             userids = [int(user) for user in users if user.isdigit()]
             queryset = queryset.filter(owner__in=userids)
 
-        if versions != "\{\}":
-            try:
-                version_dict = json.loads(versions)
-            except ValueError:
-                version_dict = {}
-
-            for key, values in version_dict.iteritems():
-                f = Q()
-                for value in values:
-                    f = f | Q(container__version__contains={key: value})
-                queryset = queryset.filter(f).distinct()
+        if outdated is not None:
+            latest = Version_SVN.objects.latest()
+            if outdated:  # Outdated scenes, exclude latest version
+                queryset = queryset.exclude(version=latest)
+            else:  # Up to date scenes, only latest version
+                queryset = queryset.filter(version=latest)
 
         if created_after != '':
             created_after_date = parse_date(created_after)

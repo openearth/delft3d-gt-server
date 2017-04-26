@@ -51,13 +51,24 @@ def default_svn_version():
     """Ensure there's always a row in the svn model."""
     count = Version_SVN.objects.count()
     if count == 0:
+        logging.info("Creating default svn trunk model")
         version = Version_SVN(release='trunk', revision=settings.SVN_REV,
                               url=settings.REPOS_URL + '/trunk/', versions={},
                               changelog='default release', reviewed=settings.REQUIRE_REVIEW)
         version.save()
         return version.id
     else:
-        return Version_SVN.objects.last().id
+        return Version_SVN.objects.first().id
+
+
+class Version_SVN_Manager(models.Manager):
+
+    def latest(self):
+        """Return latest model."""
+        if settings.REQUIRE_REVIEW:
+            return self.get_queryset().filter(reviewed=True).first()
+        else:
+            return self.get_queryset().all().first()
 
 
 class Version_SVN(models.Model):
@@ -72,6 +83,7 @@ class Version_SVN(models.Model):
 
     The revision and url can be used in the Docker Python env
     """
+    objects = Version_SVN_Manager()
     release = models.CharField(
         max_length=256, db_index=True)  # tag/release name
     revision = models.PositiveSmallIntegerField(db_index=True)  # svn_version
@@ -95,18 +107,11 @@ class Version_SVN(models.Model):
         else:
             return Version_SVN.objects.all().order_by('-revision')[0].revision > self.revision
 
-    def latest(self):
-        """Return latest model."""
-        if settings.REQUIRE_REVIEW:
-            return Version_SVN.objects.filter(reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0]
-        else:
-            return Version_SVN.objects.all().order_by('-revision')[0]
-
     def compare_outdated(self):
         """Compare folder revisions with latest release."""
         outdated_folders = []
 
-        latest_versions = self.latest().versions
+        latest_versions = Version_SVN.objects.latest().versions
         for folder, revision in latest_versions.items():
             if self.versions.setdefault(folder, -1) < revision:
                 outdated_folders.append(folder)
@@ -423,7 +428,7 @@ class Scene(models.Model):
 
     def outdated_workflow(self):
         outdated_folders = self.version.compare_outdated()
-        print(outdated_folders)
+
         if ('postprocess' in outdated_folders or 'export' in outdated_folders) and ('process' in outdated_folders or 'visualisation' in outdated_folders):
             return self.workflows.redo_proc_postproc
 
@@ -479,7 +484,7 @@ class Scene(models.Model):
                 self.workflow = workflow
                 self.date_started = now()
                 self.shift_to_phase(self.phases.queued)
-                self.version = self.version.latest()
+                self.version = Version_SVN.objects.latest()
                 self.save()
 
             return {"task_id": None, "scene_id": None}
