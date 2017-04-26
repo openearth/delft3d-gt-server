@@ -51,7 +51,7 @@ def default_svn_version():
     """Ensure there's always a row in the svn model."""
     count = Version_SVN.objects.count()
     if count == 0:
-        logging.info("Creatingn default svn trunk model")
+        logging.info("Creating default svn trunk model")
         version = Version_SVN(release='trunk', revision=settings.SVN_REV,
                               url=settings.REPOS_URL + '/trunk/', versions={},
                               changelog='default release', reviewed=settings.REQUIRE_REVIEW)
