@@ -30,5 +30,5 @@ def handler404(request):
 
     r = render(request, filename,
         {}, context_instance=RequestContext(request))
-    r.status_code = 403
+    r.status_code = 404
     return r
