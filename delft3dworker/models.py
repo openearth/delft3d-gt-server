@@ -449,8 +449,7 @@ class Scene(models.Model):
             return None
 
     def outdated_changelog(self):
-        return Version_SVN.objects.filter(
-            reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0].changelog
+        return Version_SVN.objects.latest().changelog
 
     # UI CONTROL METHODS
 
