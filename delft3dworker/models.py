@@ -731,7 +731,7 @@ class Scene(models.Model):
             return
 
         elif self.phase == self.phases.preproc_create:
-
+            print("AHHHH")
             container = self.container_set.get(container_type='preprocess')
             container.set_desired_state('created')
 
@@ -1272,14 +1272,10 @@ class Scene(models.Model):
 
             number_simulations = sum(
                 (i >= self.phases.sim_create and i <= self.phases.sim_stop) for i in scene_phases)
-
             number_processing = sum(
                 (i >= self.phases.proc_create and i <=
                  self.phases.proc_fin for i in scene_phases)
             )
-
-            print('number_simulations', number_simulations)
-            print('number_processing', number_processing)
 
             nodes_available = settings.MAX_SIMULATIONS * 2 - \
                 (number_simulations * 2 + number_processing)

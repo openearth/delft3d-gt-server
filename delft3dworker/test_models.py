@@ -1173,11 +1173,10 @@ class ScenarioPhasesTestCase(TestCase):
 
         self.scene_1.phase = self.p.sim_create
         self.scene_2.phase = self.p.queued
+        self.scene_1.save()
+        self.scene_2.save()
 
         self.scene_2.update_and_phase_shift()
-        print('Max', settings.MAX_SIMULATIONS)
-        print('scene 1 phase', self.scene_1.phase)
-        print('scene 2 phase', self.scene_2.phase)
         self.assertEqual(self.scene_2.phase, self.p.queued)
 
 
