@@ -48,7 +48,8 @@ from delft3dcontainermanager.tasks import get_docker_log
 
 
 def default_svn_version():
-    """Ensure there's always a row in the svn model."""
+    """Default SVN_Version for new Scenes.
+    Also ensure there's always a row in the svn model."""
     count = Version_SVN.objects.count()
     if count == 0:
         logging.info("Creating default svn trunk model")
@@ -58,7 +59,7 @@ def default_svn_version():
         version.save()
         return version.id
     else:
-        return Version_SVN.objects.first().id
+        return Version_SVN.objects.latest().id
 
 
 class Version_SVN_Manager(models.Manager):
