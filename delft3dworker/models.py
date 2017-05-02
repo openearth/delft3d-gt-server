@@ -1278,6 +1278,9 @@ class Scene(models.Model):
                  self.phases.proc_fin for i in scene_phases)
             )
 
+            print('number_simulations', number_simulations)
+            print('number_processing', number_processing)
+
             nodes_available = settings.MAX_SIMULATIONS * 2 - \
                 (number_simulations * 2 + number_processing)
 

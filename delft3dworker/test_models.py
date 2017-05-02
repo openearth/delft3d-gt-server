@@ -635,6 +635,8 @@ class ScenarioPhasesTestCase(TestCase):
     def setUp(self):
         self.scene_1 = Scene.objects.create(name='scene 1')
         self.scene_1.update_and_phase_shift()
+        self.scene_2 = Scene.objects.create(name='scene 2')
+        self.scene_2.update_and_phase_shift()
         self.p = self.scene_1.phases  # shorthand
         self.w = self.scene_1.workflows
 
@@ -1165,6 +1167,19 @@ class ScenarioPhasesTestCase(TestCase):
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
+
+    def test_max_simulations(self):
+        settings.MAX_SIMULATIONS=1
+
+        self.scene_1.phase = self.p.sim_create
+        self.scene_2.phase = self.p.queued
+
+        self.scene_2.update_and_phase_shift()
+        print('Max', settings.MAX_SIMULATIONS)
+        print('scene 1 phase', self.scene_1.phase)
+        print('scene 2 phase', self.scene_2.phase)
+        self.assertEqual(self.scene_2.phase, self.p.queued)
+
 
         # check if scene stays in phase 1003 when there are too many
         # simulations already running
