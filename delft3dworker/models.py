@@ -731,7 +731,7 @@ class Scene(models.Model):
             return
 
         elif self.phase == self.phases.preproc_create:
-            print("AHHHH")
+
             container = self.container_set.get(container_type='preprocess')
             container.set_desired_state('created')
 

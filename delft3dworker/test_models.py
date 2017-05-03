@@ -637,6 +637,11 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1.update_and_phase_shift()
         self.scene_2 = Scene.objects.create(name='scene 2')
         self.scene_2.update_and_phase_shift()
+        self.scene_3 = Scene.objects.create(name='scene 3')
+        self.scene_3.update_and_phase_shift()
+        self.scene_4 = Scene.objects.create(name='scene 4')
+        self.scene_4.update_and_phase_shift()
+
         self.p = self.scene_1.phases  # shorthand
         self.w = self.scene_1.workflows
 
@@ -1169,19 +1174,25 @@ class ScenarioPhasesTestCase(TestCase):
         self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
 
     def test_max_simulations(self):
-        settings.MAX_SIMULATIONS=1
+        settings.MAX_SIMULATIONS=2
 
         self.scene_1.phase = self.p.sim_create
         self.scene_2.phase = self.p.queued
+        self.scene_3.phase = self.p.proc_create
+        self.scene_4.phase = self.p.queued
+
+        self.scene_3.workflow = self.w.redo_proc
+        self.scene_4.workflow = self.w.redo_proc
+
         self.scene_1.save()
         self.scene_2.save()
+        self.scene_3.save()
+        self.scene_4.save()
 
         self.scene_2.update_and_phase_shift()
+        self.scene_4.update_and_phase_shift()
         self.assertEqual(self.scene_2.phase, self.p.queued)
-
-
-        # check if scene stays in phase 1003 when there are too many
-        # simulations already running
+        self.assertEqual(self.scene_4.phase, self.p.sync_redo_create)
 
 
 class ContainerTestCase(TestCase):
