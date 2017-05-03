@@ -1272,7 +1272,6 @@ class Scene(models.Model):
 
             number_simulations = sum(
                 (i >= self.phases.sim_create and i <= self.phases.sim_stop) for i in scene_phases)
-
             number_processing = sum(
                 (i >= self.phases.proc_create and i <=
                  self.phases.proc_fin for i in scene_phases)
