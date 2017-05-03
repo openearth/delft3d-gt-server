@@ -356,7 +356,6 @@ class SceneViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(owner__in=userids)
 
         if outdated != '':
-            print(outdated)
             latest = Version_SVN.objects.latest()
             if outdated.lower() == 'true':  # Outdated scenes, exclude latest version
                 queryset = queryset.exclude(version=latest)
