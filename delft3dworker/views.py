@@ -237,7 +237,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         shared = self.request.query_params.getlist('shared', [])
         users = self.request.query_params.getlist('users', [])
 
-        outdated = self.request.query_params.get('outdated', None)
+        outdated = self.request.query_params.get('outdated', '')
         created_after = self.request.query_params.get('created_after', '')
         created_before = self.request.query_params.get('created_before', '')
         started_after = self.request.query_params.get('started_after', '')
@@ -355,7 +355,8 @@ class SceneViewSet(viewsets.ModelViewSet):
             userids = [int(user) for user in users if user.isdigit()]
             queryset = queryset.filter(owner__in=userids)
 
-        if outdated is not None:
+        if outdated != '':
+            print(outdated)
             latest = Version_SVN.objects.latest()
             if outdated.lower() == 'true':  # Outdated scenes, exclude latest version
                 queryset = queryset.exclude(version=latest)
