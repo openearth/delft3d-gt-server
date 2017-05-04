@@ -25,6 +25,60 @@ from delft3dworker.models import Container
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 from delft3dworker.models import User
+from delft3dworker.models import Version_SVN
+
+
+class Version_SVNTestCase(TestCase):
+
+    def setUp(self):
+        self.trunk = Version_SVN.objects.create(
+            release='trunk', revision=500, reviewed=True, url='', changelog='',
+            versions={})        
+        self.trunk2 = Version_SVN.objects.create(
+            release='trunk', revision=501, reviewed=False, url='', changelog='',
+            versions={})
+        self.tag1 = Version_SVN.objects.create(
+            release='trunk', revision=100, reviewed=False, url='', changelog='',
+            versions={'process': 200, 'postprocess': 300, 'export': 250})
+        self.tag2 = Version_SVN.objects.create(
+            release='trunk', revision=200, reviewed=True, url='', changelog='',
+            versions={'process': 200, 'postprocess': 300, 'export': 250})
+        self.tag3 = Version_SVN.objects.create(
+            release='trunk', revision=300, reviewed=False, url='', changelog='',
+            versions={'process': 200, 'postprocess': 305, 'export': 250})
+
+    def test_outdated(self):
+        # Can update to both non-reviewed and reviewed versions
+        settings.REQUIRE_REVIEW = False
+        self.assertTrue(self.tag3.outdated())
+        self.assertTrue(self.trunk.outdated())
+        self.assertTrue(not self.trunk2.outdated())
+
+        # Only update to reviewed version
+        settings.REQUIRE_REVIEW = True
+        self.assertTrue(self.tag3.outdated())
+        self.assertTrue(not self.trunk.outdated())
+
+    def test_compare_outdated(self):
+        settings.REQUIRE_REVIEW = False
+        outdated_folders = self.tag3.compare_outdated()
+        self.assertEqual(outdated_folders, [])  # trunk is empty
+
+        settings.REQUIRE_REVIEW = True
+        outdated_folders = self.tag3.compare_outdated()
+        self.assertEqual(outdated_folders, [])  # trunk is empty
+
+        # Set tag3 up to be latest
+        self.trunk.delete()
+        self.tag3.reviewed = True
+        self.tag3.save()
+
+        # Tag3 only differs in postprocess
+        outdated_folders = self.tag2.compare_outdated()
+        self.assertEqual(outdated_folders, ['postprocess'])
+
+    def tearDown(self):
+        settings.REQUIRE_REVIEW = False
 
 
 class ScenarioTestCase(TestCase):
@@ -114,6 +168,22 @@ class ScenarioControlTestCase(TestCase):
         self.scenario_multi.start(self.user_foo)
         self.assertEqual(mocked_scene_method.call_count, 3)
 
+    @patch('delft3dworker.models.Scene.redo_proc', autospec=True)
+    def redo_proc(self, mocked_scene_method):
+        """
+        Test if redo_proc is called when processing for scenario is started
+        """
+        self.scenario_multi.redo_proc(self.user_foo)
+        self.asserEqual(mocked_scene_method.call_count, 3)
+
+    @patch('delft3dworker.models.Scene.redo_postproc', autospec=True)
+    def redo_postproc(self, mocked_scene_method):
+        """
+        Test if redo_postproc is called when postprocessing for scenario is started
+        """
+        self.scenario_multi.redo_postproc(self.user_foo)
+        self.asserEqual(mocked_scene_method.call_count, 3)
+
     @patch('delft3dworker.models.Scene.abort', autospec=True)
     def test_abort(self, mocked_scene_method):
         """
@@ -178,13 +248,15 @@ class SceneTestCase(TestCase):
             name='Scene 1',
             owner=self.user_a,
             shared='p',
-            phase=Scene.phases.fin
+            phase=Scene.phases.fin,
+            workflow=Scene.workflows.main
         )
         self.scene_2 = Scene.objects.create(
             name='Scene 2',
             owner=self.user_a,
             shared='p',
-            phase=Scene.phases.idle
+            phase=Scene.phases.idle,
+            workflow=Scene.workflows.main
         )
         self.wd = self.scene_1.workingdir
 
@@ -202,34 +274,6 @@ class SceneTestCase(TestCase):
         self.simulation = ['simulation/a.sim', 'simulation/b.sim']
         self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
         self.export = ['export/export.something']
-
-    @patch('delft3dcontainermanager.tasks.do_docker_create.apply_async',
-           autospec=True)
-    def test_versions(self, mocked_task):
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
-
-        result = Mock()
-        mocked_task.return_value = result
-        result.id = task_uuid
-
-        self.assertDictEqual(self.scene_1.versions(), {})
-        for i, container_type in enumerate(['preprocess', 'delft3d', 'process', 'postprocess', 'export', 'sync_cleanup']):
-            container = Container(container_type=container_type)
-            self.scene_1.container_set.add(container)
-            name = container._create_container()
-            version_dict = self.scene_1.versions()
-            self.assertEqual(len(version_dict.keys()), i+1)
-            if container_type == 'delft3d':
-                self.assertIn('delft3d_version', version_dict[container_type])
-                self.assertNotIn('REPOS_URL', version_dict[container_type])
-                self.assertNotIn('SVN_REV', version_dict[container_type])
-                self.assertEqual(version_dict[container_type]['delft3d_version'], settings.DELFT3D_VERSION)
-            else:
-                self.assertNotIn('delft3d_version', version_dict[container_type])
-                self.assertIn('REPOS_URL', version_dict[container_type])
-                self.assertIn('SVN_REV', version_dict[container_type])
-                self.assertEqual(version_dict[container_type]['REPOS_URL'], settings.REPOS_URL)
-                self.assertEqual(version_dict[container_type]['SVN_REV'], settings.SVN_REV)
 
     def test_after_publishing_rights_are_revoked(self):
         self.assertEqual(self.scene_1.shared, 'p')
@@ -281,7 +325,8 @@ class SceneTestCase(TestCase):
 
         # publish company
         scenes[0].publish_company(self.user_a)
-        scenes[1].publish_company(self.user_a)  # should not publish as scene is in idle state
+        # should not publish as scene is in idle state
+        scenes[1].publish_company(self.user_a)
 
         self.assertEqual(len(get_objects_for_user(
             self.user_b,
@@ -298,7 +343,8 @@ class SceneTestCase(TestCase):
 
         # publish world
         scenes[0].publish_world(self.user_a)
-        scenes[1].publish_world(self.user_a)  # should not publish as scene is in idle state
+        # should not publish as scene is in idle state
+        scenes[1].publish_world(self.user_a)
 
         self.assertEqual(len(get_objects_for_user(
             self.user_b,
@@ -339,7 +385,8 @@ class SceneTestCase(TestCase):
 
         # publish world
         scenes[0].publish_world(self.user_a)
-        scenes[1].publish_world(self.user_a)  # should not publish as scene is in idle state
+        # should not publish as scene is in idle state
+        scenes[1].publish_world(self.user_a)
 
         self.assertEqual(len(get_objects_for_user(
             self.user_b,
@@ -387,6 +434,94 @@ class SceneTestCase(TestCase):
 
                 self.assertEqual(self.scene_1.date_started, started_date)
 
+    def test_redo(self):
+        started_date = None
+
+        version_old = Version_SVN.objects.create(
+            release='', revision=-1000, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
+        version_new = Version_SVN.objects.create(
+            release='', revision=999, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
+
+        self.scene_1.version = version_old
+
+        # a scene should only start redo processing when phase is finished
+        for phase in self.scene_1.phases:
+
+            #  shift scene to phase
+            self.scene_1.shift_to_phase(phase[0])
+
+            # start scene
+            self.scene_1.redo()
+
+            # check that phase is unshifted unless finished and outdated: 
+            # then it becomes queued
+            if phase[0] == self.scene_1.phases.fin:
+
+                # Old version, update ->  queued
+                self.assertEqual(self.scene_1.phase, self.scene_1.phases.queued)
+
+                # Newer version, no update -> not queued
+                self.scene_1.shift_to_phase(phase[0])
+                self.version = version_new
+                self.scene_1.redo()
+                self.assertEqual(self.scene_1.phase, phase[0])
+
+            else:
+                self.assertEqual(self.scene_1.phase, phase[0])
+
+
+
+            # check date_started is untouched unless started from finished state
+            if phase[0] == self.scene_1.phases.fin:
+                self.assertTrue(self.scene_1.date_started <= now())
+                started_date = self.scene_1.date_started  # store started date
+            else:
+                self.assertEqual(self.scene_1.date_started, started_date)
+
+            # Restore behaviour
+            self.scene_1.version = version_old
+
+
+        # Check if we don't shift without new version
+        self.scene_1.workflow = self.scene_1.workflows.main
+        self.scene_1.version = version_new
+        self.scene_1.shift_to_phase(self.scene_1.phases.fin)
+        self.scene_1.redo()
+        self.assertEqual(self.scene_1.workflow,
+                         self.scene_1.workflows.main)
+
+        #  Redo all (trunk)
+        version = Version_SVN.objects.create(
+            release='', revision=1000, versions={}, url='', changelog='')
+        self.scene_1.shift_to_phase(self.scene_1.phases.fin)
+        self.scene_1.redo()
+        self.assertEqual(self.scene_1.workflow,
+                         self.scene_1.workflows.redo_proc_postproc)
+
+        #  Redo processing
+        version = Version_SVN.objects.create(
+            release='', revision=2000, versions={'visualisation': 501}, url='', changelog='')
+        self.scene_1.shift_to_phase(self.scene_1.phases.fin)
+        self.scene_1.redo()
+        self.assertEqual(self.scene_1.workflow,
+                         self.scene_1.workflows.redo_proc)
+
+        #  Redo postprocessing
+        version = Version_SVN.objects.create(
+            release='', revision=3000, versions={'postprocess': 502}, url='', changelog='')
+        self.scene_1.shift_to_phase(self.scene_1.phases.fin)
+        self.scene_1.redo()
+        self.assertEqual(self.scene_1.workflow,
+                         self.scene_1.workflows.redo_postproc)
+
+        #  Redo all (tag)
+        version = Version_SVN.objects.create(
+            release='', revision=4000, versions={'postprocess': 505, 'process': 505, 'export': 505, 'visualisation': 505}, url='', changelog='')
+        self.scene_1.shift_to_phase(self.scene_1.phases.fin)
+        self.scene_1.redo()
+        self.assertEqual(self.scene_1.workflow,
+                         self.scene_1.workflows.redo_proc_postproc)
+
     def test_abort_scene(self):
 
         # abort is more complex
@@ -400,9 +535,10 @@ class SceneTestCase(TestCase):
 
             # if the phase is after simulation start and before stopped
             if (phase[0] >= self.scene_1.phases.sim_start) and (
-                phase[0] <= self.scene_1.phases.sim_fin):
+                    phase[0] <= self.scene_1.phases.sim_fin):
                 # check that phase is shifted to stopped
-                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_stop)
+                self.assertEqual(self.scene_1.phase,
+                                 self.scene_1.phases.sim_stop)
 
             # if the phase is queued
             elif phase[0] == self.scene_1.phases.queued:
@@ -499,7 +635,15 @@ class ScenarioPhasesTestCase(TestCase):
     def setUp(self):
         self.scene_1 = Scene.objects.create(name='scene 1')
         self.scene_1.update_and_phase_shift()
+        self.scene_2 = Scene.objects.create(name='scene 2')
+        self.scene_2.update_and_phase_shift()
+        self.scene_3 = Scene.objects.create(name='scene 3')
+        self.scene_3.update_and_phase_shift()
+        self.scene_4 = Scene.objects.create(name='scene 4')
+        self.scene_4.update_and_phase_shift()
+
         self.p = self.scene_1.phases  # shorthand
+        self.w = self.scene_1.workflows
 
     def test_phase_new(self):
         self.scene_1.phase = self.p.new
@@ -702,6 +846,120 @@ class ScenarioPhasesTestCase(TestCase):
         # check if scene moved to phase 14 when simulation container is
         # exited
 
+    def test_phase_proc_create(self):
+        # Started processing
+        self.scene_1.phase = self.p.proc_create
+        container = self.scene_1.container_set.get(container_type='process')
+        container.docker_state = 'created'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.proc_start)
+
+    def test_phase_proc_start(self):
+        # Started processing
+        self.scene_1.phase = self.p.proc_start
+        container = self.scene_1.container_set.get(container_type='process')
+        container.docker_state = 'running'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.proc_run)
+
+    def test_phase_proc_run(self):
+        self.scene_1.phase = self.p.proc_run
+        container = self.scene_1.container_set.get(container_type='process')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.proc_fin)
+
+    def test_phase_postproc_fin(self):
+        # Finished processing
+        self.scene_1.phase = self.p.proc_fin
+
+        container = self.scene_1.container_set.get(container_type='process')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.proc_fin)
+
+        container = self.scene_1.container_set.get(container_type='process')
+        container.docker_state = 'non-existent'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_create)
+
+    def test_phase_sync_redo_create(self):
+        # Started sync
+        self.scene_1.phase = self.p.sync_redo_create
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'created'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_start)
+
+    def test_phase_sync_rerun_start(self):
+        # Started sync
+        self.scene_1.phase = self.p.sync_redo_start
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'running'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_run)
+
+    def test_phase_sync_rerun_run(self):
+        self.scene_1.phase = self.p.sync_redo_run
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_fin)
+
+    def test_phase_sync_rerun_fin_proc_workflow(self):
+        # Finished sync
+        self.scene_1.phase = self.p.sync_redo_fin
+        self.scene_1.workflow = self.w.redo_proc
+
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_fin)
+
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'non-existent'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.proc_create)
+
+    def test_phase_sync_rerun_fin_postproc_workflow(self):
+        # Finished sync
+        self.scene_1.phase = self.p.sync_redo_fin
+        self.scene_1.workflow = self.w.redo_postproc
+
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'exited'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_fin)
+
+        container = self.scene_1.container_set.get(container_type='sync_rerun')
+        container.docker_state = 'non-existent'
+        container.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.postproc_create)
+
     def test_phase_postproc_create(self):
         # Started postprocessing
         self.scene_1.phase = self.p.postproc_create
@@ -826,7 +1084,8 @@ class ScenarioPhasesTestCase(TestCase):
         self.assertEqual(self.scene_1.phase, self.p.sync_create)
 
         self.scene_1.phase = self.p.sync_start
-        container = self.scene_1.container_set.get(container_type='sync_cleanup')
+        container = self.scene_1.container_set.get(
+            container_type='sync_cleanup')
         container.docker_state = 'running'
         container.save()
 
@@ -851,14 +1110,16 @@ class ScenarioPhasesTestCase(TestCase):
     def test_phase_sync_fin(self):
         self.scene_1.phase = self.p.sync_fin
 
-        container = self.scene_1.container_set.get(container_type='sync_cleanup')
+        container = self.scene_1.container_set.get(
+            container_type='sync_cleanup')
         container.docker_state = 'exited'
         container.save()
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.sync_fin)
 
-        container = self.scene_1.container_set.get(container_type='sync_cleanup')
+        container = self.scene_1.container_set.get(
+            container_type='sync_cleanup')
         container.docker_state = 'non-existent'
         container.save()
 
@@ -892,14 +1153,46 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.idle)
 
-    def test_phase_queued(self):
+    def test_phase_queued_main_workflow(self):
         self.scene_1.phase = self.p.queued
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.sim_create)
 
-        # check if scene stays in phase 1003 when there are too many
-        # simulations already running
+    def test_phase_queued_proc_workflow(self):
+        self.scene_1.phase = self.p.queued
+        self.scene_1.workflow = self.w.redo_proc
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
+
+    def test_phase_queued_postproc_workflow(self):
+        self.scene_1.phase = self.p.queued
+        self.scene_1.workflow = self.w.redo_postproc
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
+
+    def test_max_simulations(self):
+        settings.MAX_SIMULATIONS=2
+
+        self.scene_1.phase = self.p.sim_create
+        self.scene_2.phase = self.p.queued
+        self.scene_3.phase = self.p.proc_create
+        self.scene_4.phase = self.p.queued
+
+        self.scene_3.workflow = self.w.redo_proc
+        self.scene_4.workflow = self.w.redo_proc
+
+        self.scene_1.save()
+        self.scene_2.save()
+        self.scene_3.save()
+        self.scene_4.save()
+
+        self.scene_2.update_and_phase_shift()
+        self.scene_4.update_and_phase_shift()
+        self.assertEqual(self.scene_2.phase, self.p.queued)
+        self.assertEqual(self.scene_4.phase, self.p.sync_redo_create)
 
 
 class ContainerTestCase(TestCase):
@@ -1105,8 +1398,8 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'environment': {'uuid': str(self.scene_1.suid),
                                     'folder': os.path.join(
                                         self.scene_1.workingdir, 'simulation'),
-                                    'REPOS_URL': settings.REPOS_URL,
-                                    'SVN_REV': settings.SVN_REV},
+                                    'REPOS_URL': u'{}{}'.format(settings.REPOS_URL, '/trunk/'),
+                                    'SVN_REV': int(settings.SVN_REV)},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(
@@ -1135,8 +1428,8 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
                     'environment': {'uuid': str(self.scene_1.suid),
                                     'folder': os.path.join(
                                         self.scene_1.workingdir, 'simulation'),
-                                    'REPOS_URL': settings.REPOS_URL,
-                                    'SVN_REV': settings.SVN_REV},
+                                    'REPOS_URL': u'{}{}'.format(settings.REPOS_URL, '/trunk/'),
+                                    'SVN_REV': int(settings.SVN_REV)},
                     'name': name,
                     'volumes': [
                         'test/{}/simulation:/data/output:z'.format(

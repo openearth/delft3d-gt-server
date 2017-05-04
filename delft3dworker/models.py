@@ -22,6 +22,7 @@ from django.core.urlresolvers import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
 from django.utils.timezone import now
+from django.forms.models import model_to_dict
 
 from model_utils import Choices
 
@@ -34,7 +35,7 @@ from jsonfield import JSONField
 # from django.contrib.postgres.fields import JSONField  # When we use
 # Postgresql 9.4
 
-from delft3dworker.utils import log_progress_parser, version_default
+from delft3dworker.utils import log_progress_parser, version_default, get_version
 
 from delft3dcontainermanager.tasks import do_docker_create
 from delft3dcontainermanager.tasks import do_docker_remove
@@ -43,7 +44,81 @@ from delft3dcontainermanager.tasks import do_docker_stop
 from delft3dcontainermanager.tasks import get_docker_log
 
 
-# ################################### SCENARIO, SCENE & CONTAINER
+# ################################### VERSION_SVN, SCENARIO, SCENE & CONTAINER
+
+
+def default_svn_version():
+    """Default SVN_Version for new Scenes.
+    Also ensure there's always a row in the svn model."""
+    count = Version_SVN.objects.count()
+    if count == 0:
+        logging.info("Creating default svn trunk model")
+        version = Version_SVN(release='trunk', revision=settings.SVN_REV,
+                              url=settings.REPOS_URL + '/trunk/', versions={},
+                              changelog='default release', reviewed=settings.REQUIRE_REVIEW)
+        version.save()
+        return version.id
+    else:
+        return Version_SVN.objects.latest().id
+
+
+class Version_SVN_Manager(models.Manager):
+
+    def latest(self):
+        """Return latest model."""
+        if settings.REQUIRE_REVIEW:
+            return self.get_queryset().filter(reviewed=True).first()
+        else:
+            return self.get_queryset().all().first()
+
+
+class Version_SVN(models.Model):
+    """
+    Store releases used in the Delft3D-GT svn repository.
+
+    Every scene has a version_svn, if there's a newer (higher id)
+    version_svn available, the scene is outdated.
+
+    By comparing svn folders and files (versions field) the specific
+    workflow can be determined in the scene.
+
+    The revision and url can be used in the Docker Python env
+    """
+    objects = Version_SVN_Manager()
+    release = models.CharField(
+        max_length=256, db_index=True)  # tag/release name
+    revision = models.PositiveSmallIntegerField(db_index=True)  # svn_version
+    versions = JSONField(default='{}')  # folder revisions
+    url = models.URLField(max_length=200)  # repos_url
+    changelog = models.CharField(max_length=256)  # release notes
+    reviewed = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-revision"]
+        verbose_name = "SVN version"
+        verbose_name_plural = "SVN versions"
+
+    def __unicode__(self):
+        return "Release {} at revision {}".format(self.release, self.revision)
+
+    def outdated(self):
+        """Return bool if there are newer releases available."""
+        if settings.REQUIRE_REVIEW:
+            return Version_SVN.objects.filter(reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0].revision > self.revision
+        else:
+            return Version_SVN.objects.all().order_by('-revision')[0].revision > self.revision
+
+    def compare_outdated(self):
+        """Compare folder revisions with latest release."""
+        outdated_folders = []
+
+        latest_versions = Version_SVN.objects.latest().versions
+        for folder, revision in latest_versions.items():
+            if self.versions.setdefault(folder, -1) < revision:
+                outdated_folders.append(folder)
+
+        return outdated_folders
+
 
 class Scenario(models.Model):
 
@@ -123,6 +198,12 @@ class Scenario(models.Model):
             if user.has_perm('delft3dworker.change_scene', scene):
                 scene.start()
         return "started"
+
+    def redo(self, user):
+        for scene in self.scene_set.all():
+            if user.has_perm('delft3dworker.change_scene', scene):
+                scene.redo()
+        return "redoing"
 
     def abort(self, user):
         for scene in self.scene_set.all():
@@ -254,6 +335,16 @@ class Scene(models.Model):
     shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True)
 
+    workflows = Choices(
+        (0, 'main', 'main workflow'),
+        (1, 'redo_proc', 'redo processing workflow'),
+        (2, 'redo_postproc', 'redo postprocessing workflow'),
+        (3, 'redo_proc_postproc', 'redo processing and postprocessing workflow')
+    )
+
+    workflow = models.PositiveSmallIntegerField(
+        default=workflows.main, choices=workflows)
+
     phases = Choices(
         # Create container models
         (0, 'new', 'New'),
@@ -274,6 +365,12 @@ class Scene(models.Model):
         (15, 'sim_last_proc', 'Finishing simulation'),
         (13, 'sim_fin', 'Finished simulation'),
         (14, 'sim_stop', 'Stopping simulation'),
+
+        # Processing container
+        (60, 'proc_create', 'Allocating processing resources'),
+        (61, 'proc_start', 'Starting processing'),
+        (62, 'proc_run', 'Running processing'),
+        (63, 'proc_fin', 'Finished processing'),
 
         # Postprocessing container
         (20, 'postproc_create', 'Allocating postprocessing resources'),
@@ -298,8 +395,14 @@ class Scene(models.Model):
         (42, 'sync_run', 'Running synchronization'),
         (43, 'sync_fin', 'Finished synchronization'),
 
+        # Sync back simulation results to rerun processing or postprocessing
+        (50, 'sync_redo_create', 'Allocating synchronization resources'),
+        (51, 'sync_redo_start', 'Started synchronization'),
+        (52, 'sync_redo_run', 'Running synchronization'),
+        (53, 'sync_redo_fin', 'Finished synchronization'),
+
         # Other phases
-        (50, 'fin', 'Finished'),
+        (500, 'fin', 'Finished'),
         (1000, 'abort_start', 'Starting Abort'),
         (1001, 'abort_run', 'Aborting'),
         (1002, 'abort_fin', 'Finished Abort'),
@@ -307,6 +410,7 @@ class Scene(models.Model):
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
+    version = models.ForeignKey(Version_SVN, default=default_svn_version)
 
     # PROPERTY METHODS
 
@@ -316,10 +420,37 @@ class Scene(models.Model):
         )
 
     def versions(self):
-        version_dict = {}
-        for container in self.container_set.all():
-            version_dict[container.container_type] = container.version
+        version_dict = model_to_dict(self.version)
+        version_dict['delft3d_version'] = settings.DELFT3D_VERSION
         return version_dict
+
+    def is_outdated(self):
+        return self.version.outdated()
+
+    def outdated_workflow(self):
+        outdated_folders = self.version.compare_outdated()
+
+        if ('postprocess' in outdated_folders or 'export' in outdated_folders) and ('process' in outdated_folders or 'visualisation' in outdated_folders):
+            return self.workflows.redo_proc_postproc
+
+        elif ('postprocess' in outdated_folders or 'export' in outdated_folders):
+            return self.workflows.redo_postproc
+
+        elif ('process' in outdated_folders or 'visualisation' in outdated_folders):
+            return self.workflows.redo_proc
+
+        # Default model is trunk with a revision number, but without any folder
+        # revisions
+        elif len(outdated_folders) == 0:
+            return self.workflows.redo_proc_postproc
+
+        else:
+            logging.error("Unable to resolve workflow for outdated scene. Folders: {}".format(
+                outdated_folders))
+            return None
+
+    def outdated_changelog(self):
+        return Version_SVN.objects.latest().changelog
 
     # UI CONTROL METHODS
 
@@ -341,6 +472,22 @@ class Scene(models.Model):
             self.save()
 
         return {"task_id": None, "scene_id": None}
+
+    def redo(self):
+        # only allow a redo when Scene is 'Finished'
+        # and there's a new version available
+        if self.phase == self.phases.fin and self.is_outdated():
+
+            workflow = self.outdated_workflow()
+
+            if workflow is not None:
+                self.workflow = workflow
+                self.date_started = now()
+                self.shift_to_phase(self.phases.queued)
+                self.version = Version_SVN.objects.latest()
+                self.save()
+
+            return {"task_id": None, "scene_id": None}
 
     def abort(self):
         # Stop simulation
@@ -382,8 +529,8 @@ class Scene(models.Model):
                 ) and (
                     (
                         ext in ['.bcc', '.bch', '.bct', '.bnd', '.dep', '.enc',
-                               '.fil', '.grd', '.ini', '.mdf', '.mdw', '.mor',
-                               '.obs', '.sed', '.sh', '.url', '.xml']
+                                '.fil', '.grd', '.ini', '.mdf', '.mdw', '.mor',
+                                '.obs', '.sed', '.sh', '.url', '.xml']
                     ) or (
                         ext.startswith('.tr')
                     )
@@ -418,7 +565,8 @@ class Scene(models.Model):
                 if add:
                     files_added = True
                     abs_path = os.path.join(root, f)
-                    rel_path = os.path.join(slugify(self.name), os.path.relpath(abs_path, self.workingdir))
+                    rel_path = os.path.join(slugify(self.name),
+                                            os.path.relpath(abs_path, self.workingdir))
                     zipfile.write(abs_path, rel_path)
 
         return files_added
@@ -569,6 +717,14 @@ class Scene(models.Model):
                     desired_state='non-existent',
                 )
                 sync_clean_container.save()
+
+            if not self.container_set.filter(container_type='sync_rerun').exists():
+                sync_run_container = Container.objects.create(
+                    scene=self,
+                    container_type='sync_rerun',
+                    desired_state='non-existent',
+                )
+                sync_run_container.save()
 
             self.shift_to_phase(self.phases.preproc_create)
 
@@ -758,6 +914,69 @@ class Scene(models.Model):
                 self.shift_to_phase(self.phases.sim_fin)
 
             return
+
+        ##########
+        # REDO Processing
+
+        elif self.phase == self.phases.proc_create:
+
+            container = self.container_set.get(container_type='process')
+            container.set_desired_state('created')
+
+            if (container.docker_state != 'non-existent'):
+                self.shift_to_phase(self.phases.proc_start)
+
+            return
+
+        elif self.phase == self.phases.proc_start:
+
+            container = self.container_set.get(container_type='process')
+            container.set_desired_state('running')
+
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(self.phases.proc_run)
+
+            elif (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.proc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.proc_create)
+                logging.error("Lost process container!")
+
+            return
+
+        elif self.phase == self.phases.proc_run:
+
+            container = self.container_set.get(container_type='process')
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.proc_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.proc_create)
+                logging.error("Lost process container!")
+
+            return
+
+        elif self.phase == self.phases.proc_fin:
+
+            container = self.container_set.get(container_type='process')
+            container.set_desired_state('non-existent')
+
+            # Done with redo processing, sync results
+            if (container.docker_state == 'non-existent'):
+                if self.workflow == self.workflows.redo_proc_postproc:
+                    self.shift_to_phase(self.phases.postproc_create)
+                else:
+                    self.shift_to_phase(self.phases.sync_create)
+
+            return
+
+        #############
+        # Postprocessing
 
         elif self.phase == self.phases.postproc_create:
 
@@ -981,15 +1200,94 @@ class Scene(models.Model):
 
             return
 
+        #############
+        # REDO PHASES
+
+        elif self.phase == self.phases.sync_redo_create:
+
+            container = self.container_set.get(container_type='sync_rerun')
+            container.set_desired_state('created')
+
+            if (container.docker_state != 'non-existent'):
+                self.shift_to_phase(self.phases.sync_redo_start)
+
+            return
+
+        elif self.phase == self.phases.sync_redo_start:
+
+            container = self.container_set.get(container_type='sync_rerun')
+            container.set_desired_state('running')
+
+            if (container.docker_state == 'running'):
+                self.shift_to_phase(self.phases.sync_redo_run)
+
+            elif (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.sync_redo_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.sync_redo_create)
+                logging.error("Lost sync_rerun container!")
+
+            return
+
+        elif self.phase == self.phases.sync_redo_run:
+
+            container = self.container_set.get(container_type='sync_rerun')
+            if (container.docker_state == 'exited'):
+                container.set_desired_state('exited')
+                self.shift_to_phase(self.phases.sync_redo_fin)
+
+            # If container disappeared, shift back
+            elif (container.docker_state == 'non-existent'):
+                self.shift_to_phase(self.phases.sync_redo_create)
+                logging.error("Lost sync_rerun container!")
+
+            return
+
+        elif self.phase == self.phases.sync_redo_fin:
+
+            container = self.container_set.get(container_type='sync_rerun')
+            container.set_desired_state('non-existent')
+
+            # If sync for rerun is finished, shift to postporcessing phase from
+            # the "default" workflow.
+            if (container.docker_state == 'non-existent'):
+                if self.workflow == self.workflows.redo_proc:
+                    self.shift_to_phase(self.phases.proc_create)
+                elif self.workflow == self.workflows.redo_postproc:
+                    self.shift_to_phase(self.phases.postproc_create)
+                elif self.workflow == self.workflows.redo_proc_postproc:
+                    self.shift_to_phase(self.phases.proc_create)
+
+            return
+
+        #############
+        # QUEUED
+
         elif self.phase == self.phases.queued:
 
             scene_phases = Scene.objects.values_list('phase', flat=True)
 
             number_simulations = sum(
                 (i >= self.phases.sim_create and i <= self.phases.sim_stop) for i in scene_phases)
+            number_processing = sum(
+                (i >= self.phases.proc_create and i <=
+                 self.phases.proc_fin for i in scene_phases)
+            )
 
-            if number_simulations < settings.MAX_SIMULATIONS:
+            nodes_available = settings.MAX_SIMULATIONS * 2 - \
+                (number_simulations * 2 + number_processing)
+
+            if (self.workflow == self.workflows.main and
+                    nodes_available >= 2):
                 self.shift_to_phase(self.phases.sim_create)
+            elif ((self.workflow == self.workflows.redo_proc or
+                   self.workflow == self.workflows.redo_postproc or
+                   self.workflow == self.workflows.redo_proc_postproc) and
+                  nodes_available >= 1):
+                self.shift_to_phase(self.phases.sync_redo_create)
 
             return
 
@@ -1115,6 +1413,7 @@ class Container(models.Model):
         ('postprocess', 'postprocess'),
         ('export', 'export'),
         ('sync_cleanup', 'sync_cleanup'),
+        ('sync_rerun', 'sync_rerun'),
     )
 
     container_type = models.CharField(
@@ -1149,8 +1448,6 @@ class Container(models.Model):
 
     docker_log = models.TextField(blank=True, default='')
     container_log = models.TextField(blank=True, default='')
-
-    version = JSONField(default=version_default)
 
     # CONTROL METHODS
 
@@ -1336,6 +1633,9 @@ class Container(models.Model):
         # Specific settings for each container type
         # TODO It would be more elegant to put these
         # hard-coded settings in a separate file.
+        #
+        # Also have a template that comes from
+        # provisioning, to match the needed environment variables
 
         # Random string in order to avoid naming conflicts.
         # We want new containers when old ones fail in Docker Swarm
@@ -1419,6 +1719,19 @@ class Container(models.Model):
                              'command': "/data/run.sh cleanup"
                              },
 
+            'sync_rerun': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
+                           'volumes': [
+                               '{0}:/data/output:z'.format(syndir)],
+                           'memory_limit': '500m',
+                           'environment': {"uuid": str(self.scene.suid),
+                                           "folder": syndir},
+                           'name': "{}-{}-{}".format(self.container_type,
+                                                     str(self.scene.suid),
+                                                     random_postfix),
+                           'folders': [simdir],
+                           'command': "/data/run.sh rerun"
+                           },
+
             'process': {'image': settings.PROCESS_IMAGE_NAME,
                         'volumes': [
                             '{0}:/data/input:ro'.format(simdir),
@@ -1439,14 +1752,10 @@ class Container(models.Model):
                         },
         }
 
-        if self.container_type == 'delft3d':
-            # overwrite default version field with delft3d_version
-            self.version = {'delft3d_version': settings.DELFT3D_VERSION}
-            # this is not needed as environment variable in the container, so no further action needed
-        else:
-            # use default version field
-            # add svn version information to environment variables of python container
-            kwargs[self.container_type]['environment'].update(self.version)
+        # Set SVN_REV and REPOS_URL a.o.
+        version = model_to_dict(self.scene.version)
+        kwargs[self.container_type]['environment'].update({'REPOS_URL': version['url'],
+                                                           'SVN_REV': version['revision']})
 
         parameters = self.scene.parameters
         label = {"type": self.container_type}

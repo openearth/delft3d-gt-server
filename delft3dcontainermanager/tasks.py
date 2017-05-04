@@ -29,6 +29,18 @@ def delft3dgt_pulse(self):
     return
 
 
+@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60})
+def delft3dgt_latest_svn(self):
+    """
+    This task runs the get_latest_svn_releases management command.
+    This command updates the version_SVN table based on the svn repository
+
+    A lock is implemented to ensure it's only run one at a time
+    """
+    call_command('get_latest_svn_releases')
+    return
+
+
 @shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60},
              throws=(HTTPError))
 def get_docker_ps(self):

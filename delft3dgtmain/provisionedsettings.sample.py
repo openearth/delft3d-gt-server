@@ -41,13 +41,18 @@ WORKER_FILEDIR = '/data/container/files'
 REPOS_URL = 'http://'
 SVN_REV = '<revision number>'
 DELFT3D_VERSION = 'Delft3D <version number>'
+SVN_PRE_REV = '<revision number>'
+SVN_PROC_REV = '<revision number>'
+SVN_POST_REV = '<revision number>'
+SVN_EXP_REV = '<revision number>'
 
+# redis backend
 BROKER_URL = 'redis://'
 CELERY_RESULT_BACKEND = 'redis://'
 
 # max number of simulations
 MAX_SIMULATIONS = 1
+REQUIRE_REVIEW = False
 
 # EMAIL backend
-
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

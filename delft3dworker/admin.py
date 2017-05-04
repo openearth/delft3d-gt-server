@@ -7,11 +7,17 @@ from models import Scene
 from models import Container
 from models import SearchForm
 from models import Template
+from models import Version_SVN
 
 
 class ContainerInline(admin.StackedInline):
     extra = 0
     model = Container
+
+
+class SceneInline(admin.StackedInline):
+    extra = 0
+    model = Scene
 
 
 @admin.register(Scenario)
@@ -39,3 +45,10 @@ class SearchFormAdmin(GuardedModelAdmin):
 @admin.register(Template)
 class TemplateAdmin(GuardedModelAdmin):
     pass
+
+
+@admin.register(Version_SVN)
+class Version_SVN_Admin(GuardedModelAdmin):
+    inlines = [
+        SceneInline,
+    ]

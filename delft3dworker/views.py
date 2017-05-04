@@ -14,6 +14,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
 from django.db.models import Q
+from django.forms.models import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
@@ -40,6 +41,7 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
+from delft3dworker.models import Version_SVN
 from delft3dworker.permissions import ViewObjectPermissions
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
@@ -184,8 +186,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     filter_class = SceneFilter
 
     # Searchfilter backend for field &search=
-    # Filters on fields below beginning with value (^)
-    search_fields = ('$name',)
+    search_fields = ('name',)
 
     # Permissions backend which we could use in filter
     permission_classes = (permissions.IsAuthenticated,
@@ -236,8 +237,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         shared = self.request.query_params.getlist('shared', [])
         users = self.request.query_params.getlist('users', [])
 
-        versions = self.request.query_params.get('versions', "\{\}")
-
+        outdated = self.request.query_params.get('outdated', '')
         created_after = self.request.query_params.get('created_after', '')
         created_before = self.request.query_params.get('created_before', '')
         started_after = self.request.query_params.get('started_after', '')
@@ -355,17 +355,14 @@ class SceneViewSet(viewsets.ModelViewSet):
             userids = [int(user) for user in users if user.isdigit()]
             queryset = queryset.filter(owner__in=userids)
 
-        if versions != "\{\}":
-            try:
-                version_dict = json.loads(versions)
-            except ValueError:
-                version_dict = {}
-
-            for key, values in version_dict.iteritems():
-                f = Q()
-                for value in values:
-                    f = f | Q(container__version__contains={key: value})
-                queryset = queryset.filter(f).distinct()
+        if outdated != '':
+            latest = Version_SVN.objects.latest()
+            if outdated.lower() == 'true':  # Outdated scenes, exclude latest version
+                queryset = queryset.exclude(version=latest)
+            elif outdated.lower() == 'false':  # Up to date scenes, only latest version
+                queryset = queryset.filter(version=latest)
+            else:
+                logging.debug("Couldn't parse outdated argument")
 
         if created_after != '':
             created_after_date = parse_date(created_after)
@@ -409,6 +406,14 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         scene = self.get_object()
         scene.start()
+        serializer = self.get_serializer(scene)
+
+        return Response(serializer.data)
+
+    @detail_route(methods=["put"])  # denied after publish to company/world
+    def redo(self, request, pk=None):
+        scene = self.get_object()
+        scene.redo()
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
@@ -559,12 +564,11 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @list_route(methods=["get"])
     def versions(self, request):
-        queryset = Container.objects.all()
+        queryset = Version_SVN.objects.all()
 
         resp = {}
-        for container in queryset:
-            for key, val in container.version.iteritems():
-                    resp.setdefault(key, set([])).add(val)
+        for version in queryset:
+            resp[version.id] = model_to_dict(version)
 
         return Response(resp)
 
