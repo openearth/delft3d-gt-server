@@ -87,7 +87,9 @@ class SceneFullSerializer(serializers.ModelSerializer):
         )
 
     def get_outdated_workflow(self, obj):
-        return obj.workflows[obj.outdated_workflow()]
+        wf = obj.outdated_workflow()
+        return obj.workflows[wf] if wf is not None else ""
+
 
 class SceneSparseSerializer(serializers.ModelSerializer):
     """
