@@ -358,9 +358,9 @@ class SceneViewSet(viewsets.ModelViewSet):
         if outdated != '':
             latest = Version_SVN.objects.latest()
             if outdated.lower() == 'true':  # Outdated scenes, exclude latest version
-                queryset = queryset.exclude(version=latest)
+                queryset = queryset.filter(version__revision__lt=latest.revision)
             elif outdated.lower() == 'false':  # Up to date scenes, only latest version
-                queryset = queryset.filter(version=latest)
+                queryset = queryset.filter(version__revision__gte=latest.revision)
             else:
                 logging.debug("Couldn't parse outdated argument")
 
