@@ -626,7 +626,7 @@ class Version_SVNViewSet(viewsets.ModelViewSet):
                           ViewObjectPermissions,)
 
     def get_queryset(self):
-        return Template.objects.all()
+        return Version_SVN.objects.all()
 
 
 class GroupViewSet(viewsets.ModelViewSet):
