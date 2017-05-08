@@ -5,6 +5,7 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
+from delft3dworker.models import Version_SVN
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
@@ -157,6 +158,17 @@ class SearchFormSerializer(serializers.ModelSerializer):
             'sections',
             'templates',
         )
+
+
+class Version_SVNSerializer(serializers.ModelSerializer):
+    """
+    A default REST Framework ModelSerializer for the Version_SVN model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    class Meta:
+        model = Version_SVN
+        fields = '__all__'
 
 
 class TemplateSerializer(serializers.ModelSerializer):

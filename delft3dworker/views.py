@@ -49,6 +49,7 @@ from delft3dworker.serializers import SceneFullSerializer
 from delft3dworker.serializers import SceneSparseSerializer
 from delft3dworker.serializers import SearchFormSerializer
 from delft3dworker.serializers import TemplateSerializer
+from delft3dworker.serializers import Version_SVNSerializer
 from delft3dworker.serializers import UserSerializer
 
 
@@ -617,6 +618,15 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(me, many=True)
 
         return Response(serializer.data)
+
+
+class Version_SVNViewSet(viewsets.ModelViewSet):
+    serializer_class = Version_SVNSerializer
+    permission_classes = (permissions.IsAuthenticated,
+                          ViewObjectPermissions,)
+
+    def get_queryset(self):
+        return Template.objects.all()
 
 
 class GroupViewSet(viewsets.ModelViewSet):
