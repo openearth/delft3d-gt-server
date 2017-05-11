@@ -50,7 +50,11 @@ from delft3dcontainermanager.tasks import get_docker_log
 def default_svn_version():
     """Default SVN_Version for new Scenes.
     Also ensure there's always a row in the svn model."""
-    count = Version_SVN.objects.count()
+    if settings.REQUIRE_REVIEW:
+        count = Version_SVN.objects.filter(reviewed=True).count()
+    else:
+        count = Version_SVN.objects.count()
+
     if count == 0:
         logging.info("Creating default svn trunk model")
         version = Version_SVN(release='trunk', revision=settings.SVN_REV,
@@ -103,10 +107,7 @@ class Version_SVN(models.Model):
 
     def outdated(self):
         """Return bool if there are newer releases available."""
-        if settings.REQUIRE_REVIEW:
-            return Version_SVN.objects.filter(reviewed=settings.REQUIRE_REVIEW).order_by('-revision')[0].revision > self.revision
-        else:
-            return Version_SVN.objects.all().order_by('-revision')[0].revision > self.revision
+        return Version_SVN.objects.latest().revision > self.revision
 
     def compare_outdated(self):
         """Compare folder revisions with latest release."""
@@ -428,29 +429,35 @@ class Scene(models.Model):
         return self.version.outdated()
 
     def outdated_workflow(self):
-        outdated_folders = self.version.compare_outdated()
+        if self.is_outdated():
+            outdated_folders = self.version.compare_outdated()
 
-        if ('postprocess' in outdated_folders or 'export' in outdated_folders) and ('process' in outdated_folders or 'visualisation' in outdated_folders):
-            return self.workflows.redo_proc_postproc
+            if ('postprocess' in outdated_folders or 'export' in outdated_folders) and ('process' in outdated_folders or 'visualisation' in outdated_folders):
+                return self.workflows.redo_proc_postproc
 
-        elif ('postprocess' in outdated_folders or 'export' in outdated_folders):
-            return self.workflows.redo_postproc
+            elif ('postprocess' in outdated_folders or 'export' in outdated_folders):
+                return self.workflows.redo_postproc
 
-        elif ('process' in outdated_folders or 'visualisation' in outdated_folders):
-            return self.workflows.redo_proc
+            elif ('process' in outdated_folders or 'visualisation' in outdated_folders):
+                return self.workflows.redo_proc
 
-        # Default model is trunk with a revision number, but without any folder
-        # revisions
-        elif len(outdated_folders) == 0:
-            return self.workflows.redo_proc_postproc
+            # Default model is trunk with a revision number, but without any folder
+            # revisions
+            elif len(outdated_folders) == 0:
+                return self.workflows.redo_proc_postproc
 
+            else:
+                logging.error("Unable to resolve workflow for outdated scene. Folders: {}".format(
+                    outdated_folders))
+                return None
         else:
-            logging.error("Unable to resolve workflow for outdated scene. Folders: {}".format(
-                outdated_folders))
             return None
 
     def outdated_changelog(self):
-        return Version_SVN.objects.latest().changelog
+        if self.is_outdated():
+            return Version_SVN.objects.latest().changelog
+        else:
+            return ""
 
     # UI CONTROL METHODS
 
