@@ -665,7 +665,7 @@ class SceneSearchTestCase(TestCase):
         search_query_date_before_3 = {'created_before': '3000-01-01'}
         search_query_date_before_4 = {'created_before': 'aksjdfg'}
 
-        # self.assertEqual(len(self._request(search_query_date_before_1)), 0)
+        self.assertEqual(len(self._request(search_query_date_before_1)), 0)
         self.assertEqual(len(self._request(search_query_date_before_2)), 1)
         self.assertEqual(len(self._request(search_query_date_before_3)), 2)
         self.assertEqual(len(self._request(search_query_date_before_4)), 2)
