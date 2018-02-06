@@ -16,6 +16,7 @@ import zipfile
 from celery.result import AsyncResult
 
 from django.conf import settings  # noqa
+from constance import config as cconfig
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse_lazy
@@ -1284,7 +1285,7 @@ class Scene(models.Model):
                  self.phases.proc_fin for i in scene_phases)
             )
 
-            nodes_available = settings.MAX_SIMULATIONS * 2 - \
+            nodes_available = cconfig.MAX_SIMULATIONS * 2 - \
                 (number_simulations * 2 + number_processing)
 
             if (self.workflow == self.workflows.main and
