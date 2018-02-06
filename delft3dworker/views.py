@@ -3,7 +3,7 @@ Views for the ui.
 """
 from __future__ import absolute_import
 
-import datetime
+from datetime import datetime, timedelta
 import django_filters
 import io
 import json
@@ -17,6 +17,7 @@ from django.db.models import Q
 from django.forms.models import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.decorators import method_decorator
 from django.utils.text import slugify
@@ -51,6 +52,7 @@ from delft3dworker.serializers import SearchFormSerializer
 from delft3dworker.serializers import TemplateSerializer
 from delft3dworker.serializers import Version_SVNSerializer
 from delft3dworker.serializers import UserSerializer
+from delft3dworker.utils import tz_midnight
 
 
 # ################################### REST
@@ -368,28 +370,26 @@ class SceneViewSet(viewsets.ModelViewSet):
         if created_after != '':
             created_after_date = parse_date(created_after)
             if created_after_date:
-                queryset = queryset.filter(
-                    date_created__gte=created_after_date)
+                dt = tz_midnight(created_after_date)
+                queryset = queryset.filter(date_created__gte=dt)
 
         if created_before != '':
             created_before_date = parse_date(created_before)
             if created_before_date:
-                queryset = queryset.filter(
-                    date_created__lte=created_before_date + datetime.timedelta(
-                        days=1))
+                dt = tz_midnight(created_before_date + timedelta(days=1))
+                queryset = queryset.filter(date_created__lte=dt)
 
         if started_after != '':
             started_after_date = parse_date(started_after)
             if started_after_date:
-                queryset = queryset.filter(
-                    date_started__gte=started_after_date)
+                dt = tz_midnight(started_after_date)
+                queryset = queryset.filter(date_started__gte=dt)
 
         if started_before != '':
             started_before_date = parse_date(started_before)
             if started_before_date:
-                queryset = queryset.filter(
-                    date_started__lte=started_before_date + datetime.timedelta(
-                        days=1))
+                dt = tz_midnight(started_before_date + timedelta(days=1))
+                queryset = queryset.filter(date_started__lte=dt)
 
         return queryset.distinct().order_by('name')
 

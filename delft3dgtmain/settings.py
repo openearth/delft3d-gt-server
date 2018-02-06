@@ -216,6 +216,8 @@ if 'test' in sys.argv:
 
     from teamcity import is_running_under_teamcity
     from celery import Celery
+    import logging
+    logging.disable(logging.CRITICAL)
 
     DATABASES = {
         'default': {

@@ -1,6 +1,27 @@
 import re
 import sys
 from django.conf import settings
+from django.utils import timezone
+from datetime import time, datetime
+
+
+def tz_now():
+    """Return current timezone aware datetime with default timezone
+    as defined in settings.py."""
+    return timezone.make_aware(datetime.now(), timezone.get_default_timezone())
+
+def tz_midnight(date):
+    """Return timezone aware datetime from given date."""
+    t = time(0, 0, 0, tzinfo=timezone.get_default_timezone())
+    return datetime.combine(date, t)
+
+def apply_default_tz(dt):
+    """Return given timezone aware datetime with default timezone
+    as defined in settings.py."""
+    if dt is None:
+        return None
+    else:
+        return timezone.make_aware(dt, timezone.get_default_timezone())
 
 
 def version_default():
