@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'django_filters',
     'crispy_forms',
     'guardian',
     'delft3dcontainermanager',
@@ -190,11 +191,14 @@ REST_FRAMEWORK = {
         # 'delft3dworker.permissions.ViewObjectPermissions',
     ],
     'DEFAULT_FILTER_BACKENDS': [
-        'rest_framework.filters.DjangoFilterBackend',
-        'rest_framework.filters.SearchFilter',
+        # 'rest_framework.filters.DjangoFilterBackend',
+        'django_filters.rest_framework.DjangoFilterBackend',
+        # 'django_filters.rest_framework.FilterSet',
+        # 'rest_framework.filters.SearchFilter',
         # 'rest_framework.filters.DjangoObjectPermissionsFilter',
     ]
 }
+
 
 # import provisioned settings
 try:
