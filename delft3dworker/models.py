@@ -130,8 +130,8 @@ class Scenario(models.Model):
 
     template = models.ForeignKey('Template', blank=True, null=True)
 
-    scenes_parameters = JSONField(blank=True, null=True)
-    parameters = JSONField(blank=True)
+    scenes_parameters = JSONField(blank=True, default={})
+    parameters = JSONField(blank=True, default={})
 
     owner = models.ForeignKey(User, null=True)
 
@@ -322,7 +322,7 @@ class Scene(models.Model):
 
     fileurl = models.CharField(max_length=256)
     info = JSONField(blank=True, default={})
-    parameters = JSONField(blank=True)  # {"dt":20}
+    parameters = JSONField(blank=True, default={})  # {"dt":20}
     state = models.CharField(max_length=256, default="CREATED")
     progress = models.IntegerField(default=0)
     task_id = models.CharField(max_length=256, blank=True)
@@ -1873,8 +1873,8 @@ class SearchForm(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    templates = JSONField(default='[]')
-    sections = JSONField(default='[]')
+    templates = JSONField(default=[])
+    sections = JSONField(default=[])
 
     def update(self):
         self.templates = "[]"
@@ -1985,8 +1985,8 @@ class Template(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    meta = JSONField(blank=True)
-    sections = JSONField(blank=True)
+    meta = JSONField(blank=True, default={})
+    sections = JSONField(blank=True, default={})
 
     # The following method is disabled as it adds to much garbage
     # to the MAIN search template
