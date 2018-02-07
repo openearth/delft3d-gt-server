@@ -156,7 +156,6 @@ class Scenario(models.Model):
 
     def createscenes(self, user):
         for i, sceneparameters in enumerate(self.scenes_parameters):
-            print(i, sceneparameters)
             # Create hash
             m = hashlib.sha256()
             m.update(str(sceneparameters))
@@ -589,7 +588,6 @@ class Scene(models.Model):
                 ''
             )
 
-            print(self.info)
             # Hack to have the "dt:20" in the correct format
             if self.parameters == "":
                 self.parameters = {"delft3d": self.info}
