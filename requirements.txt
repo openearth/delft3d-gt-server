@@ -3,7 +3,7 @@ anyjson==0.3.3
 backports.ssl-match-hostname==3.5.0.1
 billiard==3.5
 celery==4.1
-celery-once==0.1.4
+celery-once==1.2
 configparser==3.5.0
 Django==1.11
 django-filter==1.1
