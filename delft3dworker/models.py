@@ -31,9 +31,8 @@ from guardian.shortcuts import get_groups_with_perms
 from guardian.shortcuts import get_objects_for_user
 from guardian.shortcuts import remove_perm
 
-from jsonfield import JSONField
-# from django.contrib.postgres.fields import JSONField  # When we use
-# Postgresql 9.4
+# from jsonfield import JSONField
+from django.contrib.postgres.fields import JSONField
 
 from delft3dworker.utils import log_progress_parser, version_default, get_version
 
@@ -131,7 +130,7 @@ class Scenario(models.Model):
 
     template = models.ForeignKey('Template', blank=True, null=True)
 
-    scenes_parameters = JSONField(blank=True)
+    scenes_parameters = JSONField(blank=True, null=True)
     parameters = JSONField(blank=True)
 
     owner = models.ForeignKey(User, null=True)
@@ -157,7 +156,7 @@ class Scenario(models.Model):
 
     def createscenes(self, user):
         for i, sceneparameters in enumerate(self.scenes_parameters):
-
+            print(i, sceneparameters)
             # Create hash
             m = hashlib.sha256()
             m.update(str(sceneparameters))
@@ -322,7 +321,7 @@ class Scene(models.Model):
     date_started = models.DateTimeField(blank=True, null=True)
 
     fileurl = models.CharField(max_length=256)
-    info = JSONField(blank=True)
+    info = JSONField(blank=True, default={})
     parameters = JSONField(blank=True)  # {"dt":20}
     state = models.CharField(max_length=256, default="CREATED")
     progress = models.IntegerField(default=0)
@@ -590,6 +589,7 @@ class Scene(models.Model):
                 ''
             )
 
+            print(self.info)
             # Hack to have the "dt:20" in the correct format
             if self.parameters == "":
                 self.parameters = {"delft3d": self.info}
