@@ -6,7 +6,11 @@ from django.test import TestCase
 from fakeredis import FakeStrictRedis
 from mock import patch, PropertyMock
 from six.moves import configparser
-from time import time
+from time import time, sleep
+
+from celery_once import QueueOnce
+from celery_once.backends import redis
+import importlib
 
 from delft3dcontainermanager.tasks import delft3dgt_pulse
 from delft3dcontainermanager.tasks import get_docker_ps
@@ -17,34 +21,29 @@ from delft3dcontainermanager.tasks import do_docker_stop
 from delft3dcontainermanager.tasks import do_docker_remove
 from delft3dcontainermanager.tasks import do_docker_sync_filesystem
 
-
 class AsyncTaskTest(TestCase):
-    @patch('delft3dcontainermanager.tasks.QueueOnce.once_backend', new_callable=PropertyMock)
     @patch('delft3dcontainermanager.tasks.call_command')
+    @patch('celery_once.backends.redis.Redis.redis', new_callable=FakeStrictRedis)
     @patch('delft3dcontainermanager.tasks.QueueOnce.once_config', new_callable=PropertyMock)
-    def test_delft3dgt_pulse(self,mockConfig, mockCall, mockBackend):
+    def test_delft3dgt_pulse(self,mockConfig, mockBackend, mockCall):
         """
         Assert that de delft3dgt_pulse task
         calls the containersync_sceneupdate() only once.
         """
-        mockConfig = {
-          'backend': 'celery_once.backends.Redis',
+
+        mockConfig.return_value = {
+          'backend': 'celery_once.backends.redis.Redis',
           'settings': {
-            'url': FakeStrictRedis,
-            'default_timeout': 60 * 60
+            'url': 'redis://localhost:3679',
+            'default_timeout': 1
           }
         }
 
-        mockBackend = FakeStrictRedis
-
         delft3dgt_pulse.delay()
 
-        # Fakeredis stores at module level
-        fake = FakeStrictRedis()
         # Set redis key with TTL 100 seconds from now
         # so subsequent tasks won't run
-        fake.set('qo_delft3dcontainermanager.tasks.delft3dgt_pulse',
-                 int(time()) + 100)
+        mockBackend.set('qo_delftcontainermanager.tasks.delft3dgt_pulse', 10000000000)
 
         delft3dgt_pulse.delay()
         delft3dgt_pulse.delay()
