@@ -213,12 +213,18 @@ if 'test' in sys.argv:
     from teamcity import is_running_under_teamcity
     from celery import Celery
 
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    if 'TRAVIS' in os.environ:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql_psycopg2',
+                'NAME': 'travis_ci_test',
+                'USER': 'postgres',
+                'HOST': 'localhost',
+                'PORT': '5432',
+            }
         }
-    }
+    else:
+        DATABASES['default'].update({'NAME': 'djangodb_test'})
 
     # Debug on running tests
     DEBUG = True
