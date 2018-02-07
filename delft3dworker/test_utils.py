@@ -2,7 +2,12 @@ from __future__ import absolute_import
 
 # from celery.states import SUCCESS, PENDING
 
+from django.conf import settings
+from django.utils import timezone
+from datetime import time, datetime, date
+
 from delft3dworker.utils import log_progress_parser
+from delft3dworker.utils import apply_default_tz, tz_midnight
 
 from django.test import TestCase
 
@@ -45,3 +50,18 @@ INFO:root:Finished
         log = """INFO:preprocess:writing /data/output/a.dep"""
         progress = log_progress_parser(log, 'python')
         self.assertTrue(progress is None)
+
+
+class DateTests(TestCase):
+
+    def test_apply_default_tz(self):
+        self.assertTrue(apply_default_tz(None) is None)
+        dt = apply_default_tz(datetime.now())
+        self.assertEquals(dt.tzinfo, timezone.get_default_timezone())
+
+    def test_tz_midnight(self):
+        dt = tz_midnight(date.today())
+        self.assertEquals(dt.hour, 0)
+        self.assertEquals(dt.minute, 0)
+        self.assertEquals(dt.second, 0)
+        self.assertEquals(dt.tzinfo, timezone.get_default_timezone())
