@@ -29,6 +29,7 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -41,11 +42,18 @@ INSTALLED_APPS = [
     'rest_framework',
     'crispy_forms',
     'guardian',
+    'constance',
+    'constance.backends.database',
+
     'delft3dcontainermanager',
     'delft3dworker',
     'delft3dgtfrontend',
     'delft3dgtprotectedservices',
 ]
+
+CONSTANCE_CONFIG = {
+    'MAX_SIMULATIONS': (2, "Max simulations that can run in Amazon."),
+}
 
 MIDDLEWARE_CLASSES = [
     'django.middleware.security.SecurityMiddleware',
@@ -208,6 +216,8 @@ if 'test' in sys.argv:
 
     from teamcity import is_running_under_teamcity
     from celery import Celery
+    import logging
+    logging.disable(logging.CRITICAL)
 
     DATABASES = {
         'default': {
