@@ -218,7 +218,6 @@ except ImportError:
 
 if 'test' in sys.argv:
 
-    from teamcity import is_running_under_teamcity
     from celery import Celery
     import logging
     logging.disable(logging.CRITICAL)
@@ -241,9 +240,6 @@ if 'test' in sys.argv:
 
     # use a subdir for testing output
     WORKER_FILEDIR = 'test/'
-
-    if is_running_under_teamcity():
-        TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 
     # make sure celery delayed tasks are executed immediately
     CELERY_RESULT_BACKEND = 'cache'
