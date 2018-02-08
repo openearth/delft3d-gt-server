@@ -147,14 +147,6 @@ LOGIN_REDIRECT_URL = '/'
 # Celery
 # ######
 
-CELERY_ONCE = {
-  'backend': 'celery_once.backends.Redis',
-  'settings': {
-    'url': 'redis://:R8sxNFtcmXnmWE1DVeav@127.0.0.1:6379/0',
-    'default_timeout': 60 * 60
-  }
-}
-
 # Disabling rate limits altogether is recommended if you don't have any tasks
 # using them. This is because the rate limit subsystem introduces quite a lot
 # of complexity.
