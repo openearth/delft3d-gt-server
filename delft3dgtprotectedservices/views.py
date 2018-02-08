@@ -102,7 +102,7 @@ def thredds_static(request, loc):
                         request.user = user
 
 
-    if not request.user.is_authenticated():
+    if not request.user.is_authenticated:
         return HttpResponse(status=403)
 
     # redirect to nginx thredds

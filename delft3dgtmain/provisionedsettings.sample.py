@@ -50,8 +50,6 @@ SVN_EXP_REV = '<revision number>'
 BROKER_URL = 'redis://'
 CELERY_RESULT_BACKEND = 'redis://'
 
-# max number of simulations
-MAX_SIMULATIONS = 1
 REQUIRE_REVIEW = False
 
 # EMAIL backend

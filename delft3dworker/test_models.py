@@ -7,6 +7,7 @@ import zipfile
 from datetime import timedelta
 
 from django.conf import settings
+from constance import config as cconfig
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
@@ -438,7 +439,7 @@ class SceneTestCase(TestCase):
         started_date = None
 
         version_old = Version_SVN.objects.create(
-            release='', revision=-1000, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
+            release='', revision=1, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
         version_new = Version_SVN.objects.create(
             release='', revision=999, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
 
@@ -1173,8 +1174,12 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
 
+    def test_set_max_simulations(self):
+        cconfig.MAX_SIMULATIONS = 42
+        self.assertEqual(cconfig.MAX_SIMULATIONS, 42)
+
     def test_max_simulations(self):
-        settings.MAX_SIMULATIONS=2
+        cconfig.MAX_SIMULATIONS = 2
 
         self.scene_1.phase = self.p.sim_create
         self.scene_2.phase = self.p.queued
@@ -1191,8 +1196,26 @@ class ScenarioPhasesTestCase(TestCase):
 
         self.scene_2.update_and_phase_shift()
         self.scene_4.update_and_phase_shift()
+
+        # Scene 2 is simulation and can't be started because it needs 2 containers
         self.assertEqual(self.scene_2.phase, self.p.queued)
+        # While Scene 4 only needs 1 container and can be started.
         self.assertEqual(self.scene_4.phase, self.p.sync_redo_create)
+
+        # Nothing can be started, scenes should stay queued
+        cconfig.MAX_SIMULATIONS = 0
+
+        self.scene_2.phase = self.p.queued
+        self.scene_4.phase = self.p.queued
+
+        self.scene_2.save()
+        self.scene_4.save()
+
+        self.scene_2.update_and_phase_shift()
+        self.scene_4.update_and_phase_shift()
+
+        self.assertEqual(self.scene_2.phase, self.p.queued)
+        self.assertEqual(self.scene_4.phase, self.p.queued)
 
 
 class ContainerTestCase(TestCase):

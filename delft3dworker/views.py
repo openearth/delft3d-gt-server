@@ -3,11 +3,9 @@ Views for the ui.
 """
 from __future__ import absolute_import
 
-import ast
-import datetime
+from datetime import datetime, timedelta
 import django_filters
 import io
-import json
 import logging
 import zipfile
 
@@ -17,12 +15,13 @@ import zipfile
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse_lazy
+from django.urls import reverse_lazy
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.forms.models import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.decorators import method_decorator
 from django.utils.text import slugify
@@ -58,6 +57,7 @@ from delft3dworker.serializers import SearchFormSerializer
 from delft3dworker.serializers import TemplateSerializer
 from delft3dworker.serializers import Version_SVNSerializer
 from delft3dworker.serializers import UserSerializer
+from delft3dworker.utils import tz_midnight
 
 
 # ################################### REST
@@ -81,7 +81,7 @@ class SceneFilter(e_filters.FilterSet):
     template, traversing db relationships.
     Needs an exact match (!)
     """
-    scenario = django_filters.CharFilter(name="scenario__name")
+    scenario = django_filters.CharFilter(field_name="scenario__name")
 
     class Meta:
         model = Scene
@@ -124,15 +124,9 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             instance = serializer.save()
             instance.owner = self.request.user
 
-            # Inspect validated field data.
-            # parameters = ast.literal_eval(serializer.validated_data['parameters']) if (
-            #     'parameters' in serializer.validated_data
-            # ) else None
-
             parameters = serializer.validated_data['parameters'] if (
                 'parameters' in serializer.validated_data
             ) else None
-
 
             if parameters:
                 # we're adding the template to the parameters
@@ -381,28 +375,26 @@ class SceneViewSet(viewsets.ModelViewSet):
         if created_after != '':
             created_after_date = parse_date(created_after)
             if created_after_date:
-                queryset = queryset.filter(
-                    date_created__gte=created_after_date)
+                dt = tz_midnight(created_after_date)
+                queryset = queryset.filter(date_created__gte=dt)
 
         if created_before != '':
             created_before_date = parse_date(created_before)
             if created_before_date:
-                queryset = queryset.filter(
-                    date_created__lte=created_before_date + datetime.timedelta(
-                        days=1))
+                dt = tz_midnight(created_before_date + timedelta(days=1))
+                queryset = queryset.filter(date_created__lte=dt)
 
         if started_after != '':
             started_after_date = parse_date(started_after)
             if started_after_date:
-                queryset = queryset.filter(
-                    date_started__gte=started_after_date)
+                dt = tz_midnight(started_after_date)
+                queryset = queryset.filter(date_started__gte=dt)
 
         if started_before != '':
             started_before_date = parse_date(started_before)
             if started_before_date:
-                queryset = queryset.filter(
-                    date_started__lte=started_before_date + datetime.timedelta(
-                        days=1))
+                dt = tz_midnight(started_before_date + timedelta(days=1))
+                queryset = queryset.filter(date_started__lte=dt)
 
         return queryset.distinct().order_by('name')
 
@@ -462,9 +454,9 @@ class SceneViewSet(viewsets.ModelViewSet):
         try:
             for scene in queryset:
                 scene.publish_company(request.user)
-        except (ValidationError, ValueError), e:
+        except (ValidationError, ValueError) as e:
             return Response(
-                    {'status': e.message},
+                    {'status': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -490,9 +482,9 @@ class SceneViewSet(viewsets.ModelViewSet):
         try:
             for scene in queryset:
                 scene.publish_world(request.user)
-        except (ValidationError, ValueError), e:
+        except (ValidationError, ValueError) as e:
             return Response(
-                    {'status': e.message},
+                    {'status': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 

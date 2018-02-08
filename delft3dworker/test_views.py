@@ -5,8 +5,9 @@ from datetime import datetime
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.test import TestCase
+from django.utils.timezone import make_aware
 
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -27,6 +28,7 @@ from delft3dworker.models import Template
 from delft3dworker.views import ScenarioViewSet
 from delft3dworker.views import SceneViewSet
 from delft3dworker.views import UserViewSet
+from delft3dworker.utils import apply_default_tz
 
 
 class ApiAccessTestCase(TestCase):
@@ -507,6 +509,7 @@ class SceneSearchTestCase(TestCase):
             release='NEW', revision=501, versions={'postprocess': 501, 'process': 501, 'export': 501, 'visualisation': 501}, url='', changelog='')
 
         self.user_bar = User.objects.create_user(
+            id=1,
             username='bar',
             password='secret'
         )
@@ -517,7 +520,7 @@ class SceneSearchTestCase(TestCase):
         self.scene_1 = Scene.objects.create(
             name='Testscene 1',
             owner=self.user_bar,
-            date_created=datetime(2333, 1, 1, 0, 0, 0, 0),
+            date_created=apply_default_tz(datetime(2333, 1, 1, 0, 0, 0, 0)),
             parameters={
                 'a': {'value': 2},
                 'hack': {'value': 'mud'},
@@ -542,7 +545,7 @@ class SceneSearchTestCase(TestCase):
         self.scene_2 = Scene.objects.create(
             name='Testscene 2',
             owner=self.user_bar,
-            date_created=datetime(2666, 1, 1, 0, 0, 0, 0),
+            date_created=apply_default_tz(datetime(2666, 1, 1, 0, 0, 0, 0)),
             parameters={
                 'a': {'value': 3},
                 'hack': {'value': 'grease'},

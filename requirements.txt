@@ -5,7 +5,8 @@ billiard==3.5
 celery==4.1
 celery-once==1.2
 configparser==3.5.0
-Django==1.11
+Django==1.11.*
+django-constance[database]==2.0.0
 django-filter==1.1
 django-crispy-forms==1.7.0
 django-jsonfield==1.0
@@ -24,5 +25,4 @@ redis==2.10.6
 requests==2.18.4
 six==1.11.0
 svn==0.3.45
-teamcity-messages==1.21
 websocket-client==0.46.0
