@@ -67,3 +67,29 @@ try:
     from provisionedsettings import *
 except ImportError:
     SECRET_KEY = 'test'
+
+if 'test' in sys.argv:
+    from celery import Celery
+
+    ONCE = {
+      'backend': 'celery_once.backends.Redis',
+      'settings': {
+        'url': 'redis://127.0.0.1:6379/0',
+        'default_timeout': 60 * 60
+      }
+    }
+
+    # Debug on running tests
+    DEBUG = True
+
+    # make sure celery delayed tasks are executed immediately
+    CELERY_RESULT_BACKEND = 'cache'
+    CELERY_CACHE_BACKEND = 'memory'
+    TASK_EXPIRE_TIME = 24 * 60 * 60  # Expire after a day
+    CELERY_ALWAYS_EAGER = True
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS = True  # Issue #75
+
+    app = Celery('delft3dgt')
+    app.conf.CELERY_ALWAYS_EAGER = True
+    app.conf.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+    app.conf.ONCE = ONCE

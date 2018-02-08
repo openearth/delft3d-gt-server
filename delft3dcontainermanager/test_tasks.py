@@ -8,10 +8,6 @@ from mock import patch, PropertyMock
 from six.moves import configparser
 from time import time, sleep
 
-from celery_once import QueueOnce
-from celery_once.backends import redis
-import importlib
-
 from delft3dcontainermanager.tasks import delft3dgt_pulse
 from delft3dcontainermanager.tasks import get_docker_ps
 from delft3dcontainermanager.tasks import get_docker_log
@@ -21,29 +17,27 @@ from delft3dcontainermanager.tasks import do_docker_stop
 from delft3dcontainermanager.tasks import do_docker_remove
 from delft3dcontainermanager.tasks import do_docker_sync_filesystem
 
+
 class AsyncTaskTest(TestCase):
+
+    def setUp(self):
+        self.get_redis = patch('celery_once.backends.redis.get_redis')
+        self.mocked_redis = self.get_redis.start()
+
+        self.redis = FakeStrictRedis()
+        self.mocked_redis.return_value = self.redis
+
     @patch('delft3dcontainermanager.tasks.call_command')
-    @patch('celery_once.backends.redis.Redis.redis', new_callable=FakeStrictRedis)
-    @patch('delft3dcontainermanager.tasks.QueueOnce.once_config', new_callable=PropertyMock)
-    def test_delft3dgt_pulse(self,mockConfig, mockBackend, mockCall):
+    def test_delft3dgt_pulse(self, mockCall):
         """
         Assert that de delft3dgt_pulse task
         calls the containersync_sceneupdate() only once.
         """
-
-        mockConfig.return_value = {
-          'backend': 'celery_once.backends.redis.Redis',
-          'settings': {
-            'url': 'redis://localhost:3679',
-            'default_timeout': 1
-          }
-        }
-
         delft3dgt_pulse.delay()
 
         # Set redis key with TTL 100 seconds from now
         # so subsequent tasks won't run
-        mockBackend.set('qo_delftcontainermanager.tasks.delft3dgt_pulse', 10000000000)
+        self.redis.set('qo_delft3dcontainermanager.tasks.delft3dgt_pulse', int(time()) + 100)
 
         delft3dgt_pulse.delay()
         delft3dgt_pulse.delay()
@@ -51,11 +45,18 @@ class AsyncTaskTest(TestCase):
         mockCall.assert_called_with('containersync_sceneupdate')
         self.assertEqual(mockCall.call_count, 1)
 
+    def tearDown(self):
+        self.get_redis.stop()
+
 
 class TaskTest(TestCase):
     mock_options = {
         'autospec': True,
     }
+
+    def setUp(self):
+        # Setup fake redis for testing.
+        self.r = FakeStrictRedis()
 
     @patch('delft3dcontainermanager.tasks.QueueOnce.once_backend', new_callable=PropertyMock)
     @patch('delft3dcontainermanager.tasks.call_command')
@@ -228,3 +229,7 @@ class TaskTest(TestCase):
         container, log = delay.result
         self.assertEqual(container, "id")
         self.assertEqual(log, "")
+
+    def tearDown(self):
+        # Clear data in fakeredis.
+        self.r.flushall()
