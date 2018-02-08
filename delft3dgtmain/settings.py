@@ -219,8 +219,6 @@ except ImportError:
 if 'test' in sys.argv:
 
     from celery import Celery
-    from celery_once.backends import Redis
-    from fakeredis import FakeStrictRedis
     import logging
     logging.disable(logging.CRITICAL)
 
@@ -243,7 +241,7 @@ if 'test' in sys.argv:
     # use a subdir for testing output
     WORKER_FILEDIR = 'test/'
 
-    ONCE = {
+    CELERY_ONCE = {
       'backend': 'celery_once.backends.Redis',
       'settings': {
         'url': 'redis://127.0.0.1:6379/0',
@@ -261,7 +259,7 @@ if 'test' in sys.argv:
     app = Celery('delft3dgt')
     app.conf.CELERY_ALWAYS_EAGER = True
     app.conf.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
-    app.conf.ONCE = ONCE
+    app.conf.ONCE = CELERY_ONCE
 
     # set dummy container image names to dummy images
     DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'
