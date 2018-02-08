@@ -42,13 +42,14 @@ INSTALLED_APPS = [
     'django_filters',
     'crispy_forms',
     'guardian',
+
     'delft3dcontainermanager',
     'delft3dworker',
     'delft3dgtfrontend',
     'delft3dgtprotectedservices',
 ]
 
-MIDDLEWARE_CLASSES = [
+MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

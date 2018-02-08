@@ -18,7 +18,7 @@ from celery.result import AsyncResult
 from django.conf import settings  # noqa
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse_lazy
+from django.urls import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
 from django.utils.timezone import now
@@ -128,12 +128,12 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.ForeignKey('Template', blank=True, null=True)
+    template = models.ForeignKey('Template', blank=True, null=True, on_delete=models.CASCADE)
 
     scenes_parameters = JSONField(blank=True, default={})
     parameters = JSONField(blank=True, default={})
 
-    owner = models.ForeignKey(User, null=True)
+    owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
     state = models.CharField(max_length=64, default="CREATED")
     progress = models.IntegerField(default=0)  # 0-100
@@ -332,7 +332,7 @@ class Scene(models.Model):
 
     shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
     shared = models.CharField(max_length=1, choices=shared_choices)
-    owner = models.ForeignKey(User, null=True)
+    owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
     workflows = Choices(
         (0, 'main', 'main workflow'),
@@ -409,7 +409,7 @@ class Scene(models.Model):
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
-    version = models.ForeignKey(Version_SVN, default=default_svn_version)
+    version = models.ForeignKey(Version_SVN, default=default_svn_version, on_delete=models.CASCADE)
 
     # PROPERTY METHODS
 
@@ -1404,7 +1404,7 @@ class Container(models.Model):
     desired to be.
     """
 
-    scene = models.ForeignKey(Scene)
+    scene = models.ForeignKey(Scene, on_delete=models.CASCADE)
 
     task_uuid = models.UUIDField(
         default=None, blank=True, null=True)

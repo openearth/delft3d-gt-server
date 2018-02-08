@@ -17,7 +17,7 @@ import zipfile
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse_lazy
+from django.urls import reverse_lazy
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.forms.models import model_to_dict
@@ -81,7 +81,7 @@ class SceneFilter(e_filters.FilterSet):
     template, traversing db relationships.
     Needs an exact match (!)
     """
-    scenario = django_filters.CharFilter(name="scenario__name")
+    scenario = django_filters.CharFilter(field_name="scenario__name")
 
     class Meta:
         model = Scene
@@ -124,15 +124,9 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             instance = serializer.save()
             instance.owner = self.request.user
 
-            # Inspect validated field data.
-            # parameters = ast.literal_eval(serializer.validated_data['parameters']) if (
-            #     'parameters' in serializer.validated_data
-            # ) else None
-
             parameters = serializer.validated_data['parameters'] if (
                 'parameters' in serializer.validated_data
             ) else None
-
 
             if parameters:
                 # we're adding the template to the parameters
@@ -462,9 +456,9 @@ class SceneViewSet(viewsets.ModelViewSet):
         try:
             for scene in queryset:
                 scene.publish_company(request.user)
-        except (ValidationError, ValueError), e:
+        except (ValidationError, ValueError) as e:
             return Response(
-                    {'status': e.message},
+                    {'status': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -490,9 +484,9 @@ class SceneViewSet(viewsets.ModelViewSet):
         try:
             for scene in queryset:
                 scene.publish_world(request.user)
-        except (ValidationError, ValueError), e:
+        except (ValidationError, ValueError) as e:
             return Response(
-                    {'status': e.message},
+                    {'status': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 

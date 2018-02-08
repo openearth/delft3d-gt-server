@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
                 ('parameters', jsonfield.fields.JSONField(default=dict, blank=True)),
                 ('state', models.CharField(default=b'CREATED', max_length=64)),
                 ('progress', models.IntegerField(default=0)),
-                ('owner', models.ForeignKey(to=settings.AUTH_USER_MODEL, null=True)),
+                ('owner', models.ForeignKey(to=settings.AUTH_USER_MODEL, null=True, on_delete=models.CASCADE)),
             ],
             options={
                 'permissions': (('view_scenario', 'View Scenario'),),
@@ -68,7 +68,7 @@ class Migration(migrations.Migration):
                 ('shared', models.CharField(max_length=1, choices=[(b'p', b'private'), (b'c', b'company'), (b'w', b'world')])),
                 ('workflow', models.PositiveSmallIntegerField(default=0, choices=[(0, b'main workflow'), (1, b'redo processing workflow'), (2, b'redo postprocessing workflow'), (3, b'redo processing and postprocessing workflow')])),
                 ('phase', models.PositiveSmallIntegerField(default=0, choices=[(0, b'New'), (2, b'Allocating preprocessing resources'), (3, b'Starting preprocessing'), (4, b'Running preprocessing'), (5, b'Finished preprocessing'), (6, b'Idle: waiting for user input'), (10, b'Allocating simulation resources'), (11, b'Starting simulation'), (12, b'Running simulation'), (15, b'Finishing simulation'), (13, b'Finished simulation'), (14, b'Stopping simulation'), (60, b'Allocating processing resources'), (61, b'Starting processing'), (62, b'Running processing'), (63, b'Finished processing'), (20, b'Allocating postprocessing resources'), (21, b'Starting postprocessing'), (22, b'Running postprocessing'), (23, b'Finished postprocessing'), (30, b'Allocating export resources'), (31, b'Starting export'), (32, b'Running export'), (33, b'Finished export'), (17, b'Starting container remove'), (18, b'Removing containers'), (19, b'Containers removed'), (40, b'Allocating synchronization resources'), (41, b'Started synchronization'), (42, b'Running synchronization'), (43, b'Finished synchronization'), (50, b'Allocating synchronization resources'), (51, b'Started synchronization'), (52, b'Running synchronization'), (53, b'Finished synchronization'), (500, b'Finished'), (1000, b'Starting Abort'), (1001, b'Aborting'), (1002, b'Finished Abort'), (1003, b'Queued')])),
-                ('owner', models.ForeignKey(to=settings.AUTH_USER_MODEL, null=True)),
+                ('owner', models.ForeignKey(to=settings.AUTH_USER_MODEL, null=True, on_delete=models.CASCADE)),
                 ('scenario', models.ManyToManyField(to='delft3dworker.Scenario', blank=True)),
             ],
             options={
@@ -116,16 +116,16 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='scene',
             name='version',
-            field=models.ForeignKey(default=delft3dworker.models.default_svn_version, to='delft3dworker.Version_SVN'),
+            field=models.ForeignKey(default=delft3dworker.models.default_svn_version, to='delft3dworker.Version_SVN', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='scenario',
             name='template',
-            field=models.ForeignKey(blank=True, to='delft3dworker.Template', null=True),
+            field=models.ForeignKey(blank=True, to='delft3dworker.Template', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='container',
             name='scene',
-            field=models.ForeignKey(to='delft3dworker.Scene'),
+            field=models.ForeignKey(to='delft3dworker.Scene', on_delete=models.CASCADE),
         ),
     ]
