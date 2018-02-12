@@ -71,7 +71,7 @@ except ImportError:
 if 'test' in sys.argv:
     from celery import Celery
 
-    ONCE = {
+    CELERY_ONCE = {
       'backend': 'celery_once.backends.Redis',
       'settings': {
         'url': 'redis://127.0.0.1:6379/0',

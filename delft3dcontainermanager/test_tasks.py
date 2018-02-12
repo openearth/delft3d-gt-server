@@ -46,6 +46,7 @@ class AsyncTaskTest(TestCase):
         self.assertEqual(mockCall.call_count, 1)
 
     def tearDown(self):
+        self.redis.flushall()
         self.get_redis.stop()
 
 
@@ -55,48 +56,29 @@ class TaskTest(TestCase):
     }
 
     def setUp(self):
-        # Setup fake redis for testing.
-        self.r = FakeStrictRedis()
+        self.get_redis = patch('celery_once.backends.redis.get_redis')
+        self.mocked_redis = self.get_redis.start()
 
-    @patch('delft3dcontainermanager.tasks.QueueOnce.once_backend', new_callable=PropertyMock)
+        self.redis = FakeStrictRedis()
+        self.mocked_redis.return_value = self.redis
+
     @patch('delft3dcontainermanager.tasks.call_command')
-    @patch('delft3dcontainermanager.tasks.QueueOnce.once_config', new_callable=PropertyMock)
-    def test_delft3dgt_pulse(self,mockConfig, mockCall, mockBackend):
+    def test_delft3dgt_pulse(self, mockCall):
         """
         Assert that de delft3dgt_pulse task
         calls the containersync_sceneupdate() function.
         """
-        mockConfig = {
-          'backend': 'celery_once.backends.Redis',
-          'settings': {
-            'url': FakeStrictRedis,
-            'default_timeout': 60 * 60
-          }
-        }
-
-        mockBackend = FakeStrictRedis
 
         delft3dgt_pulse.delay()
         mockCall.assert_called_with('containersync_sceneupdate')
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     @patch('delft3dcontainermanager.tasks.logging.error', **mock_options)
-    @patch('delft3dcontainermanager.tasks.QueueOnce.once_backend', new_callable=PropertyMock)
-    @patch('delft3dcontainermanager.tasks.QueueOnce.once_config', new_callable=PropertyMock)
-    def test_get_docker_ps(self, mockConfig, mockBackend, mockLogging, mockClient):
+    def test_get_docker_ps(self, mockLogging, mockClient):
         """
         Assert that the docker_ps task
         calls the docker client.containers() function.
         """
-        mockConfig = {
-          'backend': 'celery_once.backends.Redis',
-          'settings': {
-            'url': FakeStrictRedis,
-            'default_timeout': 60 * 60
-          }
-        }
-
-        mockBackend = FakeStrictRedis
 
         containers = [{'Id': 'Aaa', 'Status': 'Running'},
                       {'Id': 'Bbb', 'Status': 'Host Down'},
@@ -231,5 +213,5 @@ class TaskTest(TestCase):
         self.assertEqual(log, "")
 
     def tearDown(self):
-        # Clear data in fakeredis.
-        self.r.flushall()
+        self.redis.flushall()
+        self.get_redis.stop()
