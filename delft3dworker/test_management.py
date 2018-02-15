@@ -67,25 +67,20 @@ class ManagementTest(TestCase):
             docker_id=''
         )
 
+        self.get_redis = patch('celery_once.backends.redis.get_redis')
+        self.mocked_redis = self.get_redis.start()
+
+        self.redis = FakeStrictRedis()
+        self.mocked_redis.return_value = self.redis
+
     @patch('delft3dworker.management.commands.'
            'containersync_sceneupdate.Container.update_from_docker_snapshot')
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
-    @patch('delft3dcontainermanager.tasks.QueueOnce.once_backend', new_callable=PropertyMock)
-    @patch('delft3dcontainermanager.tasks.QueueOnce.once_config', new_callable=PropertyMock)
-    def test_containersync_sceneupdate(self, mockConfig, mockBackend, mockClient, mockContainerupdate):
+    def test_containersync_sceneupdate(self, mockClient, mockContainerupdate):
         """
         Test match matrix for docker containers and model containers
         TODO: Add test case with timeout error as return_value
         """
-        mockConfig = {
-          'backend': 'celery_once.backends.Redis',
-          'settings': {
-            'url': FakeStrictRedis,
-            'default_timeout': 60 * 60
-          }
-        }
-
-        mockBackend = FakeStrictRedis
 
         def inspect(container=''):
            return {'Id': container, 'Config': {'Labels': {'type': 'preprocess'}}}
@@ -116,22 +111,12 @@ class ManagementTest(TestCase):
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     @patch('delft3dworker.management.commands.'
            'containersync_sceneupdate.AsyncResult')
-    @patch('delft3dcontainermanager.tasks.QueueOnce.once_backend', new_callable=PropertyMock)
-    @patch('delft3dcontainermanager.tasks.QueueOnce.once_config', new_callable=PropertyMock)
-    def test_containersync_scenekill(self, mockConfig, mockBackend, mockAsync, mockClient, mockContainerupdate):
+    def test_containersync_scenekill(self, mockAsync, mockClient, mockContainerupdate):
         """
         Test match matrix for docker containers and model containers
         TODO: Add test case with timeout error as return_value
         """
-        mockConfig = {
-          'backend': 'celery_once.backends.Redis',
-          'settings': {
-            'url': FakeStrictRedis,
-            'default_timeout': 60 * 60
-          }
-        }
 
-        mockBackend = FakeStrictRedis
         client = mockClient.return_value
         client.containers.return_value = [{'Id': 'abcdefg', 'Status': 'running',
                                            'Config': {'Labels': {'type': 'notfromhere'}}},
@@ -158,3 +143,7 @@ class ManagementTest(TestCase):
         call_command('scanbucket')
 
         self.assertEqual(mocklocalscan.call_count, 1)
+
+    def tearDown(self):
+        self.redis.flushall()
+        self.get_redis.stop()
