@@ -34,8 +34,8 @@ class Migration(migrations.Migration):
             name='parameters',
             field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={}),
         ),
-        migrations.RunSQL('ALTER TABLE scenario ALTER COLUMN 'parameters' TYPE jsonb USING 'parameters'::text::jsonb;',
-            reverse_sql='ALTER TABLE scenario ALTER COLUMN 'parameters' TYPE text USING 'parameters'::text;'
+        migrations.RunSQL('ALTER TABLE scenario ALTER COLUMN "parameters" TYPE jsonb USING "parameters"::text::jsonb;',
+            reverse_sql='ALTER TABLE scenario ALTER COLUMN "parameters" TYPE text USING "parameters"::text;'
         ),
         migrations.AlterField(
             model_name='scenario',
