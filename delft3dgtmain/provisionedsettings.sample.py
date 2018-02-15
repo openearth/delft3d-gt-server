@@ -49,6 +49,13 @@ SVN_EXP_REV = '<revision number>'
 # redis backend
 BROKER_URL = 'redis://'
 CELERY_RESULT_BACKEND = 'redis://'
+CELERY_ONCE = {
+  'backend': 'celery_once.backends.Redis',
+  'settings': {
+    'url': 'redis://',
+    'default_timeout': 60 * 60
+  }
+}
 
 REQUIRE_REVIEW = False
 
