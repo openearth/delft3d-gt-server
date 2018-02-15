@@ -34,10 +34,16 @@ class Migration(migrations.Migration):
             name='parameters',
             field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={}),
         ),
+        migrations.RunSQL("ALTER TABLE scenario ALTER COLUMN 'parameters' TYPE jsonb USING 'parameters'::text::jsonb;",
+            reverse_sql="ALTER TABLE scenario ALTER COLUMN 'parameters' TYPE text USING 'parameters'::text;"
+        ),
         migrations.AlterField(
             model_name='scenario',
             name='scenes_parameters',
             field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={}),
+        ),
+        migrations.RunSQL("ALTER TABLE scenario ALTER COLUMN 'scenes_parameters' TYPE jsonb USING 'scenes_parameters'::text::jsonb;",
+            reverse_sql="ALTER TABLE scenario ALTER COLUMN 'scenes_parameters' TYPE text USING 'scenes_parameters'::text;"
         ),
         migrations.AlterField(
             model_name='scene',
@@ -49,34 +55,55 @@ class Migration(migrations.Migration):
             name='info',
             field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={}),
         ),
+        migrations.RunSQL("ALTER TABLE scene ALTER COLUMN 'info' TYPE jsonb USING 'info'::text::jsonb;",
+            reverse_sql="ALTER TABLE scene ALTER COLUMN 'info' TYPE text USING 'info'::text;"
+        ),
         migrations.AlterField(
             model_name='scene',
             name='parameters',
             field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={}),
         ),
+        migrations.RunSQL("ALTER TABLE scene ALTER COLUMN 'parameters' TYPE jsonb USING 'parameters'::text::jsonb;",
+            reverse_sql="ALTER TABLE scene ALTER COLUMN 'parameters' TYPE text USING 'parameters'::text;"
+        ),
         migrations.AlterField(
             model_name='searchform',
             name='sections',
             field=django.contrib.postgres.fields.jsonb.JSONField(default=[]),
+        ),
+        migrations.RunSQL("ALTER TABLE searchform ALTER COLUMN 'sections' TYPE jsonb USING 'sections'::text::jsonb;",
+            reverse_sql="ALTER TABLE searchform ALTER COLUMN 'sections' TYPE text USING 'sections'::text;"
         ),
         migrations.AlterField(
             model_name='searchform',
             name='templates',
             field=django.contrib.postgres.fields.jsonb.JSONField(default=[]),
         ),
+        migrations.RunSQL("ALTER TABLE searchform ALTER COLUMN 'templates' TYPE jsonb USING 'templates'::text::jsonb;",
+            reverse_sql="ALTER TABLE searchform ALTER COLUMN 'templates' TYPE text USING 'templates'::text;"
+        ),
         migrations.AlterField(
             model_name='template',
             name='meta',
             field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={}),
+        ),
+        migrations.RunSQL("ALTER TABLE template ALTER COLUMN 'meta' TYPE jsonb USING 'meta'::text::jsonb;",
+            reverse_sql="ALTER TABLE template ALTER COLUMN 'meta' TYPE text USING 'meta'::text;"
         ),
         migrations.AlterField(
             model_name='template',
             name='sections',
             field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={}),
         ),
+        migrations.RunSQL("ALTER TABLE template ALTER COLUMN 'sections' TYPE jsonb USING 'sections'::text::jsonb;",
+            reverse_sql="ALTER TABLE template ALTER COLUMN 'sections' TYPE text USING 'sections'::text;"
+        ),
         migrations.AlterField(
             model_name='version_svn',
             name='versions',
             field=django.contrib.postgres.fields.jsonb.JSONField(default=b'{}'),
+        ),
+        migrations.RunSQL("ALTER TABLE version_svn ALTER COLUMN 'versions' TYPE jsonb USING 'versions'::text::jsonb;",
+            reverse_sql="ALTER TABLE version_svn ALTER COLUMN 'versions' TYPE text USING 'versions'::text;"
         ),
     ]
