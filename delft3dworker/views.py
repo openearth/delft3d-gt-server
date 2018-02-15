@@ -6,13 +6,17 @@ from __future__ import absolute_import
 from datetime import datetime, timedelta
 import django_filters
 import io
-import json
 import logging
 import zipfile
 
+# import sys
+# reload(sys)
+# sys.setdefaultencoding('utf-8')
+
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse_lazy
+from django.urls import reverse_lazy
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.forms.models import model_to_dict
 from django.http import HttpResponse
@@ -29,6 +33,7 @@ from django.views.generic import View
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
 
+from django_filters import rest_framework as e_filters
 from rest_framework import filters
 from rest_framework import status
 from rest_framework import viewsets
@@ -60,7 +65,7 @@ from delft3dworker.utils import tz_midnight
 
 # ### Filters
 
-class ScenarioFilter(filters.FilterSet):
+class ScenarioFilter(e_filters.FilterSet):
     """
     FilterSet to filter Scenarios on complex queries
     Needs an exact match (!)
@@ -70,13 +75,13 @@ class ScenarioFilter(filters.FilterSet):
         fields = ['name', ]
 
 
-class SceneFilter(filters.FilterSet):
+class SceneFilter(e_filters.FilterSet):
     """
     FilterSet to filter Scenes on complex queries, such as
     template, traversing db relationships.
     Needs an exact match (!)
     """
-    scenario = django_filters.CharFilter(name="scenario__name")
+    scenario = django_filters.CharFilter(field_name="scenario__name")
 
     class Meta:
         model = Scene
@@ -91,7 +96,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ScenarioSerializer
     filter_backends = (
-        filters.DjangoFilterBackend,
+        django_filters.rest_framework.DjangoFilterBackend,
         filters.SearchFilter,
         filters.OrderingFilter,
         filters.DjangoObjectPermissionsFilter,
@@ -119,7 +124,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             instance = serializer.save()
             instance.owner = self.request.user
 
-            # Inspect validated field data.
             parameters = serializer.validated_data['parameters'] if (
                 'parameters' in serializer.validated_data
             ) else None
@@ -129,6 +133,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
                 parameters['template'] = {'values': [instance.template.name]}
                 instance.load_settings(parameters)
                 instance.createscenes(self.request.user)
+
 
             assign_perm('add_scenario', self.request.user, instance)
             assign_perm('change_scenario', self.request.user, instance)
@@ -176,7 +181,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     """
     serializer_class = SceneSparseSerializer
     filter_backends = (
-        filters.DjangoFilterBackend,
+        django_filters.rest_framework.DjangoFilterBackend,
         filters.SearchFilter,
         filters.OrderingFilter,
         filters.DjangoObjectPermissionsFilter,
@@ -449,11 +454,11 @@ class SceneViewSet(viewsets.ModelViewSet):
         try:
             for scene in queryset:
                 scene.publish_company(request.user)
-        except ValueError, e:
+        except (ValidationError, ValueError) as e:
             return Response(
-                {'status': e.message},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+                    {'status': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         return Response({'status': 'Published scenes to company'})
 
@@ -477,11 +482,11 @@ class SceneViewSet(viewsets.ModelViewSet):
         try:
             for scene in queryset:
                 scene.publish_world(request.user)
-        except ValueError, e:
+        except (ValidationError, ValueError) as e:
             return Response(
-                {'status': e.message},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+                    {'status': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         return Response({'status': 'Published scenes to world'})
 

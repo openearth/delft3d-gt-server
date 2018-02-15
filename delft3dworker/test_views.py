@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.test import TestCase
 from django.utils.timezone import make_aware
 
@@ -509,6 +509,7 @@ class SceneSearchTestCase(TestCase):
             release='NEW', revision=501, versions={'postprocess': 501, 'process': 501, 'export': 501, 'visualisation': 501}, url='', changelog='')
 
         self.user_bar = User.objects.create_user(
+            id=1,
             username='bar',
             password='secret'
         )

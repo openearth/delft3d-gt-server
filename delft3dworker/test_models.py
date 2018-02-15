@@ -439,7 +439,7 @@ class SceneTestCase(TestCase):
         started_date = None
 
         version_old = Version_SVN.objects.create(
-            release='', revision=-1000, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
+            release='', revision=1, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
         version_new = Version_SVN.objects.create(
             release='', revision=999, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
 

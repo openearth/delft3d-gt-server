@@ -19,7 +19,7 @@ from django.conf import settings  # noqa
 from constance import config as cconfig
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse_lazy
+from django.urls import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
 from django.utils.timezone import now
@@ -32,9 +32,8 @@ from guardian.shortcuts import get_groups_with_perms
 from guardian.shortcuts import get_objects_for_user
 from guardian.shortcuts import remove_perm
 
-from jsonfield import JSONField
-# from django.contrib.postgres.fields import JSONField  # When we use
-# Postgresql 9.4
+# from jsonfield import JSONField
+from django.contrib.postgres.fields import JSONField
 
 from delft3dworker.utils import log_progress_parser, version_default, get_version, tz_now
 
@@ -130,12 +129,12 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.ForeignKey('Template', blank=True, null=True)
+    template = models.ForeignKey('Template', blank=True, null=True, on_delete=models.CASCADE)
 
-    scenes_parameters = JSONField(blank=True)
-    parameters = JSONField(blank=True)
+    scenes_parameters = JSONField(blank=True, default={})
+    parameters = JSONField(blank=True, default={})
 
-    owner = models.ForeignKey(User, null=True)
+    owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
     state = models.CharField(max_length=64, default="CREATED")
     progress = models.IntegerField(default=0)  # 0-100
@@ -158,7 +157,6 @@ class Scenario(models.Model):
 
     def createscenes(self, user):
         for i, sceneparameters in enumerate(self.scenes_parameters):
-
             # Create hash
             m = hashlib.sha256()
             m.update(str(sceneparameters))
@@ -323,8 +321,8 @@ class Scene(models.Model):
     date_started = models.DateTimeField(blank=True, null=True)
 
     fileurl = models.CharField(max_length=256)
-    info = JSONField(blank=True)
-    parameters = JSONField(blank=True)  # {"dt":20}
+    info = JSONField(blank=True, default={})
+    parameters = JSONField(blank=True, default={})  # {"dt":20}
     state = models.CharField(max_length=256, default="CREATED")
     progress = models.IntegerField(default=0)
     task_id = models.CharField(max_length=256, blank=True)
@@ -335,7 +333,7 @@ class Scene(models.Model):
 
     shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
     shared = models.CharField(max_length=1, choices=shared_choices)
-    owner = models.ForeignKey(User, null=True)
+    owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
     workflows = Choices(
         (0, 'main', 'main workflow'),
@@ -412,7 +410,7 @@ class Scene(models.Model):
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
-    version = models.ForeignKey(Version_SVN, default=default_svn_version)
+    version = models.ForeignKey(Version_SVN, default=default_svn_version, on_delete=models.CASCADE)
 
     # PROPERTY METHODS
 
@@ -1407,7 +1405,7 @@ class Container(models.Model):
     desired to be.
     """
 
-    scene = models.ForeignKey(Scene)
+    scene = models.ForeignKey(Scene, on_delete=models.CASCADE)
 
     task_uuid = models.UUIDField(
         default=None, blank=True, null=True)
@@ -1874,8 +1872,8 @@ class SearchForm(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    templates = JSONField(default='[]')
-    sections = JSONField(default='[]')
+    templates = JSONField(default=[])
+    sections = JSONField(default=[])
 
     def update(self):
         self.templates = "[]"
@@ -1986,8 +1984,8 @@ class Template(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    meta = JSONField(blank=True)
-    sections = JSONField(blank=True)
+    meta = JSONField(blank=True, default={})
+    sections = JSONField(blank=True, default={})
 
     # The following method is disabled as it adds to much garbage
     # to the MAIN search template
