@@ -241,6 +241,14 @@ if 'test' in sys.argv:
     # use a subdir for testing output
     WORKER_FILEDIR = 'test/'
 
+    CELERY_ONCE = {
+      'backend': 'celery_once.backends.Redis',
+      'settings': {
+        'url': 'redis://127.0.0.1:6379/0',
+        'default_timeout': 60 * 60
+      }
+    }
+
     # make sure celery delayed tasks are executed immediately
     CELERY_RESULT_BACKEND = 'cache'
     CELERY_CACHE_BACKEND = 'memory'
@@ -251,6 +259,7 @@ if 'test' in sys.argv:
     app = Celery('delft3dgt')
     app.conf.CELERY_ALWAYS_EAGER = True
     app.conf.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+    app.conf.ONCE = CELERY_ONCE
 
     # set dummy container image names to dummy images
     DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'

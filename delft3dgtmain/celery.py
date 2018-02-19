@@ -13,6 +13,7 @@ app = Celery('delft3dgt')
 
 # Using a string here means the worker will not have to
 # pickle the object when using Windows.
+app.conf.ONCE = settings.CELERY_ONCE  # force CELERY_ONCE to load settings
 app.config_from_object('django.conf:settings')
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
