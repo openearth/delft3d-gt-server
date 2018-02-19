@@ -4,9 +4,9 @@ import os
 
 from django.test import TestCase
 from fakeredis import FakeStrictRedis
-from mock import patch, PropertyMock
+from mock import patch
 from six.moves import configparser
-from time import time, sleep
+from time import time
 
 from delft3dcontainermanager.tasks import delft3dgt_pulse
 from delft3dcontainermanager.tasks import get_docker_ps
