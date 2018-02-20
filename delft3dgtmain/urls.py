@@ -39,6 +39,3 @@ urlpatterns = [
         include('delft3dgtfrontend.urls')),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-
-handler403 = 'delft3dgtfrontend.views.handler403'
-handler404 = 'delft3dgtfrontend.views.handler404'
