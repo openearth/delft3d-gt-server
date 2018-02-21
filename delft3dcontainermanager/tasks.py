@@ -76,7 +76,7 @@ def get_docker_ps(self):
         try:
             inspect = client.inspect_container(container_id)
             inspected_containers.append(inspect)
-        except Exception, e:
+        except Exception as e:
             logging.error("Could not inspect {}: {}".format(
                 container_id, str(e)))
 

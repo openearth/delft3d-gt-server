@@ -92,7 +92,7 @@ class Version_SVN(models.Model):
     release = models.CharField(
         max_length=256, db_index=True)  # tag/release name
     revision = models.PositiveSmallIntegerField(db_index=True)  # svn_version
-    versions = JSONField(default='{}')  # folder revisions
+    versions = JSONField(default={})  # folder revisions
     url = models.URLField(max_length=200)  # repos_url
     changelog = models.CharField(max_length=256)  # release notes
     reviewed = models.BooleanField(default=False)
@@ -159,7 +159,7 @@ class Scenario(models.Model):
         for i, sceneparameters in enumerate(self.scenes_parameters):
             # Create hash
             m = hashlib.sha256()
-            m.update(str(sceneparameters))
+            m.update(str(sceneparameters).encode('utf-8'))
             phash = m.hexdigest()
 
             # Check if hash already exists
@@ -1478,8 +1478,7 @@ class Container(models.Model):
             if result.successful():
                 docker_id, docker_log = result.result
                 # only write the id if the result is as expected
-                if docker_id is not None and (isinstance(docker_id, str) or
-                                              isinstance(docker_id, unicode)):
+                if docker_id is not None and (isinstance(docker_id, str)):
                     self.docker_id = docker_id
                 else:
                     logging.warn(
@@ -1489,7 +1488,7 @@ class Container(models.Model):
                 # only write the log if the result is as expected and there is
                 # an actual log
                 if docker_log is not None and isinstance(
-                        docker_log, unicode) and docker_log != '':
+                        docker_log, str) and docker_log != '':
                     self.docker_log = docker_log
                     progress = log_progress_parser(self.docker_log,
                                                    self.container_type)

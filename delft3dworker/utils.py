@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import re
 import sys
 from django.conf import settings

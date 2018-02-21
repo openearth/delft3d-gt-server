@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from __future__ import absolute_import
 from django.db import migrations, models
 import jsonfield.fields
 
@@ -27,6 +28,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='container',
             name='version',
-            field=jsonfield.fields.JSONField(default=b'{}'),
+            field=jsonfield.fields.JSONField(default={}),
         ),
     ]

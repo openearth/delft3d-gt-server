@@ -1,13 +1,14 @@
+from __future__ import absolute_import
 from django.contrib import admin
 
 from guardian.admin import GuardedModelAdmin
 
-from models import Scenario
-from models import Scene
-from models import Container
-from models import SearchForm
-from models import Template
-from models import Version_SVN
+from .models import Scenario
+from .models import Scene
+from .models import Container
+from .models import SearchForm
+from .models import Template
+from .models import Version_SVN
 
 
 class ContainerInline(admin.StackedInline):

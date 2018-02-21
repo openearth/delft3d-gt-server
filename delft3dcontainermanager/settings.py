@@ -14,6 +14,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: don't run with debug turned on in production!
+from __future__ import absolute_import
 import sys
 
 DEBUG = True
@@ -66,12 +67,12 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 
 # import provisioned settings
 try:
-    from provisionedsettings import *
+    from .provisionedsettings import *
 except ImportError:
     SECRET_KEY = 'test'
 
 if 'test' in sys.argv:
-    from celery import Celery
+    from .celery import Celery
 
     CELERY_ONCE = {
       'backend': 'celery_once.backends.Redis',
