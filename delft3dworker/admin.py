@@ -1,4 +1,8 @@
+import os
+
 from django.contrib import admin
+from django.core.mail import send_mail
+from django.conf import settings
 
 from guardian.admin import GuardedModelAdmin
 
@@ -31,7 +35,8 @@ class SceneAdmin(GuardedModelAdmin):
         ContainerInline,
     ]
 
-    actions = ['resync']
+    actions = ['resync',
+               'check_sync']
 
     def resync(self, request, queryset):
         """
@@ -43,6 +48,22 @@ class SceneAdmin(GuardedModelAdmin):
         self.message_user(
             request, "{} scene(s) set to sychronization phase.".format(rows_updated))
 
+    def check_sync(self, request, queryset):
+        finshed_runs = queryset.filter(phase=Scene.phases.fin)
+        sync_failed = []
+        for obj in finshed_runs:
+            sync_log = os.path.join(obj.workingdir, 'log', 'sync_cleanup.log')
+            if os.path.exists(sync_log):
+                if 'SYNC_STATUS' in open(sync_log).read():
+                    sync_failed.append(obj.name)
+        if len(sync_failed) == 0:
+            subject = "Delft3D-gt: Rustig ademhalen, niks aan de hand! :)"
+        else:
+            subject = "Delft3d-gt synchronization problems"
+        message = ', '.join(sync_failed)           
+        from_email = settings.DEFAULT_FROM_EMAIL
+        recipient_list = ["delft3d-gt@deltares.nl"]
+        send_mail(subject, message, from_email, recipient_list)
 
 @admin.register(Container)
 class ContainerAdmin(GuardedModelAdmin):
