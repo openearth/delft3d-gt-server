@@ -38,8 +38,11 @@ class SceneAdmin(GuardedModelAdmin):
         This action will sync EFS with S3 again.
         Use this action if objects are missing after run is finished.
         """
-        rows_updated = queryset.filter(phase=Scene.phases.fin).update(phase=Scene.phases.sync_create)
-        self.message_user(request, "{} scene(s) set to sychronization phase.".format(rows_updated))
+        rows_updated = queryset.filter(phase=Scene.phases.fin).update(
+            phase=Scene.phases.sync_create)
+        self.message_user(
+            request, "{} scene(s) set to sychronization phase.".format(rows_updated))
+
 
 @admin.register(Container)
 class ContainerAdmin(GuardedModelAdmin):
