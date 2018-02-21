@@ -14,11 +14,13 @@ class AdminTest(TestCase):
 
     def setUp(self):
             self.scene_a = Scene.objects.create(
+                id=0,
                 name='Scene A',
                 phase=Scene.phases.new
             )
 
             self.scene_b = Scene.objects.create(
+                id=1,
                 name='Scene B',
                 phase=Scene.phases.fin
             )
@@ -31,11 +33,11 @@ class AdminTest(TestCase):
             """
             self.p = self.scene_a.phases
             request = Mock()
+
             queryset = Scene.objects.all()
             self.scene_admin.resync(request, queryset)
-            print('1----- ', self.scene_a.phase)
-            print('2----- ', self.p.new)
-            print('3----- ', self.scene_b.phase)
-            print('4----- ', self.p.sync_create)
-            # self.assertEqual(self.scene_a.phase = p.new)
 
+            # scene_a should still be new
+            # scene_b should be in sync_create
+            self.assertEqual(Scene.objects.get(id=0).phase, Scene.phases.new)
+            self.assertEqual(Scene.objects.get(id=1).phase, Scene.phases.sync_create)
