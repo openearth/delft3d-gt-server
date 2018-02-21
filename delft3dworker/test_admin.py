@@ -1,13 +1,12 @@
 from __future__ import absolute_import
 
-from django.test import Client, TestCase
 from mock import Mock
 
 from django.contrib.admin.sites import AdminSite
+from django.test import Client, TestCase
 
 from delft3dworker.models import Scene
 from delft3dworker.admin import SceneAdmin
-
 
 
 class AdminTest(TestCase):
@@ -31,9 +30,7 @@ class AdminTest(TestCase):
             """
             Test resync scenes. Only scenes in finished state should be resynced
             """
-            self.p = self.scene_a.phases
             request = Mock()
-
             queryset = Scene.objects.all()
             self.scene_admin.resync(request, queryset)
 
