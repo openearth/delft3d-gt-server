@@ -49,17 +49,23 @@ class SceneAdmin(GuardedModelAdmin):
             request, "{} scene(s) set to sychronization phase.".format(rows_updated))
 
     def check_sync(self, request, queryset):
+        """
+        Action to send an email with a list of all scenes with synchronization problems.
+        """
         finshed_runs = queryset.filter(phase=Scene.phases.fin)
         sync_failed = []
+
         for obj in finshed_runs:
             sync_log = os.path.join(obj.workingdir, 'log', 'sync_cleanup.log')
             if os.path.exists(sync_log):
                 if 'SYNC_STATUS' in open(sync_log).read():
                     sync_failed.append(obj.name)
+
         if len(sync_failed) == 0:
-            subject = "Delft3D-gt: Rustig ademhalen, niks aan de hand! :)"
+            subject = "Delft3D-GT: No synchronization problems"
         else:
-            subject = "Delft3d-gt synchronization problems"
+            subject = "Delft3d-GT: Synchronization problems"
+
         message = ', '.join(sync_failed)           
         from_email = settings.DEFAULT_FROM_EMAIL
         recipient_list = ["delft3d-gt@deltares.nl"]
