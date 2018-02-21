@@ -64,7 +64,7 @@ class SceneAdmin(GuardedModelAdmin):
         if len(sync_failed) == 0:
             subject = "Delft3D-GT: No synchronization problems"
         else:
-            subject = "Delft3d-GT: Synchronization problems"
+            subject = "Delft3D-GT: Synchronization problems"
 
         message = ', '.join(sync_failed)           
         from_email = settings.DEFAULT_FROM_EMAIL
