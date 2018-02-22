@@ -1,4 +1,4 @@
-![TeamCity Build Status](http://build.deltares.nl/app/rest/builds/buildType:(id:Delft3DSobek_OssDelft3DGt_Server_DjangoTest)/statusIcon)
+[![Build Status](https://travis-ci.org/openearth/delft3d-gt-server.svg?branch=develop)](https://travis-ci.org/openearth/delft3d-gt-server)
 
 # delft3d-gt-server
 Delft3D Geological Tool web application server

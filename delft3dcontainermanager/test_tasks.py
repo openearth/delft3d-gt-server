@@ -20,28 +20,34 @@ from delft3dcontainermanager.tasks import do_docker_sync_filesystem
 
 class AsyncTaskTest(TestCase):
 
+    def setUp(self):
+        self.get_redis = patch('celery_once.backends.redis.get_redis')
+        self.mocked_redis = self.get_redis.start()
+
+        self.redis = FakeStrictRedis()
+        self.mocked_redis.return_value = self.redis
+
     @patch('delft3dcontainermanager.tasks.call_command')
-    @patch('delft3dcontainermanager.tasks.QueueOnce.redis', new_callable=FakeStrictRedis)
-    def test_delft3dgt_pulse(self, mockredis, mockcall):
+    def test_delft3dgt_pulse(self, mockCall):
         """
         Assert that de delft3dgt_pulse task
         calls the containersync_sceneupdate() only once.
         """
-
         delft3dgt_pulse.delay()
 
-        # Fakeredis stores at module level
-        fake = FakeStrictRedis()
         # Set redis key with TTL 100 seconds from now
         # so subsequent tasks won't run
-        fake.set('qo_delft3dcontainermanager.tasks.delft3dgt_pulse',
-                 int(time()) + 100)
+        self.redis.set('qo_delft3dcontainermanager.tasks.delft3dgt_pulse', int(time()) + 100)
 
         delft3dgt_pulse.delay()
         delft3dgt_pulse.delay()
 
-        mockcall.assert_called_with('containersync_sceneupdate')
-        self.assertEqual(mockcall.call_count, 1)
+        mockCall.assert_called_with('containersync_sceneupdate')
+        self.assertEqual(mockCall.call_count, 1)
+
+    def tearDown(self):
+        self.redis.flushall()
+        self.get_redis.stop()
 
 
 class TaskTest(TestCase):
@@ -49,30 +55,30 @@ class TaskTest(TestCase):
         'autospec': True,
     }
 
+    def setUp(self):
+        self.get_redis = patch('celery_once.backends.redis.get_redis')
+        self.mocked_redis = self.get_redis.start()
+
+        self.redis = FakeStrictRedis()
+        self.mocked_redis.return_value = self.redis
+
     @patch('delft3dcontainermanager.tasks.call_command')
-    @patch('delft3dcontainermanager.tasks.QueueOnce.redis')
-    def test_delft3dgt_pulse(self, mockredis, mockcall):
+    def test_delft3dgt_pulse(self, mockCall):
         """
         Assert that de delft3dgt_pulse task
         calls the containersync_sceneupdate() function.
         """
-        fake = FakeStrictRedis()
-        mockredis.return_value = fake
 
         delft3dgt_pulse.delay()
-        mockcall.assert_called_with('containersync_sceneupdate')
+        mockCall.assert_called_with('containersync_sceneupdate')
 
     @patch('delft3dcontainermanager.tasks.Client', **mock_options)
     @patch('delft3dcontainermanager.tasks.logging.error', **mock_options)
-    @patch('delft3dcontainermanager.tasks.QueueOnce.redis')
-    def test_get_docker_ps(self, mockredis, mockLogging, mockClient):
+    def test_get_docker_ps(self, mockLogging, mockClient):
         """
         Assert that the docker_ps task
         calls the docker client.containers() function.
         """
-
-        fake = FakeStrictRedis()
-        mockredis.return_value = fake
 
         containers = [{'Id': 'Aaa', 'Status': 'Running'},
                       {'Id': 'Bbb', 'Status': 'Host Down'},
@@ -205,3 +211,7 @@ class TaskTest(TestCase):
         container, log = delay.result
         self.assertEqual(container, "id")
         self.assertEqual(log, "")
+
+    def tearDown(self):
+        self.redis.flushall()
+        self.get_redis.stop()

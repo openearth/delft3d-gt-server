@@ -16,9 +16,10 @@ import zipfile
 from celery.result import AsyncResult
 
 from django.conf import settings  # noqa
+from constance import config as cconfig
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse_lazy
+from django.urls import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
 from django.utils.timezone import now
@@ -31,11 +32,10 @@ from guardian.shortcuts import get_groups_with_perms
 from guardian.shortcuts import get_objects_for_user
 from guardian.shortcuts import remove_perm
 
-from jsonfield import JSONField
-# from django.contrib.postgres.fields import JSONField  # When we use
-# Postgresql 9.4
+# from jsonfield import JSONField
+from django.contrib.postgres.fields import JSONField
 
-from delft3dworker.utils import log_progress_parser, version_default, get_version
+from delft3dworker.utils import log_progress_parser, version_default, get_version, tz_now
 
 from delft3dcontainermanager.tasks import do_docker_create
 from delft3dcontainermanager.tasks import do_docker_remove
@@ -129,12 +129,12 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.ForeignKey('Template', blank=True, null=True)
+    template = models.ForeignKey('Template', blank=True, null=True, on_delete=models.CASCADE)
 
-    scenes_parameters = JSONField(blank=True)
-    parameters = JSONField(blank=True)
+    scenes_parameters = JSONField(blank=True, default={})
+    parameters = JSONField(blank=True, default={})
 
-    owner = models.ForeignKey(User, null=True)
+    owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
     state = models.CharField(max_length=64, default="CREATED")
     progress = models.IntegerField(default=0)  # 0-100
@@ -157,7 +157,6 @@ class Scenario(models.Model):
 
     def createscenes(self, user):
         for i, sceneparameters in enumerate(self.scenes_parameters):
-
             # Create hash
             m = hashlib.sha256()
             m.update(str(sceneparameters))
@@ -318,12 +317,12 @@ class Scene(models.Model):
 
     scenario = models.ManyToManyField(Scenario, blank=True)
 
-    date_created = models.DateTimeField(default=now, blank=True)
+    date_created = models.DateTimeField(default=tz_now, blank=True)
     date_started = models.DateTimeField(blank=True, null=True)
 
     fileurl = models.CharField(max_length=256)
-    info = JSONField(blank=True)
-    parameters = JSONField(blank=True)  # {"dt":20}
+    info = JSONField(blank=True, default={})
+    parameters = JSONField(blank=True, default={})  # {"dt":20}
     state = models.CharField(max_length=256, default="CREATED")
     progress = models.IntegerField(default=0)
     task_id = models.CharField(max_length=256, blank=True)
@@ -334,7 +333,7 @@ class Scene(models.Model):
 
     shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
     shared = models.CharField(max_length=1, choices=shared_choices)
-    owner = models.ForeignKey(User, null=True)
+    owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
     workflows = Choices(
         (0, 'main', 'main workflow'),
@@ -411,7 +410,7 @@ class Scene(models.Model):
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
-    version = models.ForeignKey(Version_SVN, default=default_svn_version)
+    version = models.ForeignKey(Version_SVN, default=default_svn_version, on_delete=models.CASCADE)
 
     # PROPERTY METHODS
 
@@ -475,7 +474,7 @@ class Scene(models.Model):
         # only allow a start when Scene is 'Idle'
         if self.phase == self.phases.idle:
             self.shift_to_phase(self.phases.queued)   # shift to Queued
-            self.date_started = now()
+            self.date_started = tz_now()
             self.save()
 
         return {"task_id": None, "scene_id": None}
@@ -489,7 +488,7 @@ class Scene(models.Model):
 
             if workflow is not None:
                 self.workflow = workflow
-                self.date_started = now()
+                self.date_started = tz_now()
                 self.shift_to_phase(self.phases.queued)
                 self.version = Version_SVN.objects.latest()
                 self.save()
@@ -1284,7 +1283,7 @@ class Scene(models.Model):
                  self.phases.proc_fin for i in scene_phases)
             )
 
-            nodes_available = settings.MAX_SIMULATIONS * 2 - \
+            nodes_available = cconfig.MAX_SIMULATIONS * 2 - \
                 (number_simulations * 2 + number_processing)
 
             if (self.workflow == self.workflows.main and
@@ -1406,11 +1405,11 @@ class Container(models.Model):
     desired to be.
     """
 
-    scene = models.ForeignKey(Scene)
+    scene = models.ForeignKey(Scene, on_delete=models.CASCADE)
 
     task_uuid = models.UUIDField(
         default=None, blank=True, null=True)
-    task_starttime = models.DateTimeField(default=now, blank=True)
+    task_starttime = models.DateTimeField(default=tz_now, blank=True)
 
     # delft3dgtmain.provisionedsettings
     CONTAINER_TYPE_CHOICES = (
@@ -1448,8 +1447,8 @@ class Container(models.Model):
     docker_id = models.CharField(
         max_length=64, blank=True, default='', db_index=True)
 
-    container_starttime = models.DateTimeField(default=now, blank=True)
-    container_stoptime = models.DateTimeField(default=now, blank=True)
+    container_starttime = models.DateTimeField(default=tz_now, blank=True)
+    container_stoptime = models.DateTimeField(default=tz_now, blank=True)
     container_exitcode = models.PositiveSmallIntegerField(default=0)
     container_progress = models.PositiveSmallIntegerField(default=0)
 
@@ -1873,8 +1872,8 @@ class SearchForm(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    templates = JSONField(default='[]')
-    sections = JSONField(default='[]')
+    templates = JSONField(default=[])
+    sections = JSONField(default=[])
 
     def update(self):
         self.templates = "[]"
@@ -1985,8 +1984,8 @@ class Template(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    meta = JSONField(blank=True)
-    sections = JSONField(blank=True)
+    meta = JSONField(blank=True, default={})
+    sections = JSONField(blank=True, default={})
 
     # The following method is disabled as it adds to much garbage
     # to the MAIN search template

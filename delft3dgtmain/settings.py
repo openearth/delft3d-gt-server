@@ -29,6 +29,7 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -39,15 +40,23 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'django_filters',
     'crispy_forms',
     'guardian',
+    'constance',
+    'constance.backends.database',
+
     'delft3dcontainermanager',
     'delft3dworker',
     'delft3dgtfrontend',
     'delft3dgtprotectedservices',
 ]
 
-MIDDLEWARE_CLASSES = [
+CONSTANCE_CONFIG = {
+    'MAX_SIMULATIONS': (2, "Max simulations that can run in Amazon."),
+}
+
+MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -190,11 +199,14 @@ REST_FRAMEWORK = {
         # 'delft3dworker.permissions.ViewObjectPermissions',
     ],
     'DEFAULT_FILTER_BACKENDS': [
-        'rest_framework.filters.DjangoFilterBackend',
-        'rest_framework.filters.SearchFilter',
+        # 'rest_framework.filters.DjangoFilterBackend',
+        'django_filters.rest_framework.DjangoFilterBackend',
+        # 'django_filters.rest_framework.FilterSet',
+        # 'rest_framework.filters.SearchFilter',
         # 'rest_framework.filters.DjangoObjectPermissionsFilter',
     ]
 }
+
 
 # import provisioned settings
 try:
@@ -206,15 +218,22 @@ except ImportError:
 
 if 'test' in sys.argv:
 
-    from teamcity import is_running_under_teamcity
     from celery import Celery
+    import logging
+    logging.disable(logging.CRITICAL)
 
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    if 'TRAVIS' in os.environ:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql_psycopg2',
+                'NAME': 'travis_ci_test',
+                'USER': 'postgres',
+                'HOST': 'localhost',
+                'PORT': '5432',
+            }
         }
-    }
+    else:
+        DATABASES['default'].update({'NAME': 'djangodb_test'})
 
     # Debug on running tests
     DEBUG = True
@@ -222,8 +241,13 @@ if 'test' in sys.argv:
     # use a subdir for testing output
     WORKER_FILEDIR = 'test/'
 
-    if is_running_under_teamcity():
-        TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
+    CELERY_ONCE = {
+      'backend': 'celery_once.backends.Redis',
+      'settings': {
+        'url': 'redis://127.0.0.1:6379/0',
+        'default_timeout': 60 * 60
+      }
+    }
 
     # make sure celery delayed tasks are executed immediately
     CELERY_RESULT_BACKEND = 'cache'
@@ -235,6 +259,7 @@ if 'test' in sys.argv:
     app = Celery('delft3dgt')
     app.conf.CELERY_ALWAYS_EAGER = True
     app.conf.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+    app.conf.ONCE = CELERY_ONCE
 
     # set dummy container image names to dummy images
     DELFT3D_DUMMY_IMAGE_NAME = 'dummy_simulation'
