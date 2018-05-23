@@ -11,27 +11,22 @@
       <tr>
         <th>
           <div class="text">
+            <a href="#">User</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
             <a href="#">Group</a>
           </div>
         </th>
         <th>
           <div class="text">
-            <a href="#">ID</a>
+            <a href="#">Total Containers</a>
           </div>
         </th>
-        <th>
+          <th>
           <div class="text">
-            <a href="#">Total Users</a>
-          </div>
-        </th>
-        <th>
-          <div class="text">
-            <a href="#">Total Scenarios</a>
-          </div>
-        </th>
-        <th>
-          <div class="text">
-            <a href="#">Total Scenes</a>
+            <a href="#">Total Runtime</a>
           </div>
         </th>
       </tr>
@@ -39,14 +34,19 @@
     <tbody>
       {% for row in summary %}
       <tr class="{% cycle 'row1' 'row2' %}">
-        <td> {{ row.name }} </td>
-        <td> {{ row.id }} </td>
-        <td> {{ row.num_users }} </td>
-        <td> {{ row.num_scenarios }} </td>
-        <td> {{ row.num_scenes }} </td>
+        <td> {{ row.username }} </td>
+        <td> {{ row.groups__name }} </td>
+        <td> {{ row.num_containers }} </td>
+        <td> {{ row.sum_runtime }} </td>
       </tr>
       {% endfor %}
     </tbody>
+    <tr style=”font-weight:bold; border-top:2px solid #DDDDDD;”>
+        <td> Total </td>
+        <td>  </td>
+        <td> {{ summary_total.num_containers | intcomma }} </td>
+        <td> {{ summary_total.sum_runtime | intcomma }} </td>
+    </tr>
   </table>
 
 </div>

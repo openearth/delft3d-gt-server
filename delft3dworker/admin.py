@@ -104,7 +104,7 @@ class UsageSummaryAdmin(admin.ModelAdmin):
 
     change_list_template = 'delft3dworker/summary_change_list.html'
     # date_hierarchy = 'date_created'
-    # list_filter = ('shared','owner',)
+    list_filter = ('name','id')
 
     # for g in group:
     # users = User.objects.filter(groups = group)
@@ -137,53 +137,29 @@ class UsageSummaryAdmin(admin.ModelAdmin):
             users = User.objects.values('groups').annotate(
                 total_scenarios=Count('scenario')).annotate(
                 total_scenes=Count('scene')).order_by('groups')
-            print(users)
-            scenarios = Scenario.objects.values('owner').annotate(
-                total_scenes=Count('scene')
-            ).order_by('owner')
-            print(scenarios)
-            scenes = Scene.objects.values('owner').annotate(
-                total_containers=Count('container')
-            ).order_by('owner')
-            print(scenes)
-            # container = Container.objects.annotate(
-            #     runtime=F('container_stoptime') - F('container_starttime')
-            # )
-            # qs.aggregate(num_scenarios = Sum('total_scenarios'))users)
-            # print(container.runtime)
-
-            # ).aggregate(total_runtime = Sum('runtime'))
-            # print(total_runtime)
 
         except (AttributeError, KeyError) as e:
             print(e)
             return response
 
-        values = ['name','id']
+        values = ['username', 'groups__name']
         metrics = {
-            'num_users': Count('user'),
-            # 'num_scenes': Count('scene')
+            # 'num_users': Count('user'),
+            'num_containers': Count('scene__container'),
+            'sum_runtime': Sum(F('scene__container__container_stoptime') - F('scene__container__container_starttime')),
+            # 'estimated_cost': 'sum_runtime'
+
         }
 
         response.context_data['summary'] = list(
-            qs.values(*values)
+            users.values(*values)
             .annotate(**metrics)
+            # .aggregate
         )
-        # values = [users.username, scenes.scene, containers.container_type, containers.runtime]
-        # metrics = {
-        #     'total_users': Count(users.username),
-        #     'total_scenes': Count(scenes.scene),
-        #     'total_containers': Count(container.container_type),
-        # }
-        # response.context_data['summary'] = list(
-        #     qs.values(*values)
-        #     .annotate(**metrics)
-        #     .aggregate(total_runtime = Sum(container.runtime))
-        #     .order_by('-total_runtime')
-        # )
-        # response.context_data['summary_total'] = dict(
-        #     qs.aggregate(**metrics)
-        # )
+
+        response.context_data['summary_total'] = dict(
+            users.aggregate(**metrics)
+        )
         #
         # period = get_next_in_date_hierarchy(
         #     request,
