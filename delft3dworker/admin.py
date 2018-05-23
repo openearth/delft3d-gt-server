@@ -104,7 +104,7 @@ class UsageSummaryAdmin(admin.ModelAdmin):
 
     change_list_template = 'delft3dworker/summary_change_list.html'
     # date_hierarchy = 'date_created'
-    list_filter = ('name','id')
+    list_filter = ('groups__name','groups__id')
 
     # for g in group:
     # users = User.objects.filter(groups = group)
@@ -133,10 +133,10 @@ class UsageSummaryAdmin(admin.ModelAdmin):
         )
         try:
             qs = response.context_data['cl'].queryset
-            qs = qs.order_by('id')
-            users = User.objects.values('groups').annotate(
-                total_scenarios=Count('scenario')).annotate(
-                total_scenes=Count('scene')).order_by('groups')
+            qs.order_by('groups__name')
+            # qs.values('groups').annotate(
+            #     total_scenarios=Count('scenario')).annotate(
+            #     total_scenes=Count('scene')).order_by('groups')
 
         except (AttributeError, KeyError) as e:
             print(e)
@@ -152,13 +152,13 @@ class UsageSummaryAdmin(admin.ModelAdmin):
         }
 
         response.context_data['summary'] = list(
-            users.values(*values)
+            qs.values(*values)
             .annotate(**metrics)
             # .aggregate
         )
 
         response.context_data['summary_total'] = dict(
-            users.aggregate(**metrics)
+            qs.aggregate(**metrics)
         )
         #
         # period = get_next_in_date_hierarchy(

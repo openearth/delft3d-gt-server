@@ -2009,7 +2009,7 @@ class Template(models.Model):
         )
 
 
-class UsageSummary(Group):
+class UsageSummary(User):
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
     class Meta:
         proxy = True

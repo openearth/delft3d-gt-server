@@ -653,9 +653,9 @@ class UsageSummaryViewSet(viewsets.ModelViewSet):
     API endpoint that allows groups to be viewed or edited.
     """
 
-    serializer_class = GroupSerializer
+    serializer_class = UserSerializer
     # filter_backends = (filters.DjangoObjectPermissionsFilter,)
-    queryset = Group.objects.none()  # Required for DjangoModelPermissions
+    queryset = User.objects.none()  # Required for DjangoModelPermissions
 
     # def get_queryset(self):
     #     group = get_object_or_404(Group, id=self.request.user.id)
