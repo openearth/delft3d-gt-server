@@ -1,0 +1,54 @@
+{% extends "admin/change_list.html" %}
+{% load humanize %}
+{% block content_title %}
+    <h1> Usage Summary </h1>
+{% endblock %}
+{% block result_list %}
+<div class="results">
+    <table>
+
+    <thead>
+      <tr>
+        <th>
+          <div class="text">
+            <a href="#">Group</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">ID</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Total Users</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Total Scenarios</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Total Scenes</a>
+          </div>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in summary %}
+      <tr class="{% cycle 'row1' 'row2' %}">
+        <td> {{ row.name }} </td>
+        <td> {{ row.id }} </td>
+        <td> {{ row.num_users }} </td>
+        <td> {{ row.num_scenarios }} </td>
+        <td> {{ row.num_scenes }} </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</div>
+{% endblock %}
+{% block pagination %}{% endblock %}
