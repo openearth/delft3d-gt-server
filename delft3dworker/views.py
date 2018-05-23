@@ -647,3 +647,18 @@ class GroupViewSet(viewsets.ModelViewSet):
         user = get_object_or_404(User, id=self.request.user.id)
         wanted = [group.id for group in user.groups.all()]
         return Group.objects.filter(pk__in=wanted)
+
+class UsageSummaryViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+
+    serializer_class = GroupSerializer
+    # filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    queryset = Group.objects.none()  # Required for DjangoModelPermissions
+
+    # def get_queryset(self):
+    #     group = get_object_or_404(Group, id=self.request.user.id)
+    #     user = get_object_or_404(User, id=self.request.user.id)
+    #     wanted = [group.id for group in user.groups.all()]
+    #     return Group.objects.filter(pk__in=wanted)
