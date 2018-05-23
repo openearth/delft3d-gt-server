@@ -134,13 +134,26 @@ class UsageSummaryAdmin(admin.ModelAdmin):
         try:
             qs = response.context_data['cl'].queryset
             qs = qs.order_by('id')
-            users = User.objects.values('groups').annotate(total_users=Count('groups')).order_by('groups')
-            # print(users)
-            # scenes = Scene.objects.values('owner').annotate(total_scenes=Count('owner')).order_by('owner')
-            # print(scenes)
-            # containers = Container.objects.values('scene').annotate(
+            users = User.objects.values('groups').annotate(
+                total_scenarios=Count('scenario')).annotate(
+                total_scenes=Count('scene')).order_by('groups')
+            print(users)
+            scenarios = Scenario.objects.values('owner').annotate(
+                total_scenes=Count('scene')
+            ).order_by('owner')
+            print(scenarios)
+            scenes = Scene.objects.values('owner').annotate(
+                total_containers=Count('container')
+            ).order_by('owner')
+            print(scenes)
+            # container = Container.objects.annotate(
             #     runtime=F('container_stoptime') - F('container_starttime')
             # )
+            # qs.aggregate(num_scenarios = Sum('total_scenarios'))users)
+            # print(container.runtime)
+
+            # ).aggregate(total_runtime = Sum('runtime'))
+            # print(total_runtime)
 
         except (AttributeError, KeyError) as e:
             print(e)
