@@ -24,9 +24,14 @@
             <a href="#">Total Containers</a>
           </div>
         </th>
-          <th>
+        <th>
           <div class="text">
             <a href="#">Total Runtime</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Estimated Cost</a>
           </div>
         </th>
       </tr>
@@ -38,6 +43,7 @@
         <td> {{ row.groups__name }} </td>
         <td> {{ row.num_containers }} </td>
         <td> {{ row.sum_runtime }} </td>
+        <td> € {{ row.est_cost }} </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -46,8 +52,62 @@
         <td>  </td>
         <td> {{ summary_total.num_containers | intcomma }} </td>
         <td> {{ summary_total.sum_runtime | intcomma }} </td>
+        <td> € {{ summary_total.est_cost | intcomma }} </td>
     </tr>
   </table>
+
+  <!--<h2> Usage over time </h2>-->
+    <!--<style>-->
+    <!--.bar-chart {-->
+      <!--display: flex;-->
+      <!--justify-content: space-around;-->
+      <!--height: 160px;-->
+      <!--padding-top: 60px;-->
+      <!--overflow: hidden;-->
+    <!--}-->
+    <!--.bar-chart .bar {-->
+        <!--flex: 100%;-->
+        <!--align-self: flex-end;-->
+        <!--margin-right: 2px;-->
+        <!--position: relative;-->
+        <!--background-color: #79aec8;-->
+    <!--}-->
+    <!--.bar-chart .bar:last-child {-->
+        <!--margin: 0;-->
+    <!--}-->
+    <!--.bar-chart .bar:hover {-->
+        <!--background-color: #417690;-->
+    <!--}-->
+    <!--.bar-chart .bar .bar-tooltip {-->
+        <!--position: relative;-->
+        <!--z-index: 999;-->
+    <!--}-->
+    <!--.bar-chart .bar .bar-tooltip {-->
+        <!--position: absolute;-->
+        <!--top: -60px;-->
+        <!--left: 50%;-->
+        <!--transform: translateX(-50%);-->
+        <!--text-align: center;-->
+        <!--font-weight: bold;-->
+        <!--opacity: 0;-->
+    <!--}-->
+    <!--.bar-chart .bar:hover .bar-tooltip {-->
+        <!--opacity: 1;-->
+    <!--}-->
+
+    <!--</style>-->
+    <!--<div class="results">-->
+        <!--<div class="bar-chart">-->
+        <!--{% for x in summary_over_time %}-->
+            <!--<div class="bar" style="height:{{x.pct}}%">-->
+                <!--<div class="bar-tooltip">-->
+                    <!--{{x.total | default:0 | intcomma }}<br>-->
+                    <!--{{x.period | date:"d/m/Y"}}-->
+                <!--</div>-->
+            <!--</div>-->
+        <!--{% endfor %}-->
+        <!--</div>-->
+    <!--</div>-->
 
 </div>
 {% endblock %}
