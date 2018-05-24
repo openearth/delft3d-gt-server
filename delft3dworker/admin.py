@@ -112,8 +112,8 @@ class UsageSummaryAdmin(admin.ModelAdmin):
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
 
     change_list_template = 'delft3dworker/summary_change_list.html'
-    date_hierarchy = 'scene__date_started'
-    list_filter = ('groups__name','groups__id','scene__date_started')
+    date_hierarchy = 'scene__container__container_stoptime'
+    list_filter = ('groups__name','scene__container__container_stoptime')
 
     def get_next_in_date_hierarchy(request, date_hierarchy):
         if date_hierarchy + '__day' in request.GET:
@@ -151,7 +151,6 @@ class UsageSummaryAdmin(admin.ModelAdmin):
         response.context_data['summary'] = list(
             qs.values(*values)
             .annotate(**metrics)
-            # .annotate(est_cost=F('sum_runtime').total_seconds()*cost_per_second)
         )
 
         response.context_data['summary_total'] = dict(

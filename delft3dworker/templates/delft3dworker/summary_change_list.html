@@ -1,5 +1,6 @@
 {% extends "admin/change_list.html" %}
 {% load humanize %}
+{% load custom_tags %}
 {% block content_title %}
     <h1> Usage Summary </h1>
 {% endblock %}
@@ -31,7 +32,7 @@
         </th>
         <th>
           <div class="text">
-            <a href="#">Estimated Cost</a>
+            <a href="#">Percentage Usage</a>
           </div>
         </th>
       </tr>
@@ -43,7 +44,11 @@
         <td> {{ row.groups__name }} </td>
         <td> {{ row.num_containers }} </td>
         <td> {{ row.sum_runtime }} </td>
-        <td> € {{ row.est_cost }} </td>
+        <td>
+          <strong>
+          {{ row.sum_runtime | divtime:summary_total.sum_runtime | floatformat }}%
+          </strong>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -52,7 +57,7 @@
         <td>  </td>
         <td> {{ summary_total.num_containers | intcomma }} </td>
         <td> {{ summary_total.sum_runtime | intcomma }} </td>
-        <td> € {{ summary_total.est_cost | intcomma }} </td>
+        <td> 100% </td>
     </tr>
   </table>
 
