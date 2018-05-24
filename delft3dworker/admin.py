@@ -1,12 +1,19 @@
 import os
 import logging
+import datetime
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib import admin
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Count, F, Sum
+from django.db.models import F
+from django.db.models import Sum
+from django.db.models import Count
+from django.db.models import ExpressionWrapper
+from django.db.models import DateTimeField
+from django.db.models import DurationField
+from django.db.models.functions import Trunc
 
 from guardian.admin import GuardedModelAdmin
 
@@ -17,6 +24,8 @@ from models import SearchForm
 from models import Template
 from models import Version_SVN
 from models import UsageSummary
+
+from delft3dworker.utils import tz_now
 
 class ContainerInline(admin.StackedInline):
     extra = 0
@@ -103,20 +112,9 @@ class UsageSummaryAdmin(admin.ModelAdmin):
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
 
     change_list_template = 'delft3dworker/summary_change_list.html'
-    # date_hierarchy = 'date_created'
-    list_filter = ('groups__name','groups__id')
+    date_hierarchy = 'scene__date_started'
+    list_filter = ('groups__name','groups__id','scene__date_started')
 
-    # for g in group:
-    # users = User.objects.filter(groups = group)
-    # for u in users:
-    # scenes = Scene.objects.filter(owner = users)
-    # runtime = scenes.containers.get(F('stoptime') - F('starttime'))
-    # def get_extra_context(self):
-    #     group = Group.objects.filter(name='Nit_Company')
-    #     users = User.objects.filter(groups=group)
-    #     scenes = Scene.objects.filter(owner=users)
-    #     containers = Container.objects.filter(scene=scenes).annotate(
-    #         runtime=F('container_stoptime') - F('container_starttime'))
     def get_next_in_date_hierarchy(request, date_hierarchy):
         if date_hierarchy + '__day' in request.GET:
             return 'hour'
@@ -134,49 +132,44 @@ class UsageSummaryAdmin(admin.ModelAdmin):
         try:
             qs = response.context_data['cl'].queryset
             qs.order_by('groups__name')
-            # qs.values('groups').annotate(
-            #     total_scenarios=Count('scenario')).annotate(
-            #     total_scenes=Count('scene')).order_by('groups')
 
         except (AttributeError, KeyError) as e:
             print(e)
             return response
 
+        cost_per_second = 0.01
         values = ['username', 'groups__name']
         metrics = {
             # 'num_users': Count('user'),
-            'num_containers': Count('scene__container'),
-            'sum_runtime': Sum(F('scene__container__container_stoptime') - F('scene__container__container_starttime')),
-            # 'estimated_cost': 'sum_runtime'
-
+            'num_containers': Count('scene__container', distinct=True),
+            'sum_runtime': ExpressionWrapper(
+                Sum(F('scene__container__container_stoptime') \
+                    - F('scene__container__container_starttime')), output_field=DurationField()
+            ),
         }
 
         response.context_data['summary'] = list(
             qs.values(*values)
             .annotate(**metrics)
-            # .aggregate
+            # .annotate(est_cost=F('sum_runtime').total_seconds()*cost_per_second)
         )
 
         response.context_data['summary_total'] = dict(
             qs.aggregate(**metrics)
         )
-        #
-        # period = get_next_in_date_hierarchy(
-        #     request,
-        #     self.date_hierarchy,
-        # )
-        # response.context_data['period'] = period
-        #
+
         # summary_over_time = qs.annotate(
         #     period=Trunc(
-        #         'date_created',
-        #         period,
-        #         output_field=DateTimeField(),
+        #         'scene__date_started',
+        #         'day',
+        #         output_field=DateTimeField(default=tz_now, blank=True),
         #     ),
-        # ).values('period').aggregate(
-        #     total=Sum('runtime')
-        # ).order_by('period')
-        #
+        # ).values('period')
+        # print(summary_over_time)
+        # .annotate(
+        #     total=Sum(F('scene__container__container_stoptime') - F('scene__container__container_starttime')),
+        # )
+        # .order_by('period')
         # summary_range = summary_over_time.aggregate(
         #     low=Min('total'),
         #     high=Max('total'),
