@@ -7,13 +7,18 @@ from mock import patch
 
 
 from django.contrib.admin.sites import AdminSite
-from django.test import Client, TestCase
+from django.test import Client, TestCase, RequestFactory
+from django.utils import timezone
 
+from delft3dworker.models import Group
 from delft3dworker.models import User
 from delft3dworker.models import Scene
 from delft3dworker.models import Container
 from delft3dworker.admin import SceneAdmin
-from delft3dworker.admin import UsageSummaryAdmin
+from delft3dworker.admin import GroupUsageSummaryAdmin
+from delft3dworker.admin import UserUsageSummaryAdmin
+
+# from .views import
 
 
 class AdminTest(TestCase):
@@ -47,30 +52,37 @@ class AdminTest(TestCase):
             self.assertEqual(Scene.objects.get(id=1).phase, Scene.phases.sync_create)
 
 
-class UserUsageSummaryAdminTest(TestCase):
+class GroupUsageSummaryAdminTest(TestCase):
     def setUp(self):
-            self.client = Client()
-            self.user_a = User.objects.create(
-                username='User A'
-            )
+            self.factory = RequestFactory()
 
+            self.group_a = Group.objects.create(
+                name='Group A'
+            )
+            self.user_a = User.objects.create(
+                id=999,
+                username='User A',
+                groups=self.group_a
+            )
             self.scene_a = Scene.objects.create(
                 id=0,
                 name='Scene A',
                 owner=self.user_a
             )
-
             self.container_a = Container.objects.create(
                 scene = self.scene_a,
                 container_type = 'Container A',
-                container_starttime = datetime.datetime(2010, 10, 10, 10, 10, 00),
-                container_stoptime = datetime.datetime(2010, 10, 10, 10, 20, 00)
+                container_starttime = datetime.datetime(2010, 10, 10, 10, 10, 00, tzinfo=timezone.utc),
+                container_stoptime = datetime.datetime(2010, 10, 10, 10, 20, 00, tzinfo=timezone.utc)
             )
 
+            self.group_b = Group.objects.create(
+                name='Group B'
+            )
             self.user_b = User.objects.create(
-                username='User B'
+                username='User B',
+                groups=self.group_b
             )
-
             self.scene_b = Scene.objects.create(
                 id=1,
                 name='Scene B',
@@ -79,31 +91,22 @@ class UserUsageSummaryAdminTest(TestCase):
             self.container_a = Container.objects.create(
                 scene = self.scene_b,
                 container_type='Container B',
-                container_starttime = datetime.datetime(2010, 10, 10, 10, 20, 00),
-                container_stoptime = datetime.datetime(2010, 10, 10, 10, 40, 00)
+                container_starttime = datetime.datetime(2010, 10, 10, 10, 20, 00, tzinfo=timezone.utc),
+                container_stoptime = datetime.datetime(2010, 10, 10, 10, 40, 00, tzinfo=timezone.utc)
             )
 
-            self.user_usage_summary_admin = UserUsageSummaryAdmin(User, AdminSite())
+            self.group_usage_summary_admin = GroupUsageSummaryAdmin(Group, AdminSite())
 
-    # @patch('delft3dworker.admin.UsageSummaryAdmin.changelist_view')
     def test_changelist_view(self):
             """
-            Test changelist_view scenes. Only scenes in finished state should be resynced
+            Test changelist_view
             """
-            # response = self.client.post(reverse(),)c.get('/admin/delft3dworker/usagesummary/')
-            # c.post('',)
-            # request = mocked_usage_summary()
-            # request.changelist_view.return_value = [{}]
-            # response = request.changelist_view()
-            # self.assertIsNotNone(response)
             request = Mock()
-            queryset = User.objects.all()
-            response = self.user_usage_summary_admin.changelist_view()
-
+            queryset = Group.objects.all()
+            response = self.group_usage_summary_admin.changelist_view(request)
+            print response
             self.assertEqual(response.status_code, 200)
-            # self.assertEqual(len(response.context['summary']), 2)
-            # datetime.timedelta(minutes=10))
-            # self.assertEqual(response.context['summary_total__sum_runtime'], datetime.timedelta(minutes=20))
+            # self.assertEqual(response.context['summary__num_users'], datetime.timedelta(minutes=20))
             # self.assertEqual(response.context[], datetime.timedelta(minutes=30))
             # self.assertEqual(response.context[], 2)
-            # self.assertEqual(response.context[groups], 2)
+            # self.assertEqual(response.context['sumgroups'], 2)
