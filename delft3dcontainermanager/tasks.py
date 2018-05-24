@@ -11,9 +11,10 @@ from celery_once import QueueOnce
 from django.conf import settings
 from django.core.management import call_command
 from docker import Client
+from kubernetes import client, config
 from requests.exceptions import HTTPError
 
-
+config.load_kube_config()
 logger = get_task_logger(__name__)
 
 
@@ -83,6 +84,21 @@ def get_docker_ps(self):
     return inspected_containers
 
 
+@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60},
+             throws=(HTTPError))
+def get_argo_wf(self):
+    """
+    Retrieve all running argo workflows and return them in
+    an array of dictionaries. The array looks like this:
+    """
+    v1 = client.CoreV1Api()
+    # --selector=workflows.argoproj.io/workflow=delft3dgt-xxxx
+    # pods = v1.list_pod_for_all_namespaces(watch=False, timeout_seconds=59)
+    wf = v1.api_client.call_api("/apis/argoproj.io/v1alpha1/workflows",
+                                "GET", response_type="V1ConfigMapList", _return_http_data_only=True)
+    return wf
+
+
 @shared_task(bind=True, throws=(HTTPError))
 def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
     """
@@ -98,6 +114,17 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
         tail=5
     )
     return container_id, log
+
+
+@shared_task(bind=True, throws=(HTTPError))
+def get_kube_log(self, container_id, tail=5):
+    """
+    Retrieve the log of a container and return container id and log
+    """
+    v1 = client.CoreV1Api()
+    log = v1.read_namespaced_pod_log(
+        container_id, "default", container="wait", tail_lines=tail)
+    return log
 
 
 @shared_task(bind=True, throws=(HTTPError))
@@ -164,6 +191,26 @@ def do_docker_start(self, container_id):
 
 
 @shared_task(bind=True, throws=(HTTPError))
+def do_argo_create(self, workflow_id, parameters, yaml):
+    """
+    Start a deployment with a specific id and id
+    """
+    # with open("delft3dgt-main.yaml") as f:
+    # dep = yaml.load(f)
+
+    # Edit Workflow object
+    yaml["metadata"] = {"name": workflow_id}
+    yaml["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": "uhsdfaksjhgfe"},
+                                               {"name": "parameters", "value": parameters}]
+
+    crd = client.CustomObjectsApi()
+    status = crd.create_namespaced_custom_object(
+        "argoproj.io", "v1alpha1", "default", "workflows", yaml)
+
+    return status
+
+
+@shared_task(bind=True, throws=(HTTPError))
 def do_docker_stop(self, container_id, timeout=10):
     """
     Stop a container with a specific id and return id
@@ -209,6 +256,19 @@ def do_docker_remove(self, container_id, force=False):
                 f.write(log)
         except:
             logging.error("Failed at writing docker log.")
+
+    return container_id, ""
+
+
+@shared_task(bind=True, throws=(HTTPError))
+def do_argo_remove(self, workflow_id):
+    """
+    Remove a container with a specific id and return id.
+    Try to write the docker log output as well.
+    """
+    crd = client.CustomObjectsApi()
+    crd.delete_namespaced_custom_object(
+        "argoproj.io", "v1alpha1", "default", "workflows", workflow_id, {})
 
     return container_id, ""
 
