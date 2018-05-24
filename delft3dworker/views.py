@@ -48,6 +48,8 @@ from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Version_SVN
+from delft3dworker.models import GroupUsageSummary
+from delft3dworker.models import UserUsageSummary
 from delft3dworker.permissions import ViewObjectPermissions
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
@@ -648,17 +650,26 @@ class GroupViewSet(viewsets.ModelViewSet):
         wanted = [group.id for group in user.groups.all()]
         return Group.objects.filter(pk__in=wanted)
 
-class UsageSummaryViewSet(viewsets.ModelViewSet):
+
+class GroupUsageSummaryViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows groups to be viewed or edited.
+    """
+
+    serializer_class = GroupSerializer
+    queryset = Group.objects.none()  # Required for DjangoModelPermissions
+
+    def get_queryset(self):
+        return User.objects.order_by('username')
+        # user = get_object_or_404(User, id=self.request.user.id)
+        # wanted = [group.id for group in user.groups.all()]
+        # return Group.objects.filter(pk__in=wanted)
+
+
+class UserUsageSummaryViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows groups to be viewed or edited.
     """
 
     serializer_class = UserSerializer
-    # filter_backends = (filters.DjangoObjectPermissionsFilter,)
     queryset = User.objects.none()  # Required for DjangoModelPermissions
-
-    # def get_queryset(self):
-    #     group = get_object_or_404(Group, id=self.request.user.id)
-    #     user = get_object_or_404(User, id=self.request.user.id)
-    #     wanted = [group.id for group in user.groups.all()]
-    #     return Group.objects.filter(pk__in=wanted)

@@ -2009,9 +2009,17 @@ class Template(models.Model):
         )
 
 
-class UsageSummary(User):
+class GroupUsageSummary(Group):
+
+    class Meta:
+        proxy = True
+        verbose_name = 'Group Usage Summary'
+        verbose_name_plural = 'Group Usage Summary'
+
+
+class UserUsageSummary(User):
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
     class Meta:
         proxy = True
-        verbose_name = 'Usage Summary'
-        verbose_name_plural = 'Usage Summary'
+        verbose_name = 'User Usage Summary'
+        verbose_name_plural = 'User Usage Summary'

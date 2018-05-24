@@ -5,6 +5,7 @@ import datetime
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib import admin
+from django.contrib.admin.widgets import AdminDateWidget
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import F
@@ -23,7 +24,9 @@ from models import Container
 from models import SearchForm
 from models import Template
 from models import Version_SVN
-from models import UsageSummary
+from models import GroupUsageSummary
+from models import UserUsageSummary
+
 
 from delft3dworker.utils import tz_now
 
@@ -106,45 +109,35 @@ class Version_SVN_Admin(GuardedModelAdmin):
         SceneInline,
     ]
 
-
-@admin.register(UsageSummary)
-class UsageSummaryAdmin(admin.ModelAdmin):
+@admin.register(GroupUsageSummary)
+class GroupUsageSummaryAdmin(admin.ModelAdmin):
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
 
-    change_list_template = 'delft3dworker/summary_change_list.html'
-    date_hierarchy = 'scene__container__container_stoptime'
-    list_filter = ('groups__name','scene__container__container_stoptime')
-
-    def get_next_in_date_hierarchy(request, date_hierarchy):
-        if date_hierarchy + '__day' in request.GET:
-            return 'hour'
-        if date_hierarchy + '__month' in request.GET:
-            return 'day'
-        if date_hierarchy + '__year' in request.GET:
-            return 'week'
-        return 'month'
+    change_list_template = 'delft3dworker/group_summary_change_list.html'
+    date_hierarchy = 'user__scene__container__container_stoptime'
+    # list_filter = ('user__scene__container__container_stoptime',)
 
     def changelist_view(self, request, extra_context=None):
-        response = super(UsageSummaryAdmin, self).changelist_view(
+        response = super(GroupUsageSummaryAdmin, self).changelist_view(
             request,
             extra_context=extra_context,
         )
         try:
             qs = response.context_data['cl'].queryset
-            qs.order_by('groups__name')
+            qs.order_by('name')
 
         except (AttributeError, KeyError) as e:
             print(e)
             return response
 
-        cost_per_second = 0.01
-        values = ['username', 'groups__name']
+        values = ['name', 'id']
         metrics = {
-            # 'num_users': Count('user'),
-            'num_containers': Count('scene__container', distinct=True),
+            'num_users': Count('user__username', distinct=True),
+            'num_containers': Count('user__scene__container', distinct=True),
             'sum_runtime': ExpressionWrapper(
-                Sum(F('scene__container__container_stoptime') \
-                    - F('scene__container__container_starttime')), output_field=DurationField()
+                Sum(F('user__scene__container__container_stoptime') \
+                    - F('user__scene__container__container_starttime')),
+                output_field=DurationField()
             ),
         }
 
@@ -157,30 +150,47 @@ class UsageSummaryAdmin(admin.ModelAdmin):
             qs.aggregate(**metrics)
         )
 
-        # summary_over_time = qs.annotate(
-        #     period=Trunc(
-        #         'scene__date_started',
-        #         'day',
-        #         output_field=DateTimeField(default=tz_now, blank=True),
-        #     ),
-        # ).values('period')
-        # print(summary_over_time)
-        # .annotate(
-        #     total=Sum(F('scene__container__container_stoptime') - F('scene__container__container_starttime')),
-        # )
-        # .order_by('period')
-        # summary_range = summary_over_time.aggregate(
-        #     low=Min('total'),
-        #     high=Max('total'),
-        # )
-        # high = summary_range.get('high', 0)
-        # low = summary_range.get('low', 0)
-        # response.context_data['summary_over_time'] = [{
-        #     'period': x['period'],
-        #     'total': x['total'] or 0,
-        #     'pct': \
-        #         ((x['total'] or 0) - low) / (high - low) * 100
-        #         if high > low else 0,
-        # } for x in summary_over_time]
+        return response
+
+
+@admin.register(UserUsageSummary)
+class UserUsageSummaryAdmin(admin.ModelAdmin):
+
+    change_list_template = 'delft3dworker/user_summary_change_list.html'
+    date_hierarchy = 'scene__container__container_stoptime'
+    list_filter = ('groups__id','scene__container__container_stoptime')
+
+
+    def changelist_view(self, request, extra_context=None):
+        response = super(UserUsageSummaryAdmin, self).changelist_view(
+            request,
+            extra_context=extra_context,
+        )
+        try:
+            qs = response.context_data['cl'].queryset
+            qs.order_by('groups__name')
+
+        except (AttributeError, KeyError) as e:
+            print(e)
+            return response
+
+        values = ['username', 'groups__name']
+        metrics = {
+            'num_containers': Count('scene__container', distinct=True),
+            'sum_runtime': ExpressionWrapper(
+                Sum(F('scene__container__container_stoptime') \
+                    - F('scene__container__container_starttime')),
+                output_field=DurationField()
+            ),
+        }
+
+        response.context_data['summary'] = list(
+            qs.values(*values)
+            .annotate(**metrics)
+        )
+
+        response.context_data['summary_total'] = dict(
+            qs.aggregate(**metrics)
+        )
 
         return response

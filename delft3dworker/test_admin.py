@@ -3,6 +3,8 @@ from __future__ import absolute_import
 import datetime
 
 from mock import Mock
+from mock import patch
+
 
 from django.contrib.admin.sites import AdminSite
 from django.test import Client, TestCase
@@ -45,9 +47,9 @@ class AdminTest(TestCase):
             self.assertEqual(Scene.objects.get(id=1).phase, Scene.phases.sync_create)
 
 
-class UsageSummaryAdminTest(TestCase):
-
+class UserUsageSummaryAdminTest(TestCase):
     def setUp(self):
+            self.client = Client()
             self.user_a = User.objects.create(
                 username='User A'
             )
@@ -81,20 +83,27 @@ class UsageSummaryAdminTest(TestCase):
                 container_stoptime = datetime.datetime(2010, 10, 10, 10, 40, 00)
             )
 
-            self.usage_summary_admin = UsageSummaryAdmin(Scene, AdminSite())
+            self.user_usage_summary_admin = UserUsageSummaryAdmin(User, AdminSite())
 
+    # @patch('delft3dworker.admin.UsageSummaryAdmin.changelist_view')
     def test_changelist_view(self):
             """
             Test changelist_view scenes. Only scenes in finished state should be resynced
             """
+            # response = self.client.post(reverse(),)c.get('/admin/delft3dworker/usagesummary/')
+            # c.post('',)
+            # request = mocked_usage_summary()
+            # request.changelist_view.return_value = [{}]
+            # response = request.changelist_view()
+            # self.assertIsNotNone(response)
             request = Mock()
-            queryset = Scene.objects.all()
-            response = self.usage_summary_admin.changelist_view(request, queryset)
+            queryset = User.objects.all()
+            response = self.user_usage_summary_admin.changelist_view()
 
-            # scene_a should still be new
-            # scene_b should be in sync_create
-            self.assertEqual(response.sum_runtime, datetime.timedelta(minutes=10))
-            self.assertEqual(response, datetime.timedelta(minutes=20))
-            self.assertEqual(response.summary_total.sum_runtime, datetime.timedelta(minutes=30))
-            self.assertEqual(response.summary_total.num_containers, 2)
-            self.assertEqual(response.summary_total.num_containers, 2)
+            self.assertEqual(response.status_code, 200)
+            # self.assertEqual(len(response.context['summary']), 2)
+            # datetime.timedelta(minutes=10))
+            # self.assertEqual(response.context['summary_total__sum_runtime'], datetime.timedelta(minutes=20))
+            # self.assertEqual(response.context[], datetime.timedelta(minutes=30))
+            # self.assertEqual(response.context[], 2)
+            # self.assertEqual(response.context[groups], 2)
