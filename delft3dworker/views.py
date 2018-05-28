@@ -659,12 +659,6 @@ class GroupUsageSummaryViewSet(viewsets.ModelViewSet):
     serializer_class = GroupSerializer
     queryset = Group.objects.none()  # Required for DjangoModelPermissions
 
-    def get_queryset(self):
-        return User.objects.order_by('username')
-        # user = get_object_or_404(User, id=self.request.user.id)
-        # wanted = [group.id for group in user.groups.all()]
-        # return Group.objects.filter(pk__in=wanted)
-
 
 class UserUsageSummaryViewSet(viewsets.ModelViewSet):
     """

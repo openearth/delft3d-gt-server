@@ -3,10 +3,12 @@ from __future__ import absolute_import
 import datetime
 
 from mock import Mock
+from mock import MagicMock
 from mock import patch
 
-
+from django.contrib.auth.models import Permission
 from django.contrib.admin.sites import AdminSite
+from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import Client, TestCase, RequestFactory
 from django.utils import timezone
 
@@ -54,16 +56,27 @@ class AdminTest(TestCase):
 
 class GroupUsageSummaryAdminTest(TestCase):
     def setUp(self):
+            # self.client = Client()
             self.factory = RequestFactory()
 
-            self.group_a = Group.objects.create(
-                name='Group A'
-            )
-            self.user_a = User.objects.create(
-                id=999,
-                username='User A',
-                groups=self.group_a
-            )
+            self.user_a = User.objects.create_user(username='User A')
+
+            self.user_b = User.objects.create_user(username='User B')
+
+            company_w = Group.objects.create(name='access:world')
+            for user in [self.user_a, self.user_b]:
+                company_w.user_set.add(user)
+                for perm in ['view_scene', 'add_scene',
+                             'change_scene', 'delete_scene']:
+                    user.user_permissions.add(
+                        Permission.objects.get(codename=perm)
+                    )
+
+            company_a = Group.objects.create(name='access:org:Company A')
+            company_a.user_set.add(self.user_a)
+            company_b = Group.objects.create(name='access:org:Company B')
+            company_b.user_set.add(self.user_b)
+
             self.scene_a = Scene.objects.create(
                 id=0,
                 name='Scene A',
@@ -76,13 +89,6 @@ class GroupUsageSummaryAdminTest(TestCase):
                 container_stoptime = datetime.datetime(2010, 10, 10, 10, 20, 00, tzinfo=timezone.utc)
             )
 
-            self.group_b = Group.objects.create(
-                name='Group B'
-            )
-            self.user_b = User.objects.create(
-                username='User B',
-                groups=self.group_b
-            )
             self.scene_b = Scene.objects.create(
                 id=1,
                 name='Scene B',
@@ -101,12 +107,17 @@ class GroupUsageSummaryAdminTest(TestCase):
             """
             Test changelist_view
             """
-            request = Mock()
-            queryset = Group.objects.all()
+            # request = Mock()
+            request = self.factory.get('delft3dworker/group_summary_change_list.html')
+            middleware = SessionMiddleware()
+            middleware.process_request(request)
+            request.session.save()
+
+            print(request)
             response = self.group_usage_summary_admin.changelist_view(request)
-            print response
+            print(response.content)
             self.assertEqual(response.status_code, 200)
             # self.assertEqual(response.context['summary__num_users'], datetime.timedelta(minutes=20))
-            # self.assertEqual(response.context[], datetime.timedelta(minutes=30))
+            # self.assertEqual(response.context['summary__'], datetime.timedelta(minutes=30))
             # self.assertEqual(response.context[], 2)
             # self.assertEqual(response.context['sumgroups'], 2)

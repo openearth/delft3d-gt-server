@@ -6,6 +6,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib import admin
 from django.contrib.admin.widgets import AdminDateWidget
+from django.contrib.postgres.forms.ranges import DateRangeField, RangeWidget
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import F
@@ -109,6 +110,8 @@ class Version_SVN_Admin(GuardedModelAdmin):
         SceneInline,
     ]
 
+# class TimeFilter
+
 @admin.register(GroupUsageSummary)
 class GroupUsageSummaryAdmin(admin.ModelAdmin):
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
@@ -116,6 +119,7 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
     change_list_template = 'delft3dworker/group_summary_change_list.html'
     date_hierarchy = 'user__scene__container__container_stoptime'
     # list_filter = ('user__scene__container__container_stoptime',)
+    date_range = DateRangeField(widget=RangeWidget(AdminDateWidget()))
 
     def changelist_view(self, request, extra_context=None):
         response = super(GroupUsageSummaryAdmin, self).changelist_view(
