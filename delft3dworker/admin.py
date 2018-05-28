@@ -31,6 +31,7 @@ from models import UserUsageSummary
 
 from delft3dworker.utils import tz_now
 
+
 class ContainerInline(admin.StackedInline):
     extra = 0
     model = Container
@@ -112,6 +113,7 @@ class Version_SVN_Admin(GuardedModelAdmin):
 
 # class TimeFilter
 
+
 @admin.register(GroupUsageSummary)
 class GroupUsageSummaryAdmin(admin.ModelAdmin):
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
@@ -139,8 +141,8 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
             'num_users': Count('user__username', distinct=True),
             'num_containers': Count('user__scene__container', distinct=True),
             'sum_runtime': ExpressionWrapper(
-                Sum(F('user__scene__container__container_stoptime') \
-                    - F('user__scene__container__container_starttime')),
+                Sum(F('user__scene__container__container_stoptime') -
+                    F('user__scene__container__container_starttime')),
                 output_field=DurationField()
             ),
         }
@@ -162,8 +164,7 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
 
     change_list_template = 'delft3dworker/user_summary_change_list.html'
     date_hierarchy = 'scene__container__container_stoptime'
-    list_filter = ('groups__id','scene__container__container_stoptime')
-
+    list_filter = ('groups__id', 'scene__container__container_stoptime')
 
     def changelist_view(self, request, extra_context=None):
         response = super(UserUsageSummaryAdmin, self).changelist_view(
@@ -182,8 +183,8 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
         metrics = {
             'num_containers': Count('scene__container', distinct=True),
             'sum_runtime': ExpressionWrapper(
-                Sum(F('scene__container__container_stoptime') \
-                    - F('scene__container__container_starttime')),
+                Sum(F('scene__container__container_stoptime') -
+                    F('scene__container__container_starttime')),
                 output_field=DurationField()
             ),
         }
