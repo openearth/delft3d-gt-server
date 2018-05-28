@@ -1986,6 +1986,9 @@ class Template(models.Model):
     name = models.CharField(max_length=256)
     meta = JSONField(blank=True, default={})
     sections = JSONField(blank=True, default={})
+    visualisation = JSONField(blank=True, default={})
+    export_options = JSONField(blank=True, default={})
+    yaml_template = models.FileField(upload_to='workflows/')
 
     # The following method is disabled as it adds to much garbage
     # to the MAIN search template
@@ -2007,3 +2010,33 @@ class Template(models.Model):
         permissions = (
             ('view_template', 'View Template'),
         )
+
+
+class Workflow(models.Model):
+    """Argo Workflow Instance."""
+    scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
+
+    uuid = models.UUIDField(
+        default=None, blank=True, null=True)
+    starttime = models.DateTimeField(default=tz_now, blank=True)
+
+    CONTAINER_STATE_CHOICES = (
+        ('non-existent', 'Non-existent'),  # on creation
+        ('pending', 'Pending'),  # argo ""
+        ('unknown', 'Unknown'),  # argo ""
+        ('running', 'Running'),
+        ('paused', 'Running (Suspended)'),
+        ('succeeded', 'Succeeded'),
+        ('skipped', 'Skipped'),
+        ('failed', 'Failed'),
+        ('error', 'Error'),
+    )
+
+    desired_state = models.CharField(
+        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
+    actual_state = models.CharField(
+        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
+    progress = models.PositiveSmallIntegerField(default=0)
+
+    def __unicode__(self):
+        return "{} instance of scene {}".format(self.scene.scenario.template.name, self.scene.name)
