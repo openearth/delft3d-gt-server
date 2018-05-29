@@ -15,3 +15,4 @@ CELERY_ONCE = {
   }
 }
 DOCKER_URL = 'unix:///var/run/docker.sock'
+BUCKETNAME = "s3bucket"

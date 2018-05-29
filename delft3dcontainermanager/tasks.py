@@ -29,6 +29,17 @@ def delft3dgt_pulse(self):
     call_command('containersync_sceneupdate')
     return
 
+@shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60})
+def pulse(self):
+    """
+    This task runs the sync_cluster_state management command.
+    This command updates the states of the workflow.
+
+    A lock is implemented to ensure it's only run one at a time
+    """
+    call_command('sync_cluster_state')
+    return
+
 
 @shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60})
 def delft3dgt_latest_svn(self):
@@ -86,7 +97,7 @@ def get_docker_ps(self):
 
 @shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60},
              throws=(HTTPError))
-def get_argo_wf(self):
+def get_argo_workflows(self):
     """
     Retrieve all running argo workflows and return them in
     an array of dictionaries. The array looks like this:
@@ -191,18 +202,10 @@ def do_docker_start(self, container_id):
 
 
 @shared_task(bind=True, throws=(HTTPError))
-def do_argo_create(self, workflow_id, parameters, yaml):
+def do_argo_create(self, yaml):
     """
     Start a deployment with a specific id and id
     """
-    # with open("delft3dgt-main.yaml") as f:
-    # dep = yaml.load(f)
-
-    # Edit Workflow object
-    yaml["metadata"] = {"name": workflow_id}
-    yaml["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": "uhsdfaksjhgfe"},
-                                               {"name": "parameters", "value": parameters}]
-
     crd = client.CustomObjectsApi()
     status = crd.create_namespaced_custom_object(
         "argoproj.io", "v1alpha1", "default", "workflows", yaml)

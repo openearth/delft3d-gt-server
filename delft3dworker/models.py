@@ -11,6 +11,7 @@ import random
 import shutil
 import string
 import uuid
+import yaml
 import zipfile
 
 from celery.result import AsyncResult
@@ -42,6 +43,9 @@ from delft3dcontainermanager.tasks import do_docker_remove
 from delft3dcontainermanager.tasks import do_docker_start
 from delft3dcontainermanager.tasks import do_docker_stop
 from delft3dcontainermanager.tasks import get_docker_log
+
+from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create
+from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
 
 
 # ################################### VERSION_SVN, SCENARIO, SCENE & CONTAINER
@@ -129,7 +133,8 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.ForeignKey('Template', blank=True, null=True, on_delete=models.CASCADE)
+    template = models.ForeignKey(
+        'Template', blank=True, null=True, on_delete=models.CASCADE)
 
     scenes_parameters = JSONField(blank=True, default={})
     parameters = JSONField(blank=True, default={})
@@ -237,25 +242,21 @@ class Scenario(models.Model):
 
     # INTERNALS
 
+    # TODO Workflow update this
     def _update_state_and_save(self):
 
         count = self.scene_set.all().count()
-
         self.state = 'inactive'
 
         if count > 0:
-
             progress = 0
-
             for scene in self.scene_set.all():
-
                 progress = progress + scene.progress
-
+                # TODO Fix phases here
                 if scene.phase != 6:
                     self.state = 'active'
 
             self.progress = progress / count
-
             self.save()
 
         return self.state
@@ -335,15 +336,16 @@ class Scene(models.Model):
     shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
-    workflows = Choices(
+    # TODO Make this into entrypoints? Otherwise delete.
+    entrypoints = Choices(
         (0, 'main', 'main workflow'),
-        (1, 'redo_proc', 'redo processing workflow'),
-        (2, 'redo_postproc', 'redo postprocessing workflow'),
-        (3, 'redo_proc_postproc', 'redo processing and postprocessing workflow')
+        # (1, 'redo_proc', 'redo processing workflow'),
+        # (2, 'redo_postproc', 'redo postprocessing workflow'),
+        # (3, 'redo_proc_postproc', 'redo processing and postprocessing workflow')
     )
 
-    workflow = models.PositiveSmallIntegerField(
-        default=workflows.main, choices=workflows)
+    entrypoint = models.PositiveSmallIntegerField(
+        default=entrypoints.main, choices=entrypoints)
 
     phases = Choices(
         # Create container models
@@ -410,7 +412,8 @@ class Scene(models.Model):
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
-    version = models.ForeignKey(Version_SVN, default=default_svn_version, on_delete=models.CASCADE)
+    version = models.ForeignKey(
+        Version_SVN, default=default_svn_version, on_delete=models.CASCADE)
 
     # PROPERTY METHODS
 
@@ -517,63 +520,24 @@ class Scene(models.Model):
         # - zip in a subprocess shell with zip
         # - zip to temporary file
 
+        # TODO Export based on export in Template
+
+        available_options = self.Template.export_options
         files_added = False
 
-        for root, dirs, files in os.walk(self.workingdir):
-            for f in files:
-                name, ext = os.path.splitext(f)
+        # for root, dirs, files in os.walk(self.workingdir):
+        #     for f in files:
+        #         name, ext = os.path.splitext(f)
 
-                add = False
+        #         # Available options and extensions logic
+        #         add = False
 
-                # Could be dynamic or tuple of extensions
-                if (
-                    'export_d3dinput' in options
-                ) and (
-                    root.endswith('simulation')
-                ) and (
-                    not f.startswith('TMP')
-                ) and (
-                    (
-                        ext in ['.bcc', '.bch', '.bct', '.bnd', '.dep', '.enc',
-                                '.fil', '.grd', '.ini', '.mdf', '.mdw', '.mor',
-                                '.obs', '.sed', '.sh', '.url', '.xml']
-                    ) or (
-                        ext.startswith('.tr')
-                    )
-                ):
-                    add = True
-
-                # Could be dynamic or tuple of extensions
-                if (
-                    'export_images' in options
-                ) and (
-                    ext in ['.png', '.jpg', '.gif']
-                ):
-                    add = True
-
-                if 'export_thirdparty' in options and (
-                        'export' in root
-                ) and (
-                    ext in ['.gz', ]
-                ):
-                    add = True
-
-                # Zip movie
-                if (
-                    'export_movie' in options
-                ) and (
-                    ext in ['.mp4']
-                ) and (
-                    os.path.getsize(os.path.join(root, f)) > 0
-                ):
-                    add = True
-
-                if add:
-                    files_added = True
-                    abs_path = os.path.join(root, f)
-                    rel_path = os.path.join(slugify(self.name),
-                                            os.path.relpath(abs_path, self.workingdir))
-                    zipfile.write(abs_path, rel_path)
+        #         if add:
+        #             files_added = True
+        #             abs_path = os.path.join(root, f)
+        #             rel_path = os.path.join(slugify(self.name),
+        #                                     os.path.relpath(abs_path, self.workingdir))
+        #             zipfile.write(abs_path, rel_path)
 
         return files_added
 
@@ -588,37 +552,6 @@ class Scene(models.Model):
                 str(self.suid),
                 ''
             )
-
-            # Hack to have the "dt:20" in the correct format
-            if self.parameters == "":
-                self.parameters = {"delft3d": self.info}
-
-            self.fileurl = os.path.join(
-                settings.WORKER_FILEURL, str(self.suid), '')
-
-            self.info["delta_fringe_images"] = {
-                "images": [],
-                "location": "process/"
-            }
-            self.info["channel_network_images"] = {
-                "images": [],
-                "location": "process/"
-            }
-            self.info["sediment_fraction_images"] = {
-                "images": [],
-                "location": "process/"
-            }
-            self.info["subenvironment_images"] = {
-                "images": [],
-                "location": "postprocess/"
-            }
-            self.info["logfile"] = {
-                "file": "",
-                "location": "simulation/"
-            }
-            self.info["procruns"] = 0
-            self.info["postprocess_output"] = {}
-
             self.fileurl = os.path.join(
                 settings.WORKER_FILEURL, str(self.suid), '')
 
@@ -1379,6 +1312,7 @@ class Scene(models.Model):
         self.save()
 
     # Run this after post processing
+    # TODO This won't work with workflows
     def _parse_postprocessing(self):
         outputfn = os.path.join(self.workingdir, 'postprocess', 'output.json')
         if os.path.exists(outputfn):
@@ -1985,6 +1919,31 @@ class Template(models.Model):
 
     name = models.CharField(max_length=256)
     meta = JSONField(blank=True, default={})
+    # TODO Base this on template row.
+    info = JSONField(blank=True, default={
+        "delta_fringe_images": {
+            "images": [],
+            "location": "process/"
+        },
+        "channel_network_images": {
+            "images": [],
+            "location": "process/"
+        },
+        "sediment_fraction_images": {
+            "images": [],
+            "location": "process/"
+        },
+        "subenvironment_images": {
+            "images": [],
+            "location": "postprocess/"
+        },
+        "logfile": {
+            "file": "",
+            "location": "simulation/"
+        },
+        "procruns": 0,
+        "postprocess_output": {},
+    })
     sections = JSONField(blank=True, default={})
     visualisation = JSONField(blank=True, default={})
     export_options = JSONField(blank=True, default={})
@@ -2015,12 +1974,15 @@ class Template(models.Model):
 class Workflow(models.Model):
     """Argo Workflow Instance."""
     scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
-
-    uuid = models.UUIDField(
-        default=None, blank=True, null=True)
     starttime = models.DateTimeField(default=tz_now, blank=True)
 
-    CONTAINER_STATE_CHOICES = (
+    # Celery connected task
+    task_uuid = models.UUIDField(
+        default=None, blank=True, null=True)
+    task_starttime = models.DateTimeField(default=tz_now, blank=True)
+
+    # State management
+    WORKFLOW_STATE_CHOICES = (
         ('non-existent', 'Non-existent'),  # on creation
         ('pending', 'Pending'),  # argo ""
         ('unknown', 'Unknown'),  # argo ""
@@ -2031,12 +1993,116 @@ class Workflow(models.Model):
         ('failed', 'Failed'),
         ('error', 'Error'),
     )
-
+    FINISHED = ['succeeded', 'failed', 'error', 'skipped']
     desired_state = models.CharField(
-        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
-    actual_state = models.CharField(
-        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
+        max_length=16, choices=WORKFLOW_STATE_CHOICES, default='non-existent')
+    cluster_state = models.CharField(
+        max_length=16, choices=WORKFLOW_STATE_CHOICES, default='non-existent')
+
     progress = models.PositiveSmallIntegerField(default=0)
 
+    # HEARTBEAT METHODS
+    def update_task_result(self):
+        """
+        Get the result from the last task it executed, given that there is a
+        result. If the task is not ready, don't do anything.
+        """
+        if self.task_uuid is None:
+            return
+
+        result = AsyncResult(id=str(self.task_uuid))
+        time_passed = now() - self.task_starttime
+        if result.ready():
+
+            if result.successful():
+                docker_id, docker_log = result.result
+            else:
+                error = result.result
+                logging.warn(
+                    "Task of Container [{}] resulted in {}: {}".
+                    format(self, result.state, error))
+
+            self.task_uuid = None
+            self.save()
+
+        # Forget task after expire_time
+        elif time_passed.total_seconds() > settings.TASK_EXPIRE_TIME:
+            logging.warn(
+                "Celery task expired after {} seconds".format(
+                    time_passed.total_seconds()))
+            result.revoke()
+            self.task_uuid = None
+            self.save()
+
+        else:
+            logging.warn("Celery task of {} is still {}.".format(self,
+                                                                 result.state))
+
+    def sync_cluster_state(self, latest_cluster_state):
+        pass
+
+    def fix_mismatch(self):
+        # return if container still has an active task
+        if self.task_uuid is not None:
+            return
+
+        # return if the states match
+        if self.desired_state == self.docker_state:
+            return
+
+        # apparently there is something to do, so let's act:
+        if self.desired_state == 'running':
+            self.create_workflow()
+
+        if self.desired_state == 'removed':
+            self.remove_workflow()
+
+
+    # INTERNALS
+    def set_desired_state(self, desired_state):
+        self.desired_state = desired_state
+        self.save()
+
+    # CELERY TASK CALLS
+    def create_workflow(self):
+        # Catch creating already existing workflows
+        if self.cluster_state != 'non-existent':
+            logging.warning("Can't create already existing workflow.")
+            return
+
+        # Open and edit workflow Template
+        template_model = self.scene.scenario.template
+        with open(template_model.yaml_template.path) as f:
+            template = yaml.load(f)
+        template["metadata"] = {"name": "{}-{}".format(template_model.name, self.scene.suid)}
+        template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": self.scene.suid},
+                                                       {"name": "s3bucket", "value": settings.BUCKETNAME}]
+
+        # Call celery create task
+        result = do_argo_create.apply_async(args=(template,),
+                                            expires=settings.TASK_EXPIRE_TIME)
+        self.task_starttime = now()
+        self.container_log += "{} | Created \n".format(self.task_starttime)
+        self.task_uuid = result.id
+        self.save()
+
+    def remove_workflow(self):
+        # Catch removing unfinished workflow
+        if self.cluster_state not in 'finished':
+            logging.warning("Can't remove unfinished workflow")
+            return
+
+        template_model = self.scene.scenario.template
+        result = do_argo_remove.apply_async(
+            args=("{}-{}".format(template_model.name, self.scene.suid),),
+            expires=settings.TASK_EXPIRE_TIME
+        )
+
+        self.task_starttime = now()
+        self.container_log += "{} | Removed \n".format(self.task_starttime)
+
+        self.task_uuid = result.id
+        self.save()
+
     def __unicode__(self):
-        return "{} instance of scene {}".format(self.scene.scenario.template.name, self.scene.name)
+        return "Workflow of scene {}".format(self.scene.name)
