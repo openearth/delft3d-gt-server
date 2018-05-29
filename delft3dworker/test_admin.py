@@ -59,25 +59,37 @@ class AdminTest(TestCase):
 
 class GroupUsageSummaryAdminTest(TestCase):
     def setUp(self):
-        # self.client = Client()
         self.factory = RequestFactory()
 
         self.user_a = User.objects.create_user(username='User A')
-
         self.user_b = User.objects.create_user(username='User B')
         self.superuser = User.objects.create_superuser(
             username='super', password='secret', email='super@example.com')
 
-        company_a = Group.objects.create(name='access:org:Company A')
-        company_a.user_set.add(self.user_a)
-        company_b = Group.objects.create(name='access:org:Company B')
-        company_b.user_set.add(self.user_b)
+        self.company_w = Group.objects.create(name='access:world')
+        for user in [self.user_a, self.user_b]:
+            self.company_w.user_set.add(user)
+            for perm in ['view_scene', 'add_scene',
+                         'change_scene', 'delete_scene']:
+                user.user_permissions.add(
+                    Permission.objects.get(codename=perm)
+                )
+        self.company_a = Group.objects.create(name='access:org:Company A')
+        self.company_a.user_set.add(self.user_a)
+        self.company_b = Group.objects.create(name='access:org:Company B')
+        self.company_b.user_set.add(self.user_b)
 
         self.scene_a = Scene.objects.create(
             id=0,
             name='Scene A',
             owner=self.user_a
         )
+        self.scene_b = Scene.objects.create(
+            id=1,
+            name='Scene B',
+            owner=self.user_b
+        )
+
         self.container_a = Container.objects.create(
             scene=self.scene_a,
             container_type='Container A',
@@ -86,13 +98,7 @@ class GroupUsageSummaryAdminTest(TestCase):
             container_stoptime=datetime.datetime(
                 2010, 10, 10, 10, 20, 00, tzinfo=timezone.utc)
         )
-
-        self.scene_b = Scene.objects.create(
-            id=1,
-            name='Scene B',
-            owner=self.user_b
-        )
-        self.container_a = Container.objects.create(
+        self.container_b = Container.objects.create(
             scene=self.scene_b,
             container_type='Container B',
             container_starttime=datetime.datetime(
@@ -106,7 +112,7 @@ class GroupUsageSummaryAdminTest(TestCase):
 
     def test_changelist_view(self):
         """
-        Test changelist_view
+        Test changelist_view for correct summaries
         """
         factory = RequestFactory()
         request = factory.get(reverse('admin:delft3dworker_groupusagesummary_changelist'))
@@ -115,6 +121,7 @@ class GroupUsageSummaryAdminTest(TestCase):
 
         summary_total = response.context_data['summary_total']
 
+        # Totals should be 2 users, 2 containers, and 30 min total runtime
         self.assertEqual(response.status_code, 200)
         self.assertEqual(summary_total['num_users'], 2)
         self.assertEqual(summary_total['num_containers'], 2)

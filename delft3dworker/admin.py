@@ -28,7 +28,6 @@ from models import Version_SVN
 from models import GroupUsageSummary
 from models import UserUsageSummary
 
-
 from delft3dworker.utils import tz_now
 
 
@@ -111,19 +110,20 @@ class Version_SVN_Admin(GuardedModelAdmin):
         SceneInline,
     ]
 
-# class TimeFilter
-
 
 @admin.register(GroupUsageSummary)
 class GroupUsageSummaryAdmin(admin.ModelAdmin):
+    # Following example available at:
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
 
     change_list_template = 'delft3dworker/group_summary_change_list.html'
+    # Sort by time period
     date_hierarchy = 'user__scene__container__container_stoptime'
 
-    date_range = DateRangeField(widget=RangeWidget(AdminDateWidget()))
-
     def changelist_view(self, request, extra_context=None):
+        """
+        Displays summary of usage organized by group
+        """
         response = super(GroupUsageSummaryAdmin, self).changelist_view(
             request,
             extra_context=extra_context,
@@ -134,7 +134,6 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
 
 
         except (AttributeError, KeyError) as e:
-            print(e)
             return response
 
         values = ['name', 'id']
@@ -147,12 +146,12 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
                 output_field=DurationField()
             ),
         }
-
+        # Content for table
         response.context_data['summary'] = list(
             qs.values(*values)
-            .annotate(**metrics)
+                .annotate(**metrics)
         )
-
+        # Content for totals in table
         response.context_data['summary_total'] = dict(
             qs.aggregate(**metrics)
         )
@@ -162,22 +161,25 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
 
 @admin.register(UserUsageSummary)
 class UserUsageSummaryAdmin(admin.ModelAdmin):
-
     change_list_template = 'delft3dworker/user_summary_change_list.html'
+    # Sort by time period
     date_hierarchy = 'scene__container__container_stoptime'
     list_filter = ('groups__name', 'scene__container__container_stoptime')
 
     def changelist_view(self, request, extra_context=None):
+        """
+        Display summary of usage organized by users in a group
+        """
+
         response = super(UserUsageSummaryAdmin, self).changelist_view(
             request,
             extra_context=extra_context,
         )
         try:
             qs = response.context_data['cl'].queryset
-            qs.order_by('groups__name')
+            qs = qs.order_by('username')
 
         except (AttributeError, KeyError) as e:
-            print(e)
             return response
 
         values = ['username', 'groups__name']
@@ -189,12 +191,12 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
                 output_field=DurationField()
             ),
         }
-
+        # Content for table
         response.context_data['summary'] = list(
             qs.values(*values)
-            .annotate(**metrics)
+                .annotate(**metrics)
         )
-
+        # Content for totals in table
         response.context_data['summary_total'] = dict(
             qs.aggregate(**metrics)
         )
