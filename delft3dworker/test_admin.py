@@ -3,12 +3,9 @@ from __future__ import absolute_import
 import datetime
 
 from mock import Mock
-from mock import MagicMock
-from mock import patch
 
 from django.contrib.auth.models import Permission
 from django.contrib.admin.sites import AdminSite
-from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import Client, TestCase, RequestFactory
 from django.urls import reverse
 from django.utils import timezone
@@ -19,10 +16,6 @@ from delft3dworker.models import Scene
 from delft3dworker.models import Container
 from delft3dworker.admin import SceneAdmin
 from delft3dworker.admin import GroupUsageSummaryAdmin
-from delft3dworker.admin import UserUsageSummaryAdmin
-
-
-# from .views import
 
 
 class AdminTest(TestCase):

@@ -1,21 +1,13 @@
 import os
-import logging
-import datetime
 
-from django.contrib.auth.models import Group
-from django.contrib.auth.models import User
 from django.contrib import admin
-from django.contrib.admin.widgets import AdminDateWidget
-from django.contrib.postgres.forms.ranges import DateRangeField, RangeWidget
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import F
 from django.db.models import Sum
 from django.db.models import Count
 from django.db.models import ExpressionWrapper
-from django.db.models import DateTimeField
 from django.db.models import DurationField
-from django.db.models.functions import Trunc
 
 from guardian.admin import GuardedModelAdmin
 
@@ -27,8 +19,6 @@ from models import Template
 from models import Version_SVN
 from models import GroupUsageSummary
 from models import UserUsageSummary
-
-from delft3dworker.utils import tz_now
 
 
 class ContainerInline(admin.StackedInline):
@@ -130,13 +120,18 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
         )
         try:
             qs = response.context_data['cl'].queryset
+            # All user belong to world. To avoid double counting run_time we exclude this group
+            # Then order by the group name to sort
             qs = qs.exclude(name='access:world').order_by('name')
 
 
         except (AttributeError, KeyError) as e:
             return response
-
+        # Summarize by group values
         values = ['name', 'id']
+        # Count the users and containers per group, and sum total runtime.
+        # Runtime is considered the difference in time between the start and stop time
+        # of a container.
         metrics = {
             'num_users': Count('user__username', distinct=True),
             'num_containers': Count('user__scene__container', distinct=True),
@@ -164,6 +159,7 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
     change_list_template = 'delft3dworker/user_summary_change_list.html'
     # Sort by time period
     date_hierarchy = 'scene__container__container_stoptime'
+    # Provide options for filtering by group and time
     list_filter = ('groups__name', 'scene__container__container_stoptime')
 
     def changelist_view(self, request, extra_context=None):
@@ -181,8 +177,11 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
 
         except (AttributeError, KeyError) as e:
             return response
-
+        # Summarize by user values, display group name
         values = ['username', 'groups__name']
+        # Count the containers per user, and sum total runtime.
+        # Runtime is considered the difference in time between the start and stop time
+        # of a container.
         metrics = {
             'num_containers': Count('scene__container', distinct=True),
             'sum_runtime': ExpressionWrapper(

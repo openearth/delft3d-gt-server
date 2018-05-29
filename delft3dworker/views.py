@@ -653,7 +653,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 class GroupUsageSummaryViewSet(viewsets.ModelViewSet):
     """
-    API endpoint that allows groups to be viewed or edited.
+    View of Docker container usage summary, sorted by group.
     """
 
     serializer_class = GroupSerializer
@@ -662,7 +662,7 @@ class GroupUsageSummaryViewSet(viewsets.ModelViewSet):
 
 class UserUsageSummaryViewSet(viewsets.ModelViewSet):
     """
-    API endpoint that allows groups to be viewed or edited.
+    View of Docker container usage summary for a group, sorted by user.
     """
 
     serializer_class = UserSerializer

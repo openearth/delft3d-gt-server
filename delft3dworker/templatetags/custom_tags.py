@@ -4,7 +4,7 @@ register = template.Library()
 
 
 def divtime(value, arg):
-    """Removes all values of arg from the given string"""
+    """Custom tag to divide timedelta value by timedelta arg in html template"""
     if value is None or arg is None:
         return 0
     else:
