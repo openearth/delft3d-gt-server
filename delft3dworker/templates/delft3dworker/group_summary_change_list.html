@@ -1,0 +1,71 @@
+{% extends "admin/change_list.html" %}
+{% load humanize %}
+{% load custom_tags %}
+{% block content_title %}
+    <h1> Group Usage Summary </h1>
+{% endblock %}
+{{ form.media }}
+<script>
+    var django = django || {};
+    django.jQuery = $;
+</script>
+{% block result_list %}
+<div class="results">
+    <table>
+
+    <thead>
+      <tr>
+        <th>
+          <div class="text">
+            <a href="#">Group</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Num Users</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Total Containers</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Total Runtime</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Percentage Usage</a>
+          </div>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in summary %}
+      <tr class="{% cycle 'row1' 'row2' %}">
+        <td><a href="/admin/delft3dworker/userusagesummary/?groups__id={{row.id}}">{{ row.name }} </a></td>
+        <td> {{ row.num_users }} </td>
+        <td> {{ row.num_containers }} </td>
+        <td> {{ row.sum_runtime }} </td>
+        <td>
+          <strong>
+          {{ row.sum_runtime | divtime:summary_total.sum_runtime | floatformat }}%
+          </strong>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tr style="font-weight:bold; border-top:2px solid #DDDDDD;">
+        <td> Total </td>
+        <td> {{ summary_total.num_users | intcomma }} </td>
+        <td> {{ summary_total.num_containers | intcomma }} </td>
+        <td> {{ summary_total.sum_runtime | intcomma }} </td>
+        <td> 100% </td>
+    </tr>
+
+  </table>
+</div>
+{% endblock %}
+{% block pagination %}{% endblock %}

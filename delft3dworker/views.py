@@ -48,6 +48,8 @@ from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Version_SVN
+from delft3dworker.models import GroupUsageSummary
+from delft3dworker.models import UserUsageSummary
 from delft3dworker.permissions import ViewObjectPermissions
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
@@ -647,3 +649,21 @@ class GroupViewSet(viewsets.ModelViewSet):
         user = get_object_or_404(User, id=self.request.user.id)
         wanted = [group.id for group in user.groups.all()]
         return Group.objects.filter(pk__in=wanted)
+
+
+class GroupUsageSummaryViewSet(viewsets.ModelViewSet):
+    """
+    View of Docker container usage summary, sorted by group.
+    """
+
+    serializer_class = GroupSerializer
+    queryset = Group.objects.none()  # Required for DjangoModelPermissions
+
+
+class UserUsageSummaryViewSet(viewsets.ModelViewSet):
+    """
+    View of Docker container usage summary for a group, sorted by user.
+    """
+
+    serializer_class = UserSerializer
+    queryset = User.objects.none()  # Required for DjangoModelPermissions

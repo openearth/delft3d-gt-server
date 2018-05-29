@@ -2007,3 +2007,19 @@ class Template(models.Model):
         permissions = (
             ('view_template', 'View Template'),
         )
+
+
+class GroupUsageSummary(Group):
+
+    class Meta:
+        proxy = True
+        verbose_name = 'Group Usage Summary'
+        verbose_name_plural = 'Group Usage Summary'
+
+
+class UserUsageSummary(User):
+    # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
+    class Meta:
+        proxy = True
+        verbose_name = 'User Usage Summary'
+        verbose_name_plural = 'User Usage Summary'

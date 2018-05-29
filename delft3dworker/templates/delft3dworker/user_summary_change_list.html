@@ -1,0 +1,66 @@
+{% extends "admin/change_list.html" %}
+{% load humanize %}
+{% load custom_tags %}
+{% block content_title %}
+    <h1> User Usage Summary </h1>
+{% endblock %}
+{% block result_list %}
+<div class="results">
+    <table>
+
+    <thead>
+      <tr>
+        <th>
+          <div class="text">
+            <a href="#">User</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Group</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Total Containers</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Total Runtime</a>
+          </div>
+        </th>
+        <th>
+          <div class="text">
+            <a href="#">Percentage Usage of Total Group Usage</a>
+          </div>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in summary %}
+      <tr class="{% cycle 'row1' 'row2' %}">
+        <td> {{ row.username }} </td>
+        <td> {{ row.groups__name }} </td>
+        <td> {{ row.num_containers }} </td>
+        <td> {{ row.sum_runtime }} </td>
+        <td>
+          <strong>
+          {{ row.sum_runtime | divtime:summary_total.sum_runtime | floatformat }}%
+          </strong>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tr style="font-weight:bold; border-top:2px solid #DDDDDD;">
+        <td> Total </td>
+        <td>  </td>
+        <td> {{ summary_total.num_containers | intcomma }} </td>
+        <td> {{ summary_total.sum_runtime | intcomma }} </td>
+        <td> {{ summary_total.sum_runtime | divtime:summary_total.sum_runtime | floatformat }}% </td>
+    </tr>
+
+  </table>
+</div>
+{% endblock %}
+{% block pagination %}{% endblock %}

@@ -3,6 +3,11 @@ import os
 from django.contrib import admin
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models import F
+from django.db.models import Sum
+from django.db.models import Count
+from django.db.models import ExpressionWrapper
+from django.db.models import DurationField
 
 from guardian.admin import GuardedModelAdmin
 
@@ -12,6 +17,8 @@ from models import Container
 from models import SearchForm
 from models import Template
 from models import Version_SVN
+from models import GroupUsageSummary
+from models import UserUsageSummary
 
 
 class ContainerInline(admin.StackedInline):
@@ -66,10 +73,11 @@ class SceneAdmin(GuardedModelAdmin):
         else:
             subject = "Delft3D-GT: Synchronization problems"
 
-        message = ', '.join(sync_failed)           
+        message = ', '.join(sync_failed)
         from_email = settings.DEFAULT_FROM_EMAIL
         recipient_list = ["delft3d-gt@deltares.nl"]
         send_mail(subject, message, from_email, recipient_list)
+
 
 @admin.register(Container)
 class ContainerAdmin(GuardedModelAdmin):
@@ -91,3 +99,105 @@ class Version_SVN_Admin(GuardedModelAdmin):
     inlines = [
         SceneInline,
     ]
+
+
+@admin.register(GroupUsageSummary)
+class GroupUsageSummaryAdmin(admin.ModelAdmin):
+    # Following example available at:
+    # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
+
+    change_list_template = 'delft3dworker/group_summary_change_list.html'
+    # Sort by time period
+    date_hierarchy = 'user__scene__container__container_stoptime'
+
+    def changelist_view(self, request, extra_context=None):
+        """
+        Displays summary of usage organized by group
+        """
+        response = super(GroupUsageSummaryAdmin, self).changelist_view(
+            request,
+            extra_context=extra_context,
+        )
+        try:
+            qs = response.context_data['cl'].queryset
+            # All user belong to world. To avoid double counting run_time we exclude this group
+            # Then order by the group name to sort
+            qs = qs.exclude(name='access:world').order_by('name')
+
+
+        except (AttributeError, KeyError) as e:
+            return response
+        # Summarize by group values
+        values = ['name', 'id']
+        # Count the users and containers per group, and sum total runtime.
+        # Runtime is considered the difference in time between the start and stop time
+        # of a container.
+        metrics = {
+            'num_users': Count('user__username', distinct=True),
+            'num_containers': Count('user__scene__container', distinct=True),
+            'sum_runtime': ExpressionWrapper(
+                Sum(F('user__scene__container__container_stoptime') -
+                    F('user__scene__container__container_starttime')),
+                output_field=DurationField()
+            ),
+        }
+        # Content for table
+        response.context_data['summary'] = list(
+            qs.values(*values)
+                .annotate(**metrics)
+        )
+        # Content for totals in table
+        response.context_data['summary_total'] = dict(
+            qs.aggregate(**metrics)
+        )
+
+        return response
+
+
+@admin.register(UserUsageSummary)
+class UserUsageSummaryAdmin(admin.ModelAdmin):
+    change_list_template = 'delft3dworker/user_summary_change_list.html'
+    # Sort by time period
+    date_hierarchy = 'scene__container__container_stoptime'
+    # Provide options for filtering by group and time
+    list_filter = ('groups__name', 'scene__container__container_stoptime')
+
+    def changelist_view(self, request, extra_context=None):
+        """
+        Display summary of usage organized by users in a group
+        """
+
+        response = super(UserUsageSummaryAdmin, self).changelist_view(
+            request,
+            extra_context=extra_context,
+        )
+        try:
+            qs = response.context_data['cl'].queryset
+            qs = qs.order_by('username')
+
+        except (AttributeError, KeyError) as e:
+            return response
+        # Summarize by user values, display group name
+        values = ['username', 'groups__name']
+        # Count the containers per user, and sum total runtime.
+        # Runtime is considered the difference in time between the start and stop time
+        # of a container.
+        metrics = {
+            'num_containers': Count('scene__container', distinct=True),
+            'sum_runtime': ExpressionWrapper(
+                Sum(F('scene__container__container_stoptime') -
+                    F('scene__container__container_starttime')),
+                output_field=DurationField()
+            ),
+        }
+        # Content for table
+        response.context_data['summary'] = list(
+            qs.values(*values)
+                .annotate(**metrics)
+        )
+        # Content for totals in table
+        response.context_data['summary_total'] = dict(
+            qs.aggregate(**metrics)
+        )
+
+        return response
