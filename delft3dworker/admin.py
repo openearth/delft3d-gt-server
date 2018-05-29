@@ -120,7 +120,7 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
 
     change_list_template = 'delft3dworker/group_summary_change_list.html'
     date_hierarchy = 'user__scene__container__container_stoptime'
-    # list_filter = ('user__scene__container__container_stoptime',)
+
     date_range = DateRangeField(widget=RangeWidget(AdminDateWidget()))
 
     def changelist_view(self, request, extra_context=None):
@@ -130,7 +130,8 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
         )
         try:
             qs = response.context_data['cl'].queryset
-            qs.order_by('name')
+            qs = qs.exclude(name='access:world').order_by('name')
+
 
         except (AttributeError, KeyError) as e:
             print(e)
@@ -164,7 +165,7 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
 
     change_list_template = 'delft3dworker/user_summary_change_list.html'
     date_hierarchy = 'scene__container__container_stoptime'
-    list_filter = ('groups__id', 'scene__container__container_stoptime')
+    list_filter = ('groups__name', 'scene__container__container_stoptime')
 
     def changelist_view(self, request, extra_context=None):
         response = super(UserUsageSummaryAdmin, self).changelist_view(

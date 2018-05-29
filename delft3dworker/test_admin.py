@@ -68,15 +68,6 @@ class GroupUsageSummaryAdminTest(TestCase):
         self.superuser = User.objects.create_superuser(
             username='super', password='secret', email='super@example.com')
 
-        company_w = Group.objects.create(name='access:world')
-        for user in [self.user_a, self.user_b]:
-            company_w.user_set.add(user)
-            for perm in ['view_scene', 'add_scene',
-                         'change_scene', 'delete_scene']:
-                user.user_permissions.add(
-                    Permission.objects.get(codename=perm)
-                )
-
         company_a = Group.objects.create(name='access:org:Company A')
         company_a.user_set.add(self.user_a)
         company_b = Group.objects.create(name='access:org:Company B')
@@ -122,12 +113,9 @@ class GroupUsageSummaryAdminTest(TestCase):
         request.user = self.superuser
         response = self.group_usage_summary_admin.changelist_view(request)
 
-        print response.context_data
-        print response.render()
-        # print(response.content)
+        summary_total = response.context_data['summary_total']
 
         self.assertEqual(response.status_code, 200)
-        # self.assertEqual(response.context['summary__num_users'], datetime.timedelta(minutes=20))
-        # self.assertEqual(response.context['summary__'], datetime.timedelta(minutes=30))
-        # self.assertEqual(response.context[], 2)
-        # self.assertEqual(response.context['sumgroups'], 2)
+        self.assertEqual(summary_total['num_users'], 2)
+        self.assertEqual(summary_total['num_containers'], 2)
+        self.assertEqual(summary_total['sum_runtime'], datetime.timedelta(minutes=30))
