@@ -26,12 +26,15 @@
             <script type="text/javascript" src="/media/admin/js/core.js"></script>
             {% csrf_token %}
                 <table>
+                    <!--The date picker form won't appear :(-->
                     {{ form.media }}
                 </table>
+            <!--Hey look I made a button-->
                 <input type="submit" value="Submit" />
         </form>
     </div>
 {% endblock %}
+
 {% block result_list %}
 <div class="results">
     <table>

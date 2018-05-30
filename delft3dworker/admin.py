@@ -118,14 +118,16 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
     startdate = AdminDateWidget()
     enddate = AdminDateWidget()
 
-    # form = GroupUsageSummaryAdminForm
+    # https://stackoverflow.com/questions/1668220/filtering-by-custom-date-range-in-django-admin
     # Need to redirect to url of form:
     # /admin/delft3dworker/groupusagesummary/?user__scene__container__container_stoptime__gte=
     # 2018-03-01&user__scene__container__container_stoptime__lt=2018-06-01
-    # def something(request):
-    #     url = '/user__scene__container__container_stoptime__gte='%s'&user__scene__container__container_stoptime__lt='%s,
-    # % request.startdate, request.enddate
+    # def date_redirect(request):
+    #     url = '/user__scene__container__container_stoptime__gte=%s&user__scene__container__container_stoptime__lt=%s' % (request.startdate, request.enddate)
     #     return HttpResponseRedirect(url)
+
+    # I think I might need a custom form
+    # https://stackoverflow.com/questions/32892847/add-calendar-widget-to-django-form
 
     def changelist_view(self, request, extra_context=None):
         """
