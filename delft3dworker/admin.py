@@ -8,15 +8,15 @@ from guardian.admin import GuardedModelAdmin
 
 from models import Scenario
 from models import Scene
-from models import Container
+from models import Workflow
 from models import SearchForm
 from models import Template
 from models import Version_SVN
 
 
-class ContainerInline(admin.StackedInline):
+class WorkflowInline(admin.StackedInline):
     extra = 0
-    model = Container
+    model = Workflow
 
 
 class SceneInline(admin.StackedInline):
@@ -32,7 +32,7 @@ class ScenarioAdmin(GuardedModelAdmin):
 @admin.register(Scene)
 class SceneAdmin(GuardedModelAdmin):
     inlines = [
-        ContainerInline,
+        WorkflowInline,
     ]
 
     actions = ['resync',
@@ -71,8 +71,8 @@ class SceneAdmin(GuardedModelAdmin):
         recipient_list = ["delft3d-gt@deltares.nl"]
         send_mail(subject, message, from_email, recipient_list)
 
-@admin.register(Container)
-class ContainerAdmin(GuardedModelAdmin):
+@admin.register(Workflow)
+class WorkflowAdmin(GuardedModelAdmin):
     pass
 
 

@@ -5,12 +5,14 @@ import os
 from shutil import rmtree
 from six.moves import configparser
 
+from base64 import b64encode
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from celery_once import QueueOnce
 from django.conf import settings
 from django.core.management import call_command
 from docker import Client
+from json import dumps
 from kubernetes import client, config
 from requests.exceptions import HTTPError
 
@@ -29,8 +31,9 @@ def delft3dgt_pulse(self):
     call_command('containersync_sceneupdate')
     return
 
+
 @shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60})
-def pulse(self):
+def delft3dgt_kube_pulse(self):
     """
     This task runs the sync_cluster_state management command.
     This command updates the states of the workflow.
@@ -107,7 +110,8 @@ def get_argo_workflows(self):
     # pods = v1.list_pod_for_all_namespaces(watch=False, timeout_seconds=59)
     wf = v1.api_client.call_api("/apis/argoproj.io/v1alpha1/workflows",
                                 "GET", response_type="V1ConfigMapList", _return_http_data_only=True)
-    return wf
+    json_wf = dumps(wf.to_dict(), default=str)
+    return {"get_argo_workflows": json_wf}
 
 
 @shared_task(bind=True, throws=(HTTPError))
@@ -128,14 +132,25 @@ def get_docker_log(self, container_id, stdout=True, stderr=False, tail=5):
 
 
 @shared_task(bind=True, throws=(HTTPError))
-def get_kube_log(self, container_id, tail=5):
+def get_kube_log(self, wf_id, tail=25):
     """
     Retrieve the log of a container and return container id and log
     """
     v1 = client.CoreV1Api()
-    log = v1.read_namespaced_pod_log(
-        container_id, "default", container="wait", tail_lines=tail)
-    return log
+    log = ""
+    pods = v1.list_namespaced_pod("default", label_selector="workflows.argoproj.io/workflow={}".format(wf_id))
+    pods_dict = pods.to_dict()
+    if "items" in pods_dict:
+        for item in pods_dict["items"]:
+            name = item["metadata"]["name"]
+            print("Reading logs for {}".format(name))
+            try:
+                podlog = v1.read_namespaced_pod_log(name, "default", container="main", tail_lines=tail)
+                log += podlog
+            except Exception as e:
+                print(e)
+
+    return {"get_kube_log": log}
 
 
 @shared_task(bind=True, throws=(HTTPError))
@@ -210,7 +225,7 @@ def do_argo_create(self, yaml):
     status = crd.create_namespaced_custom_object(
         "argoproj.io", "v1alpha1", "default", "workflows", yaml)
 
-    return status
+    return {"do_argo_create": status}
 
 
 @shared_task(bind=True, throws=(HTTPError))
@@ -270,10 +285,10 @@ def do_argo_remove(self, workflow_id):
     Try to write the docker log output as well.
     """
     crd = client.CustomObjectsApi()
-    crd.delete_namespaced_custom_object(
+    status = crd.delete_namespaced_custom_object(
         "argoproj.io", "v1alpha1", "default", "workflows", workflow_id, {})
 
-    return container_id, ""
+    return {"do_argo_remove": status}
 
 
 @shared_task(bind=True)

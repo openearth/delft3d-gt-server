@@ -1,6 +1,7 @@
 from celery.result import AsyncResult
 import logging
 from django.core.management import BaseCommand
+from json import loads
 from time import sleep
 
 from delft3dcontainermanager.tasks import get_argo_workflows
@@ -68,12 +69,16 @@ class Command(BaseCommand):
                 return False
 
         # task is succesful, so we're getting the result and create a set
-        cluster_workflows = ps.result
+        cluster_workflows_json = ps.result["get_argo_workflows"]
+        cluster_workflows = loads(cluster_workflows_json)
         cluster_dict = {wf["metadata"]["name"]: wf for wf in cluster_workflows["items"]}
-        cluster_set = cluster_dict.keys()
+        cluster_set = set(cluster_dict.keys())
 
         # retrieve container from database
         database_set = set(Workflow.objects.all().values_list('name', flat=True))
+
+        print(cluster_set)
+        print(database_set)
 
         # Work out matching matrix
         #       argo wf yes no
@@ -92,16 +97,19 @@ class Command(BaseCommand):
         # Update state of all matching containers
         workflow_match = m_1_1 | m_1_0
         for wf_name in workflow_match:
+            print("Match {}".format(wf_name))
             snapshot = cluster_dict[wf_name] if wf_name in cluster_dict else None
-            for c in Workflow.objects.filter(name=wf_name):
-                c.sync_cluster_state(snapshot)
+            for wf in Workflow.objects.filter(name=wf_name):
+                print(wf)
+                wf.sync_cluster_state(snapshot)
 
         # Call error for mismatch
         workflow_mismatch = m_0_1 | m_0_0
         for wf in workflow_mismatch:
+            print("Mismatch {}".format(wf))
             msg = "Workflow {} not found in database!".format(wf)
             self.stderr.write(msg)
-            do_argo_remove.delay(wf, force=True)
+            # do_argo_remove.delay(wf)  # comment out for dev
 
         return True  # successful
 
@@ -120,4 +128,4 @@ class Command(BaseCommand):
     def _fix_workflow_state_mismatch(self):
 
         for workflow in Workflow.objects.all():
-            workflow.fix_mismatch()
+            workflow.fix_mismatch_or_log()

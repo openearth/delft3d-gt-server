@@ -170,17 +170,17 @@ CELERY_ACKS_LATE = False
 CELERYD_PREFETCH_MULTIPLIER = 1
 
 # Celerybeat
-CELERYBEAT_SCHEDULE = {
-    'sync': {
-        'task': 'delft3dcontainermanager.tasks.delft3dgt_pulse',
+CELERY_BEAT_SCHEDULE = {
+    'sync_kube_cluster': {
+        'task': 'delft3dcontainermanager.tasks.delft3dgt_kube_pulse',
         'schedule': timedelta(seconds=15),
         'options': {'queue': 'beat', 'expires': TASK_EXPIRE_TIME}
     },
-    'latest_svn': {
-        'task': 'delft3dcontainermanager.tasks.delft3dgt_latest_svn',
-        'schedule': timedelta(hours=6),
-        'options': {'queue': 'beat', 'expires': TASK_EXPIRE_TIME}
-    },
+    # 'latest_svn': {
+    #     'task': 'delft3dcontainermanager.tasks.delft3dgt_latest_svn',
+    #     'schedule': timedelta(hours=6),
+    #     'options': {'queue': 'beat', 'expires': TASK_EXPIRE_TIME}
+    # },
 }
 
 WORKER_FILEURL = '/files'
@@ -212,6 +212,7 @@ REST_FRAMEWORK = {
 try:
     from provisionedsettings import *
 except ImportError:
+    print("HELLP\n\n")
     SECRET_KEY = 'test'
 
 # TESTING
