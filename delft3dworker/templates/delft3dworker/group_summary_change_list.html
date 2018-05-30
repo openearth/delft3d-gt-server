@@ -1,13 +1,29 @@
 {% extends "admin/change_list.html" %}
 {% load humanize %}
 {% load custom_tags %}
+{% load i18n %}
 {% block content_title %}
     <h1> Group Usage Summary </h1>
 {% endblock %}
+{% block extra_head %}
 
+<link rel="stylesheet" type="text/css" href="/media/admin/css/forms.css"/>
+<link rel="stylesheet" type="text/css" href="/media/admin/css/base.css"/>
+<link rel="stylesheet" type="text/css" href="/media/admin/css/global.css"/>
+<link rel="stylesheet" type="text/css" href="/media/admin/css/widgets.css"/>
+
+<script type="text/javascript" src="/admin/jsi18n/"></script>
+<script type="text/javascript" src="/media/admin/js/core.js"></script>
+<script type="text/javascript" src="/media/admin/js/admin/RelatedObjectLookups.js"></script>
+
+{{ form.media }}
+
+{% endblock %}
 {% block object-tools %}
     <div>
         <form action="" method="post">
+            <script type="text/javascript" src="/my_admin/jsi18n/"></script>
+            <script type="text/javascript" src="/media/admin/js/core.js"></script>
             {% csrf_token %}
                 <table>
                     {{ form.media }}

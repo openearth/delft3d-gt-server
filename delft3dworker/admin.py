@@ -12,9 +12,11 @@ from django.db.models import Sum
 from django.db.models import Count
 from django.db.models import ExpressionWrapper
 from django.db.models import DurationField
+from django.http import HttpResponseRedirect
 
 from guardian.admin import GuardedModelAdmin
 
+from models import Group
 from models import Scenario
 from models import Scene
 from models import Container
@@ -104,7 +106,6 @@ class Version_SVN_Admin(GuardedModelAdmin):
         SceneInline,
     ]
 
-
 @admin.register(GroupUsageSummary)
 class GroupUsageSummaryAdmin(admin.ModelAdmin):
     # Following example available at:
@@ -114,7 +115,10 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
     # Sort by time period
     date_hierarchy = 'user__scene__container__container_stoptime'
     list_filter = (('user__scene__container__container_stoptime', DateFieldListFilter),)
+    startdate = AdminDateWidget()
+    enddate = AdminDateWidget()
 
+    # form = GroupUsageSummaryAdminForm
     # Need to redirect to url of form:
     # /admin/delft3dworker/groupusagesummary/?user__scene__container__container_stoptime__gte=
     # 2018-03-01&user__scene__container__container_stoptime__lt=2018-06-01
