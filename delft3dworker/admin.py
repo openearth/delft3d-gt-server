@@ -1,6 +1,10 @@
 import os
 
+from django import forms
+from django.forms import ModelForm
 from django.contrib import admin
+from django.contrib.admin.widgets import AdminDateWidget
+from django.contrib.admin import DateFieldListFilter
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import F
@@ -109,6 +113,15 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
     change_list_template = 'delft3dworker/group_summary_change_list.html'
     # Sort by time period
     date_hierarchy = 'user__scene__container__container_stoptime'
+    list_filter = (('user__scene__container__container_stoptime', DateFieldListFilter),)
+
+    # Need to redirect to url of form:
+    # /admin/delft3dworker/groupusagesummary/?user__scene__container__container_stoptime__gte=
+    # 2018-03-01&user__scene__container__container_stoptime__lt=2018-06-01
+    # def something(request):
+    #     url = '/user__scene__container__container_stoptime__gte='%s'&user__scene__container__container_stoptime__lt='%s,
+    # % request.startdate, request.enddate
+    #     return HttpResponseRedirect(url)
 
     def changelist_view(self, request, extra_context=None):
         """
@@ -122,7 +135,7 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
             qs = response.context_data['cl'].queryset
             # All user belong to world. To avoid double counting run_time we exclude this group
             # Then order by the group name to sort
-            qs = qs.exclude(name='access:world').order_by('name')
+            qs = qs.exclude(name='access:world').order_by('name')#.filter(user__scene__container__container_stoptime__range=[startdate, enddate])
 
 
         except (AttributeError, KeyError) as e:
