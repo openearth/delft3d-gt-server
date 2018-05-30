@@ -11,7 +11,6 @@ from models import Scene
 from models import Workflow
 from models import SearchForm
 from models import Template
-from models import Version_SVN
 
 
 class WorkflowInline(admin.StackedInline):
@@ -35,18 +34,7 @@ class SceneAdmin(GuardedModelAdmin):
         WorkflowInline,
     ]
 
-    actions = ['resync',
-               'check_sync']
-
-    def resync(self, request, queryset):
-        """
-        This action will sync EFS with S3 again.
-        Use this action if objects are missing after run is finished.
-        """
-        rows_updated = queryset.filter(phase=Scene.phases.fin).update(
-            phase=Scene.phases.sync_create)
-        self.message_user(
-            request, "{} scene(s) set to sychronization phase.".format(rows_updated))
+    actions = ['check_sync']
 
     def check_sync(self, request, queryset):
         """
@@ -85,9 +73,3 @@ class SearchFormAdmin(GuardedModelAdmin):
 class TemplateAdmin(GuardedModelAdmin):
     pass
 
-
-@admin.register(Version_SVN)
-class Version_SVN_Admin(GuardedModelAdmin):
-    inlines = [
-        SceneInline,
-    ]

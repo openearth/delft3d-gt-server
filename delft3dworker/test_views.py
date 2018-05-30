@@ -20,10 +20,8 @@ from guardian.shortcuts import assign_perm
 from mock import MagicMock
 from mock import patch
 
-from delft3dworker.models import Container
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
-from delft3dworker.models import Version_SVN
 from delft3dworker.models import Template
 from delft3dworker.views import ScenarioViewSet
 from delft3dworker.views import SceneViewSet
@@ -502,11 +500,6 @@ class SceneSearchTestCase(TestCase):
     """
 
     def setUp(self):
-        Version_SVN.objects.all().delete()
-        self.version_old = Version_SVN.objects.create(
-            release='OLD', revision=500, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
-        self.version_new = Version_SVN.objects.create(
-            release='NEW', revision=501, versions={'postprocess': 501, 'process': 501, 'export': 501, 'visualisation': 501}, url='', changelog='')
 
         self.user_bar = User.objects.create_user(
             id=1,
@@ -535,12 +528,6 @@ class SceneSearchTestCase(TestCase):
             }
         }
         self.scene_1.save()
-        self.scene_1.version = self.version_old
-        self.scene_1.save()  # Required for foreign key!
-
-        container_1 = Container.objects.create(
-            scene=self.scene_1
-        )
 
         self.scene_2 = Scene.objects.create(
             name='Testscene 2',
@@ -561,14 +548,6 @@ class SceneSearchTestCase(TestCase):
             }
         }
         self.scene_2.save()
-        self.scene_2.version = self.version_new
-        self.scene_2.save()  # Required for foreign key!
-        container_2 = Container.objects.create(
-            scene=self.scene_2
-        )
-        container_3 = Container.objects.create(
-            scene=self.scene_2
-        )
 
         # Object general
         assign_perm('view_scenario', self.user_bar, self.scenario)
@@ -715,22 +694,6 @@ class SceneSearchTestCase(TestCase):
 
         self.assertEqual(len(self._request(search_query_date_before_08)), 1)
         self.assertEqual(len(self._request(search_query_date_before_09)), 0)
-
-    def test_search_outdated(self):
-        """Test search for outdated scenes
-        
-        Search option has three states:
-        not enabled = None
-        on = True
-        off = False
-        """
-        search_query_default = {}
-        search_query_on = {'outdated': True}
-        search_query_off = {'outdated': False}
-
-        self.assertEqual(len(self._request(search_query_default)), 2)
-        self.assertEqual(len(self._request(search_query_off)), 1)
-        self.assertEqual(len(self._request(search_query_on)), 1)
 
     def test_search_hack(self):
         """

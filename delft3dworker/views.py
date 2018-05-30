@@ -42,12 +42,10 @@ from rest_framework.decorators import detail_route
 from rest_framework.decorators import list_route
 from rest_framework.response import Response
 
-from delft3dworker.models import Container
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
-from delft3dworker.models import Version_SVN
 from delft3dworker.permissions import ViewObjectPermissions
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import ScenarioSerializer
@@ -55,7 +53,6 @@ from delft3dworker.serializers import SceneFullSerializer
 from delft3dworker.serializers import SceneSparseSerializer
 from delft3dworker.serializers import SearchFormSerializer
 from delft3dworker.serializers import TemplateSerializer
-from delft3dworker.serializers import Version_SVNSerializer
 from delft3dworker.serializers import UserSerializer
 from delft3dworker.utils import tz_midnight
 
@@ -364,13 +361,7 @@ class SceneViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(owner__in=userids)
 
         if outdated != '':
-            latest = Version_SVN.objects.latest()
-            if outdated.lower() == 'true':  # Outdated scenes, exclude latest version
-                queryset = queryset.filter(version__revision__lt=latest.revision)
-            elif outdated.lower() == 'false':  # Up to date scenes, only latest version
-                queryset = queryset.filter(version__revision__gte=latest.revision)
-            else:
-                logging.debug("Couldn't parse outdated argument")
+            pass
 
         if created_after != '':
             created_after_date = parse_date(created_after)
@@ -570,13 +561,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @list_route(methods=["get"])
     def versions(self, request):
-        queryset = Version_SVN.objects.all()
-
-        resp = {}
-        for version in queryset:
-            resp[version.id] = model_to_dict(version)
-
-        return Response(resp)
+        return Response({})
 
 
 class SearchFormViewSet(viewsets.ModelViewSet):
@@ -623,15 +608,6 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(me, many=True)
 
         return Response(serializer.data)
-
-
-class Version_SVNViewSet(viewsets.ModelViewSet):
-    serializer_class = Version_SVNSerializer
-    permission_classes = (permissions.IsAuthenticated,
-                          ViewObjectPermissions,)
-
-    def get_queryset(self):
-        return Version_SVN.objects.all()
 
 
 class GroupViewSet(viewsets.ModelViewSet):

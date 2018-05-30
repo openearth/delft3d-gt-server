@@ -20,6 +20,7 @@ from django.conf import settings  # noqa
 from constance import config as cconfig
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.urls import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
@@ -38,12 +39,6 @@ from django.contrib.postgres.fields import JSONField
 
 from delft3dworker.utils import log_progress_parser, version_default, get_version, tz_now
 
-from delft3dcontainermanager.tasks import do_docker_create
-from delft3dcontainermanager.tasks import do_docker_remove
-from delft3dcontainermanager.tasks import do_docker_start
-from delft3dcontainermanager.tasks import do_docker_stop
-from delft3dcontainermanager.tasks import get_docker_log
-
 from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create
 from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
 
@@ -52,77 +47,8 @@ from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
 
 
 def default_svn_version():
-    """Default SVN_Version for new Scenes.
-    Also ensure there's always a row in the svn model."""
-    if settings.REQUIRE_REVIEW:
-        count = Version_SVN.objects.filter(reviewed=True).count()
-    else:
-        count = Version_SVN.objects.count()
-
-    if count == 0:
-        logging.info("Creating default svn trunk model")
-        version = Version_SVN(release='trunk', revision=settings.SVN_REV,
-                              url=settings.REPOS_URL + '/trunk/', versions={},
-                              changelog='default release', reviewed=settings.REQUIRE_REVIEW)
-        version.save()
-        return version.id
-    else:
-        return Version_SVN.objects.latest().id
-
-
-class Version_SVN_Manager(models.Manager):
-
-    def latest(self):
-        """Return latest model."""
-        if settings.REQUIRE_REVIEW:
-            return self.get_queryset().filter(reviewed=True).first()
-        else:
-            return self.get_queryset().all().first()
-
-
-class Version_SVN(models.Model):
-    """
-    Store releases used in the Delft3D-GT svn repository.
-
-    Every scene has a version_svn, if there's a newer (higher id)
-    version_svn available, the scene is outdated.
-
-    By comparing svn folders and files (versions field) the specific
-    workflow can be determined in the scene.
-
-    The revision and url can be used in the Docker Python env
-    """
-    objects = Version_SVN_Manager()
-    release = models.CharField(
-        max_length=256, db_index=True)  # tag/release name
-    revision = models.PositiveSmallIntegerField(db_index=True)  # svn_version
-    versions = JSONField(default='{}')  # folder revisions
-    url = models.URLField(max_length=200)  # repos_url
-    changelog = models.CharField(max_length=256)  # release notes
-    reviewed = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ["-revision"]
-        verbose_name = "SVN version"
-        verbose_name_plural = "SVN versions"
-
-    def __unicode__(self):
-        return "Release {} at revision {}".format(self.release, self.revision)
-
-    def outdated(self):
-        """Return bool if there are newer releases available."""
-        return Version_SVN.objects.latest().revision > self.revision
-
-    def compare_outdated(self):
-        """Compare folder revisions with latest release."""
-        outdated_folders = []
-
-        latest_versions = Version_SVN.objects.latest().versions
-        for folder, revision in latest_versions.items():
-            if self.versions.setdefault(folder, -1) < revision:
-                outdated_folders.append(folder)
-
-        return outdated_folders
+    """Placeholder for old migrations."""
+    pass
 
 
 class Scenario(models.Model):
@@ -366,8 +292,6 @@ class Scene(models.Model):
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
-    version = models.ForeignKey(
-        Version_SVN, default=default_svn_version, on_delete=models.CASCADE)
 
     # PROPERTY METHODS
 
@@ -375,45 +299,6 @@ class Scene(models.Model):
         permissions = (
             ('view_scene', 'View Scene'),
         )
-
-    def versions(self):
-        version_dict = model_to_dict(self.version)
-        version_dict['delft3d_version'] = settings.DELFT3D_VERSION
-        return version_dict
-
-    def is_outdated(self):
-        return self.version.outdated()
-
-    def outdated_workflow(self):
-        if self.is_outdated():
-            outdated_folders = self.version.compare_outdated()
-
-            if ('postprocess' in outdated_folders or 'export' in outdated_folders) and ('process' in outdated_folders or 'visualisation' in outdated_folders):
-                return self.workflows.redo_proc_postproc
-
-            elif ('postprocess' in outdated_folders or 'export' in outdated_folders):
-                return self.workflows.redo_postproc
-
-            elif ('process' in outdated_folders or 'visualisation' in outdated_folders):
-                return self.workflows.redo_proc
-
-            # Default model is trunk with a revision number, but without any folder
-            # revisions
-            elif len(outdated_folders) == 0:
-                return self.workflows.redo_proc_postproc
-
-            else:
-                logging.error("Unable to resolve workflow for outdated scene. Folders: {}".format(
-                    outdated_folders))
-                return None
-        else:
-            return None
-
-    def outdated_changelog(self):
-        if self.is_outdated():
-            return Version_SVN.objects.latest().changelog
-        else:
-            return ""
 
     # UI CONTROL METHODS
 
@@ -442,10 +327,6 @@ class Scene(models.Model):
         # Stop simulation
         if self.phase >= self.phases.sim_start and self.phase <= self.phases.sim_fin:
             self.shift_to_phase(self.phases.sim_fin)   # stop Simulation
-
-        # Abort queue
-        if self.phase == self.phases.queued:
-            self.shift_to_phase(self.phases.idle)  # get out of queue
 
         return {
             "task_id": None,
@@ -494,6 +375,8 @@ class Scene(models.Model):
             )
             self.fileurl = os.path.join(
                 settings.WORKER_FILEURL, str(self.suid), '')
+
+            self.info = Template.INFO
 
         super(Scene, self).save(*args, **kwargs)
 
@@ -581,7 +464,7 @@ class Scene(models.Model):
             self.save()
 
             # If workflow is finished, shift to finished
-            if (self.workflow.cluster_state == 'finished'):
+            if (self.workflow.cluster_state in Workflow.FINISHED):
                 self.shift_to_phase(self.phases.sim_fin)
 
             # If workflow disappeared, shift back
@@ -692,469 +575,8 @@ class Scene(models.Model):
     def __unicode__(self):
         return self.name
 
-
-class Container(models.Model):
-    """
-    Container Model
-    This model is used to manage docker containers from the Django environment.
-    When a Scene creates Container models, it uses these containers to define
-    which containers it requires, and in which states these containers are
-    desired to be.
-    """
-
-    scene = models.ForeignKey(Scene, on_delete=models.CASCADE)
-
-    task_uuid = models.UUIDField(
-        default=None, blank=True, null=True)
-    task_starttime = models.DateTimeField(default=tz_now, blank=True)
-
-    # delft3dgtmain.provisionedsettings
-    CONTAINER_TYPE_CHOICES = (
-        ('preprocess', 'preprocess'),
-        ('delft3d', 'delft3d'),
-        ('process', 'process'),
-        ('postprocess', 'postprocess'),
-        ('export', 'export'),
-        ('sync_cleanup', 'sync_cleanup'),
-        ('sync_rerun', 'sync_rerun'),
-    )
-
-    container_type = models.CharField(
-        max_length=16, choices=CONTAINER_TYPE_CHOICES, default='preprocess')
-
-    # https://docs.docker.com/engine/reference/commandline/ps/
-    CONTAINER_STATE_CHOICES = (
-        ('non-existent', 'non-existent'),
-        ('created', 'created'),
-        ('restarting', 'restarting'),
-        ('running', 'running'),
-        ('paused', 'paused'),
-        ('exited', 'exited'),
-        ('dead', 'dead'),
-        ('unknown', 'unknown'),
-    )
-
-    desired_state = models.CharField(
-        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
-
-    docker_state = models.CharField(
-        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
-
-    # docker container ids are sha256 hashes
-    docker_id = models.CharField(
-        max_length=64, blank=True, default='', db_index=True)
-
-    container_starttime = models.DateTimeField(default=tz_now, blank=True)
-    container_stoptime = models.DateTimeField(default=tz_now, blank=True)
-    container_exitcode = models.PositiveSmallIntegerField(default=0)
-    container_progress = models.PositiveSmallIntegerField(default=0)
-
-    docker_log = models.TextField(blank=True, default='')
-    container_log = models.TextField(blank=True, default='')
-
-    # CONTROL METHODS
-
-    def set_desired_state(self, desired_state):
-        self.desired_state = desired_state
-        self.save()
-
-    # HEARTBEAT METHODS
-
-    def update_task_result(self):
-        """
-        Get the result from the last task it executed, given that there is a
-        result. If the task is not ready, don't do anything.
-        """
-        if self.task_uuid is None:
-            return
-
-        result = AsyncResult(id=str(self.task_uuid))
-        time_passed = now() - self.task_starttime
-        if result.ready():
-
-            if result.successful():
-                docker_id, docker_log = result.result
-                # only write the id if the result is as expected
-                if docker_id is not None and (isinstance(docker_id, str) or
-                                              isinstance(docker_id, unicode)):
-                    self.docker_id = docker_id
-                else:
-                    logging.warn(
-                        "Task of Container [{}] returned an unexpected "
-                        "docker_id: {}".format(self, docker_id))
-
-                # only write the log if the result is as expected and there is
-                # an actual log
-                if docker_log is not None and isinstance(
-                        docker_log, unicode) and docker_log != '':
-                    self.docker_log = docker_log
-                    progress = log_progress_parser(self.docker_log,
-                                                   self.container_type)
-                    if progress is not None:
-                        self.container_progress = math.ceil(progress)
-                else:
-                    logging.warn("Can't parse docker log of {}".
-                                 format(self.container_type))
-
-            else:
-                error = result.result
-                logging.warn(
-                    "Task of Container [{}] resulted in {}: {}".
-                    format(self, result.state, error))
-
-            self.task_uuid = None
-            self.save()
-
-        # Forget task after 5 minutes
-        elif time_passed.total_seconds() > settings.TASK_EXPIRE_TIME:
-            logging.warn(
-                "Celery task expired after {} seconds".format(
-                    time_passed.total_seconds()))
-            result.revoke()
-            self.task_uuid = None
-            self.save()
-
-        else:
-            logging.warn("Celery task of {} is still {}.".format(self,
-                                                                 result.state))
-
-    def update_from_docker_snapshot(self, snapshot):
-        """
-        Update the Container based on a given snapshot of a docker container
-        which was retrieved with docker-py's client.containers(all=True)
-        (equivalent to 'docker ps').
-
-        Parameter snapshot can be either dictionary or None.
-        If None: docker container does not exist
-        If dictionary:
-        {...,
-            "State": {
-                "Dead": false,
-                "Error": "",
-                "ExitCode": 0,
-                "FinishedAt": "2016-08-30T10:33:41.159456168Z",
-                "OOMKilled": false,
-                "Paused": false,
-                "Pid": 0,
-                "Restarting": false,
-                "Running": false,
-                "StartedAt": "2016-08-30T10:32:31.415322502Z",
-                "Status": "exited"
-            },
-        ...
-        }
-        """
-
-        if snapshot is None:
-            self.docker_state = 'non-existent'
-            self.docker_id = ''
-
-        elif isinstance(snapshot, dict) and \
-                ('State' in snapshot) and ('Status' in snapshot['State']):
-
-            choices = [choice[1] for choice in self.CONTAINER_STATE_CHOICES]
-            if snapshot['State']['Status'] in choices:
-                self.docker_state = snapshot['State']['Status']
-
-            else:
-                logging.error(
-                    'received unknown docker Status: {}'.format(
-                        snapshot['State']['Status']
-                    )
-                )
-                self.docker_state = 'unknown'
-
-            if 'StartedAt' in snapshot['State'] and \
-                    'FinishedAt' in snapshot['State']:
-                self.container_starttime = snapshot['State']['StartedAt']
-                self.container_stoptime = snapshot['State']['FinishedAt']
-
-            if 'ExitCode' in snapshot['State']:
-                self.container_exitcode = snapshot['State']['ExitCode']
-
-        else:
-            logging.error('received unknown snapshot: {}'.format(snapshot))
-            self.docker_state = 'unknown'
-
-        self.save()
-
-    def fix_mismatch_or_log(self):
-        """
-        Given that the container has no pending tasks, Compare this state to
-        the its desired_state, which is defined by the Scene to which this
-        Container belongs. If (for any reason) the docker_state is different
-        from the desired_state, act: start a task to get both states matched.
-
-        At the end, if still no task, request a log update.
-        """
-        self._fix_state_mismatch()
-
-        self._update_log()
-
-    # INTERNALS
-
-    def _fix_state_mismatch(self):
-        """
-        If the docker_state differs from the desired_state, and Container is
-        not waiting for a task result, execute a task to fix this mismatch.
-        """
-
-        # return if container still has an active task
-        if self.task_uuid is not None:
-            return
-
-        # return if the states match
-        if self.desired_state == self.docker_state:
-            return
-
-        # apparently there is something to do, so let's act:
-
-        if self.desired_state == 'created':
-            self._create_container()
-
-        elif self.desired_state == 'running':
-            self._start_container()
-
-        elif self.desired_state == 'exited':
-            self._stop_container()
-
-        elif self.desired_state == 'non-existent':
-            self._remove_container()
-
-    def _create_container(self):
-        if self.docker_state != 'non-existent':
-            return  # container is already created
-
-        workingdir = self.scene.workingdir
-        simdir = os.path.join(workingdir, 'simulation')
-        predir = os.path.join(workingdir, 'preprocess')
-        prodir = os.path.join(workingdir, 'process')
-        posdir = os.path.join(workingdir, 'postprocess')
-        expdir = os.path.join(workingdir, 'export')
-        syndir = workingdir
-
-        # Specific settings for each container type
-        # TODO It would be more elegant to put these
-        # hard-coded settings in a separate file.
-        #
-        # Also have a template that comes from
-        # provisioning, to match the needed environment variables
-
-        # Random string in order to avoid naming conflicts.
-        # We want new containers when old ones fail in Docker Swarm
-        # but Docker Swarm still recognizes the old names.
-        random_postfix = ''.join(random.SystemRandom().choice(
-            string.ascii_uppercase + string.digits) for _ in range(5))
-
-        kwargs = {
-            'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
-                        'volumes': ['{0}:/data'.format(simdir)],
-                        'memory_limit': '3g',  # 75% of t2.medium
-                        'environment': {"uuid": str(self.scene.suid),
-                                        "folder": simdir},
-                        'name': "{}-{}-{}".format(self.container_type,
-                                                  str(self.scene.suid),
-                                                  random_postfix),
-                        'folders': [simdir],
-                        'command': ""},
-
-            'export': {'image': settings.EXPORT_IMAGE_NAME,
-                       'volumes': [
-                           '{0}:/data/output:z'.format(expdir),
-                           '{0}:/data/input:ro'.format(simdir),
-                           '{0}:/data/input_postproc:ro'.format(posdir)],
-                       'memory_limit': '2000m',
-                       'environment': {"uuid": str(self.scene.suid),
-                                       "folder": expdir},
-                       'name': "{}-{}-{}".format(self.container_type,
-                                                 str(self.scene.suid),
-                                                 random_postfix),
-                       'folders': [expdir,
-                                   simdir],
-                       'command': "/data/run.sh /data/svn/scripts/"
-                       "export/export2grdecl.py",
-                       },
-
-            'postprocess': {'image': settings.POSTPROCESS_IMAGE_NAME,
-                            'volumes': [
-                                '{0}:/data/output:z'.format(posdir),
-                                '{0}:/data/input:ro'.format(simdir)],
-                            'memory_limit': '3000m',
-                            'environment': {"uuid": str(self.scene.suid),
-                                            "folder": posdir},
-                            'name': "{}-{}-{}".format(self.container_type,
-                                                      str(self.scene.suid),
-                                                      random_postfix),
-                            'folders': [simdir,
-                                        posdir],
-                            'command': " ".join([
-                                "/data/run.sh",
-                                "/data/svn/scripts/wrapper/postprocess.py"
-                            ])
-                            },
-
-            'preprocess': {'image': settings.PREPROCESS_IMAGE_NAME,
-                           'volumes': [
-                               '{0}:/data/output:z'.format(simdir),
-                               '{0}:/data/input:ro'.format(predir)],
-                           'memory_limit': '200m',
-                           'environment': {"uuid": str(self.scene.suid),
-                                           "folder": simdir},
-                           'name': "{}-{}-{}".format(self.container_type,
-                                                     str(self.scene.suid),
-                                                     random_postfix),
-                           'folders': [predir,
-                                       simdir],
-                           'command': "/data/run.sh /data/svn/scripts/"
-                           "preprocess/preprocess.py"
-                           },
-
-            'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
-                             'volumes': [
-                                 '{0}:/data/input:z'.format(syndir)],
-                             'memory_limit': '500m',
-                             'environment': {"uuid": str(self.scene.suid),
-                                             "folder": syndir},
-                             'name': "{}-{}-{}".format(self.container_type,
-                                                       str(self.scene.suid),
-                                                       random_postfix),
-                             'folders': [],  # sync doesn't need new folders
-                             'command': "/data/run.sh cleanup"
-                             },
-
-            'sync_rerun': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
-                           'volumes': [
-                               '{0}:/data/output:z'.format(syndir)],
-                           'memory_limit': '500m',
-                           'environment': {"uuid": str(self.scene.suid),
-                                           "folder": syndir},
-                           'name': "{}-{}-{}".format(self.container_type,
-                                                     str(self.scene.suid),
-                                                     random_postfix),
-                           'folders': [simdir],
-                           'command': "/data/run.sh rerun"
-                           },
-
-            'process': {'image': settings.PROCESS_IMAGE_NAME,
-                        'volumes': [
-                            '{0}:/data/input:ro'.format(simdir),
-                            '{0}:/data/output:z'.format(prodir)
-                        ],
-                        'memory_limit': '3000m',
-                        'environment': {"uuid": str(self.scene.suid),
-                                        "folder": prodir},
-                        'name': "{}-{}-{}".format(self.container_type,
-                                                  str(self.scene.suid),
-                                                  random_postfix),
-                        'folders': [prodir,
-                                    simdir],
-                        'command': ' '.join([
-                            "/data/run.sh ",
-                            "/data/svn/scripts/wrapper/process.py"
-                        ])
-                        },
-        }
-
-        # Set SVN_REV and REPOS_URL a.o.
-        version = model_to_dict(self.scene.version)
-        kwargs[self.container_type]['environment'].update({'REPOS_URL': version['url'],
-                                                           'SVN_REV': version['revision']})
-
-        parameters = self.scene.parameters
-        label = {"type": self.container_type}
-
-        result = do_docker_create.apply_async(
-            args=(label, parameters),
-            kwargs=kwargs[self.container_type],
-            expires=settings.TASK_EXPIRE_TIME
-        )
-
-        self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + \
-            "Container was created \n"
-
-        self.task_uuid = result.id
-        self.save()
-
-        # Return name because of random part at the end
-        return kwargs[self.container_type]['name']
-
-    def _start_container(self):
-        # a container can only be started if it is in 'created' or 'exited'
-        # state, any other state we will not allow a start
-        if self.docker_state != 'created' and self.docker_state != 'exited':
-            logging.info('Trying to start a container in "{}" state: ignoring '
-                         'command.'.format(self.docker_state))
-            return  # container is not ready for start
-
-        result = do_docker_start.apply_async(args=(self.docker_id,),
-                                             expires=settings.TASK_EXPIRE_TIME)
-        self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + \
-            "Container was started \n"
-
-        self.task_uuid = result.id
-        self.save()
-
-    def _stop_container(self):
-        # a container can only be started if it is in 'running' state, any
-        # state we will not allow a stop
-        if self.docker_state != 'running':
-            logging.info('Trying to stop a container in "{}" state: ignoring '
-                         'command.'.format(self.docker_state))
-            return  # container is not running, so it can't be stopped
-
-        # I just discovered how to make myself unstoppable: don't move.
-
-        result = do_docker_stop.apply_async(args=(self.docker_id,),
-                                            expires=settings.TASK_EXPIRE_TIME)
-        self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + \
-            "Container was stopped \n"
-
-        self.task_uuid = result.id
-        self.save()
-
-    def _remove_container(self):
-        # a container can only be removed if it is in 'created' or 'exited'
-        # state, any other state we will not allow a remove
-        if self.docker_state != 'created' and self.docker_state != 'exited':
-            logging.info('Trying to remove a container in "{}" state: ignoring'
-                         ' command.'.format(self.docker_state))
-            return  # container not ready for delete
-
-        result = do_docker_remove.apply_async(
-            args=(self.docker_id,),
-            expires=settings.TASK_EXPIRE_TIME
-        )
-
-        self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + \
-            "Container was removed \n"
-
-        self.task_uuid = result.id
-        self.save()
-
-    def _update_log(self):
-        # return if container still has an active task
-        if self.task_uuid is not None:
-            return
-
-        if self.docker_state != 'running':
-            return  # the container is done, no logging needed
-
-        result = get_docker_log.apply_async(args=(self.docker_id,),
-                                            expires=settings.TASK_EXPIRE_TIME)
-        self.task_starttime = now()
-        self.task_uuid = result.id
-        self.save()
-
-    def __unicode__(self):
-        return "{}({}):{}".format(
-            self.container_type, self.docker_state, self.docker_id)
-
-
 # ################################### SEARCHFORM & TEMPLATE
+
 
 class SearchForm(models.Model):
 
@@ -1283,8 +705,8 @@ class Template(models.Model):
     name = models.CharField(max_length=256)
     shortname = models.CharField(max_length=256, default="gt")
     meta = JSONField(blank=True, default={})
-    # TODO Base this on template row.
-    info = JSONField(blank=True, default={
+    # TODO Base this on fixtures
+    INFO = {
         "delta_fringe_images": {
             "images": [],
             "location": "process/"
@@ -1307,7 +729,9 @@ class Template(models.Model):
         },
         "procruns": 0,
         "postprocess_output": {},
-    })
+        "logfile": {"file": ""},
+    }
+    info = JSONField(blank=True, default=INFO)
     sections = JSONField(blank=True, default={})
     visualisation = JSONField(blank=True, default={})
     export_options = JSONField(blank=True, default={})
@@ -1388,7 +812,6 @@ class Workflow(models.Model):
             return
 
         result = AsyncResult(id=str(self.task_uuid))
-        print(dir(result))
         time_passed = now() - self.task_starttime
         if result.ready():
 
@@ -1397,16 +820,16 @@ class Workflow(models.Model):
                 if "get_kube_log" in result.result:
                     log = result.result["get_kube_log"]
 
-                    cluster_log += "---------\n"
-                    cluster_log += log
+                    self.cluster_log += "---------\n"
+                    self.cluster_log += log
 
                     progress = log_progress_parser(log, "delft3d")
                     if progress is not None:
-                        self.container_progress = math.ceil(progress)
+                        self.progress = math.ceil(progress)
 
                 else:
                     _ = result.result
-                
+
             else:
                 error = result.result
                 logging.warn(
@@ -1487,11 +910,13 @@ class Workflow(models.Model):
                                                        {"name": "s3bucket", "value": settings.BUCKETNAME},
                                                        {"name": "parameters", "value": json.dumps(self.scene.parameters)}]
 
+        self.yaml.save("{}.yaml".format(self.name), ContentFile(yaml.dump(template)), save=False)
+
         # Call celery create task
         result = do_argo_create.apply_async(args=(template,),
                                             expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
-        self.cluster_log += "{} | Created \n".format(self.task_starttime)
+        self.action_log += "{} | Created \n".format(self.task_starttime)
         self.task_uuid = result.id
         self.save()
 
@@ -1507,9 +932,9 @@ class Workflow(models.Model):
         )
 
         self.task_starttime = now()
-        self.cluster_log += "{} | Removed \n".format(self.task_starttime)
+        self.action_log += "{} | Removed \n".format(self.task_starttime)
 
-        # TODO Calculate total running time, but with a end date! 
+        # TODO Calculate total running time, but with a end date!
 
         self.task_uuid = result.id
         self.save()
@@ -1523,7 +948,7 @@ class Workflow(models.Model):
             return  # the container is done, no logging needed
 
         result = get_kube_log.apply_async(args=(self.name,),
-                                            expires=settings.TASK_EXPIRE_TIME)
+                                          expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
         self.task_uuid = result.id
         self.save()
