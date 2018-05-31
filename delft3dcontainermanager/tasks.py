@@ -39,8 +39,6 @@ def get_argo_workflows(self):
     """
     config.load_kube_config()
     v1 = client.CoreV1Api()
-    # --selector=workflows.argoproj.io/workflow=delft3dgt-xxxx
-    # pods = v1.list_pod_for_all_namespaces(watch=False, timeout_seconds=59)
     wf = v1.api_client.call_api("/apis/argoproj.io/v1alpha1/workflows",
                                 "GET", response_type="V1ConfigMapList", _return_http_data_only=True)
     json_wf = dumps(wf.to_dict(), default=str)
