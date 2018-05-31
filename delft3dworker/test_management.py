@@ -187,8 +187,8 @@ class ManagementTest(TestCase):
         #    return {'metadata':{'name': workflow}}
 
         client = mockClient.return_value
-        print(client)
-        client.api_client.call_api.return_value = [{'metadata':{'name':'abcdefg', 'labels': {u'workflows.argoproj.io/phase': 'Running'}}},
+        # print(client)
+        client.return_value = [{'metadata':{'name':'abcdefg', 'labels': {u'workflows.argoproj.io/phase': 'Running'}}},
                                {'metadata':{'name':'orphan', 'labels': {u'workflows.argoproj.io/phase': 'Running'}}}]
         print(client)
         # client.side_effect = inspect
