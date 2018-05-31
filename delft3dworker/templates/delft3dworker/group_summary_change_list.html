@@ -1,40 +1,28 @@
 {% extends "admin/change_list.html" %}
 {% load humanize %}
 {% load custom_tags %}
-{% load i18n %}
 {% block content_title %}
     <h1> Group Usage Summary </h1>
 {% endblock %}
-{% block extra_head %}
 
-<link rel="stylesheet" type="text/css" href="/media/admin/css/forms.css"/>
-<link rel="stylesheet" type="text/css" href="/media/admin/css/base.css"/>
-<link rel="stylesheet" type="text/css" href="/media/admin/css/global.css"/>
-<link rel="stylesheet" type="text/css" href="/media/admin/css/widgets.css"/>
-
-<script type="text/javascript" src="/admin/jsi18n/"></script>
-<script type="text/javascript" src="/media/admin/js/core.js"></script>
-<script type="text/javascript" src="/media/admin/js/admin/RelatedObjectLookups.js"></script>
-
-{{ form.media }}
-
-{% endblock %}
 {% block object-tools %}
     <div>
         <form action="" method="post">
-            <script type="text/javascript" src="/my_admin/jsi18n/"></script>
-            <script type="text/javascript" src="/media/admin/js/core.js"></script>
+            <!--<script type="text/javascript" src="/my_admin/jsi18n/"></script>-->
+            <!--<script type="text/javascript" src="/media/admin/js/core.js"></script>-->
             {% csrf_token %}
                 <table>
-                    <!--The date picker form won't appear :(-->
+                    <label for="start_date">Start:    </label>
+                    <input id="start_date" type="text" name="{{ start_date.name }}" placeholder="yyyy-mm-dd">
+                    <label for="end_date"> to </label>
+                    <input id="end_date" type="text" name="{{ end_date.name }}" placeholder="yyyy-mm-dd">
                     {{ form.media }}
+                    <label for="submit"> </label>
+                    <input id="submit" type="submit" value="Submit" />
                 </table>
-            <!--Hey look I made a button-->
-                <input type="submit" value="Submit" />
         </form>
     </div>
 {% endblock %}
-
 {% block result_list %}
 <div class="results">
     <table>
