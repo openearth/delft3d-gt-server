@@ -49,9 +49,7 @@ class ManagementTest(TestCase):
         self.scene_new.scenario = [self.scenario]
         self.workflow_1_1_new = Workflow.objects.create(
             scene=self.scene_new,
-            name='idunno',
-            # desired_state='non-existent',
-            # cluster_state='non-existent'
+            name='bar',
         )
 
         self.get_redis = patch('celery_once.backends.redis.get_redis')

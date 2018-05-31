@@ -24,7 +24,6 @@ def delft3dgt_kube_pulse(self):
 
     A lock is implemented to ensure it's only run one at a time
     """
-    # config.load_kube_config()
     call_command('sync_cluster_state')
     return
 
@@ -36,7 +35,6 @@ def get_argo_workflows(self):
     Retrieve all running argo workflows and return them in
     an array of dictionaries. The array looks like this:
     """
-    # config.load_kube_config()
     v1 = client.CoreV1Api()
     wf = v1.api_client.call_api("/apis/argoproj.io/v1alpha1/workflows",
                                 "GET", response_type="V1ConfigMapList", _return_http_data_only=True)
@@ -49,7 +47,6 @@ def get_kube_log(self, wf_id, tail=25):
     """
     Retrieve the log of a container and return container id and log
     """
-    # config.load_kube_config()
     v1 = client.CoreV1Api()
     log = ""
     pods = v1.list_namespaced_pod("default", label_selector="workflows.argoproj.io/workflow={}".format(wf_id))
@@ -57,7 +54,6 @@ def get_kube_log(self, wf_id, tail=25):
     if "items" in pods_dict:
         for item in pods_dict["items"]:
             name = item["metadata"]["name"]
-            print("Reading logs for {}".format(name))
             try:
                 podlog = v1.read_namespaced_pod_log(name, "default", container="main", tail_lines=tail)
                 log += podlog
@@ -72,7 +68,6 @@ def do_argo_create(self, yaml):
     """
     Start a deployment with a specific id and id
     """
-    # config.load_kube_config()
     crd = client.CustomObjectsApi()
     status = crd.create_namespaced_custom_object(
         "argoproj.io", "v1alpha1", "default", "workflows", yaml)
@@ -86,7 +81,6 @@ def do_argo_remove(self, workflow_id):
     Remove a container with a specific id and return id.
     Try to write the docker log output as well.
     """
-    # config.load_kube_config()
     crd = client.CustomObjectsApi()
     status = crd.delete_namespaced_custom_object(
         "argoproj.io", "v1alpha1", "default", "workflows", workflow_id, {})

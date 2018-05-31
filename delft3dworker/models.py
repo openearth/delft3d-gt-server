@@ -859,7 +859,6 @@ class Workflow(models.Model):
             self.cluster_state = "non-existent"
         else:
             state = latest_cluster_state["metadata"]["labels"]["workflows.argoproj.io/phase"]
-            print("Syncing state {}".format(state))
             if state == "Failed" or state == "Error":
                 logging.error("{} failed!".format(self.name))
             self.cluster_state = state.lower()
