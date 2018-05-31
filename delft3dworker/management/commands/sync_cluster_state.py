@@ -70,7 +70,9 @@ class Command(BaseCommand):
 
         # task is succesful, so we're getting the result and create a set
         cluster_workflows_json = ps.result["get_argo_workflows"]
+        print(cluster_workflows_json)
         cluster_workflows = loads(cluster_workflows_json)
+        print(cluster_workflows)
         cluster_dict = {wf["metadata"]["name"]: wf for wf in cluster_workflows["items"]}
         cluster_set = set(cluster_dict.keys())
 

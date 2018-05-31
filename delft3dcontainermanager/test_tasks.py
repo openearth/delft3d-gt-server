@@ -1,11 +1,16 @@
 from __future__ import absolute_import
 
 import os
+import sys
 
 from django.test import TestCase
 from fakeredis import FakeStrictRedis
-from mock import patch, Mock
+from mock import patch, Mock, MagicMock
 from time import time
+
+# sys.modules['kubernetes'] = Mock()
+# sys.modules['kubernetes.config'] = MagicMock()
+# patch("kubernetes.config.load_kube_config")
 
 from delft3dcontainermanager.tasks import delft3dgt_kube_pulse
 from delft3dcontainermanager.tasks import get_argo_workflows
@@ -15,6 +20,9 @@ from delft3dcontainermanager.tasks import do_argo_remove
 
 
 class AsyncTaskTest(TestCase):
+    mock_options = {
+        # 'autospec': True,
+    }
 
     def setUp(self):
         self.get_redis = patch('celery_once.backends.redis.get_redis')
@@ -48,7 +56,7 @@ class AsyncTaskTest(TestCase):
 
 class TaskTest(TestCase):
     mock_options = {
-        'autospec': True,
+        # 'autospec': True,
     }
 
     def setUp(self):

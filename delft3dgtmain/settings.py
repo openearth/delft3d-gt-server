@@ -14,6 +14,7 @@ import os
 import sys
 
 from datetime import timedelta
+from kubernetes import config
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -207,12 +208,17 @@ REST_FRAMEWORK = {
     ]
 }
 
+# try to load kubectl config
+try:
+    config.load_kube_config()
+except IOError:
+    print("Can't load kubernetes config!")
 
 # import provisioned settings
 try:
     from provisionedsettings import *
 except ImportError:
-    print("HELLP\n\n")
+    print("Failed to import provisioned settings!")
     SECRET_KEY = 'test'
 
 # TESTING

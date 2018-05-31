@@ -28,6 +28,7 @@ from delft3dworker.models import Workflow
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 from delft3dworker.models import User
+from delft3dworker.utils import tz_now
 
 
 class ScenarioTestCase(TestCase):
@@ -209,6 +210,7 @@ class SceneTestCase(TestCase):
             entrypoint=Scene.entrypoints.main
         )
         self.wd = self.scene_1.workingdir
+        self.workflow = Workflow.objects.create(name="Test", scene=self.scene_1)
 
         assign_perm('view_scene', self.user_a, self.scene_1)
         assign_perm('add_scene', self.user_a, self.scene_1)
@@ -424,15 +426,15 @@ class SceneTestCase(TestCase):
             # check that phase is unshifted unless Finished: then it becomes New
             self.assertEqual(
                 self.scene_1.phase,
-                self.scene_1.phases.new if (
+                self.scene_1.phases.sim_start if (
                     phase[0] == self.scene_1.phases.fin) else phase[0]
             )
 
             # check properties are untouched unless reset from finished state
             if phase[0] == self.scene_1.phases.fin:
-                self.assertEqual(self.scene_1.date_started, None)
+                self.assertTrue((tz_now() - self.scene_1.date_started).seconds < 10)
                 self.assertEqual(self.scene_1.progress, 0)
-                self.assertEqual(self.scene_1.phase, self.scene_1.phases.new)
+                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
 
             else:
                 self.assertEqual(self.scene_1.date_started, date_started)
@@ -474,22 +476,14 @@ class ScenarioPhasesTestCase(TestCase):
         self.scenario = Scenario.objects.create(name='Scenario parent', template=self.template)
         self.scene_1 = Scene.objects.create(name='scene 1')
         self.scene_1.scenario = [self.scenario]
-        self.scene_1.update_and_phase_shift()
-        self.scene_2 = Scene.objects.create(name='scene 2')
-        self.scene_2.scenario = [self.scenario]
-        self.scene_2.update_and_phase_shift()
-        self.scene_3 = Scene.objects.create(name='scene 3')
-        self.scene_3.scenario = [self.scenario]
-        self.scene_3.update_and_phase_shift()
-        self.scene_4 = Scene.objects.create(name='scene 4')
-        self.scene_4.scenario = [self.scenario]
-        self.scene_4.update_and_phase_shift()
+        self.scene_1.update_and_phase_shift()  # put all into new
 
         self.p = self.scene_1.phases  # shorthand
         self.w = self.scene_1.entrypoints
 
     def test_phase_new(self):
         self.scene_1.phase = self.p.new
+        self.scene_1.save()
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.idle)
@@ -499,17 +493,20 @@ class ScenarioPhasesTestCase(TestCase):
 
     def test_phase_idle(self):
         self.scene_1.phase = self.p.idle
+        self.scene_1.save()
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.idle)
 
     def test_phase_sim_start(self):
         self.scene_1.phase = self.p.sim_start
+        self.scene_1.save()
 
+        # Keep in start without a running workflow
         self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_run)
+        self.assertEqual(self.scene_1.phase, self.p.sim_start)
 
-        self.scene_1.phase = self.p.sim_start
+        # Move to running when a workflow is running
         self.scene_1.workflow.cluster_state = 'running'
         self.scene_1.workflow.save()
 
@@ -517,16 +514,21 @@ class ScenarioPhasesTestCase(TestCase):
         self.assertEqual(self.scene_1.phase, self.p.sim_run)
 
     def test_phase_sim_run(self):
+        workflow = self.scene_1.workflow
+        workflow.cluster_state = 'running'
+        workflow.desired_state = 'running'
+        workflow.save()
+
         self.scene_1.phase = self.p.sim_run
+        self.scene_1.save()
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.sim_run)
 
-        # check if _local_scan was called
+        # TODO check if _local_scan was called
 
-        # check if the progress is updated
-        self.scene_1.phase = self.p.sim_run
-        workflow = self.scene_1.workflow
+        # TODO check if the progress is updated
+
         workflow.cluster_state = 'failed'
         workflow.save()
 
@@ -689,12 +691,11 @@ class WorkflowTestCase(TestCase):
             '6764743a-3d63-4444-8e7b-bc938bff7792')
         async_result.ready.return_value = True
         async_result.successful.return_value = True
-        async_result.result = (
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        ), u"""INFO:root:Time to finish 70.0, 22.2222222222% completed, time steps  left 7.0
-INFO:root:Time to finish 60.0, 33.3333333333% completed, time steps  left 6.0
-INFO:root:Time to finish 50.0, 44.4444444444% completed, time steps  left 5.0
-INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
+        async_result.result = {"get_kube_log":
+        """INFO:root:Time to finish 70.0, 22.2222222222% completed, time steps  left 7.0
+        INFO:root:Time to finish 60.0, 33.3333333333% completed, time steps  left 6.0
+        INFO:root:Time to finish 50.0, 44.4444444444% completed, time steps  left 5.0
+        INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""}
         async_result.state = "SUCCESS"
 
         # call method
@@ -720,7 +721,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
             self.workflow.cluster_state, 'running')
 
         self.workflow.sync_cluster_state(
-            self.fin_argo_ps_dict)
+            self.fail_argo_ps_dict)
         self.assertEqual(
             self.workflow.cluster_state, 'failed')
 
@@ -776,7 +777,7 @@ INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
         task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
 
         self.workflow.desired_state = 'non-existent'
-        self.workflow.cluster_state = 'running'
+        self.workflow.cluster_state = 'succeeded'
 
         result = Mock()
         result.id = task_uuid
