@@ -21,6 +21,7 @@ from django.db.models import Q
 from django.forms.models import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.shortcuts import render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.decorators import method_decorator
@@ -659,6 +660,9 @@ class GroupUsageSummaryViewSet(viewsets.ModelViewSet):
     serializer_class = GroupSerializer
     queryset = Group.objects.none()  # Required for DjangoModelPermissions
 
+    def group_list(request):
+
+        return render(request, 'delft3dworker/user_summary_change_list.html', {'start_date': start_date, 'end_date': end_date})
 
 class UserUsageSummaryViewSet(viewsets.ModelViewSet):
     """

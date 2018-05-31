@@ -2011,6 +2011,9 @@ class Template(models.Model):
 
 class GroupUsageSummary(Group):
 
+    start_date = models.DateTimeField(default=tz_now, blank=True)
+    end_date = models.DateTimeField(default=tz_now, blank=True)
+
     class Meta:
         proxy = True
         verbose_name = 'Group Usage Summary'
