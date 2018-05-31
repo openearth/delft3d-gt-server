@@ -319,6 +319,8 @@ class Scene(models.Model):
         if self.phase == self.phases.fin:
             self.date_started = tz_now()
             self.shift_to_phase(self.phases.sim_start)
+            self.workflow.progress = 0
+            self.progress = 0
             self.save()
 
         return {"task_id": None, "scene_id": None}
@@ -858,6 +860,8 @@ class Workflow(models.Model):
         else:
             state = latest_cluster_state["metadata"]["labels"]["workflows.argoproj.io/phase"]
             print("Syncing state {}".format(state))
+            if state == "Failed" or state == "Error":
+                logging.error("{} failed!".format(self.name))
             self.cluster_state = state.lower()
         self.save()
 
@@ -922,12 +926,12 @@ class Workflow(models.Model):
 
     def remove_workflow(self):
         # Catch removing unfinished workflow
-        # if self.cluster_state not in Workflow.FINISHED:
-            # logging.warning("Can't remove unfinished workflow")
-            # return
+        if self.cluster_state not in Workflow.FINISHED:
+            logging.warning("Can't remove unfinished workflow")
+            return
 
         result = do_argo_remove.apply_async(
-            args=("{}".format(self.name),),
+            args=(self.name,),
             expires=settings.TASK_EXPIRE_TIME
         )
 
