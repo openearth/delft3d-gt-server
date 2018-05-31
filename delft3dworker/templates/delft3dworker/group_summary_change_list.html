@@ -4,25 +4,6 @@
 {% block content_title %}
     <h1> Group Usage Summary </h1>
 {% endblock %}
-
-{% block object-tools %}
-    <div>
-        <form action="" method="post">
-            <!--<script type="text/javascript" src="/my_admin/jsi18n/"></script>-->
-            <!--<script type="text/javascript" src="/media/admin/js/core.js"></script>-->
-            {% csrf_token %}
-                <table>
-                    <label for="start_date">Start:    </label>
-                    <input id="start_date" type="text" name="{{ start_date.name }}" placeholder="yyyy-mm-dd">
-                    <label for="end_date"> to </label>
-                    <input id="end_date" type="text" name="{{ end_date.name }}" placeholder="yyyy-mm-dd">
-                    {{ form.media }}
-                    <label for="submit"> </label>
-                    <input id="submit" type="submit" value="Submit" />
-                </table>
-        </form>
-    </div>
-{% endblock %}
 {% block result_list %}
 <div class="results">
     <table>

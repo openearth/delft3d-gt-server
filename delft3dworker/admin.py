@@ -14,6 +14,8 @@ from django.db.models import ExpressionWrapper
 from django.db.models import DurationField
 from django.http import HttpResponseRedirect
 
+from rangefilter.filter import DateRangeFilter, DateTimeRangeFilter
+
 from guardian.admin import GuardedModelAdmin
 
 from models import Group
@@ -112,35 +114,30 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
 
     change_list_template = 'delft3dworker/group_summary_change_list.html'
-    # Sort by time period
-    date_hierarchy = 'user__scene__container__container_stoptime'
-    list_filter = (('user__scene__container__container_stoptime', DateFieldListFilter),)
-    startdate = AdminDateWidget()
-    enddate = AdminDateWidget()
-
-    # https://stackoverflow.com/questions/1668220/filtering-by-custom-date-range-in-django-admin
-    # Need to redirect to url of form:
-    # /admin/delft3dworker/groupusagesummary/?user__scene__container__container_stoptime__gte=
-    # 2018-03-01&user__scene__container__container_stoptime__lt=2018-06-01
-    # def date_redirect(request):
-    #     url = '/user__scene__container__container_stoptime__gte=%s&user__scene__container__container_stoptime__lt=%s' % (request.startdate, request.enddate)
-    #     return HttpResponseRedirect(url)
-
-    # I think I might need a custom form
-    # https://stackoverflow.com/questions/32892847/add-calendar-widget-to-django-form
+    # Filter by time period
+    list_filter = (('user__scene__container__container_stoptime', DateRangeFilter),)
 
     def changelist_view(self, request, extra_context=None):
         """
         Displays summary of usage organized by group
         """
+        extra_context = extra_context or {}
+        try:
+            extra_context['trade_date_gte'] = request.GET['date__gte']
+        except:
+            pass
+
+        try:
+            extra_context['trade_date_lte'] = request.GET['date__lte']
+        except:
+            pass
+        # extra_context['end_date'] =
         response = super(GroupUsageSummaryAdmin, self).changelist_view(
             request,
             extra_context=extra_context,
         )
         try:
             qs = response.context_data['cl'].queryset
-            # All user belong to world. To avoid double counting run_time we exclude this group
-            # Then order by the group name to sort
             qs = qs.exclude(name='access:world').order_by('name')#.filter(user__scene__container__container_stoptime__range=[startdate, enddate])
 
 
@@ -177,9 +174,7 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
 class UserUsageSummaryAdmin(admin.ModelAdmin):
     change_list_template = 'delft3dworker/user_summary_change_list.html'
     # Sort by time period
-    date_hierarchy = 'scene__container__container_stoptime'
-    # Provide options for filtering by group and time
-    list_filter = ('groups__name', 'scene__container__container_stoptime')
+    list_filter = (('scene__container__container_stoptime', DateRangeFilter),)
 
     def changelist_view(self, request, extra_context=None):
         """

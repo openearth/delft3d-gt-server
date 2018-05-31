@@ -2010,10 +2010,6 @@ class Template(models.Model):
 
 
 class GroupUsageSummary(Group):
-
-    start_date = models.DateTimeField(default=tz_now, blank=True)
-    end_date = models.DateTimeField(default=tz_now, blank=True)
-
     class Meta:
         proxy = True
         verbose_name = 'Group Usage Summary'
@@ -2021,8 +2017,7 @@ class GroupUsageSummary(Group):
 
 
 class UserUsageSummary(User):
-    # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
-    class Meta:
+   class Meta:
         proxy = True
         verbose_name = 'User Usage Summary'
         verbose_name_plural = 'User Usage Summary'
