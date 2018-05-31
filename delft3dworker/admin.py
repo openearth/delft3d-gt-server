@@ -1,10 +1,6 @@
 import os
 
-from django import forms
-from django.forms import ModelForm
 from django.contrib import admin
-from django.contrib.admin.widgets import AdminDateWidget
-from django.contrib.admin import DateFieldListFilter
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import F
@@ -12,13 +8,11 @@ from django.db.models import Sum
 from django.db.models import Count
 from django.db.models import ExpressionWrapper
 from django.db.models import DurationField
-from django.http import HttpResponseRedirect
 
 from rangefilter.filter import DateRangeFilter, DateTimeRangeFilter
 
 from guardian.admin import GuardedModelAdmin
 
-from models import Group
 from models import Scenario
 from models import Scene
 from models import Container
@@ -173,7 +167,7 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
 @admin.register(UserUsageSummary)
 class UserUsageSummaryAdmin(admin.ModelAdmin):
     change_list_template = 'delft3dworker/user_summary_change_list.html'
-    # Sort by time period
+    # Filter by time period
     list_filter = (('scene__container__container_stoptime', DateRangeFilter),)
 
     def changelist_view(self, request, extra_context=None):
