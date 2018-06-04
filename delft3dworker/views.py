@@ -659,10 +659,7 @@ class GroupUsageSummaryViewSet(viewsets.ModelViewSet):
 
     serializer_class = GroupSerializer
     queryset = Group.objects.none()  # Required for DjangoModelPermissions
-
-    def group_list(request):
-
-        return render(request, 'delft3dworker/user_summary_change_list.html', {'start_date': start_date, 'end_date': end_date})
+    
 
 class UserUsageSummaryViewSet(viewsets.ModelViewSet):
     """
