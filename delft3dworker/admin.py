@@ -115,26 +115,13 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
         """
         Displays summary of usage organized by group
         """
-        extra_context = extra_context or {}
-        try:
-            extra_context['trade_date_gte'] = request.GET['date__gte']
-        except:
-            pass
-
-        try:
-            extra_context['trade_date_lte'] = request.GET['date__lte']
-        except:
-            pass
-        # extra_context['end_date'] =
         response = super(GroupUsageSummaryAdmin, self).changelist_view(
             request,
             extra_context=extra_context,
         )
         try:
             qs = response.context_data['cl'].queryset
-            qs = qs.exclude(name='access:world').order_by('name')#.filter(user__scene__container__container_stoptime__range=[startdate, enddate])
-
-
+            qs = qs.exclude(name='access:world').order_by('name')
         except (AttributeError, KeyError) as e:
             return response
         # Summarize by group values
