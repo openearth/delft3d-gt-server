@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'guardian',
     'constance',
     'constance.backends.database',
+    'rangefilter',
 
     'delft3dcontainermanager',
     'delft3dworker',

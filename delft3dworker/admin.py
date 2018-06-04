@@ -9,6 +9,8 @@ from django.db.models import Count
 from django.db.models import ExpressionWrapper
 from django.db.models import DurationField
 
+from rangefilter.filter import DateRangeFilter, DateTimeRangeFilter
+
 from guardian.admin import GuardedModelAdmin
 
 from models import Scenario
@@ -100,15 +102,14 @@ class Version_SVN_Admin(GuardedModelAdmin):
         SceneInline,
     ]
 
-
 @admin.register(GroupUsageSummary)
 class GroupUsageSummaryAdmin(admin.ModelAdmin):
     # Following example available at:
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
 
     change_list_template = 'delft3dworker/group_summary_change_list.html'
-    # Sort by time period
-    date_hierarchy = 'user__scene__container__container_stoptime'
+    # Filter by time period
+    list_filter = (('user__scene__container__container_stoptime', DateRangeFilter),)
 
     def changelist_view(self, request, extra_context=None):
         """
@@ -120,11 +121,7 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
         )
         try:
             qs = response.context_data['cl'].queryset
-            # All user belong to world. To avoid double counting run_time we exclude this group
-            # Then order by the group name to sort
             qs = qs.exclude(name='access:world').order_by('name')
-
-
         except (AttributeError, KeyError) as e:
             return response
         # Summarize by group values
@@ -157,10 +154,8 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
 @admin.register(UserUsageSummary)
 class UserUsageSummaryAdmin(admin.ModelAdmin):
     change_list_template = 'delft3dworker/user_summary_change_list.html'
-    # Sort by time period
-    date_hierarchy = 'scene__container__container_stoptime'
-    # Provide options for filtering by group and time
-    list_filter = ('groups__name', 'scene__container__container_stoptime')
+    # Filter by time period
+    list_filter = (('scene__container__container_stoptime', DateRangeFilter),)
 
     def changelist_view(self, request, extra_context=None):
         """

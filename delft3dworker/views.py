@@ -658,7 +658,7 @@ class GroupUsageSummaryViewSet(viewsets.ModelViewSet):
 
     serializer_class = GroupSerializer
     queryset = Group.objects.none()  # Required for DjangoModelPermissions
-
+    
 
 class UserUsageSummaryViewSet(viewsets.ModelViewSet):
     """
