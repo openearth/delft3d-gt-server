@@ -446,8 +446,8 @@ class ScenarioZeroPhaseTestCase(TestCase):
 
     def test_phase_00(self):
         self.template = Template.objects.create(name="Template parent")
-        self.scenario = Scenario.objects.create(name='Scenario parent', template=self.template)
-        scene = Scene.objects.create(name='scene 1')
+        self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
+        scene = Scene.objects.create(name="scene 1")
         scene.scenario = [self.scenario]
 
         scene.phase = scene.phases.new
@@ -459,8 +459,8 @@ class ScenarioZeroPhaseTestCase(TestCase):
         scene.update_and_phase_shift()
 
         self.assertEqual(scene.phase, scene.phases.idle)
-        self.assertEqual(scene.workflow.desired_state, 'non-existent')
-        self.assertEqual(scene.workflow.cluster_state, 'non-existent')
+        self.assertEqual(scene.workflow.desired_state, "non-existent")
+        self.assertEqual(scene.workflow.cluster_state, "non-existent")
 
 
 class ScenarioPhasesTestCase(TestCase):
@@ -473,8 +473,8 @@ class ScenarioPhasesTestCase(TestCase):
 
     def setUp(self):
         self.template = Template.objects.create(name="Template parent")
-        self.scenario = Scenario.objects.create(name='Scenario parent', template=self.template)
-        self.scene_1 = Scene.objects.create(name='scene 1')
+        self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
+        self.scene_1 = Scene.objects.create(name="scene 1")
         self.scene_1.scenario = [self.scenario]
         self.scene_1.update_and_phase_shift()  # put all into new
 
@@ -507,7 +507,7 @@ class ScenarioPhasesTestCase(TestCase):
         self.assertEqual(self.scene_1.phase, self.p.sim_start)
 
         # Move to running when a workflow is running
-        self.scene_1.workflow.cluster_state = 'running'
+        self.scene_1.workflow.cluster_state = "running"
         self.scene_1.workflow.save()
 
         self.scene_1.update_and_phase_shift()
@@ -515,8 +515,8 @@ class ScenarioPhasesTestCase(TestCase):
 
     def test_phase_sim_run(self):
         workflow = self.scene_1.workflow
-        workflow.cluster_state = 'running'
-        workflow.desired_state = 'running'
+        workflow.cluster_state = "running"
+        workflow.desired_state = "running"
         workflow.save()
 
         self.scene_1.phase = self.p.sim_run
@@ -529,7 +529,7 @@ class ScenarioPhasesTestCase(TestCase):
 
         # TODO check if the progress is updated
 
-        workflow.cluster_state = 'failed'
+        workflow.cluster_state = "failed"
         workflow.save()
 
         self.scene_1.update_and_phase_shift()
@@ -539,7 +539,7 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1.phase = self.p.sim_fin
 
         workflow = self.scene_1.workflow
-        workflow.cluster_state = 'non-existent'
+        workflow.cluster_state = "non-existent"
         workflow.save()
 
         self.scene_1.update_and_phase_shift()
