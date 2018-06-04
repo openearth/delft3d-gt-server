@@ -263,12 +263,9 @@ class Scene(models.Model):
     shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
-    # TODO Make this into entrypoints? Otherwise delete.
+    # Entrypoints for workflow, not used yet
     entrypoints = Choices(
         (0, 'main', 'main workflow'),
-        # (1, 'redo_proc', 'redo processing workflow'),
-        # (2, 'redo_postproc', 'redo postprocessing workflow'),
-        # (3, 'redo_proc_postproc', 'redo processing and postprocessing workflow')
     )
 
     entrypoint = models.PositiveSmallIntegerField(
@@ -308,7 +305,7 @@ class Scene(models.Model):
     def start(self):
         # only allow a start when Scene is 'Idle'
         if self.phase == self.phases.idle:
-            self.shift_to_phase(self.phases.sim_start)   # shift to Queued
+            self.shift_to_phase(self.phases.sim_start)
             self.date_started = tz_now()
             self.save()
 
@@ -471,7 +468,7 @@ class Scene(models.Model):
 
             # If workflow disappeared, shift back
             elif (self.workflow.cluster_state == 'non-existent'):
-                logging.error("Lost sim/process container!")
+                logging.error("Lost workflow in cluster!")
                 self.shift_to_phase(self.phases.sim_start)
 
             return
@@ -558,9 +555,10 @@ class Scene(models.Model):
                         self.info["logfile"]["file"] = f
                         break
         self.save()
-
+ 
     # Run this after post processing
-    # TODO This won't work with workflows
+    # TODO Determine post processing step in workflow
+    # Now this runs every processing loop
     def _parse_postprocessing(self):
         outputfn = os.path.join(self.workingdir, 'postprocess', 'output.json')
         if os.path.exists(outputfn):
@@ -770,7 +768,7 @@ class Template(models.Model):
 
 class Workflow(models.Model):
     """Argo Workflow Instance."""
-    # name exists of name of linked Template and the scene suid
+    # name combines shortname of linked Template and the scene suid
     name = models.CharField(max_length=256, unique=True)
     scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
     starttime = models.DateTimeField(default=tz_now, blank=True)

@@ -34,7 +34,7 @@ from delft3dworker.utils import tz_now
 class ScenarioTestCase(TestCase):
 
     def setUp(self):
-        self.user_foo = User.objects.create_user(username='foo')
+        self.user_foo = User.objects.create_user(username="foo")
         self.template = Template.objects.create(name="Template parent")
         self.scenario_single = Scenario.objects.create(
             name="Test single scene", owner=self.user_foo, template=self.template)
@@ -98,7 +98,7 @@ class ScenarioTestCase(TestCase):
 class ScenarioControlTestCase(TestCase):
 
     def setUp(self):
-        self.user_foo = User.objects.create_user(username='foo')
+        self.user_foo = User.objects.create_user(username="foo")
 
         self.template = Template.objects.create(name="bar")
         self.scenario_multi = Scenario.objects.create(
@@ -811,21 +811,20 @@ class WorkflowTestCase(TestCase):
 
         result = Mock()
         result.id = task_uuid
-        # result.get.return_value = docker_id
         mocked_task.return_value = result
 
-        # call method, get_docker_log is called once, uuid updates
+        # call method, update_log is called once, uuid updates
         self.workflow.update_log()
         mocked_task.assert_called_once_with(
             args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
         self.assertEqual(self.workflow.task_uuid, task_uuid)
 
-        # 'finish' task, call method, get_docker_log is called again
+        # 'finish' task, call method, update_log is called again
         self.workflow.task_uuid = None
         self.workflow.update_log()
         self.assertEqual(mocked_task.call_count, 2)
 
-        # 'exit' workflow, call method, get_docker_log is not called again
+        # 'exit' workflow, call method, update_log is not called again
         self.workflow.cluster_state = 'exited'
         self.workflow.update_log()
         self.assertEqual(mocked_task.call_count, 2)

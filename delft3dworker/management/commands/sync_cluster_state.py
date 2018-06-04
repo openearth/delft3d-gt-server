@@ -11,37 +11,37 @@ from delft3dworker.models import Scene
 
 """
 Synchronization command that's called periodically.
-- Run docker ps (celery task)
-- Loop over container models and compare with the output of docker ps
-- Missing container model (orphan) -> Error, stop container
-- For the other container run container.update_state(docker_ps)
-- Finally loop over the scene models and call update_state()
+- Update Django state from previously ran celery tasks
+- Retrieve all running workflows in kubernetes
+- Loop over Django workflows models and sync with cluster state
+- Loop over the scene models and update phases where needed
+- Call new celery tasks for workflows based on updated scene phases
 """
 
 
 class Command(BaseCommand):
-    help = "sync containers with container and scene model"
+    help = "Sync cluster workflows with workflow and scene models."
 
     def handle(self, *args, **options):
 
-        # STEP I : Loop over non empty celery_task_ids in containers
+        # STEP I : Parse finished Celery tasks for Workflow models
         # Sets task_uuid to None except for when a task is queued
-        # Queued for log, no start? expire gebruiken
         self._update_workflow_tasks()
 
-        # STEP II : Get current workflows on cluster
+        # STEP II : Get current workflows on cluster and sync with 
+        # Djang workflows models
         if self._get_latest_workflows_status():
 
             # STEP III : Update Scenes and their Phases
             # Controls workflow desired states
             self._update_scene_phases()
 
-            # STEP IV : Synchronize Workflow Models with cluster workflows
+            # STEP IV : Call new Celery Workflow tasks
             self._fix_workflow_state_mismatch()
 
     def _update_workflow_tasks(self):
         """
-        Update Containers with results from finished tasks.
+        Update workflows with results from finished tasks.
         """
         workflows_with_running_tasks = set(Workflow.objects.exclude(task_uuid__exact=None))
 
@@ -50,7 +50,7 @@ class Command(BaseCommand):
 
     def _get_latest_workflows_status(self):
         """
-        Synchronise local Django Container models with remote Docker containers
+        Synchronise local Django Workflow models with remote Argo workflows
         """
 
         ps = get_argo_workflows.apply_async(queue='priority')
@@ -74,7 +74,7 @@ class Command(BaseCommand):
         cluster_dict = {wf["metadata"]["name"]: wf for wf in cluster_workflows["items"]}
         cluster_set = set(cluster_dict.keys())
 
-        # retrieve container from database
+        # retrieve workflows from database
         database_set = set(Workflow.objects.all().values_list('name', flat=True))
 
         # Work out matching matrix
@@ -91,7 +91,7 @@ class Command(BaseCommand):
                  (cluster_set & database_set)
                  )
 
-        # Update state of all matching containers
+        # Update state of all matching workflows
         workflow_match = m_1_1 | m_1_0
         for wf_name in workflow_match:
             snapshot = cluster_dict[wf_name] if wf_name in cluster_dict else None
@@ -110,7 +110,7 @@ class Command(BaseCommand):
 
     def _update_scene_phases(self):
         """
-        Update Scenes with latest status of their Containers, and possibly
+        Update Scenes with latest status of their workflows, and possibly
         shift Scene phase
         """
 
@@ -121,6 +121,6 @@ class Command(BaseCommand):
             scene.update_and_phase_shift()
 
     def _fix_workflow_state_mismatch(self):
-
+        """Call celery tasks for each Workflow where applicable."""
         for workflow in Workflow.objects.all():
             workflow.fix_mismatch_or_log()

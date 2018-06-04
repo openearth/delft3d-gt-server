@@ -177,11 +177,6 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': timedelta(seconds=15),
         'options': {'queue': 'beat', 'expires': TASK_EXPIRE_TIME}
     },
-    # 'latest_svn': {
-    #     'task': 'delft3dcontainermanager.tasks.delft3dgt_latest_svn',
-    #     'schedule': timedelta(hours=6),
-    #     'options': {'queue': 'beat', 'expires': TASK_EXPIRE_TIME}
-    # },
 }
 
 WORKER_FILEURL = '/files'
