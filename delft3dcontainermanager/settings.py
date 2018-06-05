@@ -15,6 +15,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 # SECURITY WARNING: don't run with debug turned on in production!
 import sys
+from kubernetes import config
 
 DEBUG = True
 SECRET_KEY = 'notneeded'
@@ -64,10 +65,17 @@ CELERY_TASK_RESULT_EXPIRES = 5 * 60  # After 5 minutes redis keys are deleted
 CELERY_ACKS_LATE = False
 CELERYD_PREFETCH_MULTIPLIER = 1
 
+# try to load kubectl config
+try:
+    config.load_kube_config()
+except IOError:
+    print("Can't load kubernetes config!")
+
 # import provisioned settings
 try:
     from provisionedsettings import *
 except ImportError:
+    print("Failed to import provisioned settings!")
     SECRET_KEY = 'test'
 
 if 'test' in sys.argv:
@@ -76,7 +84,7 @@ if 'test' in sys.argv:
     CELERY_ONCE = {
       'backend': 'celery_once.backends.Redis',
       'settings': {
-        'url': 'redis://127.0.0.1:6379/0',
+        'url': 'redis://127.0.0.1/0',
         'default_timeout': 60 * 60
       }
     }

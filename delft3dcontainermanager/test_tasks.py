@@ -1,58 +1,22 @@
 from __future__ import absolute_import
 
 import os
+import sys
 
 from django.test import TestCase
 from fakeredis import FakeStrictRedis
-from mock import patch
-from six.moves import configparser
+from mock import patch, Mock, MagicMock
 from time import time
 
-from delft3dcontainermanager.tasks import delft3dgt_pulse
-from delft3dcontainermanager.tasks import get_docker_ps
-from delft3dcontainermanager.tasks import get_docker_log
-from delft3dcontainermanager.tasks import do_docker_create
-from delft3dcontainermanager.tasks import do_docker_start
-from delft3dcontainermanager.tasks import do_docker_stop
-from delft3dcontainermanager.tasks import do_docker_remove
-from delft3dcontainermanager.tasks import do_docker_sync_filesystem
+from delft3dcontainermanager.tasks import delft3dgt_kube_pulse
+from delft3dcontainermanager.tasks import get_argo_workflows
+from delft3dcontainermanager.tasks import get_kube_log
+from delft3dcontainermanager.tasks import do_argo_create
+from delft3dcontainermanager.tasks import do_argo_remove
 
 
 class AsyncTaskTest(TestCase):
-
-    def setUp(self):
-        self.get_redis = patch('celery_once.backends.redis.get_redis')
-        self.mocked_redis = self.get_redis.start()
-
-        self.redis = FakeStrictRedis()
-        self.mocked_redis.return_value = self.redis
-
-    @patch('delft3dcontainermanager.tasks.call_command')
-    def test_delft3dgt_pulse(self, mockCall):
-        """
-        Assert that de delft3dgt_pulse task
-        calls the containersync_sceneupdate() only once.
-        """
-        delft3dgt_pulse.delay()
-
-        # Set redis key with TTL 100 seconds from now
-        # so subsequent tasks won't run
-        self.redis.set('qo_delft3dcontainermanager.tasks.delft3dgt_pulse', int(time()) + 100)
-
-        delft3dgt_pulse.delay()
-        delft3dgt_pulse.delay()
-
-        mockCall.assert_called_with('containersync_sceneupdate')
-        self.assertEqual(mockCall.call_count, 1)
-
-    def tearDown(self):
-        self.redis.flushall()
-        self.get_redis.stop()
-
-
-class TaskTest(TestCase):
     mock_options = {
-        'autospec': True,
     }
 
     def setUp(self):
@@ -63,155 +27,95 @@ class TaskTest(TestCase):
         self.mocked_redis.return_value = self.redis
 
     @patch('delft3dcontainermanager.tasks.call_command')
-    def test_delft3dgt_pulse(self, mockCall):
+    def test_delft3dgt_kube_pulse(self, mockCall):
         """
-        Assert that de delft3dgt_pulse task
-        calls the containersync_sceneupdate() function.
+        Assert that de delft3dgt_kube_pulse task
+        calls the sync_cluster_state() only once.
         """
+        delft3dgt_kube_pulse.delay()
 
-        delft3dgt_pulse.delay()
-        mockCall.assert_called_with('containersync_sceneupdate')
+        # Set redis key with TTL 100 seconds from now
+        # so subsequent tasks won't run
+        self.redis.set('qo_delft3dcontainermanager.tasks.delft3dgt_kube_pulse', int(time()) + 100)
 
-    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
-    @patch('delft3dcontainermanager.tasks.logging.error', **mock_options)
-    def test_get_docker_ps(self, mockLogging, mockClient):
-        """
-        Assert that the docker_ps task
-        calls the docker client.containers() function.
-        """
+        delft3dgt_kube_pulse.delay()
+        delft3dgt_kube_pulse.delay()
 
-        containers = [{'Id': 'Aaa', 'Status': 'Running'},
-                      {'Id': 'Bbb', 'Status': 'Host Down'},
-                      {'Id': 'Ccc', 'Status': 'Up'},
-                      ]
-
-        def inspect(container=''):
-            if container == 'Ccc':
-                raise
-            else:
-                return {'Id': container, 'Config': {'Labels': {'type': 'preprocess'}}}
-
-        mockClient.return_value.containers.return_value = containers
-        mockClient.return_value.inspect_container.side_effect = inspect
-
-        get_docker_ps.delay()
-        # Call docker ps for all containers, but only once
-        mockClient.return_value.containers.assert_called_with(all=True)
-        self.assertEqual(mockClient.return_value.containers.call_count, 1)
-        # Call inspect for all but Host Down container
-        self.assertEqual(
-            mockClient.return_value.inspect_container.call_count, 2)
-        # Log error only for Ccc container
-        self.assertEqual(mockLogging.call_count, 1)
-
-    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
-    def test_get_docker_log(self, mockClient):
-        """
-        Assert that the docker_log task
-        calls the docker client.logs() function.
-        """
-        get_docker_log.delay("id", stdout=False, stderr=True)
-        mockClient.return_value.logs.assert_called_with(
-            container="id", stdout=False, stderr=True, stream=False,
-            timestamps=True, tail=5)
-
-    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
-    def test_do_docker_create(self, mockClient):
-        """
-        Assert that the docker_create task
-        calls the docker client.create_container() function.
-        """
-        image = "IMAGENAME"
-        volumes = ['/:/data/output:z',
-                   '/:/data/input:ro']
-        memory_limit = '1g'
-        command = "echo test"
-        config = {}
-        environment = {'a': 1, 'b': 2}
-        label = {"type": "delft3d"}
-        folder = ['input', 'output']
-        name = 'test-8172318273'
-        workingdir = os.path.join(os.getcwd(), 'test')
-        folders = [os.path.join(workingdir, f) for f in folder]
-        parameters = {u'test':
-                      {u'1': u'a', u'2': u'b', 'units': 'ignoreme'}
-                      }
-        mockClient.return_value.create_host_config.return_value = config
-
-        do_docker_create.delay(label, parameters, environment, name,
-                               image, volumes, memory_limit, folders, command)
-
-        # Assert that docker is called
-        mockClient.return_value.create_container.assert_called_with(
-            image,
-            host_config=config,
-            command=command,
-            name=name,
-            environment=environment,
-            labels=label
-        )
-
-        # Assert that folders are created
-        listdir = os.listdir(workingdir)
-        for f in listdir:
-            self.assertIn(f, listdir)
-
-        for folder in folders:
-            ini = os.path.join(folder, 'input.ini')
-            self.assertTrue(os.path.isfile(ini))
-
-            config = configparser.SafeConfigParser()
-            config.readfp(open(ini))
-            for key in parameters.keys():
-                self.assertTrue(config.has_section(key))
-                for option, value in parameters[key].items():
-                    if option != 'units':
-                        self.assertTrue(config.has_option(key, option))
-                        self.assertEqual(config.get(key, option), value)
-                    else:  # units should be ignored
-                        self.assertFalse(config.has_option(key, option))
-
-    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
-    def test_do_docker_start(self, mockClient):
-        """
-        Assert that the docker_start task
-        calls the docker client.start() function
-        """
-        do_docker_start.delay("id")
-        mockClient.return_value.start.assert_called_with(container="id")
-
-    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
-    def test_do_docker_stop(self, mockClient):
-        """
-        Assert that the docker_stop task
-        calls the docker client.stop() function
-        """
-        do_docker_stop.delay("id", timeout=5)
-        mockClient.return_value.stop.assert_called_with(
-            container="id", timeout=5)
-
-    @patch('delft3dcontainermanager.tasks.Client', **mock_options)
-    def test_do_docker_remove(self, mockClient):
-        """
-        Assert that the docker_remove task
-        calls the docker client.remove_container() function
-        """
-        delay = do_docker_remove.delay("id")
-        mockClient.return_value.remove_container.assert_called_with(
-            container="id", force=False)
-        container, log = delay.result
-        self.assertEqual(container, "id")
-        self.assertEqual(log, "")
-
-    def test_do_docker_sync_filesystem(self):
-        """
-        TODO: write test
-        """
-        delay = do_docker_sync_filesystem.delay("id")
-        container, log = delay.result
-        self.assertEqual(container, "id")
-        self.assertEqual(log, "")
+        mockCall.assert_called_with('sync_cluster_state')
+        self.assertEqual(mockCall.call_count, 1)
 
     def tearDown(self):
         self.redis.flushall()
         self.get_redis.stop()
+
+
+class TaskTest(TestCase):
+    mock_options = {
+    }
+
+    def setUp(self):
+        self.get_redis = patch('celery_once.backends.redis.get_redis')
+        self.mocked_redis = self.get_redis.start()
+
+        self.redis = FakeStrictRedis()
+        self.mocked_redis.return_value = self.redis
+
+    @patch('delft3dcontainermanager.tasks.client', **mock_options)
+    def test_get_argo_workflows(self, mockClient):
+        """
+        Assert that the get_argo_workflows task
+        calls the kubernetes v1.api_client.call_api function.
+        """
+
+        # Mock return of all workflows
+        mockClient.CoreV1Api.return_value.api_client = Mock()
+
+        get_argo_workflows.delay()
+        mockClient.CoreV1Api().api_client.call_api.assert_called_with("/apis/argoproj.io/v1alpha1/workflows",
+                                                                      "GET", response_type="V1ConfigMapList", _return_http_data_only=True)
+
+    @patch('delft3dcontainermanager.tasks.client', **mock_options)
+    def test_get_kube_log(self, mockClient):
+        """
+        Assert that the argo_log task
+        calls the kubernetes read_namespaced_pod_log function.
+        """
+
+        wf_id = "id"
+        pod_id = "foo"
+
+        # Mock return of all pods
+        pods = Mock()
+        pods.to_dict.return_value = {"items": [{"metadata": {"name": pod_id}}]}
+        mockClient.CoreV1Api().list_namespaced_pod.return_value = pods
+
+        # Check that all pods are requested
+        # and the logs for each individual pod
+        get_kube_log.delay(wf_id)
+        mockClient.CoreV1Api().list_namespaced_pod.assert_called_with(
+            "default", label_selector="workflows.argoproj.io/workflow={}".format(wf_id))
+        mockClient.CoreV1Api().read_namespaced_pod_log.assert_called_with(
+            pod_id, "default", container="main", tail_lines=25)
+
+    @patch('delft3dcontainermanager.tasks.client', **mock_options)
+    def test_do_argo_create(self, mockClient):
+        """
+        Assert that the do_argo_create task
+        calls the kubernetes create_namespaced_custom_object function.
+        """
+        yaml = "---"
+
+        do_argo_create.delay(yaml)
+        mockClient.CustomObjectsApi().create_namespaced_custom_object.assert_called_with(
+            "argoproj.io", "v1alpha1", "default", "workflows", yaml)
+
+    @patch('delft3dcontainermanager.tasks.client', **mock_options)
+    def test_do_argo_remove(self, mockClient):
+        """
+        Assert that the argo_remove task
+        calls the kubernetes delete_namespaced_custom_object function
+        """
+        wf_id = "id"
+        do_argo_remove.delay(wf_id)
+        mockClient.CustomObjectsApi().delete_namespaced_custom_object.assert_called_with(
+            "argoproj.io", "v1alpha1", "default", "workflows", wf_id, {})

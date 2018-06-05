@@ -5,7 +5,6 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
-from delft3dworker.models import Version_SVN
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
@@ -56,11 +55,7 @@ class SceneFullSerializer(serializers.ModelSerializer):
     """
 
     owner = UserSerializer(read_only=True)
-
     state = serializers.CharField(source='get_phase_display', read_only=True)
-    outdated = serializers.BooleanField(source='is_outdated', read_only=True)
-    outdated_workflow = serializers.SerializerMethodField()
-    outdated_changelog = serializers.CharField(read_only=True)
 
     class Meta:
         model = Scene
@@ -80,16 +75,8 @@ class SceneFullSerializer(serializers.ModelSerializer):
             'state',
             'suid',
             'task_id',
-            'versions',
             'workingdir',
-            'outdated',
-            'outdated_workflow',
-            'outdated_changelog'
         )
-
-    def get_outdated_workflow(self, obj):
-        wf = obj.outdated_workflow()
-        return obj.workflows[wf] if wf is not None else ""
 
 
 class SceneSparseSerializer(serializers.ModelSerializer):
@@ -158,17 +145,6 @@ class SearchFormSerializer(serializers.ModelSerializer):
             'sections',
             'templates',
         )
-
-
-class Version_SVNSerializer(serializers.ModelSerializer):
-    """
-    A default REST Framework ModelSerializer for the Version_SVN model
-    source: http://www.django-rest-framework.org/api-guide/serializers/
-    """
-
-    class Meta:
-        model = Version_SVN
-        fields = '__all__'
 
 
 class TemplateSerializer(serializers.ModelSerializer):

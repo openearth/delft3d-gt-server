@@ -11,6 +11,7 @@ import random
 import shutil
 import string
 import uuid
+import yaml
 import zipfile
 
 from celery.result import AsyncResult
@@ -19,6 +20,7 @@ from django.conf import settings  # noqa
 from constance import config as cconfig
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 from django.urls import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
@@ -37,88 +39,16 @@ from django.contrib.postgres.fields import JSONField
 
 from delft3dworker.utils import log_progress_parser, version_default, get_version, tz_now
 
-from delft3dcontainermanager.tasks import do_docker_create
-from delft3dcontainermanager.tasks import do_docker_remove
-from delft3dcontainermanager.tasks import do_docker_start
-from delft3dcontainermanager.tasks import do_docker_stop
-from delft3dcontainermanager.tasks import get_docker_log
+from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create
+from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
 
 
 # ################################### VERSION_SVN, SCENARIO, SCENE & CONTAINER
 
 
 def default_svn_version():
-    """Default SVN_Version for new Scenes.
-    Also ensure there's always a row in the svn model."""
-    if settings.REQUIRE_REVIEW:
-        count = Version_SVN.objects.filter(reviewed=True).count()
-    else:
-        count = Version_SVN.objects.count()
-
-    if count == 0:
-        logging.info("Creating default svn trunk model")
-        version = Version_SVN(release='trunk', revision=settings.SVN_REV,
-                              url=settings.REPOS_URL + '/trunk/', versions={},
-                              changelog='default release', reviewed=settings.REQUIRE_REVIEW)
-        version.save()
-        return version.id
-    else:
-        return Version_SVN.objects.latest().id
-
-
-class Version_SVN_Manager(models.Manager):
-
-    def latest(self):
-        """Return latest model."""
-        if settings.REQUIRE_REVIEW:
-            return self.get_queryset().filter(reviewed=True).first()
-        else:
-            return self.get_queryset().all().first()
-
-
-class Version_SVN(models.Model):
-    """
-    Store releases used in the Delft3D-GT svn repository.
-
-    Every scene has a version_svn, if there's a newer (higher id)
-    version_svn available, the scene is outdated.
-
-    By comparing svn folders and files (versions field) the specific
-    workflow can be determined in the scene.
-
-    The revision and url can be used in the Docker Python env
-    """
-    objects = Version_SVN_Manager()
-    release = models.CharField(
-        max_length=256, db_index=True)  # tag/release name
-    revision = models.PositiveSmallIntegerField(db_index=True)  # svn_version
-    versions = JSONField(default='{}')  # folder revisions
-    url = models.URLField(max_length=200)  # repos_url
-    changelog = models.CharField(max_length=256)  # release notes
-    reviewed = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ["-revision"]
-        verbose_name = "SVN version"
-        verbose_name_plural = "SVN versions"
-
-    def __unicode__(self):
-        return "Release {} at revision {}".format(self.release, self.revision)
-
-    def outdated(self):
-        """Return bool if there are newer releases available."""
-        return Version_SVN.objects.latest().revision > self.revision
-
-    def compare_outdated(self):
-        """Compare folder revisions with latest release."""
-        outdated_folders = []
-
-        latest_versions = Version_SVN.objects.latest().versions
-        for folder, revision in latest_versions.items():
-            if self.versions.setdefault(folder, -1) < revision:
-                outdated_folders.append(folder)
-
-        return outdated_folders
+    """Placeholder for old migrations."""
+    pass
 
 
 class Scenario(models.Model):
@@ -129,7 +59,8 @@ class Scenario(models.Model):
 
     name = models.CharField(max_length=256)
 
-    template = models.ForeignKey('Template', blank=True, null=True, on_delete=models.CASCADE)
+    template = models.ForeignKey(
+        'Template', blank=True, null=True, on_delete=models.CASCADE)
 
     scenes_parameters = JSONField(blank=True, default={})
     parameters = JSONField(blank=True, default={})
@@ -180,6 +111,7 @@ class Scenario(models.Model):
                     parameters=sceneparameters,
                     shared="p",  # private
                     parameters_hash=phash,
+                    info=self.template.info
                 )
                 scene.save()
                 scene.scenario.add(self)
@@ -237,25 +169,21 @@ class Scenario(models.Model):
 
     # INTERNALS
 
+    # TODO Workflow update this
     def _update_state_and_save(self):
 
         count = self.scene_set.all().count()
-
         self.state = 'inactive'
 
         if count > 0:
-
             progress = 0
-
             for scene in self.scene_set.all():
-
                 progress = progress + scene.progress
-
+                # TODO Fix phases here
                 if scene.phase != 6:
                     self.state = 'active'
 
             self.progress = progress / count
-
             self.save()
 
         return self.state
@@ -335,82 +263,32 @@ class Scene(models.Model):
     shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
-    workflows = Choices(
+    # Entrypoints for workflow, not used yet
+    entrypoints = Choices(
         (0, 'main', 'main workflow'),
-        (1, 'redo_proc', 'redo processing workflow'),
-        (2, 'redo_postproc', 'redo postprocessing workflow'),
-        (3, 'redo_proc_postproc', 'redo processing and postprocessing workflow')
     )
 
-    workflow = models.PositiveSmallIntegerField(
-        default=workflows.main, choices=workflows)
+    entrypoint = models.PositiveSmallIntegerField(
+        default=entrypoints.main, choices=entrypoints)
 
     phases = Choices(
-        # Create container models
+        # Create workflow models
         (0, 'new', 'New'),
-
-        # Preprocessing container
-        (2, 'preproc_create', 'Allocating preprocessing resources'),
-        (3, 'preproc_start', 'Starting preprocessing'),
-        (4, 'preproc_run', 'Running preprocessing'),
-        (5, 'preproc_fin', 'Finished preprocessing'),
 
         # User input wait phase
         (6, 'idle', 'Idle: waiting for user input'),
 
-        # Simulation container
-        (10, 'sim_create', 'Allocating simulation resources'),
-        (11, 'sim_start', 'Starting simulation'),
-        (12, 'sim_run', 'Running simulation'),
-        (15, 'sim_last_proc', 'Finishing simulation'),
-        (13, 'sim_fin', 'Finished simulation'),
-        (14, 'sim_stop', 'Stopping simulation'),
-
-        # Processing container
-        (60, 'proc_create', 'Allocating processing resources'),
-        (61, 'proc_start', 'Starting processing'),
-        (62, 'proc_run', 'Running processing'),
-        (63, 'proc_fin', 'Finished processing'),
-
-        # Postprocessing container
-        (20, 'postproc_create', 'Allocating postprocessing resources'),
-        (21, 'postproc_start', 'Starting postprocessing'),
-        (22, 'postproc_run', 'Running postprocessing'),
-        (23, 'postproc_fin', 'Finished postprocessing'),
-
-        # Export container
-        (30, 'exp_create', 'Allocating export resources'),
-        (31, 'exp_start', 'Starting export'),
-        (32, 'exp_run', 'Running export'),
-        (33, 'exp_fin', 'Finished export'),
-
-        # Remove containers
-        (17, 'cont_rem_start', 'Starting container remove'),
-        (18, 'cont_rem_run', 'Removing containers'),
-        (19, 'cont_rem_fin', 'Containers removed'),
-
-        # Sync container
-        (40, 'sync_create', 'Allocating synchronization resources'),
-        (41, 'sync_start', 'Started synchronization'),
-        (42, 'sync_run', 'Running synchronization'),
-        (43, 'sync_fin', 'Finished synchronization'),
-
-        # Sync back simulation results to rerun processing or postprocessing
-        (50, 'sync_redo_create', 'Allocating synchronization resources'),
-        (51, 'sync_redo_start', 'Started synchronization'),
-        (52, 'sync_redo_run', 'Running synchronization'),
-        (53, 'sync_redo_fin', 'Finished synchronization'),
+        # Workflow phases
+        (11, 'sim_start', 'Starting workflow'),
+        (12, 'sim_run', 'Running workflow'),
+        (13, 'sim_fin', 'Removing workflow'),
 
         # Other phases
         (500, 'fin', 'Finished'),
-        (1000, 'abort_start', 'Starting Abort'),
-        (1001, 'abort_run', 'Aborting'),
-        (1002, 'abort_fin', 'Finished Abort'),
-        (1003, 'queued', 'Queued')
+        (501, 'fail', 'Failed'),
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
-    version = models.ForeignKey(Version_SVN, default=default_svn_version, on_delete=models.CASCADE)
 
     # PROPERTY METHODS
 
@@ -419,61 +297,15 @@ class Scene(models.Model):
             ('view_scene', 'View Scene'),
         )
 
-    def versions(self):
-        version_dict = model_to_dict(self.version)
-        version_dict['delft3d_version'] = settings.DELFT3D_VERSION
-        return version_dict
-
-    def is_outdated(self):
-        return self.version.outdated()
-
-    def outdated_workflow(self):
-        if self.is_outdated():
-            outdated_folders = self.version.compare_outdated()
-
-            if ('postprocess' in outdated_folders or 'export' in outdated_folders) and ('process' in outdated_folders or 'visualisation' in outdated_folders):
-                return self.workflows.redo_proc_postproc
-
-            elif ('postprocess' in outdated_folders or 'export' in outdated_folders):
-                return self.workflows.redo_postproc
-
-            elif ('process' in outdated_folders or 'visualisation' in outdated_folders):
-                return self.workflows.redo_proc
-
-            # Default model is trunk with a revision number, but without any folder
-            # revisions
-            elif len(outdated_folders) == 0:
-                return self.workflows.redo_proc_postproc
-
-            else:
-                logging.error("Unable to resolve workflow for outdated scene. Folders: {}".format(
-                    outdated_folders))
-                return None
-        else:
-            return None
-
-    def outdated_changelog(self):
-        if self.is_outdated():
-            return Version_SVN.objects.latest().changelog
-        else:
-            return ""
-
     # UI CONTROL METHODS
 
     def reset(self):
-        # only allow a start when Scene is 'Finished'
-        if self.phase == self.phases.fin:
-            self.shift_to_phase(self.phases.new)   # shift to Queued
-            self.date_started = None
-            self.progress = 0
-            self.save()
-
-        return {"task_id": None, "scene_id": None}
+        return self.redo()
 
     def start(self):
         # only allow a start when Scene is 'Idle'
         if self.phase == self.phases.idle:
-            self.shift_to_phase(self.phases.queued)   # shift to Queued
+            self.shift_to_phase(self.phases.sim_start)
             self.date_started = tz_now()
             self.save()
 
@@ -481,28 +313,19 @@ class Scene(models.Model):
 
     def redo(self):
         # only allow a redo when Scene is 'Finished'
-        # and there's a new version available
-        if self.phase == self.phases.fin and self.is_outdated():
+        if self.phase == self.phases.fin:
+            self.date_started = tz_now()
+            self.shift_to_phase(self.phases.sim_start)
+            self.workflow.progress = 0
+            self.progress = 0
+            self.save()
 
-            workflow = self.outdated_workflow()
-
-            if workflow is not None:
-                self.workflow = workflow
-                self.date_started = tz_now()
-                self.shift_to_phase(self.phases.queued)
-                self.version = Version_SVN.objects.latest()
-                self.save()
-
-            return {"task_id": None, "scene_id": None}
+        return {"task_id": None, "scene_id": None}
 
     def abort(self):
         # Stop simulation
         if self.phase >= self.phases.sim_start and self.phase <= self.phases.sim_fin:
-            self.shift_to_phase(self.phases.sim_stop)   # stop Simulation
-
-        # Abort queue
-        if self.phase == self.phases.queued:
-            self.shift_to_phase(self.phases.idle)  # get out of queue
+            self.shift_to_phase(self.phases.sim_fin)   # stop Simulation
 
         return {
             "task_id": None,
@@ -517,63 +340,24 @@ class Scene(models.Model):
         # - zip in a subprocess shell with zip
         # - zip to temporary file
 
+        # TODO Export based on export in Template
+
+        available_options = self.Template.export_options
         files_added = False
 
-        for root, dirs, files in os.walk(self.workingdir):
-            for f in files:
-                name, ext = os.path.splitext(f)
+        # for root, dirs, files in os.walk(self.workingdir):
+        #     for f in files:
+        #         name, ext = os.path.splitext(f)
 
-                add = False
+        #         # Available options and extensions logic
+        #         add = False
 
-                # Could be dynamic or tuple of extensions
-                if (
-                    'export_d3dinput' in options
-                ) and (
-                    root.endswith('simulation')
-                ) and (
-                    not f.startswith('TMP')
-                ) and (
-                    (
-                        ext in ['.bcc', '.bch', '.bct', '.bnd', '.dep', '.enc',
-                                '.fil', '.grd', '.ini', '.mdf', '.mdw', '.mor',
-                                '.obs', '.sed', '.sh', '.url', '.xml']
-                    ) or (
-                        ext.startswith('.tr')
-                    )
-                ):
-                    add = True
-
-                # Could be dynamic or tuple of extensions
-                if (
-                    'export_images' in options
-                ) and (
-                    ext in ['.png', '.jpg', '.gif']
-                ):
-                    add = True
-
-                if 'export_thirdparty' in options and (
-                        'export' in root
-                ) and (
-                    ext in ['.gz', ]
-                ):
-                    add = True
-
-                # Zip movie
-                if (
-                    'export_movie' in options
-                ) and (
-                    ext in ['.mp4']
-                ) and (
-                    os.path.getsize(os.path.join(root, f)) > 0
-                ):
-                    add = True
-
-                if add:
-                    files_added = True
-                    abs_path = os.path.join(root, f)
-                    rel_path = os.path.join(slugify(self.name),
-                                            os.path.relpath(abs_path, self.workingdir))
-                    zipfile.write(abs_path, rel_path)
+        #         if add:
+        #             files_added = True
+        #             abs_path = os.path.join(root, f)
+        #             rel_path = os.path.join(slugify(self.name),
+        #                                     os.path.relpath(abs_path, self.workingdir))
+        #             zipfile.write(abs_path, rel_path)
 
         return files_added
 
@@ -588,39 +372,10 @@ class Scene(models.Model):
                 str(self.suid),
                 ''
             )
-
-            # Hack to have the "dt:20" in the correct format
-            if self.parameters == "":
-                self.parameters = {"delft3d": self.info}
-
             self.fileurl = os.path.join(
                 settings.WORKER_FILEURL, str(self.suid), '')
 
-            self.info["delta_fringe_images"] = {
-                "images": [],
-                "location": "process/"
-            }
-            self.info["channel_network_images"] = {
-                "images": [],
-                "location": "process/"
-            }
-            self.info["sediment_fraction_images"] = {
-                "images": [],
-                "location": "process/"
-            }
-            self.info["subenvironment_images"] = {
-                "images": [],
-                "location": "postprocess/"
-            }
-            self.info["logfile"] = {
-                "file": "",
-                "location": "simulation/"
-            }
-            self.info["procruns"] = 0
-            self.info["postprocess_output"] = {}
-
-            self.fileurl = os.path.join(
-                settings.WORKER_FILEURL, str(self.suid), '')
+            self.info = Template.INFO
 
         super(Scene, self).save(*args, **kwargs)
 
@@ -674,626 +429,60 @@ class Scene(models.Model):
 
     def update_and_phase_shift(self):
 
+        # Create Workflow model and shift to idle
         if self.phase == self.phases.new:
 
-            if not self.container_set.filter(container_type='preprocess').exists():
-                preprocess_container = Container.objects.create(
+            if not hasattr(self, 'workflow'):
+                workflow = Workflow.objects.create(
                     scene=self,
-                    container_type='preprocess',
-                    desired_state='non-existent',
+                    name="{}-{}".format(self.scenario.first().template.shortname, self.suid),
                 )
-                preprocess_container.save()
+                workflow.save()
 
-            if not self.container_set.filter(container_type='delft3d').exists():
-                delft3d_container = Container.objects.create(
-                    scene=self,
-                    container_type='delft3d',
-                    desired_state='non-existent',
-                )
-                delft3d_container.save()
-
-            if not self.container_set.filter(container_type='process').exists():
-                process_container = Container.objects.create(
-                    scene=self,
-                    container_type='process',
-                    desired_state='non-existent',
-                )
-                process_container.save()
-
-            if not self.container_set.filter(container_type='export').exists():
-                export_container = Container.objects.create(
-                    scene=self,
-                    container_type='export',
-                    desired_state='non-existent',
-                )
-                export_container.save()
-
-            if not self.container_set.filter(container_type='postprocess').exists():
-                postprocess_container = Container.objects.create(
-                    scene=self,
-                    container_type='postprocess',
-                    desired_state='non-existent',
-                )
-                postprocess_container.save()
-
-            if not self.container_set.filter(container_type='sync_cleanup').exists():
-                sync_clean_container = Container.objects.create(
-                    scene=self,
-                    container_type='sync_cleanup',
-                    desired_state='non-existent',
-                )
-                sync_clean_container.save()
-
-            if not self.container_set.filter(container_type='sync_rerun').exists():
-                sync_run_container = Container.objects.create(
-                    scene=self,
-                    container_type='sync_rerun',
-                    desired_state='non-existent',
-                )
-                sync_run_container.save()
-
-            self.shift_to_phase(self.phases.preproc_create)
+            self.shift_to_phase(self.phases.idle)
 
             return
 
-        elif self.phase == self.phases.preproc_create:
+        # User started a scene. Create Workflow and shift if it's running.
+        elif self.phase == self.phases.sim_start:
 
-            container = self.container_set.get(container_type='preprocess')
-            container.set_desired_state('created')
+            self.workflow.set_desired_state('running')
+            if (self.workflow.cluster_state == 'running'):
+                self.shift_to_phase(self.phases.sim_run)
 
-            if (container.docker_state != 'non-existent'):
-                self.shift_to_phase(self.phases.preproc_start)
-
-            return
-
-        elif self.phase == self.phases.preproc_start:
-
-            container = self.container_set.get(container_type='preprocess')
-            container.set_desired_state('running')
-
-            if (container.docker_state == 'running'):
-                self.shift_to_phase(self.phases.preproc_run)
-
-            elif (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.preproc_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.preproc_create)
-                logging.error("Lost preprocess container!")
+            elif (self.workflow.cluster_state in Workflow.FINISHED):
+                self.shift_to_phase(self.phases.sim_fin)
 
             return
 
-        elif self.phase == self.phases.preproc_run:
+        # While running, scan for new pictures
+        elif self.phase == self.phases.sim_run:
+            self._local_scan_process()  # update images and logfile
+            self._parse_postprocessing()
+            self.progress = self.workflow.progress
+            self.save()
 
-            container = self.container_set.get(container_type='preprocess')
-            if (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.preproc_fin)
+            # If workflow is finished, shift to finished
+            if (self.workflow.cluster_state in Workflow.FINISHED):
+                self.shift_to_phase(self.phases.sim_fin)
 
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.preproc_start)
-                logging.error("Lost preprocess container!")
-
-            return
-
-        elif self.phase == self.phases.preproc_fin:
-
-            container = self.container_set.get(container_type='preprocess')
-            container.set_desired_state('non-existent')
-
-            if (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.idle)
-
-            return
-
-        elif self.phase == self.phases.sim_create:
-
-            delft3d_container = self.container_set.get(
-                container_type='delft3d')
-            if delft3d_container.docker_state == 'non-existent':
-                delft3d_container.set_desired_state('created')
-
-            processing_container = self.container_set.get(
-                container_type='process')
-            if processing_container.docker_state == 'non-existent':
-                processing_container.set_desired_state('created')
-
-            if (delft3d_container.docker_state != 'non-existent' and
-                    processing_container.docker_state != 'non-existent'):
+            # If workflow disappeared, shift back
+            elif (self.workflow.cluster_state == 'non-existent'):
+                logging.error("Lost workflow in cluster!")
                 self.shift_to_phase(self.phases.sim_start)
 
             return
 
-        elif self.phase == self.phases.sim_start:
-
-            delft3d_container = self.container_set.get(
-                container_type='delft3d')
-            # If we've already ran, don't start again
-            if delft3d_container.docker_state == 'created':
-                delft3d_container.set_desired_state('running')
-
-            processing_container = self.container_set.get(
-                container_type='process')
-            processing_container.set_desired_state('running')
-
-            if (delft3d_container.docker_state == 'running'):
-                self.shift_to_phase(self.phases.sim_run)
-
-            # If there are startup errors, the container will exit
-            # before the next beat and the phase will be stuck if
-            # this state is not handled explicitly.
-            elif (delft3d_container.docker_state == 'exited'):
-                self._local_scan_process()  # update images and logfile
-                self.progress = delft3d_container.container_progress
-                self.save()
-
-                delft3d_container.set_desired_state('exited')
-                processing_container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sim_last_proc)
-
-            # If container disappeared, shift back
-            elif (delft3d_container.docker_state == 'non-existent' or
-                  processing_container.docker_state == 'non-existent'):
-                logging.error("Lost sim or process container!")
-                self.shift_to_phase(self.phases.sim_create)
-
-            return
-
-        elif self.phase == self.phases.sim_run:
-
-            delft3d_container = self.container_set.get(
-                container_type='delft3d')
-            processing_container = self.container_set.get(
-                container_type='process')
-
-            self._local_scan_process()  # update images and logfile
-
-            self.progress = delft3d_container.container_progress
-            self.save()
-
-            if (delft3d_container.docker_state == 'exited'):
-                delft3d_container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sim_last_proc)
-
-            # If container disappeared, shift back
-            elif (delft3d_container.docker_state == 'non-existent' or
-                  processing_container.docker_state == 'non-existent'):
-                logging.error("Lost sim/process container!")
-                self.shift_to_phase(self.phases.sim_create)
-
-            return
-
-        # Ensure one extra heartbeat to start processing one last time
-        elif self.phase == self.phases.sim_last_proc:
-            processing_container = self.container_set.get(
-                container_type='process')
-
-            if processing_container.docker_state == 'exited':
-                processing_container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sim_fin)
-
-            elif processing_container.docker_state == 'non-existent':
-                self.shift_to_phase(self.phases.sim_create)
-
-            else:
-                logging.error("Stuck in {}".format(self.phase))
-
+        # Delete workflow in cluster
         elif self.phase == self.phases.sim_fin:
 
-            delft3d_container = self.container_set.get(
-                container_type='delft3d')
-            delft3d_container.set_desired_state('non-existent')
+            self.workflow.set_desired_state('non-existent')
 
-            processing_container = self.container_set.get(
-                container_type='process')
-            processing_container.set_desired_state('non-existent')
-
-            if (delft3d_container.docker_state != 'non-existent'):
-                self.progress = delft3d_container.container_progress
+            if (self.workflow.cluster_state != 'non-existent'):
+                self.progress = self.workflow.progress
                 self.save()
-
             else:
-                self.shift_to_phase(self.phases.postproc_create)
-
-            return
-
-        elif self.phase == self.phases.sim_stop:
-
-            delft3d_container = self.container_set.get(
-                container_type='delft3d')
-            delft3d_container.set_desired_state('exited')
-
-            processing_container = self.container_set.get(
-                container_type='process')
-            processing_container.set_desired_state('exited')
-
-            if (delft3d_container.docker_state == 'exited' and
-                    processing_container.docker_state == 'exited'):
-                self.shift_to_phase(self.phases.sim_fin)
-
-            # If container disappeared, shift forward
-            elif (delft3d_container.docker_state == 'non-existent' or
-                    processing_container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.sim_fin)
-
-            return
-
-        ##########
-        # REDO Processing
-
-        elif self.phase == self.phases.proc_create:
-
-            container = self.container_set.get(container_type='process')
-            container.set_desired_state('created')
-
-            if (container.docker_state != 'non-existent'):
-                self.shift_to_phase(self.phases.proc_start)
-
-            return
-
-        elif self.phase == self.phases.proc_start:
-
-            container = self.container_set.get(container_type='process')
-            container.set_desired_state('running')
-
-            if (container.docker_state == 'running'):
-                self.shift_to_phase(self.phases.proc_run)
-
-            elif (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.proc_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.proc_create)
-                logging.error("Lost process container!")
-
-            return
-
-        elif self.phase == self.phases.proc_run:
-
-            container = self.container_set.get(container_type='process')
-            if (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.proc_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.proc_create)
-                logging.error("Lost process container!")
-
-            return
-
-        elif self.phase == self.phases.proc_fin:
-
-            container = self.container_set.get(container_type='process')
-            container.set_desired_state('non-existent')
-
-            # Done with redo processing, sync results
-            if (container.docker_state == 'non-existent'):
-                if self.workflow == self.workflows.redo_proc_postproc:
-                    self.shift_to_phase(self.phases.postproc_create)
-                else:
-                    self.shift_to_phase(self.phases.sync_create)
-
-            return
-
-        #############
-        # Postprocessing
-
-        elif self.phase == self.phases.postproc_create:
-
-            container = self.container_set.get(container_type='postprocess')
-            container.set_desired_state('created')
-
-            if (container.docker_state != 'non-existent'):
-                self.shift_to_phase(self.phases.postproc_start)
-
-            return
-
-        elif self.phase == self.phases.postproc_start:
-
-            container = self.container_set.get(container_type='postprocess')
-            container.set_desired_state('running')
-
-            if (container.docker_state == 'running'):
-                self.shift_to_phase(self.phases.postproc_run)
-
-            elif (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.postproc_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.postproc_create)
-                logging.error("Lost postprocess container!")
-
-            return
-
-        elif self.phase == self.phases.postproc_run:
-
-            container = self.container_set.get(container_type='postprocess')
-            if (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.postproc_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.postproc_create)
-                logging.error("Lost postprocess container!")
-
-            return
-
-        elif self.phase == self.phases.postproc_fin:
-
-            container = self.container_set.get(container_type='postprocess')
-            container.set_desired_state('non-existent')
-
-            if (container.docker_state == 'non-existent'):
-                self._local_scan_postprocess()  # scan for new images
-                self._parse_postprocessing()  # parse output.ini
-                self.shift_to_phase(self.phases.exp_create)
-
-            return
-
-        elif self.phase == self.phases.exp_create:
-
-            container = self.container_set.get(container_type='export')
-            container.set_desired_state('created')
-
-            if (container.docker_state != 'non-existent'):
-                self.shift_to_phase(self.phases.exp_start)
-
-            return
-
-        elif self.phase == self.phases.exp_start:
-
-            container = self.container_set.get(container_type='export')
-            container.set_desired_state('running')
-
-            if (container.docker_state == 'running'):
-                self.shift_to_phase(self.phases.exp_run)
-
-            elif (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.exp_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.exp_create)
-                logging.error("Lost export container!")
-
-            return
-
-        elif self.phase == self.phases.exp_run:
-
-            container = self.container_set.get(container_type='export')
-            if (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.exp_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.exp_create)
-                logging.error("Lost export container!")
-
-            return
-
-        elif self.phase == self.phases.exp_fin:
-
-            container = self.container_set.get(container_type='export')
-            container.set_desired_state('non-existent')
-
-            if (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.sync_create)  # shift to sync
-
-            return
-
-        elif self.phase == self.phases.cont_rem_start:
-
-            for container in self.container_set.all():
-                container.set_desired_state('non-existent')
-
-            self.shift_to_phase(self.phases.cont_rem_run)
-
-            return
-
-        elif self.phase == self.phases.cont_rem_run:
-
-            done = True
-            for container in self.container_set.all():
-                done = done and (container.docker_state == 'non-existent')
-
-            if done:
-                self.shift_to_phase(self.phases.cont_rem_fin)
-
-            return
-
-        elif self.phase == self.phases.abort_start:
-
-            delft3d_container = self.container_set.get(
-                container_type='delft3d')
-            delft3d_container.set_desired_state('exited')
-
-            processing_container = self.container_set.get(
-                container_type='process')
-            processing_container.set_desired_state('exited')
-
-            self.shift_to_phase(self.phases.abort_run)
-
-            return
-
-        elif self.phase == self.phases.abort_run:
-
-            delft3d_container = self.container_set.get(
-                container_type='delft3d')
-            processing_container = self.container_set.get(
-                container_type='process')
-
-            if (delft3d_container.docker_state == 'exited'):
-                self.shift_to_phase(self.phases.abort_fin)
-
-            return
-
-        elif self.phase == self.phases.abort_fin:
-            delft3d_container = self.container_set.get(
-                container_type='delft3d')
-            delft3d_container.set_desired_state('non-existent')
-
-            processing_container = self.container_set.get(
-                container_type='process')
-            processing_container.set_desired_state('non-existent')
-
-            if (delft3d_container.docker_state == 'non-existent' and
-                    processing_container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.idle)
-
-            return
-
-        elif self.phase == self.phases.sync_create:
-
-            container = self.container_set.get(container_type='sync_cleanup')
-            container.set_desired_state('created')
-
-            if (container.docker_state != 'non-existent'):
-                self.shift_to_phase(self.phases.sync_start)
-
-            return
-
-        elif self.phase == self.phases.sync_start:
-
-            container = self.container_set.get(container_type='sync_cleanup')
-            container.set_desired_state('running')
-
-            if (container.docker_state == 'running'):
-                self.shift_to_phase(self.phases.sync_run)
-
-            elif (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sync_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.sync_create)
-                logging.error("Lost sync container!")
-
-            return
-
-        elif self.phase == self.phases.sync_run:
-
-            container = self.container_set.get(container_type='sync_cleanup')
-            if (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sync_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.sync_create)
-                logging.error("Lost sync container!")
-
-            return
-
-        elif self.phase == self.phases.sync_fin:
-
-            container = self.container_set.get(container_type='sync_cleanup')
-            container.set_desired_state('non-existent')
-
-            if (container.docker_state == 'non-existent'):
                 self.shift_to_phase(self.phases.fin)
-
-            return
-
-        #############
-        # REDO PHASES
-
-        elif self.phase == self.phases.sync_redo_create:
-
-            container = self.container_set.get(container_type='sync_rerun')
-            container.set_desired_state('created')
-
-            if (container.docker_state != 'non-existent'):
-                self.shift_to_phase(self.phases.sync_redo_start)
-
-            return
-
-        elif self.phase == self.phases.sync_redo_start:
-
-            container = self.container_set.get(container_type='sync_rerun')
-            container.set_desired_state('running')
-
-            if (container.docker_state == 'running'):
-                self.shift_to_phase(self.phases.sync_redo_run)
-
-            elif (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sync_redo_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.sync_redo_create)
-                logging.error("Lost sync_rerun container!")
-
-            return
-
-        elif self.phase == self.phases.sync_redo_run:
-
-            container = self.container_set.get(container_type='sync_rerun')
-            if (container.docker_state == 'exited'):
-                container.set_desired_state('exited')
-                self.shift_to_phase(self.phases.sync_redo_fin)
-
-            # If container disappeared, shift back
-            elif (container.docker_state == 'non-existent'):
-                self.shift_to_phase(self.phases.sync_redo_create)
-                logging.error("Lost sync_rerun container!")
-
-            return
-
-        elif self.phase == self.phases.sync_redo_fin:
-
-            container = self.container_set.get(container_type='sync_rerun')
-            container.set_desired_state('non-existent')
-
-            # If sync for rerun is finished, shift to postporcessing phase from
-            # the "default" workflow.
-            if (container.docker_state == 'non-existent'):
-                if self.workflow == self.workflows.redo_proc:
-                    self.shift_to_phase(self.phases.proc_create)
-                elif self.workflow == self.workflows.redo_postproc:
-                    self.shift_to_phase(self.phases.postproc_create)
-                elif self.workflow == self.workflows.redo_proc_postproc:
-                    self.shift_to_phase(self.phases.proc_create)
-
-            return
-
-        #############
-        # QUEUED
-
-        elif self.phase == self.phases.queued:
-
-            scene_phases = Scene.objects.values_list('phase', flat=True)
-
-            number_simulations = sum(
-                (i >= self.phases.sim_create and i <= self.phases.sim_stop) for i in scene_phases)
-            number_processing = sum(
-                (i >= self.phases.proc_create and i <=
-                 self.phases.proc_fin for i in scene_phases)
-            )
-
-            nodes_available = cconfig.MAX_SIMULATIONS * 2 - \
-                (number_simulations * 2 + number_processing)
-
-            if (self.workflow == self.workflows.main and
-                    nodes_available >= 2):
-                self.shift_to_phase(self.phases.sim_create)
-            elif ((self.workflow == self.workflows.redo_proc or
-                   self.workflow == self.workflows.redo_postproc or
-                   self.workflow == self.workflows.redo_proc_postproc) and
-                  nodes_available >= 1):
-                self.shift_to_phase(self.phases.sync_redo_create)
 
             return
 
@@ -1322,6 +511,8 @@ class Scene(models.Model):
         return self.state
 
     def _local_scan_process(self):
+        # TODO: get the info about what to scan from
+        # the template in the scenario instead of hardcoding
         for root, dirs, files in os.walk(
             os.path.join(self.workingdir, 'process')
         ):
@@ -1343,6 +534,11 @@ class Scene(models.Model):
                             "sediment_fraction_images"]["images"]):
                         self.info["sediment_fraction_images"][
                             "images"].append(f)
+                    elif ("subenvironment" in name and
+                          f not in self.info[
+                            "subenvironment_images"]["images"]):
+                        self.info["subenvironment_images"][
+                            "images"].append(f)
                     else:
                         # Other images ?
                         pass
@@ -1358,27 +554,11 @@ class Scene(models.Model):
                         # No log is generated at the moment
                         self.info["logfile"]["file"] = f
                         break
-
-    def _local_scan_postprocess(self):
-        for root, dirs, files in os.walk(
-            os.path.join(self.workingdir, 'postprocess')
-        ):
-            for f in sorted(files):
-                name, ext = os.path.splitext(f)
-                if ext in ('.png', '.jpg', '.gif'):
-                    # TODO use get to check image list and
-                    # make this code less deep in if/for statements
-                    if ("subenvironment" in name and
-                        f not in self.info[
-                            "subenvironment_images"]["images"]):
-                        self.info["subenvironment_images"][
-                            "images"].append(f)
-                    else:
-                        # Other images ?
-                        pass
         self.save()
-
+ 
     # Run this after post processing
+    # TODO Determine post processing step in workflow
+    # Now this runs every processing loop
     def _parse_postprocessing(self):
         outputfn = os.path.join(self.workingdir, 'postprocess', 'output.json')
         if os.path.exists(outputfn):
@@ -1395,469 +575,8 @@ class Scene(models.Model):
     def __unicode__(self):
         return self.name
 
-
-class Container(models.Model):
-    """
-    Container Model
-    This model is used to manage docker containers from the Django environment.
-    When a Scene creates Container models, it uses these containers to define
-    which containers it requires, and in which states these containers are
-    desired to be.
-    """
-
-    scene = models.ForeignKey(Scene, on_delete=models.CASCADE)
-
-    task_uuid = models.UUIDField(
-        default=None, blank=True, null=True)
-    task_starttime = models.DateTimeField(default=tz_now, blank=True)
-
-    # delft3dgtmain.provisionedsettings
-    CONTAINER_TYPE_CHOICES = (
-        ('preprocess', 'preprocess'),
-        ('delft3d', 'delft3d'),
-        ('process', 'process'),
-        ('postprocess', 'postprocess'),
-        ('export', 'export'),
-        ('sync_cleanup', 'sync_cleanup'),
-        ('sync_rerun', 'sync_rerun'),
-    )
-
-    container_type = models.CharField(
-        max_length=16, choices=CONTAINER_TYPE_CHOICES, default='preprocess')
-
-    # https://docs.docker.com/engine/reference/commandline/ps/
-    CONTAINER_STATE_CHOICES = (
-        ('non-existent', 'non-existent'),
-        ('created', 'created'),
-        ('restarting', 'restarting'),
-        ('running', 'running'),
-        ('paused', 'paused'),
-        ('exited', 'exited'),
-        ('dead', 'dead'),
-        ('unknown', 'unknown'),
-    )
-
-    desired_state = models.CharField(
-        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
-
-    docker_state = models.CharField(
-        max_length=16, choices=CONTAINER_STATE_CHOICES, default='non-existent')
-
-    # docker container ids are sha256 hashes
-    docker_id = models.CharField(
-        max_length=64, blank=True, default='', db_index=True)
-
-    container_starttime = models.DateTimeField(default=tz_now, blank=True)
-    container_stoptime = models.DateTimeField(default=tz_now, blank=True)
-    container_exitcode = models.PositiveSmallIntegerField(default=0)
-    container_progress = models.PositiveSmallIntegerField(default=0)
-
-    docker_log = models.TextField(blank=True, default='')
-    container_log = models.TextField(blank=True, default='')
-
-    # CONTROL METHODS
-
-    def set_desired_state(self, desired_state):
-        self.desired_state = desired_state
-        self.save()
-
-    # HEARTBEAT METHODS
-
-    def update_task_result(self):
-        """
-        Get the result from the last task it executed, given that there is a
-        result. If the task is not ready, don't do anything.
-        """
-        if self.task_uuid is None:
-            return
-
-        result = AsyncResult(id=str(self.task_uuid))
-        time_passed = now() - self.task_starttime
-        if result.ready():
-
-            if result.successful():
-                docker_id, docker_log = result.result
-                # only write the id if the result is as expected
-                if docker_id is not None and (isinstance(docker_id, str) or
-                                              isinstance(docker_id, unicode)):
-                    self.docker_id = docker_id
-                else:
-                    logging.warn(
-                        "Task of Container [{}] returned an unexpected "
-                        "docker_id: {}".format(self, docker_id))
-
-                # only write the log if the result is as expected and there is
-                # an actual log
-                if docker_log is not None and isinstance(
-                        docker_log, unicode) and docker_log != '':
-                    self.docker_log = docker_log
-                    progress = log_progress_parser(self.docker_log,
-                                                   self.container_type)
-                    if progress is not None:
-                        self.container_progress = math.ceil(progress)
-                else:
-                    logging.warn("Can't parse docker log of {}".
-                                 format(self.container_type))
-
-            else:
-                error = result.result
-                logging.warn(
-                    "Task of Container [{}] resulted in {}: {}".
-                    format(self, result.state, error))
-
-            self.task_uuid = None
-            self.save()
-
-        # Forget task after 5 minutes
-        elif time_passed.total_seconds() > settings.TASK_EXPIRE_TIME:
-            logging.warn(
-                "Celery task expired after {} seconds".format(
-                    time_passed.total_seconds()))
-            result.revoke()
-            self.task_uuid = None
-            self.save()
-
-        else:
-            logging.warn("Celery task of {} is still {}.".format(self,
-                                                                 result.state))
-
-    def update_from_docker_snapshot(self, snapshot):
-        """
-        Update the Container based on a given snapshot of a docker container
-        which was retrieved with docker-py's client.containers(all=True)
-        (equivalent to 'docker ps').
-
-        Parameter snapshot can be either dictionary or None.
-        If None: docker container does not exist
-        If dictionary:
-        {...,
-            "State": {
-                "Dead": false,
-                "Error": "",
-                "ExitCode": 0,
-                "FinishedAt": "2016-08-30T10:33:41.159456168Z",
-                "OOMKilled": false,
-                "Paused": false,
-                "Pid": 0,
-                "Restarting": false,
-                "Running": false,
-                "StartedAt": "2016-08-30T10:32:31.415322502Z",
-                "Status": "exited"
-            },
-        ...
-        }
-        """
-
-        if snapshot is None:
-            self.docker_state = 'non-existent'
-            self.docker_id = ''
-
-        elif isinstance(snapshot, dict) and \
-                ('State' in snapshot) and ('Status' in snapshot['State']):
-
-            choices = [choice[1] for choice in self.CONTAINER_STATE_CHOICES]
-            if snapshot['State']['Status'] in choices:
-                self.docker_state = snapshot['State']['Status']
-
-            else:
-                logging.error(
-                    'received unknown docker Status: {}'.format(
-                        snapshot['State']['Status']
-                    )
-                )
-                self.docker_state = 'unknown'
-
-            if 'StartedAt' in snapshot['State'] and \
-                    'FinishedAt' in snapshot['State']:
-                self.container_starttime = snapshot['State']['StartedAt']
-                self.container_stoptime = snapshot['State']['FinishedAt']
-
-            if 'ExitCode' in snapshot['State']:
-                self.container_exitcode = snapshot['State']['ExitCode']
-
-        else:
-            logging.error('received unknown snapshot: {}'.format(snapshot))
-            self.docker_state = 'unknown'
-
-        self.save()
-
-    def fix_mismatch_or_log(self):
-        """
-        Given that the container has no pending tasks, Compare this state to
-        the its desired_state, which is defined by the Scene to which this
-        Container belongs. If (for any reason) the docker_state is different
-        from the desired_state, act: start a task to get both states matched.
-
-        At the end, if still no task, request a log update.
-        """
-        self._fix_state_mismatch()
-
-        self._update_log()
-
-    # INTERNALS
-
-    def _fix_state_mismatch(self):
-        """
-        If the docker_state differs from the desired_state, and Container is
-        not waiting for a task result, execute a task to fix this mismatch.
-        """
-
-        # return if container still has an active task
-        if self.task_uuid is not None:
-            return
-
-        # return if the states match
-        if self.desired_state == self.docker_state:
-            return
-
-        # apparently there is something to do, so let's act:
-
-        if self.desired_state == 'created':
-            self._create_container()
-
-        elif self.desired_state == 'running':
-            self._start_container()
-
-        elif self.desired_state == 'exited':
-            self._stop_container()
-
-        elif self.desired_state == 'non-existent':
-            self._remove_container()
-
-    def _create_container(self):
-        if self.docker_state != 'non-existent':
-            return  # container is already created
-
-        workingdir = self.scene.workingdir
-        simdir = os.path.join(workingdir, 'simulation')
-        predir = os.path.join(workingdir, 'preprocess')
-        prodir = os.path.join(workingdir, 'process')
-        posdir = os.path.join(workingdir, 'postprocess')
-        expdir = os.path.join(workingdir, 'export')
-        syndir = workingdir
-
-        # Specific settings for each container type
-        # TODO It would be more elegant to put these
-        # hard-coded settings in a separate file.
-        #
-        # Also have a template that comes from
-        # provisioning, to match the needed environment variables
-
-        # Random string in order to avoid naming conflicts.
-        # We want new containers when old ones fail in Docker Swarm
-        # but Docker Swarm still recognizes the old names.
-        random_postfix = ''.join(random.SystemRandom().choice(
-            string.ascii_uppercase + string.digits) for _ in range(5))
-
-        kwargs = {
-            'delft3d': {'image': settings.DELFT3D_IMAGE_NAME,
-                        'volumes': ['{0}:/data'.format(simdir)],
-                        'memory_limit': '3g',  # 75% of t2.medium
-                        'environment': {"uuid": str(self.scene.suid),
-                                        "folder": simdir},
-                        'name': "{}-{}-{}".format(self.container_type,
-                                                  str(self.scene.suid),
-                                                  random_postfix),
-                        'folders': [simdir],
-                        'command': ""},
-
-            'export': {'image': settings.EXPORT_IMAGE_NAME,
-                       'volumes': [
-                           '{0}:/data/output:z'.format(expdir),
-                           '{0}:/data/input:ro'.format(simdir),
-                           '{0}:/data/input_postproc:ro'.format(posdir)],
-                       'memory_limit': '2000m',
-                       'environment': {"uuid": str(self.scene.suid),
-                                       "folder": expdir},
-                       'name': "{}-{}-{}".format(self.container_type,
-                                                 str(self.scene.suid),
-                                                 random_postfix),
-                       'folders': [expdir,
-                                   simdir],
-                       'command': "/data/run.sh /data/svn/scripts/"
-                       "export/export2grdecl.py",
-                       },
-
-            'postprocess': {'image': settings.POSTPROCESS_IMAGE_NAME,
-                            'volumes': [
-                                '{0}:/data/output:z'.format(posdir),
-                                '{0}:/data/input:ro'.format(simdir)],
-                            'memory_limit': '3000m',
-                            'environment': {"uuid": str(self.scene.suid),
-                                            "folder": posdir},
-                            'name': "{}-{}-{}".format(self.container_type,
-                                                      str(self.scene.suid),
-                                                      random_postfix),
-                            'folders': [simdir,
-                                        posdir],
-                            'command': " ".join([
-                                "/data/run.sh",
-                                "/data/svn/scripts/wrapper/postprocess.py"
-                            ])
-                            },
-
-            'preprocess': {'image': settings.PREPROCESS_IMAGE_NAME,
-                           'volumes': [
-                               '{0}:/data/output:z'.format(simdir),
-                               '{0}:/data/input:ro'.format(predir)],
-                           'memory_limit': '200m',
-                           'environment': {"uuid": str(self.scene.suid),
-                                           "folder": simdir},
-                           'name': "{}-{}-{}".format(self.container_type,
-                                                     str(self.scene.suid),
-                                                     random_postfix),
-                           'folders': [predir,
-                                       simdir],
-                           'command': "/data/run.sh /data/svn/scripts/"
-                           "preprocess/preprocess.py"
-                           },
-
-            'sync_cleanup': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
-                             'volumes': [
-                                 '{0}:/data/input:z'.format(syndir)],
-                             'memory_limit': '500m',
-                             'environment': {"uuid": str(self.scene.suid),
-                                             "folder": syndir},
-                             'name': "{}-{}-{}".format(self.container_type,
-                                                       str(self.scene.suid),
-                                                       random_postfix),
-                             'folders': [],  # sync doesn't need new folders
-                             'command': "/data/run.sh cleanup"
-                             },
-
-            'sync_rerun': {'image': settings.SYNC_CLEANUP_IMAGE_NAME,
-                           'volumes': [
-                               '{0}:/data/output:z'.format(syndir)],
-                           'memory_limit': '500m',
-                           'environment': {"uuid": str(self.scene.suid),
-                                           "folder": syndir},
-                           'name': "{}-{}-{}".format(self.container_type,
-                                                     str(self.scene.suid),
-                                                     random_postfix),
-                           'folders': [simdir],
-                           'command': "/data/run.sh rerun"
-                           },
-
-            'process': {'image': settings.PROCESS_IMAGE_NAME,
-                        'volumes': [
-                            '{0}:/data/input:ro'.format(simdir),
-                            '{0}:/data/output:z'.format(prodir)
-                        ],
-                        'memory_limit': '3000m',
-                        'environment': {"uuid": str(self.scene.suid),
-                                        "folder": prodir},
-                        'name': "{}-{}-{}".format(self.container_type,
-                                                  str(self.scene.suid),
-                                                  random_postfix),
-                        'folders': [prodir,
-                                    simdir],
-                        'command': ' '.join([
-                            "/data/run.sh ",
-                            "/data/svn/scripts/wrapper/process.py"
-                        ])
-                        },
-        }
-
-        # Set SVN_REV and REPOS_URL a.o.
-        version = model_to_dict(self.scene.version)
-        kwargs[self.container_type]['environment'].update({'REPOS_URL': version['url'],
-                                                           'SVN_REV': version['revision']})
-
-        parameters = self.scene.parameters
-        label = {"type": self.container_type}
-
-        result = do_docker_create.apply_async(
-            args=(label, parameters),
-            kwargs=kwargs[self.container_type],
-            expires=settings.TASK_EXPIRE_TIME
-        )
-
-        self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + \
-            "Container was created \n"
-
-        self.task_uuid = result.id
-        self.save()
-
-        # Return name because of random part at the end
-        return kwargs[self.container_type]['name']
-
-    def _start_container(self):
-        # a container can only be started if it is in 'created' or 'exited'
-        # state, any other state we will not allow a start
-        if self.docker_state != 'created' and self.docker_state != 'exited':
-            logging.info('Trying to start a container in "{}" state: ignoring '
-                         'command.'.format(self.docker_state))
-            return  # container is not ready for start
-
-        result = do_docker_start.apply_async(args=(self.docker_id,),
-                                             expires=settings.TASK_EXPIRE_TIME)
-        self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + \
-            "Container was started \n"
-
-        self.task_uuid = result.id
-        self.save()
-
-    def _stop_container(self):
-        # a container can only be started if it is in 'running' state, any
-        # state we will not allow a stop
-        if self.docker_state != 'running':
-            logging.info('Trying to stop a container in "{}" state: ignoring '
-                         'command.'.format(self.docker_state))
-            return  # container is not running, so it can't be stopped
-
-        # I just discovered how to make myself unstoppable: don't move.
-
-        result = do_docker_stop.apply_async(args=(self.docker_id,),
-                                            expires=settings.TASK_EXPIRE_TIME)
-        self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + \
-            "Container was stopped \n"
-
-        self.task_uuid = result.id
-        self.save()
-
-    def _remove_container(self):
-        # a container can only be removed if it is in 'created' or 'exited'
-        # state, any other state we will not allow a remove
-        if self.docker_state != 'created' and self.docker_state != 'exited':
-            logging.info('Trying to remove a container in "{}" state: ignoring'
-                         ' command.'.format(self.docker_state))
-            return  # container not ready for delete
-
-        result = do_docker_remove.apply_async(
-            args=(self.docker_id,),
-            expires=settings.TASK_EXPIRE_TIME
-        )
-
-        self.task_starttime = now()
-        self.container_log += str(self.task_starttime) + \
-            "Container was removed \n"
-
-        self.task_uuid = result.id
-        self.save()
-
-    def _update_log(self):
-        # return if container still has an active task
-        if self.task_uuid is not None:
-            return
-
-        if self.docker_state != 'running':
-            return  # the container is done, no logging needed
-
-        result = get_docker_log.apply_async(args=(self.docker_id,),
-                                            expires=settings.TASK_EXPIRE_TIME)
-        self.task_starttime = now()
-        self.task_uuid = result.id
-        self.save()
-
-    def __unicode__(self):
-        return "{}({}):{}".format(
-            self.container_type, self.docker_state, self.docker_id)
-
-
 # ################################### SEARCHFORM & TEMPLATE
+
 
 class SearchForm(models.Model):
 
@@ -1984,8 +703,39 @@ class Template(models.Model):
     """
 
     name = models.CharField(max_length=256)
+    shortname = models.CharField(max_length=256, default="gt")
     meta = JSONField(blank=True, default={})
+    # TODO Base this on fixtures
+    INFO = {
+        "delta_fringe_images": {
+            "images": [],
+            "location": "process/"
+        },
+        "channel_network_images": {
+            "images": [],
+            "location": "process/"
+        },
+        "sediment_fraction_images": {
+            "images": [],
+            "location": "process/"
+        },
+        "subenvironment_images": {
+            "images": [],
+            "location": "postprocess/"
+        },
+        "logfile": {
+            "file": "",
+            "location": "simulation/"
+        },
+        "procruns": 0,
+        "postprocess_output": {},
+        "logfile": {"file": ""},
+    }
+    info = JSONField(blank=True, default=INFO)
     sections = JSONField(blank=True, default={})
+    visualisation = JSONField(blank=True, default={})
+    export_options = JSONField(blank=True, default={})
+    yaml_template = models.FileField(upload_to='workflow_templates/', default="")
 
     # The following method is disabled as it adds to much garbage
     # to the MAIN search template
@@ -2003,7 +753,206 @@ class Template(models.Model):
     def __unicode__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+
+        # On first save set a shortname
+        if self.pk is None:
+            self.shortname = self.name.replace(" ", "-").lower()
+        super(Template, self).save(*args, **kwargs)
+
     class Meta:
         permissions = (
             ('view_template', 'View Template'),
         )
+
+
+class Workflow(models.Model):
+    """Argo Workflow Instance."""
+    # name combines shortname of linked Template and the scene suid
+    name = models.CharField(max_length=256, unique=True)
+    scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
+    starttime = models.DateTimeField(default=tz_now, blank=True)
+    yaml = models.FileField(upload_to='workflows/', default="")
+
+    # Celery connected task
+    task_uuid = models.UUIDField(
+        default=None, blank=True, null=True)
+    task_starttime = models.DateTimeField(default=tz_now, blank=True)
+
+    # State management
+    WORKFLOW_STATE_CHOICES = (
+        ('non-existent', 'Non-existent'),  # on creation
+        ('pending', 'Pending'),  # argo ""
+        ('unknown', 'Unknown'),  # argo ""
+        ('running', 'Running'),
+        ('paused', 'Running (Suspended)'),
+        ('succeeded', 'Succeeded'),
+        ('skipped', 'Skipped'),
+        ('failed', 'Failed'),
+        ('error', 'Error'),
+    )
+    FINISHED = ['succeeded', 'failed', 'error', 'skipped']
+    desired_state = models.CharField(
+        max_length=16, choices=WORKFLOW_STATE_CHOICES, default='non-existent')
+    cluster_state = models.CharField(
+        max_length=16, choices=WORKFLOW_STATE_CHOICES, default='non-existent')
+
+    # Logging and progress
+    progress = models.PositiveSmallIntegerField(default=0)
+    cluster_log = models.TextField(blank=True, default="")
+    action_log = models.TextField(blank=True, default="")
+
+    # HEARTBEAT METHODS
+    def update_task_result(self):
+        """
+        Get the result from the last task it executed, given that there is a
+        result. If the task is not ready, don't do anything.
+        """
+        if self.task_uuid is None:
+            return
+
+        result = AsyncResult(id=str(self.task_uuid))
+        time_passed = now() - self.task_starttime
+        if result.ready():
+
+            if result.successful():
+                # Log parsing
+                if "get_kube_log" in result.result:
+                    log = result.result["get_kube_log"]
+
+                    self.cluster_log += "---------\n"
+                    self.cluster_log += log
+
+                    progress = log_progress_parser(log, "delft3d")
+                    if progress is not None:
+                        self.progress = math.ceil(progress)
+
+                else:
+                    _ = result.result
+
+            else:
+                error = result.result
+                logging.warn(
+                    "Task of Container [{}] resulted in {}: {}".
+                    format(self, result.state, error))
+
+            self.task_uuid = None
+            self.save()
+
+        # Forget task after expire_time
+        elif time_passed.total_seconds() > settings.TASK_EXPIRE_TIME:
+            logging.warn(
+                "Celery task expired after {} seconds".format(
+                    time_passed.total_seconds()))
+            result.revoke()
+            self.task_uuid = None
+            self.save()
+
+        else:
+            logging.warn("Celery task of {} is still {}.".format(self,
+                                                                 result.state))
+
+    def sync_cluster_state(self, latest_cluster_state):
+        if latest_cluster_state is None:
+            self.cluster_state = "non-existent"
+        else:
+            state = latest_cluster_state["metadata"]["labels"]["workflows.argoproj.io/phase"]
+            if state == "Failed" or state == "Error":
+                logging.error("{} failed!".format(self.name))
+            self.cluster_state = state.lower()
+        self.save()
+
+    def fix_mismatch_or_log(self):
+        """
+        Given that the workflow has no pending tasks, Compare this state to
+        the its desired_state, which is defined by the Scene to which this
+        Workflow belongs. If (for any reason) the cluster_state is different
+        from the desired_state, act: start a task to get both states matched.
+
+        At the end, if still no task, request a log update.
+        """
+        self.fix_mismatch()
+        self.update_log()
+
+    def fix_mismatch(self):
+        # return if container still has an active task
+        if self.task_uuid is not None:
+            return
+
+        # return if the states match
+        if self.desired_state == self.cluster_state:
+            return
+
+        # apparently there is something to do, so let's act:
+        if self.desired_state == 'running':
+            self.create_workflow()
+
+        if self.desired_state == 'non-existent':
+            self.remove_workflow()
+
+    # INTERNALS
+    def set_desired_state(self, desired_state):
+        self.desired_state = desired_state
+        self.save()
+
+    # CELERY TASK CALLS
+    def create_workflow(self):
+        # Catch creating already existing workflows
+        if self.cluster_state != 'non-existent':
+            logging.warning("Can't create already existing workflow.")
+            return
+
+        # Open and edit workflow Template
+        template_model = self.scene.scenario.first().template
+        with open(template_model.yaml_template.path) as f:
+            template = yaml.load(f)
+        template["metadata"] = {"name": "{}".format(self.name)}
+        template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": self.scene.suid},
+                                                       {"name": "s3bucket", "value": settings.BUCKETNAME},
+                                                       {"name": "parameters", "value": json.dumps(self.scene.parameters)}]
+
+        self.yaml.save("{}.yaml".format(self.name), ContentFile(yaml.dump(template)), save=False)
+
+        # Call celery create task
+        result = do_argo_create.apply_async(args=(template,),
+                                            expires=settings.TASK_EXPIRE_TIME)
+        self.task_starttime = now()
+        self.action_log += "{} | Created \n".format(self.task_starttime)
+        self.task_uuid = result.id
+        self.save()
+
+    def remove_workflow(self):
+        # Catch removing unfinished workflow
+        if self.cluster_state not in Workflow.FINISHED:
+            logging.warning("Can't remove unfinished workflow")
+            return
+
+        result = do_argo_remove.apply_async(
+            args=(self.name,),
+            expires=settings.TASK_EXPIRE_TIME
+        )
+
+        self.task_starttime = now()
+        self.action_log += "{} | Removed \n".format(self.task_starttime)
+
+        # TODO Calculate total running time, but with a end date!
+
+        self.task_uuid = result.id
+        self.save()
+
+    def update_log(self):
+        # return if container still has an active task
+        if self.task_uuid is not None:
+            return
+
+        if self.cluster_state != 'running':
+            return  # the container is done, no logging needed
+
+        result = get_kube_log.apply_async(args=(self.name,),
+                                          expires=settings.TASK_EXPIRE_TIME)
+        self.task_starttime = now()
+        self.task_uuid = result.id
+        self.save()
+
+    def __unicode__(self):
+        return "Workflow of scene {}".format(self.scene.name)

@@ -14,6 +14,7 @@ import os
 import sys
 
 from datetime import timedelta
+from kubernetes import config
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -170,15 +171,10 @@ CELERY_ACKS_LATE = False
 CELERYD_PREFETCH_MULTIPLIER = 1
 
 # Celerybeat
-CELERYBEAT_SCHEDULE = {
-    'sync': {
-        'task': 'delft3dcontainermanager.tasks.delft3dgt_pulse',
+CELERY_BEAT_SCHEDULE = {
+    'sync_kube_cluster': {
+        'task': 'delft3dcontainermanager.tasks.delft3dgt_kube_pulse',
         'schedule': timedelta(seconds=15),
-        'options': {'queue': 'beat', 'expires': TASK_EXPIRE_TIME}
-    },
-    'latest_svn': {
-        'task': 'delft3dcontainermanager.tasks.delft3dgt_latest_svn',
-        'schedule': timedelta(hours=6),
         'options': {'queue': 'beat', 'expires': TASK_EXPIRE_TIME}
     },
 }
@@ -207,11 +203,17 @@ REST_FRAMEWORK = {
     ]
 }
 
+# try to load kubectl config
+try:
+    config.load_kube_config()
+except IOError:
+    print("Can't load kubernetes config!")
 
 # import provisioned settings
 try:
     from provisionedsettings import *
 except ImportError:
+    print("Failed to import provisioned settings!")
     SECRET_KEY = 'test'
 
 # TESTING
@@ -288,6 +290,7 @@ if 'test' in sys.argv:
     # max number of simulations
     MAX_SIMULATIONS = 1
     REQUIRE_REVIEW = False
+    BUCKETNAME = ""
 
     # Docker URL this setting is from the delf3dcontainermanger app
     DOCKER_URL = 'unix:///var/run/docker.sock'

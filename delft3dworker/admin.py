@@ -8,15 +8,14 @@ from guardian.admin import GuardedModelAdmin
 
 from models import Scenario
 from models import Scene
-from models import Container
+from models import Workflow
 from models import SearchForm
 from models import Template
-from models import Version_SVN
 
 
-class ContainerInline(admin.StackedInline):
+class WorkflowInline(admin.StackedInline):
     extra = 0
-    model = Container
+    model = Workflow
 
 
 class SceneInline(admin.StackedInline):
@@ -32,21 +31,10 @@ class ScenarioAdmin(GuardedModelAdmin):
 @admin.register(Scene)
 class SceneAdmin(GuardedModelAdmin):
     inlines = [
-        ContainerInline,
+        WorkflowInline,
     ]
 
-    actions = ['resync',
-               'check_sync']
-
-    def resync(self, request, queryset):
-        """
-        This action will sync EFS with S3 again.
-        Use this action if objects are missing after run is finished.
-        """
-        rows_updated = queryset.filter(phase=Scene.phases.fin).update(
-            phase=Scene.phases.sync_create)
-        self.message_user(
-            request, "{} scene(s) set to sychronization phase.".format(rows_updated))
+    actions = ['check_sync']
 
     def check_sync(self, request, queryset):
         """
@@ -71,8 +59,8 @@ class SceneAdmin(GuardedModelAdmin):
         recipient_list = ["delft3d-gt@deltares.nl"]
         send_mail(subject, message, from_email, recipient_list)
 
-@admin.register(Container)
-class ContainerAdmin(GuardedModelAdmin):
+@admin.register(Workflow)
+class WorkflowAdmin(GuardedModelAdmin):
     pass
 
 
@@ -85,9 +73,3 @@ class SearchFormAdmin(GuardedModelAdmin):
 class TemplateAdmin(GuardedModelAdmin):
     pass
 
-
-@admin.register(Version_SVN)
-class Version_SVN_Admin(GuardedModelAdmin):
-    inlines = [
-        SceneInline,
-    ]
