@@ -3,6 +3,13 @@ import os
 from django.contrib import admin
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models import F
+from django.db.models import Sum
+from django.db.models import Count
+from django.db.models import ExpressionWrapper
+from django.db.models import DurationField
+
+from rangefilter.filter import DateRangeFilter, DateTimeRangeFilter
 
 from guardian.admin import GuardedModelAdmin
 
@@ -11,6 +18,8 @@ from models import Scene
 from models import Workflow
 from models import SearchForm
 from models import Template
+from models import GroupUsageSummary
+from models import UserUsageSummary
 
 
 class WorkflowInline(admin.StackedInline):
@@ -73,3 +82,98 @@ class SearchFormAdmin(GuardedModelAdmin):
 class TemplateAdmin(GuardedModelAdmin):
     pass
 
+#
+@admin.register(GroupUsageSummary)
+class GroupUsageSummaryAdmin(admin.ModelAdmin):
+    # Following example available at:
+    # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
+
+    change_list_template = 'delft3dworker/group_summary_change_list.html'
+    # Filter by time period
+    list_filter = (('user__scene__workflow__stoptime', DateRangeFilter),)
+
+    def changelist_view(self, request, extra_context=None):
+        """
+        Displays summary of usage organized by group
+        """
+        response = super(GroupUsageSummaryAdmin, self).changelist_view(
+            request,
+            extra_context=extra_context,
+        )
+        try:
+            qs = response.context_data['cl'].queryset
+            qs = qs.exclude(name='access:world').order_by('name')
+        except (AttributeError, KeyError) as e:
+            return response
+        # Summarize by group values
+        values = ['name', 'id']
+        # Count the users and containers per group, and sum total runtime.
+        # Runtime is considered the difference in time between the start and stop time
+        # of a container.
+        metrics = {
+            'num_users': Count('user__username', distinct=True),
+            # 'num_containers': Count('user__scene__container', distinct=True),
+            'sum_runtime': ExpressionWrapper(
+                Sum(F('user__scene__workflow__stoptime') -
+                    F('user__scene__workflow__starttime')),
+                output_field=DurationField()
+            ),
+        }
+        # Content for table
+        response.context_data['summary'] = list(
+            qs.values(*values)
+                .annotate(**metrics)
+        )
+        # Content for totals in table
+        response.context_data['summary_total'] = dict(
+            qs.aggregate(**metrics)
+        )
+
+        return response
+
+
+@admin.register(UserUsageSummary)
+class UserUsageSummaryAdmin(admin.ModelAdmin):
+    change_list_template = 'delft3dworker/user_summary_change_list.html'
+    # Filter by time period
+    list_filter = (('scene__workflow__stoptime', DateRangeFilter),)
+
+    def changelist_view(self, request, extra_context=None):
+        """
+        Display summary of usage organized by users in a group
+        """
+
+        response = super(UserUsageSummaryAdmin, self).changelist_view(
+            request,
+            extra_context=extra_context,
+        )
+        try:
+            qs = response.context_data['cl'].queryset
+            qs = qs.order_by('username')
+
+        except (AttributeError, KeyError) as e:
+            return response
+        # Summarize by user values, display group name
+        values = ['username', 'groups__name']
+        # Count the containers per user, and sum total runtime.
+        # Runtime is considered the difference in time between the start and stop time
+        # of a container.
+        metrics = {
+            # 'num_containers': Count('scene__container', distinct=True),
+            'sum_runtime': ExpressionWrapper(
+                Sum(F('scene__workflow__stoptime') -
+                    F('scene__workflow__starttime')),
+                output_field=DurationField()
+            ),
+        }
+        # Content for table
+        response.context_data['summary'] = list(
+            qs.values(*values)
+                .annotate(**metrics)
+        )
+        # Content for totals in table
+        response.context_data['summary_total'] = dict(
+            qs.aggregate(**metrics)
+        )
+
+        return response

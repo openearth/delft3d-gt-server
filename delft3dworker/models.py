@@ -465,6 +465,7 @@ class Scene(models.Model):
             # If workflow is finished, shift to finished
             if (self.workflow.cluster_state in Workflow.FINISHED):
                 self.shift_to_phase(self.phases.sim_fin)
+                # self.stoptime = now()
 
             # If workflow disappeared, shift back
             elif (self.workflow.cluster_state == 'non-existent'):
@@ -772,6 +773,7 @@ class Workflow(models.Model):
     name = models.CharField(max_length=256, unique=True)
     scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
     starttime = models.DateTimeField(default=tz_now, blank=True)
+    stoptime = models.DateTimeField(default=tz_now, blank=True)
     yaml = models.FileField(upload_to='workflows/', default="")
 
     # Celery connected task
@@ -917,6 +919,7 @@ class Workflow(models.Model):
         result = do_argo_create.apply_async(args=(template,),
                                             expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
+        self.starttime = now()
         self.action_log += "{} | Created \n".format(self.task_starttime)
         self.task_uuid = result.id
         self.save()
@@ -931,11 +934,9 @@ class Workflow(models.Model):
             args=(self.name,),
             expires=settings.TASK_EXPIRE_TIME
         )
-
-        self.task_starttime = now()
-        self.action_log += "{} | Removed \n".format(self.task_starttime)
-
-        # TODO Calculate total running time, but with a end date!
+        # calculate runtime
+        self.stoptime = now()
+        self.action_log += "{} | Removed \n".format(self.stoptime)
 
         self.task_uuid = result.id
         self.save()
@@ -956,3 +957,17 @@ class Workflow(models.Model):
 
     def __unicode__(self):
         return "Workflow of scene {}".format(self.scene.name)
+
+
+class GroupUsageSummary(Group):
+    class Meta:
+        proxy = True
+        verbose_name = 'Group Usage Summary'
+        verbose_name_plural = 'Group Usage Summary'
+
+
+class UserUsageSummary(User):
+    class Meta:
+        proxy = True
+        verbose_name = 'User Usage Summary'
+        verbose_name_plural = 'User Usage Summary'

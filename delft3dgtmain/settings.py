@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
 
     'rest_framework',
     'django_filters',
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
     'guardian',
     'constance',
     'constance.backends.database',
+    'rangefilter',
 
     'delft3dcontainermanager',
     'delft3dworker',
