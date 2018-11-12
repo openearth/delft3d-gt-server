@@ -85,22 +85,7 @@ class GroupUsageSummaryAdminTest(TestCase):
             name='Scene C',
             owner=self.user_b
         )
-        # self.container_a = Container.objects.create(
-        #     scene=self.scene_a,
-        #     container_type='Container A',
-        #     container_starttime=datetime.datetime(
-        #         2010, 10, 10, 10, 10, 00, tzinfo=timezone.utc),
-        #     container_stoptime=datetime.datetime(
-        #         2010, 10, 10, 10, 20, 00, tzinfo=timezone.utc)
-        # )
-        # self.container_b = Container.objects.create(
-        #     scene=self.scene_b,
-        #     container_type='Container B',
-#             container_starttime=datetime.datetime(
-#                 2010, 10, 10, 10, 20, 00, tzinfo=timezone.utc),
-#             container_stoptime=datetime.datetime(
-#                 2010, 10, 10, 10, 40, 00, tzinfo=timezone.utc)
-#         )
+
         self.workflow_a = Workflow.objects.create(
             name='WorkflowA',
             scene=self.scene_a,

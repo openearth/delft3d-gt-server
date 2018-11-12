@@ -773,7 +773,7 @@ class Workflow(models.Model):
     name = models.CharField(max_length=256, unique=True)
     scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
     starttime = models.DateTimeField(default=tz_now, blank=True)
-    stoptime = models.DateTimeField(default=tz_now, blank=True)
+    stoptime = models.DateTimeField(null=True, blank=True)
     yaml = models.FileField(upload_to='workflows/', default="")
 
     # Celery connected task

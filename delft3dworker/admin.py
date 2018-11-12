@@ -82,12 +82,13 @@ class SearchFormAdmin(GuardedModelAdmin):
 class TemplateAdmin(GuardedModelAdmin):
     pass
 
-#
+
 @admin.register(GroupUsageSummary)
 class GroupUsageSummaryAdmin(admin.ModelAdmin):
+    """
     # Following example available at:
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
-
+    """
     change_list_template = 'delft3dworker/group_summary_change_list.html'
     # Filter by time period
     list_filter = (('user__scene__workflow__stoptime', DateRangeFilter),)
