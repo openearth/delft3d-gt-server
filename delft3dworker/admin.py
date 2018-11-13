@@ -103,17 +103,17 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
         )
         try:
             qs = response.context_data['cl'].queryset
+            # Exclude Groups with world access as they will be counted twice in totals
             qs = qs.exclude(name='access:world').order_by('name')
         except (AttributeError, KeyError) as e:
             return response
         # Summarize by group values
         values = ['name', 'id']
-        # Count the users and containers per group, and sum total runtime.
+        # Sum the total runtime.
         # Runtime is considered the difference in time between the start and stop time
-        # of a container.
+        # of a workflow.
         metrics = {
             'num_users': Count('user__username', distinct=True),
-            # 'num_containers': Count('user__scene__container', distinct=True),
             'sum_runtime': ExpressionWrapper(
                 Sum(F('user__scene__workflow__stoptime') -
                     F('user__scene__workflow__starttime')),
@@ -156,11 +156,10 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
             return response
         # Summarize by user values, display group name
         values = ['username', 'groups__name']
-        # Count the containers per user, and sum total runtime.
+        # Sum the total runtime.
         # Runtime is considered the difference in time between the start and stop time
-        # of a container.
+        # of a workflow.
         metrics = {
-            # 'num_containers': Count('scene__container', distinct=True),
             'sum_runtime': ExpressionWrapper(
                 Sum(F('scene__workflow__stoptime') -
                     F('scene__workflow__starttime')),

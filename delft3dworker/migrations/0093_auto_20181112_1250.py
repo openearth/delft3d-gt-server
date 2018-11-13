@@ -50,9 +50,4 @@ class Migration(migrations.Migration):
             name='stoptime',
             field=models.DateTimeField(blank=True, null=True),
         ),
-        migrations.AlterField(
-            model_name='template',
-            name='info',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={b'channel_network_images': {b'images': [], b'location': b'process/'}, b'delta_fringe_images': {b'images': [], b'location': b'process/'}, b'logfile': {b'file': b''}, b'postprocess_output': {}, b'procruns': 0, b'sediment_fraction_images': {b'images': [], b'location': b'process/'}, b'subenvironment_images': {b'images': [], b'location': b'postprocess/'}}),
-        ),
     ]

@@ -465,7 +465,6 @@ class Scene(models.Model):
             # If workflow is finished, shift to finished
             if (self.workflow.cluster_state in Workflow.FINISHED):
                 self.shift_to_phase(self.phases.sim_fin)
-                # self.stoptime = now()
 
             # If workflow disappeared, shift back
             elif (self.workflow.cluster_state == 'non-existent'):
@@ -934,6 +933,8 @@ class Workflow(models.Model):
             args=(self.name,),
             expires=settings.TASK_EXPIRE_TIME
         )
+
+        self.task_starttime = now()
         # calculate runtime
         self.stoptime = now()
         self.action_log += "{} | Removed \n".format(self.stoptime)
