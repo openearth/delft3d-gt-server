@@ -19,7 +19,7 @@ markdown==2.6
 MarkupSafe==1.0
 psycopg2==2.7.*
 pytz==2017.*
-requests==2.18.*
+requests
 six==1.11.*
 svn==0.3.*
 websocket-client==0.46.*
