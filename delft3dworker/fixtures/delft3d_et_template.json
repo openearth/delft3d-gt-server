@@ -177,18 +177,7 @@
           {
             "variables": [
               {
-                "name": "Stop time",
-                "default": 60,
-                "validators": {
-                  "max": 200,
-                  "required": true,
-                  "min": 1
-                },
-                "units": "days",
-                "type": "numeric",
-                "id": "simstoptime"
-              },
-              {
+                "name": "Output timestep",
                 "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
                 "default": 1,
                 "validators": {
@@ -198,8 +187,7 @@
                 },
                 "units": "days",
                 "type": "numeric",
-                "id": "outputinterval",
-                "name": "Output timestep"
+                "id": "dTmaps"
               }
             ],
             "name": "Simulation settings"
@@ -208,29 +196,27 @@
             "variables": [
               {
                 "name": "Startdate",
-                "default": "01-10-2018",
+                "default": "20050205",
                 "validators": {
                   "required": true,
-                  "min": "01-01-2010",
-                  "max": "31-12-2018"
+                  "min": "20000101",
+                  "max": "20181231"
                 },
-                "factor": true,
                 "units": "-",
                 "type": "date",
-                "id": "startdate"
+                "id": "startdatestr"
               },
               {
                 "name": "Enddate",
-                "default": "05-10-2018",
+                "default": "20050215",
                 "validators": {
                   "required": true,
-                  "min": "01-01-2010",
-                  "max": "31-12-2018"
+                  "min": "20000101",
+                  "max": "20181231"
                 },
-                "factor": true,
                 "units": "-",
                 "type": "date",
-                "id": "enddate"
+                "id": "stopdatestr"
               }
             ],
             "name": "Date range selection"
@@ -238,56 +224,16 @@
           {
             "variables": [
               {
-                "name": "Bounding box min x",
-                "default": -180,
+                "name": "Bounding box",
+                "default": [-180, -90, 180, 90],
                 "validators": {
-                  "min": -180,
-                  "max": 180,
-                  "required": true
+                  "required": true,
+                  "min": 4,
+                  "max": 4
                 },
-                "factor": true,
-                "units": "dd",
-                "type": "numeric",
-                "id": "minx"
-              },            
-              {
-                "name": "Bounding box min y",
-                "default": -90,
-                "validators": {
-                  "min": -90,
-                  "max": 90,
-                  "required": true
-                },
-                "factor": true,
-                "units": "dd",
-                "type": "numeric",
-                "id": "miny"
-              },
-              {
-                "name": "Bounding box max x",
-                "default": 180,
-                "validators": {
-                  "min": -180,
-                  "max": 180,
-                  "required": true
-                },
-                "factor": true,
-                "units": "dd",
-                "type": "numeric",
-                "id": "maxx"
-              },
-              {
-                "name": "Bounding box max y",
-                "default": 90,
-                "validators": {
-                  "min": -90,
-                  "max": 90,
-                  "required": true
-                },
-                "factor": true,
-                "units": "dd",
-                "type": "numeric",
-                "id": "maxy"
+                "units": "coordinates",
+                "type": "array",
+                "id": "bbox"
               }
             ],
             "name": "Map"
