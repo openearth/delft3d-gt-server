@@ -187,7 +187,7 @@ def scan_output_files(workingdir, dict):
     :param dict: dictionary containing information about what files to search for. See
     delft3d-gt-server/delft3dworker/fixtures/default_template_v3.json, key "info", for
     an example of structure.
-    :return:
+    :return: dict: now with files subkey list filled for each key
     """
     for key in dict:
         if "_images" in key:

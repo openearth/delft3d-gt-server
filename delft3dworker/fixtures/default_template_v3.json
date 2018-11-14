@@ -344,25 +344,25 @@
         },
         "channel_network_images": {
             "filetype": "images",
-            "extensions": ['.png', '.jpg', '.gif'],
+            "extensions": [".png", ".jpg", ".gif"],
             "files": [],
             "location": "process/"
         },
         "sediment_fraction_images": {
             "filetype": "images",
-            "extensions": ['.png', '.jpg', '.gif'],
+            "extensions": [".png", ".jpg", ".gif"],
             "files": [],
             "location": "process/"
         },
         "subenvironment_images": {
             "filetype": "images",
-            "extensions": ['.png', '.jpg', '.gif'],
+            "extensions": [".png", ".jpg", ".gif"],
             "files": [],
             "location": "postprocess/"
         },
         "logfile": {
             "filetype": "log",
-            "extensions": [".log", ],
+            "extensions": [".log"],
             "files": [],
             "location": "simulation/"
         },
@@ -371,8 +371,8 @@
             "extensions": [],
             "files": [],
             "location": ""
-        },
-      },
+        }
+      }
     },
     "model": "delft3dworker.template",
     "pk": 53

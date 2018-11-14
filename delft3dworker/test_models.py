@@ -473,7 +473,6 @@ class ScenarioPhasesTestCase(TestCase):
 
     def setUp(self):
         self.template = Template.objects.create(name="Template parent")
-        # self.template.info =
 
         self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
         self.scene_1 = Scene.objects.create(name="scene 1")
@@ -485,13 +484,13 @@ class ScenarioPhasesTestCase(TestCase):
             "simulation/": ["delft3d.log", ]
         }
         # create directories and image/log files from dictionary
-        for key, value in self.output_dir.items():
-            test_path = os.path.join(self.scene_1.workingdir, key)
+        for folder, files in self.output_dir.items():
+            test_path = os.path.join(self.scene_1.workingdir, folder)
             if not os.path.exists(test_path):
                 os.makedirs(test_path)
 
-            for i in range(len(value)):
-                open(os.path.join(test_path, value[i]), 'a').close()
+            for file in files:
+                open(os.path.join(test_path, file), 'a').close()
 
         # set default template info for delft3d
         self.scene_1.info = {
