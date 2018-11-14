@@ -228,7 +228,7 @@
                 "description": "Provide bounding box as minx, miny, maxx, maxy",
                 "default": [-180, -90, 180, 90],
                 "validators": {
-                  "required": true,
+                  "required": true
                 },
                 "units": "coordinates",
                 "type": "bbox-array",
