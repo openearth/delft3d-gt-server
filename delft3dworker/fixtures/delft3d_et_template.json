@@ -242,14 +242,16 @@
         "shortname": "gtsm",
         "info": {
           "map_waterlevel_images": {
-            "filetype": "images",
-            "extensions": [
-              ".png",
-              ".jpg",
-              ".gif"
-            ],
-            "files": [],
-            "location": "preprocessing/"
+              "filetype": "images",
+              "extensions": [".png", ".jpg", ".gif"],
+              "files": [],
+              "location": "preprocessing/"
+          },
+          "waterlevel_id_images": {
+              "filetype": "images",
+              "extensions": [".png", ".jpg", ".gif"],
+              "files": [],
+              "location": "preprocessing/"
           }
         }
       },
