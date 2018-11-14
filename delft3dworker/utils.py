@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 from django.conf import settings
@@ -175,3 +176,23 @@ def python_logparser(line):
             "state": None,
             "progress": None
         }
+
+def scan_output_files(workingdir, dict):
+    for key in dict:
+        if "_images" in key:
+            search_key = key.split("_images")[0]
+        elif "log" in key:
+            search_key = dict[key]["filename"]
+        else:
+            search_key = key
+
+        for root, dirs, files in os.walk(
+                os.path.join(workingdir, dict[key]["location"])
+        ):
+            for f in sorted(files):
+                name, ext = os.path.splitext(f)
+                if ext in (dict[key]["extensions"]):
+                    if (search_key in name and f not in dict[key]["files"]):
+                        dict[key]["files"].append(f)
+
+    return dict

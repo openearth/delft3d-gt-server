@@ -37,7 +37,7 @@ from guardian.shortcuts import remove_perm
 # from jsonfield import JSONField
 from django.contrib.postgres.fields import JSONField
 
-from delft3dworker.utils import log_progress_parser, version_default, get_version, tz_now
+from delft3dworker.utils import log_progress_parser, version_default, get_version, tz_now, scan_output_files
 
 from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create
 from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
@@ -244,6 +244,7 @@ class Scene(models.Model):
     suid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     scenario = models.ManyToManyField(Scenario, blank=True)
+    # template = models.ManyToManyField(Template, blank=True)
 
     date_created = models.DateTimeField(default=tz_now, blank=True)
     date_started = models.DateTimeField(blank=True, null=True)
@@ -375,8 +376,8 @@ class Scene(models.Model):
             self.fileurl = os.path.join(
                 settings.WORKER_FILEURL, str(self.suid), '')
 
-            self.info = Template.INFO
-
+            # self.info = Template.INFO # TODO: should this be updated?
+            # self.info = Template.info
         super(Scene, self).save(*args, **kwargs)
 
     def delete(self, deletefiles=True, *args, **kwargs):
@@ -511,54 +512,15 @@ class Scene(models.Model):
         return self.state
 
     def _local_scan_process(self):
-        # TODO: get the info about what to scan from
-        # the template in the scenario instead of hardcoding
-        for root, dirs, files in os.walk(
-            os.path.join(self.workingdir, 'process')
-        ):
-            for f in sorted(files):
-                name, ext = os.path.splitext(f)
-                if ext in ('.png', '.jpg', '.gif'):
-                    # TODO use get to check image list and
-                    # make this code less deep in if/for statements
-                    if ("delta_fringe" in name and f not in self.info[
-                            "delta_fringe_images"]["images"]):
-                        self.info["delta_fringe_images"][
-                            "images"].append(f)
-                    elif ("channel_network" in name and f not in self.info[
-                            "channel_network_images"]["images"]):
-                        self.info["channel_network_images"][
-                            "images"].append(f)
-                    elif ("sediment_fraction" in name and
-                          f not in self.info[
-                            "sediment_fraction_images"]["images"]):
-                        self.info["sediment_fraction_images"][
-                            "images"].append(f)
-                    elif ("subenvironment" in name and
-                          f not in self.info[
-                            "subenvironment_images"]["images"]):
-                        self.info["subenvironment_images"][
-                            "images"].append(f)
-                    else:
-                        # Other images ?
-                        pass
+        # TODO: get the info about what to scan from the template in the scenario instead of hardcoding
+        self.info = scan_output_files(self.workingdir, self.info)
 
-        # If no log path is yet known, set log
-        # so don't update this everytime
-        if self.info["logfile"]["file"] == "":
-            for root, dirs, files in os.walk(
-                os.path.join(self.workingdir, 'simulation')
-            ):
-                for f in files:
-                    if f == 'delft3d.log':
-                        # No log is generated at the moment
-                        self.info["logfile"]["file"] = f
-                        break
         self.save()
  
     # Run this after post processing
     # TODO Determine post processing step in workflow
     # Now this runs every processing loop
+
     def _parse_postprocessing(self):
         outputfn = os.path.join(self.workingdir, 'postprocess', 'output.json')
         if os.path.exists(outputfn):
@@ -598,14 +560,15 @@ class SearchForm(models.Model):
         self.templates = "[]"
         self.sections = "[]"
         for template in Template.objects.all():
-            self._update_templates(template.name, template.id)
+            self._update_templates(template.name, template.id, template.info)
             self._update_sections(template.sections)
         return
 
-    def _update_templates(self, tmpl_name, tmpl_id):
+    def _update_templates(self, tmpl_name, tmpl_id, tmpl_info):
         self.templates.append({
             'name': tmpl_name,
             'id': tmpl_id,
+            'info': tmpl_info,
         })
 
     def _update_sections(self, tmpl_sections):
@@ -703,35 +666,74 @@ class Template(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    shortname = models.CharField(max_length=256, default="gt")
+    shortname = models.CharField(max_length=256, default="gt") #TODO: Should this change?
     meta = JSONField(blank=True, default={})
     # TODO Base this on fixtures
-    INFO = {
-        "delta_fringe_images": {
-            "images": [],
-            "location": "process/"
-        },
-        "channel_network_images": {
-            "images": [],
-            "location": "process/"
-        },
-        "sediment_fraction_images": {
-            "images": [],
-            "location": "process/"
-        },
-        "subenvironment_images": {
-            "images": [],
-            "location": "postprocess/"
-        },
-        "logfile": {
-            "file": "",
-            "location": "simulation/"
-        },
-        "procruns": 0,
-        "postprocess_output": {},
-        "logfile": {"file": ""},
-    }
-    info = JSONField(blank=True, default=INFO)
+    # INFO = {
+    #     "delta_fringe_images": {
+    #         "images": [],
+    #         "location": "process/"
+    #     },
+    #     "channel_network_images": {
+    #         "images": [],
+    #         "location": "process/"
+    #     },
+    #     "sediment_fraction_images": {
+    #         "images": [],
+    #         "location": "process/"
+    #     },
+    #     "subenvironment_images": {
+    #         "images": [],
+    #         "location": "postprocess/"
+    #     },
+    #     "logfile": {
+    #         "file": "",
+    #         "location": "simulation/"
+    #     },
+    #     "procruns": 0,
+    #     "postprocess_output": {},
+    #     "logfile": {"file": ""},
+    # }
+    # INFO = {
+    #     "delta_fringe_images": {
+    #         "filetype": "images",
+    #         "extensions": [".png", ".jpg", ".gif"],
+    #         "files": [],
+    #         "location": "process/"
+    #     },
+    #     "channel_network_images": {
+    #         "filetype": "images",
+    #         "extensions": ['.png', '.jpg', '.gif'],
+    #         "files": [],
+    #         "location": "process/"
+    #     },
+    #     "sediment_fraction_images": {
+    #         "filetype": "images",
+    #         "extensions": ['.png', '.jpg', '.gif'],
+    #         "files": [],
+    #         "location": "process/"
+    #     },
+    #     "subenvironment_images": {
+    #         "filetype": "images",
+    #         "extensions": ['.png', '.jpg', '.gif'],
+    #         "files": [],
+    #         "location": "postprocess/"
+    #     },
+    #     "logfile": {
+    #         "filetype": "log",
+    #         "extensions": [".log", ],
+    #         "files": [],
+    #         "location": "simulation/"
+    #     },
+    #     "postprocess_output": {
+    #         "filetype": "",
+    #         "extensions": [],
+    #         "files": [],
+    #         "location": ""
+    #     },
+    # }
+    # info = JSONField(blank=True, default=INFO)
+    info = JSONField(blank=True, default={})
     sections = JSONField(blank=True, default={})
     visualisation = JSONField(blank=True, default={})
     export_options = JSONField(blank=True, default={})
