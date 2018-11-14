@@ -31,7 +31,7 @@ def delft3dgt_kube_pulse(self):
 def get_argo_workflows(self):
     """
     Retrieve all running argo workflows and return them in
-    an array of dictionaries. The array looks like this:
+    an array of dictionaries.
     """
     client_api = config.new_client_from_config()
     wf = client_api.call_api("/apis/argoproj.io/v1alpha1/workflows",
@@ -65,7 +65,7 @@ def get_kube_log(self, wf_id, tail=25):
 @shared_task(bind=True, throws=(HTTPError))
 def do_argo_create(self, yaml):
     """
-    Start a deployment with a specific id and id
+    Start a deployment with a specific yaml workflow
     """
     client_api = config.new_client_from_config()
     crd = client.CustomObjectsApi(client_api)
