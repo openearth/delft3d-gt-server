@@ -309,8 +309,6 @@ class Scene(models.Model):
             self.date_started = tz_now()
             self.save()
 
-        return {"task_id": None, "scene_id": None}
-
     def redo(self):
         # only allow a redo when Scene is 'Finished'
         if self.phase == self.phases.fin:
@@ -320,18 +318,10 @@ class Scene(models.Model):
             self.progress = 0
             self.save()
 
-        return {"task_id": None, "scene_id": None}
-
     def abort(self):
         # Stop simulation
         if self.phase >= self.phases.sim_start and self.phase <= self.phases.sim_fin:
             self.shift_to_phase(self.phases.sim_fin)   # stop Simulation
-
-        return {
-            "task_id": None,
-            "state": None,
-            "info": None
-        }
 
     def export(self, zipfile, options):
         # Add files here.

@@ -203,12 +203,6 @@ REST_FRAMEWORK = {
     ]
 }
 
-# try to load kubectl config
-try:
-    config.load_kube_config()
-except IOError:
-    print("Can't load kubernetes config!")
-
 # import provisioned settings
 try:
     from provisionedsettings import *
@@ -217,7 +211,6 @@ except ImportError:
     SECRET_KEY = 'test'
 
 # TESTING
-
 if 'test' in sys.argv:
 
     from celery import Celery

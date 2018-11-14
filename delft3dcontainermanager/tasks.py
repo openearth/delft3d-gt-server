@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 
 import logging
-import os
 from shutil import rmtree
 from six.moves import configparser
 
@@ -13,8 +12,8 @@ from django.core.management import call_command
 from json import dumps
 from kubernetes import client, config
 from requests.exceptions import HTTPError
-
 logger = get_task_logger(__name__)
+
 
 @shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60})
 def delft3dgt_kube_pulse(self):
@@ -24,8 +23,7 @@ def delft3dgt_kube_pulse(self):
 
     A lock is implemented to ensure it's only run one at a time
     """
-    call_command('sync_cluster_state')
-    return
+    return call_command('sync_cluster_state')
 
 
 @shared_task(bind=True, base=QueueOnce, once={'graceful': True, 'timeout': 60},
@@ -35,9 +33,9 @@ def get_argo_workflows(self):
     Retrieve all running argo workflows and return them in
     an array of dictionaries. The array looks like this:
     """
-    v1 = client.CoreV1Api()
-    wf = v1.api_client.call_api("/apis/argoproj.io/v1alpha1/workflows",
-                                "GET", response_type="V1ConfigMapList", _return_http_data_only=True)
+    client_api = config.new_client_from_config()
+    wf = client_api.call_api("/apis/argoproj.io/v1alpha1/workflows",
+                             "GET", auth_settings=['BearerToken'], response_type="V1ConfigMapList", _return_http_data_only=True)
     json_wf = dumps(wf.to_dict(), default=str)
     return {"get_argo_workflows": json_wf}
 
@@ -47,7 +45,8 @@ def get_kube_log(self, wf_id, tail=25):
     """
     Retrieve the log of a container and return container id and log
     """
-    v1 = client.CoreV1Api()
+    client_api = config.new_client_from_config()
+    v1 = client.CoreV1Api(client_api)
     log = ""
     pods = v1.list_namespaced_pod("default", label_selector="workflows.argoproj.io/workflow={}".format(wf_id))
     pods_dict = pods.to_dict()
@@ -68,7 +67,8 @@ def do_argo_create(self, yaml):
     """
     Start a deployment with a specific id and id
     """
-    crd = client.CustomObjectsApi()
+    client_api = config.new_client_from_config()
+    crd = client.CustomObjectsApi(client_api)
     status = crd.create_namespaced_custom_object(
         "argoproj.io", "v1alpha1", "default", "workflows", yaml)
 
@@ -81,7 +81,8 @@ def do_argo_remove(self, workflow_id):
     Remove a container with a specific id and return id.
     Try to write the docker log output as well.
     """
-    crd = client.CustomObjectsApi()
+    client_api = config.new_client_from_config()
+    crd = client.CustomObjectsApi(client_api)
     status = crd.delete_namespaced_custom_object(
         "argoproj.io", "v1alpha1", "default", "workflows", workflow_id, {})
 
