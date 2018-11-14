@@ -1,6 +1,5 @@
 celery==4.1.*
 celery-once==1.2.*
 Django==1.11.*
-docker-py==1.10.*
-kubernetes==6.*
+kubernetes==8.*
 redis==2.10.*
