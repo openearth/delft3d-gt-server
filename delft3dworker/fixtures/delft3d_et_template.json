@@ -238,7 +238,20 @@
             "name": "Map"
           }
         ],
-        "name": "GTSM world template"
+        "name": "GTSM world template",
+        "shortname": "gtsm",
+        "info": {
+          "map_waterlevel_images": {
+            "filetype": "images",
+            "extensions": [
+              ".png",
+              ".jpg",
+              ".gif"
+            ],
+            "files": [],
+            "location": "preprocessing/"
+          }
+        }
       },
       "model": "delft3dworker.template",
       "pk": 54

@@ -473,9 +473,66 @@ class ScenarioPhasesTestCase(TestCase):
 
     def setUp(self):
         self.template = Template.objects.create(name="Template parent")
+
         self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
         self.scene_1 = Scene.objects.create(name="scene 1")
         self.scene_1.scenario = [self.scenario]
+        # set up dictionary for output files per directory, modelled after delft3d output
+        self.output_dir = {
+            "process/": ["delta_fringe.png", "channel_network.jpg", "sediment_fraction.gif"],
+            "postprocess/": ["subenvironment.png", ],
+            "simulation/": ["delft3d.log", ]
+        }
+        # create directories and image/log files from dictionary
+        for folder, files in self.output_dir.items():
+            test_path = os.path.join(self.scene_1.workingdir, folder)
+            if not os.path.exists(test_path):
+                os.makedirs(test_path)
+
+            for file in files:
+                open(os.path.join(test_path, file), 'a').close()
+
+        # set default template info for delft3d
+        self.scene_1.info = {
+            "delta_fringe_images": {
+                "filetype": "images",
+                "extensions": [".png", ".jpg", ".gif"],
+                "files": [],
+                "location": "process/"
+            },
+            "channel_network_images": {
+                "filetype": "images",
+                "extensions": ['.png', '.jpg', '.gif'],
+                "files": [],
+                "location": "process/"
+            },
+            "sediment_fraction_images": {
+                "filetype": "images",
+                "extensions": ['.png', '.jpg', '.gif'],
+                "files": [],
+                "location": "process/"
+            },
+            "subenvironment_images": {
+                "filetype": "images",
+                "extensions": ['.png', '.jpg', '.gif'],
+                "files": [],
+                "location": "postprocess/"
+            },
+            "logfile": {
+                "filetype": "log",
+                "extensions": [".log", ],
+                "files": [],
+                "location": "simulation/",
+                "filename": "delft3d"
+            },
+            "postprocess_output": {
+                "filetype": "",
+                "extensions": [],
+                "files": [],
+                "location": ""
+            },
+        }
+
         self.scene_1.update_and_phase_shift()  # put all into new
 
         self.p = self.scene_1.phases  # shorthand
@@ -525,7 +582,11 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.sim_run)
 
-        # TODO check if _local_scan was called
+        # Check if _local_scan was called
+        # Should return list of images found in the directories
+        self.assertEqual(self.scene_1.info["delta_fringe_images"]["files"], ["delta_fringe.png",])
+        self.assertEqual(self.scene_1.info["subenvironment_images"]["files"], ["subenvironment.png", ])
+        self.assertEqual(self.scene_1.info["logfile"]["files"], ["delft3d.log", ])
 
         # TODO check if the progress is updated
 

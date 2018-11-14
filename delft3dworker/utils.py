@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 from django.conf import settings
@@ -175,3 +176,34 @@ def python_logparser(line):
             "state": None,
             "progress": None
         }
+
+def scan_output_files(workingdir, dict):
+    """
+    Scans a working directory for files as specified in the structure of the dictionary.
+    using the first key as a search key, a subkey of "location" as the subdirectory,
+    and another subkey of "extensions" as the file type to search. Results saved to the
+    dictionary's "files" subkey.
+    :param workingdir: The working directory, where output directories/files are saved
+    :param dict: dictionary containing information about what files to search for. See
+    delft3d-gt-server/delft3dworker/fixtures/default_template_v3.json, key "info", for
+    an example of structure.
+    :return: dict: now with files subkey list filled for each key
+    """
+    for key in dict:
+        if "_images" in key:
+            search_key = key.split("_images")[0]
+        elif "log" in key:
+            search_key = dict[key]["filename"]
+        else:
+            search_key = key
+
+        for root, dirs, files in os.walk(
+                os.path.join(workingdir, dict[key]["location"])
+        ):
+            for f in sorted(files):
+                name, ext = os.path.splitext(f)
+                if ext in (dict[key]["extensions"]):
+                    if (search_key in name and f not in dict[key]["files"]):
+                        dict[key]["files"].append(f)
+
+    return dict
