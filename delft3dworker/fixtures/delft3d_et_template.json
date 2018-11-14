@@ -202,7 +202,7 @@
                   "min": "20000101",
                   "max": "20181231"
                 },
-                "units": "-",
+                "units": "ymd",
                 "type": "date",
                 "id": "startdatestr"
               },
@@ -214,7 +214,7 @@
                   "min": "20000101",
                   "max": "20181231"
                 },
-                "units": "-",
+                "units": "ymd",
                 "type": "date",
                 "id": "stopdatestr"
               }
@@ -225,14 +225,13 @@
             "variables": [
               {
                 "name": "Bounding box",
+                "description": "Provide bounding box as minx, miny, maxx, maxy",
                 "default": [-180, -90, 180, 90],
                 "validators": {
                   "required": true,
-                  "min": 4,
-                  "max": 4
                 },
                 "units": "coordinates",
-                "type": "array",
+                "type": "bbox-array",
                 "id": "bbox"
               }
             ],
