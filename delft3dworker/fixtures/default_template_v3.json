@@ -334,6 +334,7 @@
         }
       ],
       "name": "River dominated delta",
+      "shortname": "gt",
       "info": {
         "delta_fringe_images": {
             "filetype": "images",
