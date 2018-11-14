@@ -178,6 +178,17 @@ def python_logparser(line):
         }
 
 def scan_output_files(workingdir, dict):
+    """
+    Scans a working directory for files as specified in the structure of the dictionary.
+    using the first key as a search key, a subkey of "location" as the subdirectory,
+    and another subkey of "extensions" as the file type to search. Results saved to the
+    dictionary's "files" subkey.
+    :param workingdir: The working directory, where output directories/files are saved
+    :param dict: dictionary containing information about what files to search for. See
+    delft3d-gt-server/delft3dworker/fixtures/default_template_v3.json, key "info", for
+    an example of structure.
+    :return:
+    """
     for key in dict:
         if "_images" in key:
             search_key = key.split("_images")[0]
