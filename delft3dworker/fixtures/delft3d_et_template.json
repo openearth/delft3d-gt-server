@@ -1,0 +1,265 @@
+[
+{
+  "fields": {
+    "templates": [
+      {
+        "name": "GTSM",
+        "id": 54
+      }
+    ],
+    "sections": [
+      {
+        "variables": [
+          {
+            "units": "days",
+            "type": "numeric",
+            "id": "simstoptime",
+            "name": "Stop time",
+            "validators": {
+              "max": 200,
+              "min": 1
+            }
+          },
+          {
+            "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+            "validators": {
+              "max": 2,
+              "min": 0.5
+            },
+            "units": "days",
+            "type": "numeric",
+            "id": "outputinterval",
+            "name": "Output timestep"
+          }
+        ],
+        "name": "Simulation settings"
+      },
+      {
+        "variables": [
+          {
+            "name": "Basin slope",
+            "validators": {
+              "max": 0.3,
+              "min": 0.01
+            },
+            "factor": true,
+            "units": "deg",
+            "type": "numeric",
+            "id": "basinslope"
+          },
+          {
+            "name": "River width",
+            "validators": {
+              "max": 1000,
+              "min": 100
+            },
+            "factor": true,
+            "units": "m",
+            "type": "numeric",
+            "id": "riverwidth"
+          }
+        ],
+        "name": "Geometry"
+      },
+      {
+        "variables": [
+          {
+            "name": "River discharge",
+            "validators": {
+              "max": 2000,
+              "min": 0
+            },
+            "factor": true,
+            "units": "m³/s",
+            "type": "numeric",
+            "id": "riverdischarge"
+          },
+          {
+            "name": "Tidal amplitude",
+            "validators": {
+              "max": 2,
+              "min": 0
+            },
+            "factor": true,
+            "units": "m",
+            "type": "numeric",
+            "id": "tidalamplitude"
+          },
+          {
+            "name": "Wave height",
+            "validators": {
+              "max": 2,
+              "min": 0
+            },
+            "factor": true,
+            "units": "m",
+            "type": "numeric",
+            "id": "waveheight",
+            "description": "Please note: for model stability, a wave height larger than 1 meter will double(!) the required simulation time."
+          },
+          {
+            "name": "Base level change",
+            "validators": {
+              "max": 10.0,
+              "min": -10.0
+            },
+            "factor": true,
+            "units": "%",
+            "type": "numeric",
+            "id": "baselevel",
+            "description": "This is a percentage of the level change produced by the basin slope.<br><br>Click on the button below to see a table with the absolute values."
+          }
+        ],
+        "name": "Forcing"
+      },
+      {
+        "variables": [
+          {
+            "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
+            "id": "composition",
+            "validators": {},
+            "type": "select",
+            "options": [
+              {
+                "text": "coarse sand",
+                "value": "coarse-sand"
+              },
+              {
+                "text": "medium sand",
+                "value": "medium-sand"
+              },
+              {
+                "text": "fine sand",
+                "value": "fine-sand"
+              },
+              {
+                "text": "very fine sand",
+                "value": "veryfine-sand"
+              },
+              {
+                "text": "coarse silt",
+                "value": "coarse-silt"
+              }
+            ],
+            "name": "Sediment classes"
+          }
+        ],
+        "name": "Sediment composition",
+        "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+      }
+    ],
+    "name": "MAIN"
+  },
+  "model": "delft3dworker.searchform",
+  "pk": 1
+},
+{
+  "fields": {
+    "meta": {
+      "description": "A template for GTSM",
+      "creator": "Maialen Irazoqui Apecechea <Maialen.Irazoqui@deltares.nl>"
+    },
+    "sections": [
+      {
+        "variables": [
+          {
+            "default": "GTSM selection for <place>",
+            "type": "text",
+            "id": "name",
+            "name": "Name",
+            "validators": {
+              "required": true
+            }
+          }
+        ],
+        "name": "Metadata"
+      },
+      {
+        "variables": [
+          {
+            "name": "Output timestep",
+            "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+            "default": 1,
+            "validators": {
+              "max": 2,
+              "required": true,
+              "min": 0.5
+            },
+            "units": "days",
+            "type": "numeric",
+            "id": "dTmaps"
+          }
+        ],
+        "name": "Simulation settings"
+      },
+      {
+        "variables": [
+          {
+            "name": "Startdate",
+            "default": "20050205",
+            "validators": {
+              "required": true,
+              "min": "20000101",
+              "max": "20181231"
+            },
+            "units": "-",
+            "type": "date",
+            "id": "startdatestr"
+          },
+          {
+            "name": "Enddate",
+            "default": "20050215",
+            "validators": {
+              "required": true,
+              "min": "20000101",
+              "max": "20181231"
+            },
+            "units": "-",
+            "type": "date",
+            "id": "stopdatestr"
+          }
+        ],
+        "name": "Date range selection"
+      },
+      {
+        "variables": [
+          {
+            "name": "Bounding box",
+            "default": [
+              -180,
+              -90,
+              180,
+              90
+            ],
+            "validators": {
+              "required": true,
+              "min": 4,
+              "max": 4
+            },
+            "units": "coordinates",
+            "type": "array",
+            "id": "bbox"
+          }
+        ],
+        "name": "Map"
+      }
+    ],
+    "name": "GTSM world template",
+    "shortname": "gtsm",
+    "info": {
+      "map_waterlevel_images": {
+        "filetype": "images",
+        "extensions": [
+          ".png",
+          ".jpg",
+          ".gif"
+        ],
+        "files": [],
+        "location": "preprocessing/"
+      },
+    },
+  },
+  "model": "delft3dworker.template",
+  "pk": 54
+  }
+]

@@ -34,7 +34,6 @@ from guardian.shortcuts import get_groups_with_perms
 from guardian.shortcuts import get_objects_for_user
 from guardian.shortcuts import remove_perm
 
-# from jsonfield import JSONField
 from django.contrib.postgres.fields import JSONField
 
 from delft3dworker.utils import log_progress_parser, version_default, get_version, tz_now, scan_output_files
@@ -244,7 +243,6 @@ class Scene(models.Model):
     suid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     scenario = models.ManyToManyField(Scenario, blank=True)
-    # template = models.ManyToManyField(Template, blank=True)
 
     date_created = models.DateTimeField(default=tz_now, blank=True)
     date_started = models.DateTimeField(blank=True, null=True)
@@ -376,8 +374,6 @@ class Scene(models.Model):
             self.fileurl = os.path.join(
                 settings.WORKER_FILEURL, str(self.suid), '')
 
-            # self.info = Template.INFO # TODO: should this be updated?
-            # self.info = Template.info
         super(Scene, self).save(*args, **kwargs)
 
     def delete(self, deletefiles=True, *args, **kwargs):
@@ -512,7 +508,7 @@ class Scene(models.Model):
         return self.state
 
     def _local_scan_process(self):
-        # TODO: get the info about what to scan from the template in the scenario instead of hardcoding
+        # scan for files in workingdir based on structure in template info dictionary
         self.info = scan_output_files(self.workingdir, self.info)
 
         self.save()
@@ -666,73 +662,8 @@ class Template(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    shortname = models.CharField(max_length=256, default="gt") #TODO: Should this change?
+    shortname = models.CharField(max_length=256, default={})
     meta = JSONField(blank=True, default={})
-    # TODO Base this on fixtures
-    # INFO = {
-    #     "delta_fringe_images": {
-    #         "images": [],
-    #         "location": "process/"
-    #     },
-    #     "channel_network_images": {
-    #         "images": [],
-    #         "location": "process/"
-    #     },
-    #     "sediment_fraction_images": {
-    #         "images": [],
-    #         "location": "process/"
-    #     },
-    #     "subenvironment_images": {
-    #         "images": [],
-    #         "location": "postprocess/"
-    #     },
-    #     "logfile": {
-    #         "file": "",
-    #         "location": "simulation/"
-    #     },
-    #     "procruns": 0,
-    #     "postprocess_output": {},
-    #     "logfile": {"file": ""},
-    # }
-    # INFO = {
-    #     "delta_fringe_images": {
-    #         "filetype": "images",
-    #         "extensions": [".png", ".jpg", ".gif"],
-    #         "files": [],
-    #         "location": "process/"
-    #     },
-    #     "channel_network_images": {
-    #         "filetype": "images",
-    #         "extensions": ['.png', '.jpg', '.gif'],
-    #         "files": [],
-    #         "location": "process/"
-    #     },
-    #     "sediment_fraction_images": {
-    #         "filetype": "images",
-    #         "extensions": ['.png', '.jpg', '.gif'],
-    #         "files": [],
-    #         "location": "process/"
-    #     },
-    #     "subenvironment_images": {
-    #         "filetype": "images",
-    #         "extensions": ['.png', '.jpg', '.gif'],
-    #         "files": [],
-    #         "location": "postprocess/"
-    #     },
-    #     "logfile": {
-    #         "filetype": "log",
-    #         "extensions": [".log", ],
-    #         "files": [],
-    #         "location": "simulation/"
-    #     },
-    #     "postprocess_output": {
-    #         "filetype": "",
-    #         "extensions": [],
-    #         "files": [],
-    #         "location": ""
-    #     },
-    # }
-    # info = JSONField(blank=True, default=INFO)
     info = JSONField(blank=True, default={})
     sections = JSONField(blank=True, default={})
     visualisation = JSONField(blank=True, default={})
