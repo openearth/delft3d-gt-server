@@ -61,21 +61,22 @@ class TaskTest(TestCase):
         self.mocked_redis.return_value = self.redis
 
     @patch('delft3dcontainermanager.tasks.client', **mock_options)
-    def test_get_argo_workflows(self, mockClient):
+    @patch('delft3dcontainermanager.tasks.config', **mock_options)
+    def test_get_argo_workflows(self, mockConfig, mockClient):
         """
         Assert that the get_argo_workflows task
         calls the kubernetes v1.api_client.call_api function.
         """
 
         # Mock return of all workflows
-        mockClient.CoreV1Api.return_value.api_client = Mock()
-
+        mockConfig.new_client_from_config.return_value = Mock()
         get_argo_workflows.delay()
-        mockClient.CoreV1Api().api_client.call_api.assert_called_with("/apis/argoproj.io/v1alpha1/workflows",
-                                                                      "GET", response_type="V1ConfigMapList", _return_http_data_only=True)
+        mockConfig.new_client_from_config().call_api.assert_called_with("/apis/argoproj.io/v1alpha1/workflows",
+                             "GET", auth_settings=['BearerToken'], response_type="V1ConfigMapList", _return_http_data_only=True)
 
     @patch('delft3dcontainermanager.tasks.client', **mock_options)
-    def test_get_kube_log(self, mockClient):
+    @patch('delft3dcontainermanager.tasks.config', **mock_options)
+    def test_get_kube_log(self, mockConfig, mockClient):
         """
         Assert that the argo_log task
         calls the kubernetes read_namespaced_pod_log function.
@@ -98,7 +99,8 @@ class TaskTest(TestCase):
             pod_id, "default", container="main", tail_lines=25)
 
     @patch('delft3dcontainermanager.tasks.client', **mock_options)
-    def test_do_argo_create(self, mockClient):
+    @patch('delft3dcontainermanager.tasks.config', **mock_options)
+    def test_do_argo_create(self, mockConfig, mockClient):
         """
         Assert that the do_argo_create task
         calls the kubernetes create_namespaced_custom_object function.
@@ -110,7 +112,8 @@ class TaskTest(TestCase):
             "argoproj.io", "v1alpha1", "default", "workflows", yaml)
 
     @patch('delft3dcontainermanager.tasks.client', **mock_options)
-    def test_do_argo_remove(self, mockClient):
+    @patch('delft3dcontainermanager.tasks.config', **mock_options)
+    def test_do_argo_remove(self, mockConfig, mockClient):
         """
         Assert that the argo_remove task
         calls the kubernetes delete_namespaced_custom_object function
