@@ -46,6 +46,33 @@ class GroupSerializer(serializers.ModelSerializer):
         )
 
 
+class ScenarioSerializer(serializers.ModelSerializer):
+    """
+    A default REST Framework ModelSerializer for the Scenario model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    # here we will write custom serialization and validation methods
+    state = serializers.CharField(
+        source='_update_state_and_save', read_only=True)
+
+    owner_url = serializers.HyperlinkedRelatedField(
+        read_only=True, view_name='user-detail', source='owner')
+
+    class Meta:
+        model = Scenario
+        fields = (
+            'id',
+            'name',
+            'owner_url',
+            'template',
+            'parameters',
+            'state',
+            'progress',
+            'scene_set',
+        )
+
+
 class SceneFullSerializer(serializers.ModelSerializer):
     """
     A default REST Framework ModelSerializer for the Scene model, which
@@ -88,6 +115,7 @@ class SceneSparseSerializer(serializers.ModelSerializer):
     """
 
     state = serializers.CharField(source='get_phase_display', read_only=True)
+    template_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Scene
@@ -98,35 +126,12 @@ class SceneSparseSerializer(serializers.ModelSerializer):
             'owner',
             'progress',
             'shared',
-            'state'
-        )
-
-
-class ScenarioSerializer(serializers.ModelSerializer):
-    """
-    A default REST Framework ModelSerializer for the Scenario model
-    source: http://www.django-rest-framework.org/api-guide/serializers/
-    """
-
-    # here we will write custom serialization and validation methods
-    state = serializers.CharField(
-        source='_update_state_and_save', read_only=True)
-
-    owner_url = serializers.HyperlinkedRelatedField(
-        read_only=True, view_name='user-detail', source='owner')
-
-    class Meta:
-        model = Scenario
-        fields = (
-            'id',
-            'name',
-            'owner_url',
-            'template',
-            'parameters',
             'state',
-            'progress',
-            'scene_set',
+            'template_name',
         )
+
+    def get_template_name(self, obj):
+        return obj.scenario.first().template.name
 
 
 class SearchFormSerializer(serializers.ModelSerializer):
