@@ -46,33 +46,6 @@ class GroupSerializer(serializers.ModelSerializer):
         )
 
 
-class ScenarioSerializer(serializers.ModelSerializer):
-    """
-    A default REST Framework ModelSerializer for the Scenario model
-    source: http://www.django-rest-framework.org/api-guide/serializers/
-    """
-
-    # here we will write custom serialization and validation methods
-    state = serializers.CharField(
-        source='_update_state_and_save', read_only=True)
-
-    owner_url = serializers.HyperlinkedRelatedField(
-        read_only=True, view_name='user-detail', source='owner')
-
-    class Meta:
-        model = Scenario
-        fields = (
-            'id',
-            'name',
-            'owner_url',
-            'template',
-            'parameters',
-            'state',
-            'progress',
-            'scene_set',
-        )
-
-
 class SceneFullSerializer(serializers.ModelSerializer):
     """
     A default REST Framework ModelSerializer for the Scene model, which
@@ -132,6 +105,33 @@ class SceneSparseSerializer(serializers.ModelSerializer):
 
     def get_template_name(self, obj):
         return obj.scenario.first().template.name
+
+
+class ScenarioSerializer(serializers.ModelSerializer):
+    """
+    A default REST Framework ModelSerializer for the Scenario model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    # here we will write custom serialization and validation methods
+    state = serializers.CharField(
+        source='_update_state_and_save', read_only=True)
+
+    owner_url = serializers.HyperlinkedRelatedField(
+        read_only=True, view_name='user-detail', source='owner')
+
+    class Meta:
+        model = Scenario
+        fields = (
+            'id',
+            'name',
+            'owner_url',
+            'template',
+            'parameters',
+            'state',
+            'progress',
+            'scene_set',
+        )
 
 
 class SearchFormSerializer(serializers.ModelSerializer):
