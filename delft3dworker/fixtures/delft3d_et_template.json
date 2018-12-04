@@ -245,13 +245,13 @@
               "filetype": "images",
               "extensions": [".png", ".jpg", ".gif"],
               "files": [],
-              "location": "preprocessing/"
+              "location": "postprocessing/"
           },
           "waterlevel_id_images": {
               "filetype": "images",
               "extensions": [".png", ".jpg", ".gif"],
               "files": [],
-              "location": "preprocessing/"
+              "location": "postprocessing/"
           }
         }
       },
