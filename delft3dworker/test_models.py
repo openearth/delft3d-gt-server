@@ -440,6 +440,64 @@ class SceneTestCase(TestCase):
                 self.assertEqual(self.scene_1.date_started, date_started)
                 self.assertEqual(self.scene_1.progress, progress)
                 self.assertEqual(self.scene_1.phase, phase[0])
+    #
+    # def test_update_model(self):
+    #     # a scene can only be updated once it's finished
+    #     for phase in self.scene_1.phases:
+    #
+    #         #  shift scene to phase
+    #         self.scene_1.date_started = date_started
+    #         self.scene_1.progress = progress
+    #         self.scene_1.shift_to_phase(phase[0])
+    #
+    #         # start scene
+    #         self.scene_1.update_postprocessing()
+    #
+    #         # check that phase is unshifted unless Finished: then it becomes New
+    #         self.assertEqual(
+    #             self.scene_1.phase,
+    #             self.scene_1.phases.sim_start if (
+    #                 phase[0] == self.scene_1.phases.fin) else phase[0]
+    #         )
+    #         # check that entry point is the same and redo steps done
+    #         # check properties are untouched unless reset from finished state
+    #         if phase[0] == self.scene_1.phases.fin:
+    #             self.assertEqual(self.scene_1.entrypoint, 'preprocess')
+    #             self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
+    #
+    #         else:
+    #             self.assertEqual(self.scene_1.entrypoint, 'main')
+    #             self.assertEqual(self.scene_1.phase, phase[0])
+    #
+    #
+    # def test_update_postprocessing(self):
+    #     # a scene can only have update postprocessing when it's finished
+    #     for phase in self.scene_1.phases:
+    #
+    #         #  shift scene to phase
+    #         self.scene_1.date_started = date_started
+    #         self.scene_1.progress = progress
+    #         self.scene_1.shift_to_phase(phase[0])
+    #
+    #         # start scene
+    #         self.scene_1.update_postprocessing()
+    #
+    #         # check that phase is unshifted unless Finished: then it becomes New
+    #         self.assertEqual(
+    #             self.scene_1.phase,
+    #             self.scene_1.phases.sim_start if (
+    #                 phase[0] == self.scene_1.phases.fin) else phase[0]
+    #         )
+    #         # check that entry point is the same and redo steps done
+    #         # check properties are untouched unless reset from finished state
+    #         if phase[0] == self.scene_1.phases.fin:
+    #             self.assertEqual(self.scene_1.entrypoint, 'preprocess')
+    #             self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
+    #
+    #         else:
+    #             self.assertEqual(self.scene_1.entrypoint, 'main')
+    #             self.assertEqual(self.scene_1.phase, phase[0])
+    #     # check that entrypoint is changed to postprocess and phase is now sim_start
 
 
 class ScenarioZeroPhaseTestCase(TestCase):

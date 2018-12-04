@@ -414,6 +414,22 @@ class SceneViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
+    #
+    # @detail_route(methods=["put"])
+    # def updatemodel(self, request, pk=None):
+    #     scene = self.get_object()
+    #     scene.update_model()
+    #     serializer = self.get_serializer(scene)
+    #
+    #     return Response(serializer.data)
+    #
+    # @detail_route(methods=["put"])
+    # def updatepostprocessing(self, request, pk=None):
+    #     scene = self.get_object()
+    #     scene.update_postprocessing()
+    #     serializer = self.get_serializer(scene)
+    #
+    #     return Response(serializer.data)
 
     @detail_route(methods=["put"])  # denied after publish to company/world
     def stop(self, request, pk=None):

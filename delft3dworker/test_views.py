@@ -353,6 +353,69 @@ class SceneTestCase(APITestCase):
         response = self.client.put(url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(mocked_scene_method.call_count, 0)
+    #
+    # @patch('delft3dworker.models.Scene.update_model', autospec=True)
+    # def test_scene_update_model(self, mocked_scene_method):
+    #     # update model view
+    #     url = reverse('scene-updatemodel', args=[self.scene_1.pk])
+    #
+    #     # bar cannot see
+    #     self.client.login(username='bar', password='secret')
+    #     response = self.client.put(url, {}, format='json')
+    #     self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    #     self.assertEqual(mocked_scene_method.call_count, 0)
+    #
+    #     # foo can update model
+    #     self.client.login(username='foo', password='secret')
+    #     response = self.client.put(url, {}, format='json')
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     mocked_scene_method.assert_called_with(self.scene_1)
+    #
+    # @patch('delft3dworker.models.Scene.update_model', autospec=True)
+    # def test_scene_no_update_model_after_publish(self, mocked_scene_method):
+    #     # the scene is published
+    #     self.scene_1.publish_company(self.user_foo)
+    #
+    #     # start view
+    #     url = reverse('scene-updatemodel', args=[self.scene_1.pk])
+    #
+    #     # foo cannot start (forbidden)
+    #     self.client.login(username='foo', password='secret')
+    #     response = self.client.put(url, {}, format='json')
+    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    #     self.assertEqual(mocked_scene_method.call_count, 0)
+    #
+    # @patch('delft3dworker.models.Scene.update_postprocessing', autospec=True)
+    # def test_scene_update_postprocessing(self, mocked_scene_method):
+    #     # update model view
+    #     url = reverse('scene-updatepostprocessing', args=[self.scene_1.pk])
+    #
+    #     # bar cannot see
+    #     self.client.login(username='bar', password='secret')
+    #     response = self.client.put(url, {}, format='json')
+    #     self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    #     self.assertEqual(mocked_scene_method.call_count, 0)
+    #
+    #     # foo can update model
+    #     self.client.login(username='foo', password='secret')
+    #     response = self.client.put(url, {}, format='json')
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     mocked_scene_method.assert_called_with(self.scene_1)
+    #
+    # @patch('delft3dworker.models.Scene.update_postprocessing', autospec=True)
+    # def test_scene_no_update_postprocessing_after_publish(self, mocked_scene_method):
+    #     # the scene is published
+    #     self.scene_1.publish_company(self.user_foo)
+    #
+    #     # start view
+    #     url = reverse('scene-updatepostprocessing', args=[self.scene_1.pk])
+    #
+    #     # foo cannot start (forbidden)
+    #     self.client.login(username='foo', password='secret')
+    #     response = self.client.put(url, {}, format='json')
+    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    #     self.assertEqual(mocked_scene_method.call_count, 0)
+
 
     @patch('delft3dworker.models.Scene.publish_company', autospec=True)
     def test_multiple_scenes_publish_company(self, mocked_scene_method_company):

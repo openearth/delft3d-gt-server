@@ -316,6 +316,27 @@ class Scene(models.Model):
             self.workflow.progress = 0
             self.progress = 0
             self.save()
+    #
+    # def update_model(self):
+    #     # updates the preprocessing and runs the model
+    #     # only allow an update_model when Scene is 'Finished'
+    #     if self.phase == self.phases.fin:
+    #         # get workflow entrypoint for update_model,
+    #         # TODO: do i even need this? or should it still be main?
+    #         self.entrypoint = 'preprocess'
+    #         # then redo
+    #         self.redo()
+    #
+    # def update_postprocessing(self):
+    #     # updates the postprocessing and export and runs them
+    #     # only allow an update_postprocessing when Scene is 'Finished'
+    #     if self.phase == self.phases.fin:
+    #         # get workflow entrypoint for update_postprocessing
+    #         self.entrypoint = 'postprocess'
+    #         # then restart postprocessing only,
+    #         # do not edit date_started, or progress.
+    #         self.shift_to_phase(self.phases.sim_start)
+    #         self.save()
 
     def abort(self):
         # Stop simulation
@@ -845,6 +866,16 @@ class Workflow(models.Model):
         self.action_log += "{} | Created \n".format(self.task_starttime)
         self.task_uuid = result.id
         self.save()
+
+    def update_workflow(self, entrypoint, version):
+        # Is phase finished and version outdated?
+        if self.scene.phase == self.scene.phases.fin and self.version.outdated:
+            # change entrypoint argo workflow
+            self.entrypoint = entrypoint
+            # change version tag in argo workflow
+            self.version. =
+            self.scene.redo()
+        pass
 
     def remove_workflow(self):
         # Catch removing unfinished workflow
