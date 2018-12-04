@@ -56,6 +56,7 @@ class SceneFullSerializer(serializers.ModelSerializer):
 
     owner = UserSerializer(read_only=True)
     state = serializers.CharField(source='get_phase_display', read_only=True)
+    template = serializers.SerializerMethodField()
 
     class Meta:
         model = Scene
@@ -76,7 +77,11 @@ class SceneFullSerializer(serializers.ModelSerializer):
             'suid',
             'task_id',
             'workingdir',
+            'template'
         )
+
+    def get_template(self, obj):
+        return obj.scenario.first().template.name
 
 
 class SceneSparseSerializer(serializers.ModelSerializer):

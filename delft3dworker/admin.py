@@ -16,6 +16,7 @@ from guardian.admin import GuardedModelAdmin
 from models import Scenario
 from models import Scene
 from models import Workflow
+from models import Version_Docker
 from models import SearchForm
 from models import Template
 from models import GroupUsageSummary
@@ -30,6 +31,11 @@ class WorkflowInline(admin.StackedInline):
 class SceneInline(admin.StackedInline):
     extra = 0
     model = Scene
+
+
+class VersionInline(admin.StackedInline):
+    extra = 0
+    model = Version_Docker
 
 
 @admin.register(Scenario)
@@ -80,7 +86,10 @@ class SearchFormAdmin(GuardedModelAdmin):
 
 @admin.register(Template)
 class TemplateAdmin(GuardedModelAdmin):
-    pass
+    extra = 0
+    inlines = [
+        VersionInline,
+    ]
 
 
 @admin.register(GroupUsageSummary)
