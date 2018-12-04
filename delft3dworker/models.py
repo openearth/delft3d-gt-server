@@ -36,18 +36,64 @@ from guardian.shortcuts import remove_perm
 
 from django.contrib.postgres.fields import JSONField
 
-from delft3dworker.utils import log_progress_parser, version_default, get_version, tz_now, scan_output_files
+from delft3dworker.utils import log_progress_parser, tz_now, scan_output_files, merge_list_of_dict, derive_defaults_from_argo
 
 from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create
 from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
 
 
-# ################################### VERSION_SVN, SCENARIO, SCENE & CONTAINER
+# ################################### Version_Docker, SCENARIO, SCENE & CONTAINER
 
-
+# For backwards compatibility in migrations
 def default_svn_version():
-    """Placeholder for old migrations."""
     pass
+
+
+class Version_Docker(models.Model):
+    """
+    Store releases used in the Delft3D-GT svn repository.
+    Every scene has a Version_Docker, if there's a newer (higher id)
+    Version_Docker available, the scene is outdated.
+    By comparing svn folders and files (versions field) the specific
+    workflow can be determined in the scene.
+    The revision and url can be used in the Docker Python env
+    """
+    release = models.CharField(
+        max_length=256, db_index=True)  # tag/release name
+    revision = models.PositiveSmallIntegerField(db_index=True)  # general version
+    versions = JSONField(default='{}')  # docker revisions
+    changelog = models.CharField(max_length=256)  # release notes
+    reviewed = models.BooleanField(default=False)
+    template = models.ForeignKey('Template', related_name="versions", on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ["-revision"]
+        verbose_name = "Docker version"
+        verbose_name_plural = "Docker versions"
+
+    def __unicode__(self):
+        return "Release {} at revision {}".format(self.release, self.revision)
+
+
+def parse_argo_workflow(instance, filename):
+    # If new worklow is uploaded, define a version
+    # with defaults if no versions yet exist
+    if instance.version is not None:
+        # Load yaml and derive defaults
+        template = yaml.load(instance.yaml_template.read())
+        defaults = derive_defaults_from_argo(template)
+
+        # Create version based on defaults
+        version = Version_Docker(release='Default for {}'.format(filename),
+                                 revision=0,
+                                 versions=defaults,
+                                 changelog='default release based on template'
+                                 )
+        version.save()
+        version.template.add(instance)
+
+    # Otherwise just return the filepath
+    return join("workflow_templates", filename)
 
 
 class Scenario(models.Model):
@@ -262,14 +308,6 @@ class Scene(models.Model):
     shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
-    # Entrypoints for workflow, not used yet
-    entrypoints = Choices(
-        (0, 'main', 'main workflow'),
-    )
-
-    entrypoint = models.PositiveSmallIntegerField(
-        default=entrypoints.main, choices=entrypoints)
-
     phases = Choices(
         # Create workflow models
         (0, 'new', 'New'),
@@ -423,6 +461,7 @@ class Scene(models.Model):
                 workflow = Workflow.objects.create(
                     scene=self,
                     name="{}-{}".format(self.scenario.first().template.shortname, self.suid),
+                    version=self.scenario.template.latest_version()  # get latest version
                 )
                 workflow.save()
 
@@ -502,7 +541,7 @@ class Scene(models.Model):
         self.info = scan_output_files(self.workingdir, self.info)
 
         self.save()
- 
+
     # Run this after post processing
     # TODO Determine post processing step in workflow
     # Now this runs every processing loop
@@ -681,7 +720,6 @@ class Template(models.Model):
         # On first save set a shortname
         if self.pk is None:
             self.shortname = self.name.replace(" ", "-").lower()
-        super(Template, self).save(*args, **kwargs)
 
     class Meta:
         permissions = (
@@ -694,6 +732,9 @@ class Workflow(models.Model):
     # name combines shortname of linked Template and the scene suid
     name = models.CharField(max_length=256, unique=True)
     scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
+    version = models.ForeignKey(Version_Docker, null=True)
+    entrypoint = models.CharField(max_length=64, null=True)  # non NULL on update
+
     starttime = models.DateTimeField(default=tz_now, blank=True)
     stoptime = models.DateTimeField(null=True, blank=True)
     yaml = models.FileField(upload_to='workflows/', default="")
@@ -725,6 +766,37 @@ class Workflow(models.Model):
     progress = models.PositiveSmallIntegerField(default=0)
     cluster_log = models.TextField(blank=True, default="")
     action_log = models.TextField(blank=True, default="")
+
+    # Version control
+    def compare_outdated(self, revision_number):
+        """Compare folder revisions with latest release."""
+        outdated_folders = []
+
+        latest_versions = self.scenario.first().template.versions.latest().versions
+        for folder, revision in latest_versions.items():
+            if self.versions.setdefault(folder, -1) < revision:
+                outdated_folders.append(folder)
+
+        return outdated_folders
+
+    def is_outdated(self):
+        return self.scenario.first().template.versions.latest().revision > self.version.revision
+
+    def latest_version(self):
+        return self.scenario.first().template.versions.latest()
+
+    def outdated_changelog(self):
+        if self.is_outdated():
+            return self.scenario.first().template.versions.latest().changelog
+        else:
+            return ""
+
+    def outdated_entrypoints(self):
+        if self.is_outdated():
+            new_version = self.scenario.first().template.versions.latest().versions["entrypoints"]
+        else:
+            return []
+
 
     # HEARTBEAT METHODS
     def update_task_result(self):
@@ -831,9 +903,17 @@ class Workflow(models.Model):
         with open(template_model.yaml_template.path) as f:
             template = yaml.load(f)
         template["metadata"] = {"name": "{}".format(self.name)}
-        template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": self.scene.suid},
-                                                       {"name": "s3bucket", "value": settings.BUCKETNAME},
-                                                       {"name": "parameters", "value": json.dumps(self.scene.parameters)}]
+
+        if self.entrypoint is not None:
+            template["spec"]["entrypoint"] = self.entrypoint
+
+        v = self.version.versions["parameters"]  # also a list
+        c = [{"name": "uuid", "value": self.scene.suid},
+             {"name": "s3bucket", "value": settings.BUCKETNAME},
+             {"name": "parameters", "value": json.dumps(self.scene.parameters)}]
+        parameters = merge_list_of_dict(c, v)
+
+        template["spec"]["arguments"]["parameters"] = parameters
 
         self.yaml.save("{}.yaml".format(self.name), ContentFile(yaml.dump(template)), save=False)
 
