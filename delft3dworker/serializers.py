@@ -88,6 +88,7 @@ class SceneSparseSerializer(serializers.ModelSerializer):
     """
 
     state = serializers.CharField(source='get_phase_display', read_only=True)
+    template_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Scene
@@ -98,8 +99,12 @@ class SceneSparseSerializer(serializers.ModelSerializer):
             'owner',
             'progress',
             'shared',
-            'state'
+            'state',
+            'template_name',
         )
+
+    def get_template_name(self, obj):
+        return obj.scenario.first().template.name
 
 
 class ScenarioSerializer(serializers.ModelSerializer):

@@ -54,7 +54,7 @@ class ApiAccessTestCase(TestCase):
         self.scenario = Scenario.objects.create(
             name='Test Scenario',
             owner=self.user_foo,
-            template=self.template
+            template=self.template,
         )
         a = Scene.objects.create(
             name='Test Scene 1',
@@ -506,9 +506,13 @@ class SceneSearchTestCase(TestCase):
             username='bar',
             password='secret'
         )
+        self.template = Template.objects.create(
+            name = 'Test template'
+        )
         self.scenario = Scenario.objects.create(
             name='Testscenario',
             owner=self.user_bar,
+            template=self.template,
         )
         self.scene_1 = Scene.objects.create(
             name='Testscene 1',
