@@ -5,7 +5,6 @@ import sys
 from django.conf import settings
 from django.utils import timezone
 from datetime import time, datetime
-from os.path import join
 
 
 def tz_now():
@@ -200,7 +199,7 @@ def scan_output_files(workingdir, dict):
 
 def merge_list_of_dict(a, b, key="name"):
     """A takes precedence on key collision."""
-    keys = [x[key] for x in a.keys()]
+    keys = [x[key] for x in a]
     for d in b:
         if d[key] in keys:
             continue

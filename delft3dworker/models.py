@@ -13,6 +13,7 @@ import string
 import uuid
 import yaml
 import zipfile
+from os.path import join
 
 from celery.result import AsyncResult
 
@@ -78,7 +79,8 @@ class Version_Docker(models.Model):
 def parse_argo_workflow(instance, filename):
     # If new worklow is uploaded, define a version
     # with defaults if no versions yet exist
-    if instance.version is not None:
+    if instance.versions.count() == 0:
+
         # Load yaml and derive defaults
         template = yaml.load(instance.yaml_template.read())
         defaults = derive_defaults_from_argo(template)
@@ -87,10 +89,10 @@ def parse_argo_workflow(instance, filename):
         version = Version_Docker(release='Default for {}'.format(filename),
                                  revision=0,
                                  versions=defaults,
-                                 changelog='default release based on template'
+                                 changelog='default release based on template',
+                                 template=instance
                                  )
         version.save()
-        version.template.add(instance)
 
     # Otherwise just return the filepath
     return join("workflow_templates", filename)
@@ -461,7 +463,7 @@ class Scene(models.Model):
                 workflow = Workflow.objects.create(
                     scene=self,
                     name="{}-{}".format(self.scenario.first().template.shortname, self.suid),
-                    version=self.scenario.template.latest_version()  # get latest version
+                    version=self.scenario.first().template.versions.first()  # get latest version
                 )
                 workflow.save()
 
@@ -697,7 +699,7 @@ class Template(models.Model):
     sections = JSONField(blank=True, default={})
     visualisation = JSONField(blank=True, default={})
     export_options = JSONField(blank=True, default={})
-    yaml_template = models.FileField(upload_to='workflow_templates/', default="")
+    yaml_template = models.FileField(upload_to=parse_argo_workflow, default="")
 
     # The following method is disabled as it adds to much garbage
     # to the MAIN search template
@@ -720,6 +722,8 @@ class Template(models.Model):
         # On first save set a shortname
         if self.pk is None:
             self.shortname = self.name.replace(" ", "-").lower()
+
+        super(Template, self).save(*args, **kwargs)
 
     class Meta:
         permissions = (

@@ -42,6 +42,7 @@ from rest_framework.decorators import detail_route
 from rest_framework.decorators import list_route
 from rest_framework.response import Response
 
+from delft3dworker.models import Version_Docker
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
@@ -50,6 +51,7 @@ from delft3dworker.models import GroupUsageSummary
 from delft3dworker.models import UserUsageSummary
 from delft3dworker.permissions import ViewObjectPermissions
 from delft3dworker.serializers import GroupSerializer
+from delft3dworker.serializers import VersionSerializer
 from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneFullSerializer
 from delft3dworker.serializers import SceneSparseSerializer
@@ -586,6 +588,20 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Template.objects.all()
+
+
+class VersionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows templates to be viewed or edited.
+    """
+
+    serializer_class = VersionSerializer
+    permission_classes = (permissions.IsAuthenticated,
+                          ViewObjectPermissions,)
+    # filter_backends = (filters.DjangoObjectPermissionsFilter,)
+
+    def get_queryset(self):
+        return Version_Docker.objects.all()
 
 
 class UserViewSet(viewsets.ModelViewSet):

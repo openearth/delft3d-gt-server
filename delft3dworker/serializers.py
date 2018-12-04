@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework.renderers import JSONRenderer
 
+from delft3dworker.models import Version_Docker
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import SearchForm
@@ -8,6 +9,19 @@ from delft3dworker.models import Template
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+
+
+class VersionSerializer(serializers.ModelSerializer):
+    """
+    A default REST Framework ModelSerializer for the User model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    # here we will write custom serialization and validation methods
+
+    class Meta:
+        model = Version_Docker
+        fields = '__all__'
 
 
 class UserSerializer(serializers.ModelSerializer):

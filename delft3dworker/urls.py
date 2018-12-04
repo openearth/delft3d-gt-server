@@ -11,6 +11,7 @@ from delft3dworker import views
 
 router = routers.DefaultRouter()
 router.register(r'groups', views.GroupViewSet, 'group')
+router.register(r'versions', views.VersionViewSet, 'version')
 router.register(r'scenarios', views.ScenarioViewSet, 'scenario')
 router.register(r'scenes', views.SceneViewSet, 'scene')
 router.register(r'searchforms', views.SearchFormViewSet, 'searchform')

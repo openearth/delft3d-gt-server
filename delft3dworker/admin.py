@@ -74,8 +74,14 @@ class SceneAdmin(GuardedModelAdmin):
         recipient_list = ["delft3d-gt@deltares.nl"]
         send_mail(subject, message, from_email, recipient_list)
 
+
 @admin.register(Workflow)
 class WorkflowAdmin(GuardedModelAdmin):
+    pass
+
+
+@admin.register(Version_Docker)
+class VersionAdmin(GuardedModelAdmin):
     pass
 
 
