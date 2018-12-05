@@ -71,6 +71,9 @@ class SceneFullSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
     state = serializers.CharField(source='get_phase_display', read_only=True)
     template = serializers.SerializerMethodField()
+    outdated = serializers.BooleanField(source='workflow.is_outdated', read_only=True)
+    entrypoints = serializers.SerializerMethodField(read_only=True)
+    outdated_changelog = serializers.CharField(source='workflow.outdated_changelog', read_only=True)
 
     class Meta:
         model = Scene
@@ -91,8 +94,17 @@ class SceneFullSerializer(serializers.ModelSerializer):
             'suid',
             'task_id',
             'workingdir',
-            'template'
+            'template',
+            'outdated',
+            'entrypoints',
+            'outdated_changelog'
         )
+
+    def get_entrypoints(self, obj):
+        if obj.workflow is not None:
+            return obj.workflow.outdated_entrypoints()
+        else:
+            return None
 
     def get_template(self, obj):
         scenario = obj.scenario.first()
