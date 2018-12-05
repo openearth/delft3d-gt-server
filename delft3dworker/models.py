@@ -782,20 +782,27 @@ class Workflow(models.Model):
 
     # Version control
     def is_outdated(self):
-        return self.scene.scenario.first().template.versions.first().revision > self.version.revision
+        latest = self.latest_version()
+        if latest is not None and self.version is not None:
+            return latest.revision > self.version.revision
+        else:
+            return False
 
     def latest_version(self):
-        return self.scene.scenario.first().template.versions.first()
+        try:
+            return self.scene.scenario.first().template.versions.first()
+        except AttributeError:
+            return None
 
     def outdated_changelog(self):
         if self.is_outdated():
-            return self.scene.scenario.first().template.versions.first().changelog
+            return self.latest_version().changelog
         else:
             return ""
 
     def outdated_entrypoints(self):
         if self.is_outdated():
-            entrypoints = self.scene.scenario.first().template.versions.first().versions["entrypoints"]
+            entrypoints = self.self.latest_version().versions.get("entrypoints", [])
             return entrypoints
         else:
             return []
