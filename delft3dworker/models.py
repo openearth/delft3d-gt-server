@@ -912,14 +912,15 @@ class Workflow(models.Model):
             template["spec"]["entrypoint"] = self.entrypoint
 
         v = self.version.versions["parameters"]  # also a list
-        c = [{"name": "uuid", "value": self.scene.suid},
+        c = [{"name": "uuid", "value": str(self.scene.suid)},
              {"name": "s3bucket", "value": settings.BUCKETNAME},
              {"name": "parameters", "value": json.dumps(self.scene.parameters)}]
         parameters = merge_list_of_dict(c, v)
 
         template["spec"]["arguments"]["parameters"] = parameters
+        yaml_template = yaml.safe_dump(template, encoding='utf-8', allow_unicode=True)
 
-        self.yaml.save("{}.yaml".format(self.name), ContentFile(yaml.dump(template)), save=False)
+        self.yaml.save("{}.yaml".format(self.name), ContentFile(yaml_template), save=False)
 
         # Call celery create task
         result = do_argo_create.apply_async(args=(template,),

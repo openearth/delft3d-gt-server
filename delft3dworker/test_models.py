@@ -13,6 +13,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils.timezone import now
 
@@ -23,11 +24,11 @@ from mock import Mock
 from mock import patch
 
 from delft3dworker.models import Scenario
+from delft3dworker.models import Version_Docker
 from delft3dworker.models import Scene
 from delft3dworker.models import Workflow
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
-from delft3dworker.models import User
 from delft3dworker.utils import tz_now
 
 
@@ -200,14 +201,12 @@ class SceneTestCase(TestCase):
             owner=self.user_a,
             shared='p',
             phase=Scene.phases.fin,
-            entrypoint=Scene.entrypoints.main
         )
         self.scene_2 = Scene.objects.create(
             name='Scene 2',
             owner=self.user_a,
             shared='p',
             phase=Scene.phases.idle,
-            entrypoint=Scene.entrypoints.main
         )
         self.wd = self.scene_1.workingdir
         self.workflow = Workflow.objects.create(name="Test", scene=self.scene_1)
@@ -536,7 +535,6 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1.update_and_phase_shift()  # put all into new
 
         self.p = self.scene_1.phases  # shorthand
-        self.w = self.scene_1.entrypoints
 
     def test_phase_new(self):
         self.scene_1.phase = self.p.new
@@ -659,12 +657,20 @@ class WorkflowTestCase(TestCase):
             - name: uuid
               value: "test-images-3"
         """
-        self.template.yaml_template.save("dummy.yaml", ContentFile(yaml))
+        self.template.yaml_template = SimpleUploadedFile("dummy.yaml", yaml)
+        self.template.save()
+
+        self.version = Version_Docker.objects.create(
+            revision=0,
+            versions={"parameters": []},
+            template=self.template
+            )
 
         self.workflow = Workflow.objects.create(
             scene=self.scene_1,
             desired_state='created',
             cluster_state='non-existent',
+            version=self.version
         )
 
     @patch('logging.warn', autospec=True)
@@ -810,7 +816,7 @@ class WorkflowTestCase(TestCase):
         with open(template_model.yaml_template.path) as f:
             template = yaml.load(f)
         template["metadata"] = {"name": "{}".format(self.workflow.name)}
-        template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": self.scene_1.suid},
+        template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": str(self.scene_1.suid)},
                                                        {"name": "s3bucket", "value": settings.BUCKETNAME},
                                                        {"name": "parameters", "value": json.dumps(self.scene_1.parameters)}]
 
