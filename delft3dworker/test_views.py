@@ -192,54 +192,14 @@ class SceneTestCase(APITestCase):
                      'change_scene', 'delete_scene']:
             assign_perm(perm, self.user_foo, self.scene_1)
 
-        # self.workflow_1 = Workflow.objects.create(
-        #     scene=self.scene_1,
-        #     entrypoint='delft3dgt-main'
-        # )
-        # self.workflow_2 = Workflow.objects.create(
-        #     scene=self.scene_2,
-        #     entrypoint='delft3dgt-main'
-        # )
-        # yaml = """
-        #        metadata:
-        #          name: delft3dgt-1
-        #        spec:
-        #          entrypoint: delft3dgt-main
-        #          arguments:
-        #            parameters:
-        #            - name: uuid
-        #              value: "test-images-3"
-        #        """
-        # # self.template.yaml_template = SimpleUploadedFile("dummy.yaml", yaml)
-        # # self.template.save()
-        #
-        # self.version = Version_Docker.objects.create(
-        #     revision=0,
-        #     versions={"parameters": []},
-        #     template=self.template
-        # )
-        #
-        # self.version2 = Version_Docker.objects.create(
-        #     revision=1,
-        #     versions={"parameters": [], "entrypoints": ["delft3dgt-main", "update-processing"]},
-        #     changelog="I'm newer",
-        #     template=self.template
-        # )
-        #
         self.workflow_1 = Workflow.objects.create(
             scene=self.scene_1,
-        #     desired_state='created',
-        #     cluster_state='non-existent',
-        #     version=self.version,
-        #     entrypoint='delft3dgt-main'
+            name="workflow 1"
         )
-        #
+
         self.workflow_2 = Workflow.objects.create(
             scene=self.scene_2,
-        #     desired_state='created',
-        #     cluster_state='non-existent',
-        #     version=self.version2,
-        #     entrypoint='delft3dgt-main'
+            name="workflow 2"
         )
 
     def test_scene_get(self):
