@@ -405,39 +405,6 @@ class SceneTestCase(TestCase):
                 # check the abort is ignored
                 self.assertEqual(self.scene_1.phase, phase[0])
 
-    def test_reset_scene(self):
-        date_started = now()
-        progress = 10
-
-        # a scene should only start when it's idle: check for each phase
-        for phase in self.scene_1.phases:
-
-            #  shift scene to phase
-            self.scene_1.date_started = date_started
-            self.scene_1.progress = progress
-            self.scene_1.shift_to_phase(phase[0])
-
-            # start scene
-            self.scene_1.reset()
-
-            # check that phase is unshifted unless Finished: then it becomes New
-            self.assertEqual(
-                self.scene_1.phase,
-                self.scene_1.phases.sim_start if (
-                    phase[0] == self.scene_1.phases.fin) else phase[0]
-            )
-
-            # check properties are untouched unless reset from finished state
-            if phase[0] == self.scene_1.phases.fin:
-                self.assertTrue((tz_now() - self.scene_1.date_started).seconds < 10)
-                self.assertEqual(self.scene_1.progress, 0)
-                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
-
-            else:
-                self.assertEqual(self.scene_1.date_started, date_started)
-                self.assertEqual(self.scene_1.progress, progress)
-                self.assertEqual(self.scene_1.phase, phase[0])
-
 
 class ScenarioZeroPhaseTestCase(TestCase):
 
@@ -918,7 +885,42 @@ class WorkflowTestCase(TestCase):
         self.workflow.update_log()
         self.assertEqual(mocked_task.call_count, 2)
 
-    def test_update_workflow(self):
+    def test_reset_scene(self):
+        date_started = now()
+        progress = 10
+        # Keep the workflow entrypoint for reset
+        self.workflow.entrypoint = 'delft3dgt-main'
+
+        # a scene should only start when it's idle: check for each phase
+        for phase in self.scene_1.phases:
+
+            #  shift scene to phase
+            self.scene_1.date_started = date_started
+            self.scene_1.progress = progress
+            self.scene_1.shift_to_phase(phase[0])
+
+            # start scene
+            self.scene_1.reset()
+
+            # check that phase is unshifted unless Finished: then it becomes New
+            self.assertEqual(
+                self.scene_1.phase,
+                self.scene_1.phases.sim_start if (
+                    phase[0] == self.scene_1.phases.fin) else phase[0]
+            )
+
+            # check properties are untouched unless reset from finished state
+            if phase[0] == self.scene_1.phases.fin:
+                self.assertTrue((tz_now() - self.scene_1.date_started).seconds < 10)
+                self.assertEqual(self.scene_1.progress, 0)
+                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
+
+            else:
+                self.assertEqual(self.scene_1.date_started, date_started)
+                self.assertEqual(self.scene_1.progress, progress)
+                self.assertEqual(self.scene_1.phase, phase[0])
+
+    def test_redo(self):
         entrypoint = 'update-processing'
         # self.entrypoint = 'main'
         date_started = now()
@@ -936,7 +938,7 @@ class WorkflowTestCase(TestCase):
             self.scene_1.shift_to_phase(phase[0])
 
             # update workflow
-            self.workflow.update_workflow(entrypoint)
+            self.scene_1.redo(entrypoint)
 
             # check that phase is unshifted unless Finished: then it becomes New
             self.assertEqual(

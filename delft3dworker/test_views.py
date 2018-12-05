@@ -187,11 +187,10 @@ class SceneTestCase(APITestCase):
             shared="p",
             phase=Scene.phases.fin
         )
-        self.workflow = Workflow.objects.create(
-            scene=self.scene_1,
-            entrypoint='delft3dgt-main'
-        )
-        # self.scene_1.workflow.add(self.workflow)
+        # self.workflow = Workflow.objects.create(
+        #     scene=self.scene_1,
+        #     entrypoint='delft3dgt-main'
+        # )
 
         for perm in ['view_scene', 'add_scene',
                      'change_scene', 'delete_scene']:
@@ -363,7 +362,7 @@ class SceneTestCase(APITestCase):
     @patch('delft3dworker.models.Scene.redo', autospec=True)
     def test_redo(self, mocked_scene_method):
         # update model view with selected entrypoint
-        query_entrypoint = {'entrypoint': 'delft3dgt-main'}
+        query_entrypoint = {'entrypoint':'delft3dgt-main'}
         url = reverse('scene-redo', args=[self.scene_1.pk])
 
         # bar cannot see
