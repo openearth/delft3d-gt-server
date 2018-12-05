@@ -949,13 +949,13 @@ class Workflow(models.Model):
 
     def update_workflow(self, entrypoint, version):
         # Is phase finished and version outdated?
-        if self.scene.phase == self.scene.phases.fin and self.version.outdated:
+        if self.scene.phase == self.scene.phases.fin and self.is_outdated:
             # change entrypoint argo workflow
             self.entrypoint = entrypoint
             # change version tag in argo workflow
-            self.version. =
+            self.latest_version()
             self.scene.redo()
-        pass
+            self.save()
 
     def remove_workflow(self):
         # Catch removing unfinished workflow
