@@ -209,13 +209,6 @@ class SceneTestCase(TestCase):
             phase=Scene.phases.idle,
         )
 
-        # self.wd = self.scene_1.workingdir
-        # self.workflow = Workflow.objects.create(
-        #     name="Test",
-        #     scene=self.scene_1,
-        #     version = self.version,
-        # )
-
         assign_perm('view_scene', self.user_a, self.scene_1)
         assign_perm('add_scene', self.user_a, self.scene_1)
         assign_perm('change_scene', self.user_a, self.scene_1)
@@ -944,7 +937,7 @@ class WorkflowTestCase(TestCase):
 
             # update workflow
             self.workflow.update_workflow(entrypoint)
-            print(phase)
+
             # check that phase is unshifted unless Finished: then it becomes New
             self.assertEqual(
                 self.scene_1.phase,

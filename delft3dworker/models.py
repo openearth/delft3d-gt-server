@@ -348,9 +348,18 @@ class Scene(models.Model):
             self.date_started = tz_now()
             self.save()
 
-    def redo(self):
-        # only allow a redo when Scene is 'Finished'
-        if self.phase == self.phases.fin:
+
+    def redo(self, entrypoint):
+        # Does entrypoint exist?
+        if entrypoint is None:
+            logging.warning("No entrypoint was specified for updating workflow")
+            return
+        # Is phase finished and version outdated?
+        elif self.scene.phase == self.scene.phases.fin and self.is_outdated:
+            # change entrypoint argo workflow
+            self.workflow.entrypoint = entrypoint
+            # change version tag in argo workflow
+            self.workflow.version = self.latest_version()
             self.date_started = tz_now()
             self.shift_to_phase(self.phases.sim_start)
             # self.workflow.progress = 0
@@ -918,20 +927,6 @@ class Workflow(models.Model):
         self.action_log += "{} | Created \n".format(self.task_starttime)
         self.task_uuid = result.id
         self.save()
-
-    def update_workflow(self, entrypoint):
-        # Does entrypoint exist?
-        if entrypoint is None:
-            logging.warning("No entrypoint was specified for updating workflow")
-            return
-        # Is phase finished and version outdated?
-        elif self.scene.phase == self.scene.phases.fin and self.is_outdated:
-            # change entrypoint argo workflow
-            self.entrypoint = entrypoint
-            # change version tag in argo workflow
-            self.version = self.latest_version()
-            self.scene.redo()
-            self.save()
 
     def remove_workflow(self):
         # Catch removing unfinished workflow

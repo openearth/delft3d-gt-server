@@ -47,6 +47,7 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
+from delft3dworker.models import Workflow
 from delft3dworker.models import GroupUsageSummary
 from delft3dworker.models import UserUsageSummary
 from delft3dworker.permissions import ViewObjectPermissions
@@ -409,29 +410,14 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["put"])  # denied after publish to company/world
+    @detail_route(methods=["put"])
     def redo(self, request, pk=None):
+        #
         scene = self.get_object()
-        scene.redo()
+        scene.redo(request.query_params.get('entrypoint', []))
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
-    #
-    # @detail_route(methods=["put"])
-    # def updatemodel(self, request, pk=None):
-    #     scene = self.get_object()
-    #     scene.update_model()
-    #     serializer = self.get_serializer(scene)
-    #
-    #     return Response(serializer.data)
-    #
-    # @detail_route(methods=["put"])
-    # def updatepostprocessing(self, request, pk=None):
-    #     scene = self.get_object()
-    #     scene.update_postprocessing()
-    #     serializer = self.get_serializer(scene)
-    #
-    #     return Response(serializer.data)
 
     @detail_route(methods=["put"])  # denied after publish to company/world
     def stop(self, request, pk=None):
