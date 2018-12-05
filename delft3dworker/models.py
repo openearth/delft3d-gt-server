@@ -947,13 +947,13 @@ class Workflow(models.Model):
         self.task_uuid = result.id
         self.save()
 
-    def update_workflow(self, entrypoint, version):
+    def update_workflow(self, entrypoint):
         # Is phase finished and version outdated?
         if self.scene.phase == self.scene.phases.fin and self.is_outdated:
             # change entrypoint argo workflow
             self.entrypoint = entrypoint
             # change version tag in argo workflow
-            self.latest_version()
+            self.version = self.latest_version()
             self.scene.redo()
             self.save()
 
