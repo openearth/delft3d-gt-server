@@ -666,12 +666,35 @@ class WorkflowTestCase(TestCase):
             template=self.template
             )
 
+        self.version2 = Version_Docker.objects.create(
+            revision=1,
+            versions={"parameters": [], "entrypoints":["main workflow"]},
+            changelog="I'm newer",
+            template=self.template
+            )
+
         self.workflow = Workflow.objects.create(
             scene=self.scene_1,
             desired_state='created',
             cluster_state='non-existent',
             version=self.version
         )
+
+    def test_is_outdated(self):
+        # Version 2 is newer than connected Version
+        self.assertTrue(self.workflow.is_outdated())
+
+    def test_latest_version(self):
+        # Version 2 is newer than connected Version
+        self.assertEqual(self.workflow.latest_version(), self.version2)
+
+    def test_outdated_changelog(self):
+        # Version 2 is newer than connected Version
+        self.assertEqual(self.workflow.outdated_changelog(), self.version2.changelog)
+
+    def test_outdated_entrypoints(self):
+        # Version 2 is newer than connected Version
+        self.assertEqual(self.workflow.outdated_entrypoints(), self.version2.versions["entrypoints"])
 
     @patch('logging.warn', autospec=True)
     @patch('delft3dworker.models.AsyncResult', autospec=True)
