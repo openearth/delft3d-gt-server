@@ -339,7 +339,12 @@ class Scene(models.Model):
     # UI CONTROL METHODS
 
     def reset(self):
-        return self.redo(self.workflow.entrypoint)
+        if self.phase == self.phases.fin:
+            self.shift_to_phase(self.phases.sim_start)  # shift to Queued
+            self.date_started = tz_now()
+            self.progress = 0
+            self.save()
+        # return self.redo(self.workflow.entrypoint)
 
     def start(self):
         # only allow a start when Scene is 'Idle'
@@ -348,14 +353,13 @@ class Scene(models.Model):
             self.date_started = tz_now()
             self.save()
 
-
     def redo(self, entrypoint):
         # Does entrypoint exist?
-        if entrypoint is None:
+        if entrypoint is None or entrypoint not in self.workflow.outdated_entrypoints():
             logging.warning("No entrypoint was specified for updating workflow")
             return
         # Is phase finished and version outdated?
-        elif self.phase == self.phases.fin and self.workflow.is_outdated:
+        if self.phase == self.phases.fin and self.workflow.is_outdated:
             # change entrypoint argo workflow
             self.workflow.entrypoint = entrypoint
             # change version tag in argo workflow
@@ -802,7 +806,7 @@ class Workflow(models.Model):
 
     def outdated_entrypoints(self):
         if self.is_outdated():
-            entrypoints = self.self.latest_version().versions.get("entrypoints", [])
+            entrypoints = self.latest_version().versions.get("entrypoints", [])
             return entrypoints
         else:
             return []

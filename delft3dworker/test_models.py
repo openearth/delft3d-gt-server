@@ -633,7 +633,7 @@ class WorkflowTestCase(TestCase):
 
         self.version2 = Version_Docker.objects.create(
             revision=1,
-            versions={"parameters": [], "entrypoints":["main workflow"]},
+            versions={"parameters": [], "entrypoints":["delft3dgt-main", "update-processing"]},
             changelog="I'm newer",
             template=self.template
             )

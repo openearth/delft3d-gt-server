@@ -172,6 +172,7 @@ class SceneTestCase(APITestCase):
                          'change_scene', 'delete_scene']:
                 user.user_permissions.add(
                     Permission.objects.get(codename=perm))
+
         # create Scene instance and assign permissions for user_foo
         self.scene_1 = Scene.objects.create(
             suid="11111111-1111-1111-1111-111111111111",
@@ -187,14 +188,59 @@ class SceneTestCase(APITestCase):
             shared="p",
             phase=Scene.phases.fin
         )
-        # self.workflow = Workflow.objects.create(
-        #     scene=self.scene_1,
-        #     entrypoint='delft3dgt-main'
-        # )
-
         for perm in ['view_scene', 'add_scene',
                      'change_scene', 'delete_scene']:
             assign_perm(perm, self.user_foo, self.scene_1)
+
+        # self.workflow_1 = Workflow.objects.create(
+        #     scene=self.scene_1,
+        #     entrypoint='delft3dgt-main'
+        # )
+        # self.workflow_2 = Workflow.objects.create(
+        #     scene=self.scene_2,
+        #     entrypoint='delft3dgt-main'
+        # )
+        # yaml = """
+        #        metadata:
+        #          name: delft3dgt-1
+        #        spec:
+        #          entrypoint: delft3dgt-main
+        #          arguments:
+        #            parameters:
+        #            - name: uuid
+        #              value: "test-images-3"
+        #        """
+        # # self.template.yaml_template = SimpleUploadedFile("dummy.yaml", yaml)
+        # # self.template.save()
+        #
+        # self.version = Version_Docker.objects.create(
+        #     revision=0,
+        #     versions={"parameters": []},
+        #     template=self.template
+        # )
+        #
+        # self.version2 = Version_Docker.objects.create(
+        #     revision=1,
+        #     versions={"parameters": [], "entrypoints": ["delft3dgt-main", "update-processing"]},
+        #     changelog="I'm newer",
+        #     template=self.template
+        # )
+        #
+        self.workflow_1 = Workflow.objects.create(
+            scene=self.scene_1,
+        #     desired_state='created',
+        #     cluster_state='non-existent',
+        #     version=self.version,
+        #     entrypoint='delft3dgt-main'
+        )
+        #
+        self.workflow_2 = Workflow.objects.create(
+            scene=self.scene_2,
+        #     desired_state='created',
+        #     cluster_state='non-existent',
+        #     version=self.version2,
+        #     entrypoint='delft3dgt-main'
+        )
 
     def test_scene_get(self):
         # detail view
@@ -297,37 +343,6 @@ class SceneTestCase(APITestCase):
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    @patch('delft3dworker.models.Scene.reset', autospec=True)
-    def test_scene_reset(self, mocked_scene_method):
-        # reset view
-        url = reverse('scene-reset', args=[self.scene_1.pk])
-
-        # bar cannot see
-        self.client.login(username='bar', password='secret')
-        response = self.client.put(url, {}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(mocked_scene_method.call_count, 0)
-
-        # foo can reset
-        self.client.login(username='foo', password='secret')
-        response = self.client.put(url, {}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mocked_scene_method.assert_called_with(self.scene_1)
-
-    @patch('delft3dworker.models.Scene.reset', autospec=True)
-    def test_scene_no_reset_after_publish(self, mocked_scene_method):
-        # the scene is published
-        self.scene_1.publish_company(self.user_foo)
-
-        # reset view
-        url = reverse('scene-reset', args=[self.scene_1.pk])
-
-        # foo cannot reset (forbidden)
-        self.client.login(username='foo', password='secret')
-        response = self.client.put(url, {}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(mocked_scene_method.call_count, 0)
-
     @patch('delft3dworker.models.Scene.start', autospec=True)
     def test_scene_start(self, mocked_scene_method):
         # start view
@@ -359,8 +374,39 @@ class SceneTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(mocked_scene_method.call_count, 0)
 
+    @patch('delft3dworker.models.Scene.reset', autospec=True)
+    def test_scene_reset(self, mocked_scene_method):
+        # reset view
+        url = reverse('scene-reset', args=[self.scene_1.pk])
+
+        # bar cannot see
+        self.client.login(username='bar', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(mocked_scene_method.call_count, 0)
+
+        # foo can reset
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mocked_scene_method.assert_called_with(self.scene_1)
+
+    @patch('delft3dworker.models.Scene.reset', autospec=True)
+    def test_scene_no_reset_after_publish(self, mocked_scene_method):
+        # the scene is published
+        self.scene_1.publish_company(self.user_foo)
+
+        # reset view
+        url = reverse('scene-reset', args=[self.scene_1.pk])
+
+        # foo cannot reset (forbidden)
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(mocked_scene_method.call_count, 0)
+
     @patch('delft3dworker.models.Scene.redo', autospec=True)
-    def test_redo(self, mocked_scene_method):
+    def test_scene_redo(self, mocked_scene_method):
         # update model view with selected entrypoint
         query_entrypoint = {'entrypoint':'delft3dgt-main'}
         url = reverse('scene-redo', args=[self.scene_1.pk])
