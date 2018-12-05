@@ -931,8 +931,11 @@ class WorkflowTestCase(TestCase):
         date_started = now()
         progress = 10
 
-        # a workflow can only be updated once it's Scene is finished
+        # a workflow can only be updated once it's Scene is finished,
+        # loop through all phases to test
         for phase in self.scene_1.phases:
+            # Need to reset entrypoint with each phase, is not reset by function
+            self.workflow.entrypoint = 'delft3dgt-main'
 
             #  shift scene to phase
             self.scene_1.date_started = date_started
@@ -941,7 +944,7 @@ class WorkflowTestCase(TestCase):
 
             # update workflow
             self.workflow.update_workflow(entrypoint)
-
+            print(phase)
             # check that phase is unshifted unless Finished: then it becomes New
             self.assertEqual(
                 self.scene_1.phase,
