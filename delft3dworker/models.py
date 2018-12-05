@@ -353,7 +353,7 @@ class Scene(models.Model):
         if self.phase == self.phases.fin:
             self.date_started = tz_now()
             self.shift_to_phase(self.phases.sim_start)
-            self.workflow.progress = 0
+            # self.workflow.progress = 0
             self.progress = 0
             self.save()
     #
@@ -805,20 +805,20 @@ class Workflow(models.Model):
         return outdated_folders
 
     def is_outdated(self):
-        return self.scenario.first().template.versions.latest().revision > self.version.revision
+        return self.scene.scenario.first().template.versions.latest().revision > self.version.revision
 
     def latest_version(self):
-        return self.scenario.first().template.versions.latest()
+        return self.scene.scenario.first().template.versions.latest()
 
     def outdated_changelog(self):
         if self.is_outdated():
-            return self.scenario.first().template.versions.latest().changelog
+            return self.scene.scenario.first().template.versions.latest().changelog
         else:
             return ""
 
     def outdated_entrypoints(self):
         if self.is_outdated():
-            new_version = self.scenario.first().template.versions.latest().versions["entrypoints"]
+            new_version = self.scene.scenario.first().template.versions.latest().versions["entrypoints"]
         else:
             return []
 
@@ -889,7 +889,6 @@ class Workflow(models.Model):
         the its desired_state, which is defined by the Scene to which this
         Workflow belongs. If (for any reason) the cluster_state is different
         from the desired_state, act: start a task to get both states matched.
-
         At the end, if still no task, request a log update.
         """
         self.fix_mismatch()
@@ -953,8 +952,12 @@ class Workflow(models.Model):
         self.save()
 
     def update_workflow(self, entrypoint):
+        # Does entrypoint exist?
+        if entrypoint is None:
+            logging.warning("No entrypoint was specified for updating workflow")
+            return
         # Is phase finished and version outdated?
-        if self.scene.phase == self.scene.phases.fin and self.is_outdated:
+        elif self.scene.phase == self.scene.phases.fin and self.is_outdated:
             # change entrypoint argo workflow
             self.entrypoint = entrypoint
             # change version tag in argo workflow

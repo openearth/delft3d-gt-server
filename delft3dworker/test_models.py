@@ -208,8 +208,13 @@ class SceneTestCase(TestCase):
             shared='p',
             phase=Scene.phases.idle,
         )
-        self.wd = self.scene_1.workingdir
-        self.workflow = Workflow.objects.create(name="Test", scene=self.scene_1)
+
+        # self.wd = self.scene_1.workingdir
+        # self.workflow = Workflow.objects.create(
+        #     name="Test",
+        #     scene=self.scene_1,
+        #     version = self.version,
+        # )
 
         assign_perm('view_scene', self.user_a, self.scene_1)
         assign_perm('add_scene', self.user_a, self.scene_1)
@@ -439,64 +444,6 @@ class SceneTestCase(TestCase):
                 self.assertEqual(self.scene_1.date_started, date_started)
                 self.assertEqual(self.scene_1.progress, progress)
                 self.assertEqual(self.scene_1.phase, phase[0])
-    #
-    # def test_update_model(self):
-    #     # a scene can only be updated once it's finished
-    #     for phase in self.scene_1.phases:
-    #
-    #         #  shift scene to phase
-    #         self.scene_1.date_started = date_started
-    #         self.scene_1.progress = progress
-    #         self.scene_1.shift_to_phase(phase[0])
-    #
-    #         # start scene
-    #         self.scene_1.update_postprocessing()
-    #
-    #         # check that phase is unshifted unless Finished: then it becomes New
-    #         self.assertEqual(
-    #             self.scene_1.phase,
-    #             self.scene_1.phases.sim_start if (
-    #                 phase[0] == self.scene_1.phases.fin) else phase[0]
-    #         )
-    #         # check that entry point is the same and redo steps done
-    #         # check properties are untouched unless reset from finished state
-    #         if phase[0] == self.scene_1.phases.fin:
-    #             self.assertEqual(self.scene_1.entrypoint, 'preprocess')
-    #             self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
-    #
-    #         else:
-    #             self.assertEqual(self.scene_1.entrypoint, 'main')
-    #             self.assertEqual(self.scene_1.phase, phase[0])
-    #
-    #
-    # def test_update_postprocessing(self):
-    #     # a scene can only have update postprocessing when it's finished
-    #     for phase in self.scene_1.phases:
-    #
-    #         #  shift scene to phase
-    #         self.scene_1.date_started = date_started
-    #         self.scene_1.progress = progress
-    #         self.scene_1.shift_to_phase(phase[0])
-    #
-    #         # start scene
-    #         self.scene_1.update_postprocessing()
-    #
-    #         # check that phase is unshifted unless Finished: then it becomes New
-    #         self.assertEqual(
-    #             self.scene_1.phase,
-    #             self.scene_1.phases.sim_start if (
-    #                 phase[0] == self.scene_1.phases.fin) else phase[0]
-    #         )
-    #         # check that entry point is the same and redo steps done
-    #         # check properties are untouched unless reset from finished state
-    #         if phase[0] == self.scene_1.phases.fin:
-    #             self.assertEqual(self.scene_1.entrypoint, 'preprocess')
-    #             self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
-    #
-    #         else:
-    #             self.assertEqual(self.scene_1.entrypoint, 'main')
-    #             self.assertEqual(self.scene_1.phase, phase[0])
-    #     # check that entrypoint is changed to postprocess and phase is now sim_start
 
 
 class ScenarioZeroPhaseTestCase(TestCase):
@@ -728,7 +675,8 @@ class WorkflowTestCase(TestCase):
             scene=self.scene_1,
             desired_state='created',
             cluster_state='non-existent',
-            version=self.version
+            version=self.version,
+            entrypoint='delft3dgt-main'
         )
 
     @patch('logging.warn', autospec=True)
@@ -953,6 +901,39 @@ class WorkflowTestCase(TestCase):
         self.workflow.cluster_state = 'exited'
         self.workflow.update_log()
         self.assertEqual(mocked_task.call_count, 2)
+
+    def test_update_workflow(self):
+        entrypoint = 'update-processing'
+        # self.entrypoint = 'main'
+        date_started = now()
+        progress = 10
+
+        # a workflow can only be updated once it's Scene is finished
+        for phase in self.scene_1.phases:
+
+            #  shift scene to phase
+            self.scene_1.date_started = date_started
+            self.scene_1.progress = progress
+            self.scene_1.shift_to_phase(phase[0])
+
+            # update workflow
+            self.workflow.update_workflow(entrypoint)
+
+            # check that phase is unshifted unless Finished: then it becomes New
+            self.assertEqual(
+                self.scene_1.phase,
+                self.scene_1.phases.sim_start if (
+                        phase[0] == self.scene_1.phases.fin) else phase[0]
+            )
+            # check that entry point is the same and redo steps done
+            # check properties are untouched unless reset from finished state
+            if phase[0] == self.scene_1.phases.fin:
+                self.assertEqual(self.workflow.entrypoint, 'update-processing')
+                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
+
+            else:
+                self.assertEqual(self.workflow.entrypoint, 'delft3dgt-main')
+                self.assertEqual(self.scene_1.phase, phase[0])
 
 
 class SearchFormTestCase(TestCase):
