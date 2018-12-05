@@ -165,7 +165,7 @@ def python_logparser(line):
         }
 
 
-def scan_output_files(workingdir, dict):
+def scan_output_files(workingdir, info_dict):
     """
     Scans a working directory for files as specified in the structure of the dictionary.
     using the first key as a search key, a subkey of "location" as the subdirectory,
@@ -177,24 +177,27 @@ def scan_output_files(workingdir, dict):
     an example of structure.
     :return: dict: now with files subkey list filled for each key
     """
-    for key in dict:
+    required_keys = ["location", "extensions", "files"]
+    for key, value in info_dict.items():
         if "_images" in key:
             search_key = key.split("_images")[0]
         elif "log" in key:
-            search_key = dict[key]["filename"]
+            search_key = value.get("filename")
         else:
             search_key = key
 
-        for root, dirs, files in os.walk(
-                os.path.join(workingdir, dict[key]["location"])
-        ):
-            for f in sorted(files):
-                name, ext = os.path.splitext(f)
-                if ext in (dict[key]["extensions"]):
-                    if (search_key in name and f not in dict[key]["files"]):
-                        dict[key]["files"].append(f)
+        if search_key is not None and all([k in value for k in required_keys]):
 
-    return dict
+            for root, dirs, files in os.walk(
+                    os.path.join(workingdir, value["location"])
+            ):
+                for f in sorted(files):
+                    name, ext = os.path.splitext(f)
+                    if ext in (value["extensions"]):
+                        if (search_key in name and f not in value["files"]):
+                            info_dict[key]["files"].append(f)
+
+    return info_dict
 
 
 def merge_list_of_dict(a, b, key="name"):

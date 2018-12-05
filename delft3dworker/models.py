@@ -356,27 +356,6 @@ class Scene(models.Model):
             # self.workflow.progress = 0
             self.progress = 0
             self.save()
-    #
-    # def update_model(self):
-    #     # updates the preprocessing and runs the model
-    #     # only allow an update_model when Scene is 'Finished'
-    #     if self.phase == self.phases.fin:
-    #         # get workflow entrypoint for update_model,
-    #         # TODO: do i even need this? or should it still be main?
-    #         self.entrypoint = 'preprocess'
-    #         # then redo
-    #         self.redo()
-    #
-    # def update_postprocessing(self):
-    #     # updates the postprocessing and export and runs them
-    #     # only allow an update_postprocessing when Scene is 'Finished'
-    #     if self.phase == self.phases.fin:
-    #         # get workflow entrypoint for update_postprocessing
-    #         self.entrypoint = 'postprocess'
-    #         # then restart postprocessing only,
-    #         # do not edit date_started, or progress.
-    #         self.shift_to_phase(self.phases.sim_start)
-    #         self.save()
 
     def abort(self):
         # Stop simulation
@@ -793,35 +772,24 @@ class Workflow(models.Model):
     action_log = models.TextField(blank=True, default="")
 
     # Version control
-    def compare_outdated(self, revision_number):
-        """Compare folder revisions with latest release."""
-        outdated_folders = []
-
-        latest_versions = self.scenario.first().template.versions.latest().versions
-        for folder, revision in latest_versions.items():
-            if self.versions.setdefault(folder, -1) < revision:
-                outdated_folders.append(folder)
-
-        return outdated_folders
-
     def is_outdated(self):
-        return self.scene.scenario.first().template.versions.latest().revision > self.version.revision
+        return self.scene.scenario.first().template.versions.first().revision > self.version.revision
 
     def latest_version(self):
-        return self.scene.scenario.first().template.versions.latest()
+        return self.scene.scenario.first().template.versions.first()
 
     def outdated_changelog(self):
         if self.is_outdated():
-            return self.scene.scenario.first().template.versions.latest().changelog
+            return self.scene.scenario.first().template.versions.first().changelog
         else:
             return ""
 
     def outdated_entrypoints(self):
         if self.is_outdated():
-            new_version = self.scene.scenario.first().template.versions.latest().versions["entrypoints"]
+            entrypoints = self.scene.scenario.first().template.versions.first().versions["entrypoints"]
+            return entrypoints
         else:
             return []
-
 
     # HEARTBEAT METHODS
     def update_task_result(self):
