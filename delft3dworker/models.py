@@ -52,12 +52,17 @@ def default_svn_version():
 
 class Version_Docker(models.Model):
     """
-    Store releases used in the Delft3D-GT svn repository.
-    Every scene has a Version_Docker, if there's a newer (higher id)
-    Version_Docker available, the scene is outdated.
-    By comparing svn folders and files (versions field) the specific
-    workflow can be determined in the scene.
-    The revision and url can be used in the Docker Python env
+    Stores several Docker tags used in an Argo Workflow together.
+    In this way versioning of Argo workflows is possible, new releases
+    having other valid combinations of tags defined. A Version_Docker 
+    is always connected to a specific Template and possible to a Workflow,
+    when those tags are used in running the Workflow.
+
+    To detect whether an updated combination of tags is available, one 
+    should look for a Version_Docker with a higher revision number than itself.
+
+    New Version_Dockers are either created manually from known tags, or created
+    based on each new upload of a Argo workflow to a Template.
     """
     release = models.CharField(
         max_length=256, db_index=True)  # tag/release name
