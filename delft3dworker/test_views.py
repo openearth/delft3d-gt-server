@@ -368,7 +368,7 @@ class SceneTestCase(APITestCase):
     @patch('delft3dworker.models.Scene.redo', autospec=True)
     def test_scene_redo(self, mocked_scene_method):
         # update model view with selected entrypoint
-        query_entrypoint = {'entrypoints':'delft3dgt-main'}
+        query_entrypoint = {'entrypoint':'delft3dgt-main'}
         url = reverse('scene-redo', args=[self.scene_1.pk])
 
         # bar cannot see
