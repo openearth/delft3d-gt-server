@@ -349,11 +349,12 @@ class Scene(models.Model):
 
     def redo(self, entrypoint):
         # Does entrypoint exist?
-        if entrypoint is None or entrypoint not in self.workflow.outdated_entrypoints():
+        if entrypoint == "" or entrypoint not in self.workflow.outdated_entrypoints():
             logging.warning("No entrypoint was specified for updating workflow")
-            return
+            return False
+
         # Is phase finished and version outdated?
-        if self.phase == self.phases.fin and self.workflow.is_outdated:
+        elif self.phase == self.phases.fin and self.workflow.is_outdated:
             # change entrypoint argo workflow
             self.workflow.entrypoint = entrypoint
             # change version tag in argo workflow
@@ -363,6 +364,11 @@ class Scene(models.Model):
             # self.workflow.progress = 0
             self.progress = 0
             self.save()
+            return True
+
+        # Valid entrypoint, but not outdated or finished
+        else:
+            return False
 
     def abort(self):
         # Stop simulation

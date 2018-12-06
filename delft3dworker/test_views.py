@@ -383,6 +383,29 @@ class SceneTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         mocked_scene_method.assert_called_with(self.scene_1, 'delft3dgt-main') #self.scene_1
 
+    @patch('delft3dworker.models.Scene.redo', autospec=True)
+    def test_scene_evil_redo(self, mocked_scene_method):
+        mocked_scene_method.return_value = False
+
+        # update model view with selected entrypoint
+        url = reverse('scene-redo', args=[self.scene_1.pk])
+        self.client.login(username='foo', password='secret')
+
+        query_entrypoint = {'entrypoint': 'nope'}
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        query_entrypoint = {'nope': 'nope'}
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        query_entrypoint = "nope"
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertEqual(mocked_scene_method.call_count, 1)
+
+
     @patch('delft3dworker.models.Scene.publish_company', autospec=True)
     def test_multiple_scenes_publish_company(self, mocked_scene_method_company):
         # start view
