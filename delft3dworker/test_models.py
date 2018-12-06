@@ -609,7 +609,7 @@ class WorkflowTestCase(TestCase):
 
         self.template = Template.objects.create(name="template")
         self.scenario = Scenario.objects.create(name="parent", template=self.template)
-        self.scene_1 = Scene.objects.create(name="some-long-name")
+        self.scene_1 = Scene.objects.create(name="some-long-name", phase=Scene.phases.fin)
         self.scene_1.scenario = [self.scenario]
 
         yaml = """
@@ -918,7 +918,12 @@ class WorkflowTestCase(TestCase):
                 self.assertEqual(self.scene_1.progress, progress)
                 self.assertEqual(self.scene_1.phase, phase[0])
 
-    def test_redo(self):
+    def test_redo_workflow(self):
+        result = self.scene_1.redo("delft3dgt-main")
+        self.assertEqual(self.workflow.version, self.version2)
+        self.assertTrue(result)
+
+    def test_redo_scene(self):
         entrypoint = 'update-processing'
         # self.entrypoint = 'main'
         date_started = now()

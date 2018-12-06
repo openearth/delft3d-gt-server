@@ -360,6 +360,7 @@ class Scene(models.Model):
             self.workflow.entrypoint = entrypoint
             # change version tag in argo workflow
             self.workflow.version = self.workflow.latest_version()
+            self.workflow.save()  # needed for production
             self.date_started = tz_now()
             self.shift_to_phase(self.phases.sim_start)
             self.progress = 0
