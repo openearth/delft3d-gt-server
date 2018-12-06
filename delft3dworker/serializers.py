@@ -101,7 +101,7 @@ class SceneFullSerializer(serializers.ModelSerializer):
         )
 
     def get_entrypoints(self, obj):
-        if obj.workflow is not None:
+        if hasattr(obj, 'workflow'):
             return obj.workflow.outdated_entrypoints()
         else:
             return None
