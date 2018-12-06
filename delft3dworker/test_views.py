@@ -381,7 +381,7 @@ class SceneTestCase(APITestCase):
         self.client.login(username='foo', password='secret')
         response = self.client.put(url, query_entrypoint, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mocked_scene_method.assert_called_with(self.scene_1, 'delft3dgt-main') #self.scene_1
+        mocked_scene_method.assert_called_with(self.scene_1, 'delft3dgt-main')
 
     @patch('delft3dworker.models.Scene.redo', autospec=True)
     def test_scene_evil_redo(self, mocked_scene_method):

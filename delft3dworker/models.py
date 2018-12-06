@@ -61,7 +61,7 @@ class Version_Docker(models.Model):
     """
     release = models.CharField(
         max_length=256, db_index=True)  # tag/release name
-    revision = models.PositiveSmallIntegerField(db_index=True)  # general version
+    revision = models.AutoField(primary_key=True)  # general version
     versions = JSONField(default='{}')  # docker revisions
     changelog = models.CharField(max_length=256)  # release notes
     reviewed = models.BooleanField(default=False)
@@ -78,21 +78,18 @@ class Version_Docker(models.Model):
 
 def parse_argo_workflow(instance, filename):
     # If new worklow is uploaded, define a version
-    # with defaults if no versions yet exist
-    if instance.versions.count() == 0:
 
-        # Load yaml and derive defaults
-        template = yaml.load(instance.yaml_template.read())
-        defaults = derive_defaults_from_argo(template)
+    # Load yaml and derive defaults
+    template = yaml.load(instance.yaml_template.read())
+    defaults = derive_defaults_from_argo(template)
 
-        # Create version based on defaults
-        version = Version_Docker(release='Default for {}'.format(filename),
-                                 revision=0,
-                                 versions=defaults,
-                                 changelog='default release based on template',
-                                 template=instance
-                                 )
-        version.save()
+    # Create version based on defaults
+    version = Version_Docker(release='Default for {}'.format(filename),
+                             versions=defaults,
+                             changelog='default release based on template',
+                             template=instance
+                             )
+    version.save()
 
     # Otherwise just return the filepath
     return join("workflow_templates", filename)
@@ -338,7 +335,6 @@ class Scene(models.Model):
             self.date_started = tz_now()
             self.progress = 0
             self.save()
-        # return self.redo(self.workflow.entrypoint)
 
     def start(self):
         # only allow a start when Scene is 'Idle'
@@ -361,7 +357,6 @@ class Scene(models.Model):
             self.workflow.version = self.workflow.latest_version()
             self.date_started = tz_now()
             self.shift_to_phase(self.phases.sim_start)
-            # self.workflow.progress = 0
             self.progress = 0
             self.save()
             return True
