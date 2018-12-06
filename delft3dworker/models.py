@@ -43,7 +43,7 @@ from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create
 from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
 
 
-# ################################### Version_Docker, SCENARIO, SCENE & CONTAINER
+# ################################### VERSION_DOCKER, SCENARIO, SCENE
 
 # For backwards compatibility in migrations
 def default_svn_version():
@@ -55,7 +55,7 @@ class Version_Docker(models.Model):
     Stores several Docker tags used in an Argo Workflow together.
     In this way versioning of Argo workflows is possible, new releases
     having other valid combinations of tags defined. A Version_Docker 
-    is always connected to a specific Template and possible to a Workflow,
+    is always connected to a specific Template and possibly to a Workflow,
     when those tags are used in running the Workflow.
 
     To detect whether an updated combination of tags is available, one 
@@ -577,7 +577,7 @@ class Scene(models.Model):
     def __unicode__(self):
         return self.name
 
-# ################################### SEARCHFORM & TEMPLATE
+# ################################### SEARCHFORM & TEMPLATE & WORKFLOW
 
 
 class SearchForm(models.Model):

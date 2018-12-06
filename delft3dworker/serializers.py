@@ -13,7 +13,7 @@ from django.contrib.auth.models import User
 
 class VersionSerializer(serializers.ModelSerializer):
     """
-    A default REST Framework ModelSerializer for the User model
+    A default REST Framework ModelSerializer for the Version_Docker model
     source: http://www.django-rest-framework.org/api-guide/serializers/
     """
 
