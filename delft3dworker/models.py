@@ -178,12 +178,6 @@ class Scenario(models.Model):
                 scene.start()
         return "started"
 
-    def redo(self, user):
-        for scene in self.scene_set.all():
-            if user.has_perm('delft3dworker.change_scene', scene):
-                scene.redo()
-        return "redoing"
-
     def abort(self, user):
         for scene in self.scene_set.all():
             if user.has_perm('delft3dworker.change_scene', scene):

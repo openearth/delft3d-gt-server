@@ -368,7 +368,7 @@ class SceneTestCase(APITestCase):
     @patch('delft3dworker.models.Scene.redo', autospec=True)
     def test_scene_redo(self, mocked_scene_method):
         # update model view with selected entrypoint
-        query_entrypoint = {'entrypoint':'delft3dgt-main'}
+        query_entrypoint = {'entrypoints':'delft3dgt-main'}
         url = reverse('scene-redo', args=[self.scene_1.pk])
 
         # bar cannot see
@@ -381,7 +381,7 @@ class SceneTestCase(APITestCase):
         self.client.login(username='foo', password='secret')
         response = self.client.put(url, query_entrypoint, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mocked_scene_method.assert_called_with(self.scene_1)
+        mocked_scene_method.assert_called_with(self.scene_1, 'delft3dgt-main') #self.scene_1
 
     @patch('delft3dworker.models.Scene.publish_company', autospec=True)
     def test_multiple_scenes_publish_company(self, mocked_scene_method_company):
