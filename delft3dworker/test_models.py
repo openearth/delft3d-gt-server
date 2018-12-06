@@ -13,6 +13,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils.timezone import now
 
@@ -23,11 +24,11 @@ from mock import Mock
 from mock import patch
 
 from delft3dworker.models import Scenario
+from delft3dworker.models import Version_Docker
 from delft3dworker.models import Scene
 from delft3dworker.models import Workflow
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
-from delft3dworker.models import User
 from delft3dworker.utils import tz_now
 
 
@@ -200,17 +201,13 @@ class SceneTestCase(TestCase):
             owner=self.user_a,
             shared='p',
             phase=Scene.phases.fin,
-            entrypoint=Scene.entrypoints.main
         )
         self.scene_2 = Scene.objects.create(
             name='Scene 2',
             owner=self.user_a,
             shared='p',
             phase=Scene.phases.idle,
-            entrypoint=Scene.entrypoints.main
         )
-        self.wd = self.scene_1.workingdir
-        self.workflow = Workflow.objects.create(name="Test", scene=self.scene_1)
 
         assign_perm('view_scene', self.user_a, self.scene_1)
         assign_perm('add_scene', self.user_a, self.scene_1)
@@ -408,39 +405,6 @@ class SceneTestCase(TestCase):
                 # check the abort is ignored
                 self.assertEqual(self.scene_1.phase, phase[0])
 
-    def test_reset_scene(self):
-        date_started = now()
-        progress = 10
-
-        # a scene should only start when it's idle: check for each phase
-        for phase in self.scene_1.phases:
-
-            #  shift scene to phase
-            self.scene_1.date_started = date_started
-            self.scene_1.progress = progress
-            self.scene_1.shift_to_phase(phase[0])
-
-            # start scene
-            self.scene_1.reset()
-
-            # check that phase is unshifted unless Finished: then it becomes New
-            self.assertEqual(
-                self.scene_1.phase,
-                self.scene_1.phases.sim_start if (
-                    phase[0] == self.scene_1.phases.fin) else phase[0]
-            )
-
-            # check properties are untouched unless reset from finished state
-            if phase[0] == self.scene_1.phases.fin:
-                self.assertTrue((tz_now() - self.scene_1.date_started).seconds < 10)
-                self.assertEqual(self.scene_1.progress, 0)
-                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
-
-            else:
-                self.assertEqual(self.scene_1.date_started, date_started)
-                self.assertEqual(self.scene_1.progress, progress)
-                self.assertEqual(self.scene_1.phase, phase[0])
-
 
 class ScenarioZeroPhaseTestCase(TestCase):
 
@@ -536,7 +500,6 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1.update_and_phase_shift()  # put all into new
 
         self.p = self.scene_1.phases  # shorthand
-        self.w = self.scene_1.entrypoints
 
     def test_phase_new(self):
         self.scene_1.phase = self.p.new
@@ -646,7 +609,7 @@ class WorkflowTestCase(TestCase):
 
         self.template = Template.objects.create(name="template")
         self.scenario = Scenario.objects.create(name="parent", template=self.template)
-        self.scene_1 = Scene.objects.create(name="some-long-name")
+        self.scene_1 = Scene.objects.create(name="some-long-name", phase=Scene.phases.fin)
         self.scene_1.scenario = [self.scenario]
 
         yaml = """
@@ -659,13 +622,43 @@ class WorkflowTestCase(TestCase):
             - name: uuid
               value: "test-images-3"
         """
-        self.template.yaml_template.save("dummy.yaml", ContentFile(yaml))
+        self.template.yaml_template = SimpleUploadedFile("dummy.yaml", yaml)
+        self.template.save()
+
+        self.version = Version_Docker.objects.create(
+            versions={"parameters": []},
+            template=self.template
+            )
+
+        self.version2 = Version_Docker.objects.create(
+            versions={"parameters": [], "entrypoints":["delft3dgt-main", "update-processing"]},
+            changelog="I'm newer",
+            template=self.template
+            )
 
         self.workflow = Workflow.objects.create(
             scene=self.scene_1,
             desired_state='created',
             cluster_state='non-existent',
+            version=self.version,
+            entrypoint='delft3dgt-main'
         )
+
+    def test_is_outdated(self):
+        # Version 2 is newer than connected Version
+        self.assertTrue(self.workflow.is_outdated())
+
+    def test_latest_version(self):
+        # Version 2 is newer than connected Version
+        self.assertEqual(self.workflow.latest_version(), self.version2)
+
+    def test_outdated_changelog(self):
+        # Version 2 is newer than connected Version
+        self.assertEqual(self.workflow.outdated_changelog(), self.version2.changelog)
+
+    def test_outdated_entrypoints(self):
+        # Version 2 is newer than connected Version
+        self.assertEqual(self.workflow.outdated_entrypoints(), self.version2.versions["entrypoints"])
 
     @patch('logging.warn', autospec=True)
     @patch('delft3dworker.models.AsyncResult', autospec=True)
@@ -810,7 +803,7 @@ class WorkflowTestCase(TestCase):
         with open(template_model.yaml_template.path) as f:
             template = yaml.load(f)
         template["metadata"] = {"name": "{}".format(self.workflow.name)}
-        template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": self.scene_1.suid},
+        template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": str(self.scene_1.suid)},
                                                        {"name": "s3bucket", "value": settings.BUCKETNAME},
                                                        {"name": "parameters", "value": json.dumps(self.scene_1.parameters)}]
 
@@ -889,6 +882,82 @@ class WorkflowTestCase(TestCase):
         self.workflow.cluster_state = 'exited'
         self.workflow.update_log()
         self.assertEqual(mocked_task.call_count, 2)
+
+    def test_reset_scene(self):
+        date_started = now()
+        progress = 10
+        # Keep the workflow entrypoint for reset
+        self.workflow.entrypoint = 'delft3dgt-main'
+
+        # a scene should only start when it's idle: check for each phase
+        for phase in self.scene_1.phases:
+
+            #  shift scene to phase
+            self.scene_1.date_started = date_started
+            self.scene_1.progress = progress
+            self.scene_1.shift_to_phase(phase[0])
+
+            # start scene
+            self.scene_1.reset()
+
+            # check that phase is unshifted unless Finished: then it becomes New
+            self.assertEqual(
+                self.scene_1.phase,
+                self.scene_1.phases.sim_start if (
+                    phase[0] == self.scene_1.phases.fin) else phase[0]
+            )
+
+            # check properties are untouched unless reset from finished state
+            if phase[0] == self.scene_1.phases.fin:
+                self.assertTrue((tz_now() - self.scene_1.date_started).seconds < 10)
+                self.assertEqual(self.scene_1.progress, 0)
+                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
+
+            else:
+                self.assertEqual(self.scene_1.date_started, date_started)
+                self.assertEqual(self.scene_1.progress, progress)
+                self.assertEqual(self.scene_1.phase, phase[0])
+
+    def test_redo_workflow(self):
+        result = self.scene_1.redo("delft3dgt-main")
+        self.assertEqual(self.workflow.version, self.version2)
+        self.assertTrue(result)
+
+    def test_redo_scene(self):
+        entrypoint = 'update-processing'
+        # self.entrypoint = 'main'
+        date_started = now()
+        progress = 10
+
+        # a workflow can only be updated once it's Scene is finished,
+        # loop through all phases to test
+        for phase in self.scene_1.phases:
+            # Need to reset entrypoint with each phase, is not reset by function
+            self.workflow.entrypoint = 'delft3dgt-main'
+
+            #  shift scene to phase
+            self.scene_1.date_started = date_started
+            self.scene_1.progress = progress
+            self.scene_1.shift_to_phase(phase[0])
+
+            # update workflow
+            self.scene_1.redo(entrypoint)
+
+            # check that phase is unshifted unless Finished: then it becomes New
+            self.assertEqual(
+                self.scene_1.phase,
+                self.scene_1.phases.sim_start if (
+                        phase[0] == self.scene_1.phases.fin) else phase[0]
+            )
+            # check that entry point is the same and redo steps done
+            # check properties are untouched unless reset from finished state
+            if phase[0] == self.scene_1.phases.fin:
+                self.assertEqual(self.workflow.entrypoint, 'update-processing')
+                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
+
+            else:
+                self.assertEqual(self.workflow.entrypoint, 'delft3dgt-main')
+                self.assertEqual(self.scene_1.phase, phase[0])
 
 
 class SearchFormTestCase(TestCase):

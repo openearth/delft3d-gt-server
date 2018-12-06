@@ -23,6 +23,7 @@ from mock import patch
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
+from delft3dworker.models import Workflow
 from delft3dworker.views import ScenarioViewSet
 from delft3dworker.views import SceneViewSet
 from delft3dworker.views import UserViewSet
@@ -191,6 +192,16 @@ class SceneTestCase(APITestCase):
                      'change_scene', 'delete_scene']:
             assign_perm(perm, self.user_foo, self.scene_1)
 
+        self.workflow_1 = Workflow.objects.create(
+            scene=self.scene_1,
+            name="workflow 1"
+        )
+
+        self.workflow_2 = Workflow.objects.create(
+            scene=self.scene_2,
+            name="workflow 2"
+        )
+
     def test_scene_get(self):
         # detail view
         url = reverse('scene-detail', args=[self.scene_1.pk])
@@ -292,6 +303,37 @@ class SceneTestCase(APITestCase):
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    @patch('delft3dworker.models.Scene.start', autospec=True)
+    def test_scene_start(self, mocked_scene_method):
+        # start view
+        url = reverse('scene-start', args=[self.scene_1.pk])
+
+        # bar cannot see
+        self.client.login(username='bar', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(mocked_scene_method.call_count, 0)
+
+        # foo can start
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mocked_scene_method.assert_called_with(self.scene_1)
+
+    @patch('delft3dworker.models.Scene.start', autospec=True)
+    def test_scene_no_start_after_publish(self, mocked_scene_method):
+        # the scene is published
+        self.scene_1.publish_company(self.user_foo)
+
+        # start view
+        url = reverse('scene-start', args=[self.scene_1.pk])
+
+        # foo cannot start (forbidden)
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(mocked_scene_method.call_count, 0)
+
     @patch('delft3dworker.models.Scene.reset', autospec=True)
     def test_scene_reset(self, mocked_scene_method):
         # reset view
@@ -323,36 +365,46 @@ class SceneTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(mocked_scene_method.call_count, 0)
 
-    @patch('delft3dworker.models.Scene.start', autospec=True)
-    def test_scene_start(self, mocked_scene_method):
-        # start view
-        url = reverse('scene-start', args=[self.scene_1.pk])
+    @patch('delft3dworker.models.Scene.redo', autospec=True)
+    def test_scene_redo(self, mocked_scene_method):
+        # update model view with selected entrypoint
+        query_entrypoint = {'entrypoint':'delft3dgt-main'}
+        url = reverse('scene-redo', args=[self.scene_1.pk])
 
         # bar cannot see
         self.client.login(username='bar', password='secret')
-        response = self.client.put(url, {}, format='json')
+        response = self.client.put(url, query_entrypoint, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(mocked_scene_method.call_count, 0)
 
-        # foo can start
+        # foo can update model
         self.client.login(username='foo', password='secret')
-        response = self.client.put(url, {}, format='json')
+        response = self.client.put(url, query_entrypoint, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mocked_scene_method.assert_called_with(self.scene_1)
+        mocked_scene_method.assert_called_with(self.scene_1, 'delft3dgt-main')
 
-    @patch('delft3dworker.models.Scene.start', autospec=True)
-    def test_scene_no_start_after_publish(self, mocked_scene_method):
-        # the scene is published
-        self.scene_1.publish_company(self.user_foo)
+    @patch('delft3dworker.models.Scene.redo', autospec=True)
+    def test_scene_evil_redo(self, mocked_scene_method):
+        mocked_scene_method.return_value = False
 
-        # start view
-        url = reverse('scene-start', args=[self.scene_1.pk])
-
-        # foo cannot start (forbidden)
+        # update model view with selected entrypoint
+        url = reverse('scene-redo', args=[self.scene_1.pk])
         self.client.login(username='foo', password='secret')
-        response = self.client.put(url, {}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(mocked_scene_method.call_count, 0)
+
+        query_entrypoint = {'entrypoint': 'nope'}
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        query_entrypoint = {'nope': 'nope'}
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        query_entrypoint = "nope"
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertEqual(mocked_scene_method.call_count, 1)
+
 
     @patch('delft3dworker.models.Scene.publish_company', autospec=True)
     def test_multiple_scenes_publish_company(self, mocked_scene_method_company):
@@ -514,6 +566,7 @@ class SceneSearchTestCase(TestCase):
             owner=self.user_bar,
             template=self.template,
         )
+
         self.scene_1 = Scene.objects.create(
             name='Testscene 1',
             owner=self.user_bar,

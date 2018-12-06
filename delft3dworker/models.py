@@ -13,6 +13,7 @@ import string
 import uuid
 import yaml
 import zipfile
+from os.path import join
 
 from celery.result import AsyncResult
 
@@ -36,18 +37,67 @@ from guardian.shortcuts import remove_perm
 
 from django.contrib.postgres.fields import JSONField
 
-from delft3dworker.utils import log_progress_parser, version_default, get_version, tz_now, scan_output_files
+from delft3dworker.utils import log_progress_parser, tz_now, scan_output_files, merge_list_of_dict, derive_defaults_from_argo
 
 from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create
 from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
 
 
-# ################################### VERSION_SVN, SCENARIO, SCENE & CONTAINER
+# ################################### VERSION_DOCKER, SCENARIO, SCENE
 
-
+# For backwards compatibility in migrations
 def default_svn_version():
-    """Placeholder for old migrations."""
     pass
+
+
+class Version_Docker(models.Model):
+    """
+    Stores several Docker tags used in an Argo Workflow together.
+    In this way versioning of Argo workflows is possible, new releases
+    having other valid combinations of tags defined. A Version_Docker 
+    is always connected to a specific Template and possibly to a Workflow,
+    when those tags are used in running the Workflow.
+
+    To detect whether an updated combination of tags is available, one 
+    should look for a Version_Docker with a higher revision number than itself.
+
+    New Version_Dockers are either created manually from known tags, or created
+    based on each new upload of a Argo workflow to a Template.
+    """
+    release = models.CharField(
+        max_length=256, db_index=True)  # tag/release name
+    revision = models.AutoField(primary_key=True)  # general version
+    versions = JSONField(default='{}')  # docker revisions
+    changelog = models.CharField(max_length=256)  # release notes
+    reviewed = models.BooleanField(default=False)
+    template = models.ForeignKey('Template', related_name="versions", on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ["-revision"]
+        verbose_name = "Docker version"
+        verbose_name_plural = "Docker versions"
+
+    def __unicode__(self):
+        return "Release {} at revision {}".format(self.release, self.revision)
+
+
+def parse_argo_workflow(instance, filename):
+    # If new worklow is uploaded, define a version
+
+    # Load yaml and derive defaults
+    template = yaml.load(instance.yaml_template.read())
+    defaults = derive_defaults_from_argo(template)
+
+    # Create version based on defaults
+    version = Version_Docker(release='Default for {}'.format(filename),
+                             versions=defaults,
+                             changelog='default release based on template',
+                             template=instance
+                             )
+    version.save()
+
+    # Otherwise just return the filepath
+    return join("workflow_templates", filename)
 
 
 class Scenario(models.Model):
@@ -129,12 +179,6 @@ class Scenario(models.Model):
             if user.has_perm('delft3dworker.change_scene', scene):
                 scene.start()
         return "started"
-
-    def redo(self, user):
-        for scene in self.scene_set.all():
-            if user.has_perm('delft3dworker.change_scene', scene):
-                scene.redo()
-        return "redoing"
 
     def abort(self, user):
         for scene in self.scene_set.all():
@@ -262,14 +306,6 @@ class Scene(models.Model):
     shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
-    # Entrypoints for workflow, not used yet
-    entrypoints = Choices(
-        (0, 'main', 'main workflow'),
-    )
-
-    entrypoint = models.PositiveSmallIntegerField(
-        default=entrypoints.main, choices=entrypoints)
-
     phases = Choices(
         # Create workflow models
         (0, 'new', 'New'),
@@ -299,7 +335,11 @@ class Scene(models.Model):
     # UI CONTROL METHODS
 
     def reset(self):
-        return self.redo()
+        if self.phase == self.phases.fin:
+            self.shift_to_phase(self.phases.sim_start)  # shift to Queued
+            self.date_started = tz_now()
+            self.progress = 0
+            self.save()
 
     def start(self):
         # only allow a start when Scene is 'Idle'
@@ -308,14 +348,28 @@ class Scene(models.Model):
             self.date_started = tz_now()
             self.save()
 
-    def redo(self):
-        # only allow a redo when Scene is 'Finished'
-        if self.phase == self.phases.fin:
+    def redo(self, entrypoint):
+        # Does entrypoint exist?
+        if entrypoint == "" or entrypoint not in self.workflow.outdated_entrypoints():
+            logging.warning("No entrypoint was specified for updating workflow")
+            return False
+
+        # Is phase finished and version outdated?
+        elif self.phase == self.phases.fin and self.workflow.is_outdated:
+            # change entrypoint argo workflow
+            self.workflow.entrypoint = entrypoint
+            # change version tag in argo workflow
+            self.workflow.version = self.workflow.latest_version()
+            self.workflow.save()  # needed for production
             self.date_started = tz_now()
             self.shift_to_phase(self.phases.sim_start)
-            self.workflow.progress = 0
             self.progress = 0
             self.save()
+            return True
+
+        # Valid entrypoint, but not outdated or finished
+        else:
+            return False
 
     def abort(self):
         # Stop simulation
@@ -423,6 +477,7 @@ class Scene(models.Model):
                 workflow = Workflow.objects.create(
                     scene=self,
                     name="{}-{}".format(self.scenario.first().template.shortname, self.suid),
+                    version=self.scenario.first().template.versions.first()  # get latest version
                 )
                 workflow.save()
 
@@ -502,7 +557,7 @@ class Scene(models.Model):
         self.info = scan_output_files(self.workingdir, self.info)
 
         self.save()
- 
+
     # Run this after post processing
     # TODO Determine post processing step in workflow
     # Now this runs every processing loop
@@ -523,7 +578,7 @@ class Scene(models.Model):
     def __unicode__(self):
         return self.name
 
-# ################################### SEARCHFORM & TEMPLATE
+# ################################### SEARCHFORM & TEMPLATE & WORKFLOW
 
 
 class SearchForm(models.Model):
@@ -658,7 +713,7 @@ class Template(models.Model):
     sections = JSONField(blank=True, default={})
     visualisation = JSONField(blank=True, default={})
     export_options = JSONField(blank=True, default={})
-    yaml_template = models.FileField(upload_to='workflow_templates/', default="")
+    yaml_template = models.FileField(upload_to=parse_argo_workflow, default="")
 
     # The following method is disabled as it adds to much garbage
     # to the MAIN search template
@@ -681,6 +736,7 @@ class Template(models.Model):
         # On first save set a shortname
         if self.pk is None:
             self.shortname = self.name.replace(" ", "-").lower()
+
         super(Template, self).save(*args, **kwargs)
 
     class Meta:
@@ -694,6 +750,9 @@ class Workflow(models.Model):
     # name combines shortname of linked Template and the scene suid
     name = models.CharField(max_length=256, unique=True)
     scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
+    version = models.ForeignKey(Version_Docker, null=True)
+    entrypoint = models.CharField(max_length=64, null=True)  # non NULL on update
+
     starttime = models.DateTimeField(default=tz_now, blank=True)
     stoptime = models.DateTimeField(null=True, blank=True)
     yaml = models.FileField(upload_to='workflows/', default="")
@@ -725,6 +784,33 @@ class Workflow(models.Model):
     progress = models.PositiveSmallIntegerField(default=0)
     cluster_log = models.TextField(blank=True, default="")
     action_log = models.TextField(blank=True, default="")
+
+    # Version control
+    def is_outdated(self):
+        latest = self.latest_version()
+        if latest is not None and self.version is not None:
+            return latest.revision > self.version.revision
+        else:
+            return False
+
+    def latest_version(self):
+        try:
+            return self.scene.scenario.first().template.versions.first()
+        except AttributeError:
+            return None
+
+    def outdated_changelog(self):
+        if self.is_outdated():
+            return self.latest_version().changelog
+        else:
+            return ""
+
+    def outdated_entrypoints(self):
+        if self.is_outdated():
+            entrypoints = self.latest_version().versions.get("entrypoints", [])
+            return entrypoints
+        else:
+            return []
 
     # HEARTBEAT METHODS
     def update_task_result(self):
@@ -792,7 +878,6 @@ class Workflow(models.Model):
         the its desired_state, which is defined by the Scene to which this
         Workflow belongs. If (for any reason) the cluster_state is different
         from the desired_state, act: start a task to get both states matched.
-
         At the end, if still no task, request a log update.
         """
         self.fix_mismatch()
@@ -831,11 +916,20 @@ class Workflow(models.Model):
         with open(template_model.yaml_template.path) as f:
             template = yaml.load(f)
         template["metadata"] = {"name": "{}".format(self.name)}
-        template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": self.scene.suid},
-                                                       {"name": "s3bucket", "value": settings.BUCKETNAME},
-                                                       {"name": "parameters", "value": json.dumps(self.scene.parameters)}]
 
-        self.yaml.save("{}.yaml".format(self.name), ContentFile(yaml.dump(template)), save=False)
+        if self.entrypoint is not None:
+            template["spec"]["entrypoint"] = self.entrypoint
+
+        v = self.version.versions["parameters"]  # also a list
+        c = [{"name": "uuid", "value": str(self.scene.suid)},
+             {"name": "s3bucket", "value": settings.BUCKETNAME},
+             {"name": "parameters", "value": json.dumps(self.scene.parameters)}]
+        parameters = merge_list_of_dict(c, v)
+
+        template["spec"]["arguments"]["parameters"] = parameters
+        yaml_template = yaml.safe_dump(template, encoding='utf-8', allow_unicode=True)
+
+        self.yaml.save("{}.yaml".format(self.name), ContentFile(yaml_template), save=False)
 
         # Call celery create task
         result = do_argo_create.apply_async(args=(template,),

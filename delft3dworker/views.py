@@ -40,16 +40,21 @@ from rest_framework import viewsets
 from rest_framework import permissions
 from rest_framework.decorators import detail_route
 from rest_framework.decorators import list_route
+from rest_framework.decorators import parser_classes
 from rest_framework.response import Response
+from rest_framework.parsers import JSONParser
 
+from delft3dworker.models import Version_Docker
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
+from delft3dworker.models import Workflow
 from delft3dworker.models import GroupUsageSummary
 from delft3dworker.models import UserUsageSummary
 from delft3dworker.permissions import ViewObjectPermissions
 from delft3dworker.serializers import GroupSerializer
+from delft3dworker.serializers import VersionSerializer
 from delft3dworker.serializers import ScenarioSerializer
 from delft3dworker.serializers import SceneFullSerializer
 from delft3dworker.serializers import SceneSparseSerializer
@@ -407,13 +412,25 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["put"])  # denied after publish to company/world
+    @detail_route(methods=["put"])
     def redo(self, request, pk=None):
-        scene = self.get_object()
-        scene.redo()
-        serializer = self.get_serializer(scene)
+        # Update and redo the mode, based on a specific entrypoint
+        d = request.data
+        valid = False  # True if redo passes successfully
 
-        return Response(serializer.data)
+        # Check if we got a dictionary
+        # with a valid entrypoint
+        if isinstance(d, dict):
+            entrypoint = d.get("entrypoint", None)
+            if entrypoint is not None:
+                scene = self.get_object()
+                valid = scene.redo(entrypoint)
+
+        if valid:
+            serializer = self.get_serializer(scene)
+            return Response(serializer.data)
+        else:
+            return Response("No (valid) entrypoint provided.", status=status.HTTP_400_BAD_REQUEST)
 
     @detail_route(methods=["put"])  # denied after publish to company/world
     def stop(self, request, pk=None):
@@ -586,6 +603,20 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Template.objects.all()
+
+
+class VersionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows templates to be viewed or edited.
+    """
+
+    serializer_class = VersionSerializer
+    permission_classes = (permissions.IsAuthenticated,
+                          ViewObjectPermissions,)
+    # filter_backends = (filters.DjangoObjectPermissionsFilter,)
+
+    def get_queryset(self):
+        return Version_Docker.objects.all()
 
 
 class UserViewSet(viewsets.ModelViewSet):

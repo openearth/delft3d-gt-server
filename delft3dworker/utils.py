@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 import sys
 from django.conf import settings
 from django.utils import timezone
@@ -11,10 +12,12 @@ def tz_now():
     as defined in settings.py."""
     return timezone.make_aware(datetime.now(), timezone.get_default_timezone())
 
+
 def tz_midnight(date):
     """Return timezone aware datetime from given date."""
     t = time(0, 0, 0, tzinfo=timezone.get_default_timezone())
     return datetime.combine(date, t)
+
 
 def apply_default_tz(dt):
     """Return given timezone aware datetime with default timezone
@@ -26,40 +29,24 @@ def apply_default_tz(dt):
 
 
 def version_default():
-    # default value for JSONField of Container model
-    return {'REPOS_URL': settings.REPOS_URL,
-            'SVN_REV': settings.SVN_REV,
-            'PRE_REV': settings.SVN_PRE_REV,
-            'PROC_REV': settings.SVN_PROC_REV,
-            'POST_REV': settings.SVN_POST_REV,
-            'EXP_REV': settings.SVN_EXP_REV,
-            'delft3d_version': settings.DELFT3D_VERSION}
+    """For backwards compatibility with migrations."""
+    return {}
 
 
-def get_version(container_type):
-    container_types = {
-        'delft3d': {
-            "delft3d_version": settings.DELFT3D_VERSION},
+def derive_defaults_from_argo(argo_yaml):
+    versions = {}
 
-        'export': {
-            'REPOS_URL': settings.REPOS_URL,
-            'SVN_REV': settings.SVN_EXP_REV, },
+    try:
+        versions["parameters"] = argo_yaml.get("spec", {}).get("arguments", {}).get("parameters")
+        templates = argo_yaml.get("spec", {}).get("templates", [{}])
+        entrypoints = [x["name"] for x in templates if "steps" in x.keys()]
+        versions["entrypoints"] = entrypoints
 
-        'postprocess': {
-            'REPOS_URL': settings.REPOS_URL,
-            'SVN_REV': settings.SVN_POST_REV, },
+    except AttributeError:
+        logging.warning("Couldn't retrieve Argo structure in yaml.")
 
-        'preprocess': {
-            'REPOS_URL': settings.REPOS_URL,
-            'SVN_REV': settings.SVN_PRE_REV, },
+    return versions
 
-        'sync_cleanup': {},
-
-        'process': {
-            'REPOS_URL': settings.REPOS_URL,
-            'SVN_REV': settings.SVN_PROC_REV, },
-    }
-    return container_types[container_type] if container_type in container_types else {}
 
 def log_progress_parser(log, container_type):
     lines = log.splitlines()
@@ -177,7 +164,8 @@ def python_logparser(line):
             "progress": None
         }
 
-def scan_output_files(workingdir, dict):
+
+def scan_output_files(workingdir, info_dict):
     """
     Scans a working directory for files as specified in the structure of the dictionary.
     using the first key as a search key, a subkey of "location" as the subdirectory,
@@ -189,21 +177,35 @@ def scan_output_files(workingdir, dict):
     an example of structure.
     :return: dict: now with files subkey list filled for each key
     """
-    for key in dict:
+    required_keys = ["location", "extensions", "files"]
+    for key, value in info_dict.items():
         if "_images" in key:
             search_key = key.split("_images")[0]
         elif "log" in key:
-            search_key = dict[key]["filename"]
+            search_key = value.get("filename")
         else:
             search_key = key
 
-        for root, dirs, files in os.walk(
-                os.path.join(workingdir, dict[key]["location"])
-        ):
-            for f in sorted(files):
-                name, ext = os.path.splitext(f)
-                if ext in (dict[key]["extensions"]):
-                    if (search_key in name and f not in dict[key]["files"]):
-                        dict[key]["files"].append(f)
+        if search_key is not None and all([k in value for k in required_keys]):
 
-    return dict
+            for root, dirs, files in os.walk(
+                    os.path.join(workingdir, value["location"])
+            ):
+                for f in sorted(files):
+                    name, ext = os.path.splitext(f)
+                    if ext in (value["extensions"]):
+                        if (search_key in name and f not in value["files"]):
+                            info_dict[key]["files"].append(f)
+
+    return info_dict
+
+
+def merge_list_of_dict(a, b, key="name"):
+    """A takes precedence on key collision."""
+    keys = [x[key] for x in a]
+    for d in b:
+        if d[key] in keys:
+            continue
+        else:
+            a.append(d)
+    return a

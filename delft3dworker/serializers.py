@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework.renderers import JSONRenderer
 
+from delft3dworker.models import Version_Docker
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import SearchForm
@@ -8,6 +9,19 @@ from delft3dworker.models import Template
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+
+
+class VersionSerializer(serializers.ModelSerializer):
+    """
+    A default REST Framework ModelSerializer for the Version_Docker model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    # here we will write custom serialization and validation methods
+
+    class Meta:
+        model = Version_Docker
+        fields = '__all__'
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -56,6 +70,10 @@ class SceneFullSerializer(serializers.ModelSerializer):
 
     owner = UserSerializer(read_only=True)
     state = serializers.CharField(source='get_phase_display', read_only=True)
+    template = serializers.SerializerMethodField()
+    outdated = serializers.BooleanField(source='workflow.is_outdated', read_only=True)
+    entrypoints = serializers.SerializerMethodField(read_only=True)
+    outdated_changelog = serializers.CharField(source='workflow.outdated_changelog', read_only=True)
 
     class Meta:
         model = Scene
@@ -76,7 +94,25 @@ class SceneFullSerializer(serializers.ModelSerializer):
             'suid',
             'task_id',
             'workingdir',
+            'template',
+            'outdated',
+            'entrypoints',
+            'outdated_changelog'
         )
+
+    def get_entrypoints(self, obj):
+        if hasattr(obj, 'workflow'):
+            return obj.workflow.outdated_entrypoints()
+        else:
+            return None
+
+    def get_template(self, obj):
+        scenario = obj.scenario.first()
+        # Only retrieve template in case of a connected scenario
+        if scenario is not None and scenario.template is not None:
+            return scenario.template.name
+        else:
+            return None
 
 
 class SceneSparseSerializer(serializers.ModelSerializer):

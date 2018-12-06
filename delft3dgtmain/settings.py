@@ -146,6 +146,9 @@ USE_TZ = True
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 
+# Max form size for large scenarios with logs
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB
+
 # ######
 # Celery
 # ######
