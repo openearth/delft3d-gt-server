@@ -414,7 +414,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     def redo(self, request, pk=None):
         #
         scene = self.get_object()
-        scene.redo(request.query_params.get('entrypoints'))
+        scene.redo(request.data['entrypoints'])
         serializer = self.get_serializer(scene)
 
         return Response(serializer.data)
