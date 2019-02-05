@@ -47,6 +47,21 @@ class ApiAccessTestCase(TestCase):
             username='foo', password="secret")
         self.user_bar = User.objects.create_user(
             username='bar', password="secret")
+        self.user_other = User.objects.create_user(
+            username='other', password="secret")
+
+        # Everyone is in group world
+        groups_world = Group.objects.create(name="access:world")
+        groups_world.user_set.add(self.user_foo)
+        groups_world.user_set.add(self.user_other)
+        groups_world.user_set.add(self.user_bar)
+
+        groups_foo = Group.objects.create(name="org:Foo_Company")
+        groups_foo.user_set.add(self.user_foo)
+        groups_foo.user_set.add(self.user_other)
+
+        groups_bar = Group.objects.create(name="org:Bar_Company")
+        groups_bar.user_set.add(self.user_bar)
 
         # create models in dB
         self.template = Template.objects.create(
@@ -107,6 +122,7 @@ class ApiAccessTestCase(TestCase):
         # Refetch to empty permissions cache
         self.user_foo = User.objects.get(pk=self.user_foo.pk)
         self.user_bar = User.objects.get(pk=self.user_bar.pk)
+        self.user_other = User.objects.get(pk=self.user_other.pk)
 
     @patch('delft3dworker.models.Scenario.start', autospec=True,)
     def test_scenario_post(self, mockedStartMethod):
@@ -124,7 +140,6 @@ class ApiAccessTestCase(TestCase):
 
     def test_search(self):
         # User Foo can access own models
-
         self.assertEqual(
             len(self._request(ScenarioViewSet, self.user_foo)), 1)
 
@@ -136,6 +151,16 @@ class ApiAccessTestCase(TestCase):
             len(self._request(ScenarioViewSet, self.user_bar)), 0)
         self.assertEqual(
             len(self._request(SceneViewSet, self.user_bar)), 0)
+
+        # User Foo and Other can see eachother, same company, in user list
+        self.assertEqual(
+            len(self._request(UserViewSet, self.user_foo)), 2)
+        self.assertEqual(
+            len(self._request(UserViewSet, self.user_other)), 2)
+
+        # User Bar can only see themselves
+        self.assertEqual(
+            len(self._request(UserViewSet, self.user_bar)), 1)
 
     def _request(self, viewset, user):
         # create view and request

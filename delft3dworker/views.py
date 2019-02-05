@@ -120,7 +120,6 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Scenario.objects.all()
-
         return queryset.order_by('name')
 
     def perform_create(self, serializer):
@@ -625,9 +624,13 @@ class UserViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = UserSerializer
-
     queryset = User.objects.all()
-    # filter_backends = (filters.DjangoObjectPermissionsFilter,)
+
+    def get_queryset(self):
+        user = get_object_or_404(User, id=self.request.user.id)
+        wanted = [group.name for group in user.groups.exclude(name='access:world')]
+        queryset = User.objects.filter(groups__name__in=wanted)
+        return queryset
 
     @list_route()
     def me(self, request):
@@ -637,21 +640,6 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(me, many=True)
 
         return Response(serializer.data)
-
-
-class GroupViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-
-    serializer_class = GroupSerializer
-    # filter_backends = (filters.DjangoObjectPermissionsFilter,)
-    queryset = Group.objects.none()  # Required for DjangoModelPermissions
-
-    def get_queryset(self):
-        user = get_object_or_404(User, id=self.request.user.id)
-        wanted = [group.id for group in user.groups.all()]
-        return Group.objects.filter(pk__in=wanted)
 
 
 class GroupViewSet(viewsets.ModelViewSet):
