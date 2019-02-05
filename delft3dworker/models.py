@@ -555,7 +555,6 @@ class Scene(models.Model):
     def _local_scan_process(self):
         # scan for files in workingdir based on structure in template info dictionary
         self.info = scan_output_files(self.workingdir, self.info)
-
         self.save()
 
     # Run this after post processing
@@ -941,11 +940,6 @@ class Workflow(models.Model):
         self.save()
 
     def remove_workflow(self):
-        # Catch removing unfinished workflow
-        if self.cluster_state not in Workflow.FINISHED:
-            logging.warning("Can't remove unfinished workflow")
-            return
-
         result = do_argo_remove.apply_async(
             args=(self.name,),
             expires=settings.TASK_EXPIRE_TIME
