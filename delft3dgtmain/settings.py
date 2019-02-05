@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import sys
 
@@ -210,7 +212,7 @@ REST_FRAMEWORK = {
 
 # import provisioned settings
 try:
-    from provisionedsettings import *
+    from .provisionedsettings import *
 except ImportError:
     print("Failed to import provisioned settings!")
     SECRET_KEY = 'test'
@@ -218,7 +220,7 @@ except ImportError:
 # TESTING
 if 'test' in sys.argv:
 
-    from celery import Celery
+    from .celery import Celery
     import logging
     logging.disable(logging.CRITICAL)
 

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from django.conf.urls import include, url, handler404, handler500  # noqa
 from django.contrib.auth.decorators import login_required
 from django.views.static import serve

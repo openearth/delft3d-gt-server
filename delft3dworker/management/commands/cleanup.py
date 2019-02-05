@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings  # noqa
 
@@ -22,7 +23,7 @@ class Command(BaseCommand):
                     scenedir = scenedir[:-1]
                 linked.add(scenedir)
 
-            r, d, f = walk(settings.WORKER_FILEDIR).next()
+            r, d, f = next(walk(settings.WORKER_FILEDIR))
             existing = set([join(r, directory) for directory in d])
 
             linked = linked | ignore

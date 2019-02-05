@@ -7,6 +7,7 @@ For more information on this file, see
 https://docs.djangoproject.com/en/1.9/howto/deployment/wsgi/
 """
 
+from __future__ import absolute_import
 import os
 
 os.environ["DJANGO_SETTINGS_MODULE"] = "delft3dgtmain.settings"
