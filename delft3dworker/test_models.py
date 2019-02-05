@@ -622,7 +622,7 @@ class WorkflowTestCase(TestCase):
             - name: uuid
               value: "test-images-3"
         """
-        self.template.yaml_template = SimpleUploadedFile("dummy.yaml", yaml)
+        self.template.yaml_template = SimpleUploadedFile("dummy.yaml", bytes(yaml, 'UTF-8'))
         self.template.save()
 
         self.version = Version_Docker.objects.create(

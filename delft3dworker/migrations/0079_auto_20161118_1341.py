@@ -15,16 +15,16 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='container',
             name='delft3d_version',
-            field=models.CharField(default=b'Deltares, FLOW2D3D Version 6.02.07.6118', max_length=128),
+            field=models.CharField(default='Deltares, FLOW2D3D Version 6.02.07.6118', max_length=128),
         ),
         migrations.AddField(
             model_name='container',
             name='svn_repos_url',
-            field=models.URLField(default=b'http://delft3dgt.openearth.eu/repos/tags/v0.7.2'),
+            field=models.URLField(default='http://delft3dgt.openearth.eu/repos/tags/v0.7.2'),
         ),
         migrations.AddField(
             model_name='container',
             name='svn_revision',
-            field=models.CharField(default=b'356', max_length=16),
+            field=models.CharField(default='356', max_length=16),
         ),
     ]

@@ -17,9 +17,9 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('docker_id', models.CharField(unique=True, max_length=64, blank=True)),
-                ('container_type', models.CharField(blank=True, max_length=16, choices=[(b'preprocess', b'preprocess'), (b'delft3d', b'delft3d'), (b'process', b'process'), (b'postprocess', b'postprocess'), (b'export', b'export')])),
-                ('desired_state', models.CharField(blank=True, max_length=16, choices=[(b'non-existent', b'non-existent'), (b'created', b'created'), (b'running', b'running'), (b'exited', b'exited')])),
-                ('docker_state', models.CharField(blank=True, max_length=16, choices=[(b'non-existent', b'non-existent'), (b'created', b'created'), (b'running', b'running'), (b'exited', b'exited')])),
+                ('container_type', models.CharField(blank=True, max_length=16, choices=[('preprocess', 'preprocess'), ('delft3d', 'delft3d'), ('process', 'process'), ('postprocess', 'postprocess'), ('export', 'export')])),
+                ('desired_state', models.CharField(blank=True, max_length=16, choices=[('non-existent', 'non-existent'), ('created', 'created'), ('running', 'running'), ('exited', 'exited')])),
+                ('docker_state', models.CharField(blank=True, max_length=16, choices=[('non-existent', 'non-existent'), ('created', 'created'), ('running', 'running'), ('exited', 'exited')])),
             ],
         ),
     ]

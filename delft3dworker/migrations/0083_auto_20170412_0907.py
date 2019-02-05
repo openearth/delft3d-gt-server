@@ -15,16 +15,16 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='scene',
             name='workflow',
-            field=models.PositiveSmallIntegerField(default=0, choices=[(0, b'main workflow'), (1, b'redo processing workflow'), (2, b'redo postprocessing workflow')]),
+            field=models.PositiveSmallIntegerField(default=0, choices=[(0, 'main workflow'), (1, 'redo processing workflow'), (2, 'redo postprocessing workflow')]),
         ),
         migrations.AlterField(
             model_name='container',
             name='container_type',
-            field=models.CharField(default=b'preprocess', max_length=16, choices=[(b'preprocess', b'preprocess'), (b'delft3d', b'delft3d'), (b'process', b'process'), (b'postprocess', b'postprocess'), (b'export', b'export'), (b'sync_cleanup', b'sync_cleanup'), (b'sync_rerun', b'sync_rerun')]),
+            field=models.CharField(default='preprocess', max_length=16, choices=[('preprocess', 'preprocess'), ('delft3d', 'delft3d'), ('process', 'process'), ('postprocess', 'postprocess'), ('export', 'export'), ('sync_cleanup', 'sync_cleanup'), ('sync_rerun', 'sync_rerun')]),
         ),
         migrations.AlterField(
             model_name='scene',
             name='phase',
-            field=models.PositiveSmallIntegerField(default=0, choices=[(0, b'New'), (2, b'Allocating preprocessing resources'), (3, b'Starting preprocessing'), (4, b'Running preprocessing'), (5, b'Finished preprocessing'), (6, b'Idle: waiting for user input'), (10, b'Allocating simulation resources'), (11, b'Starting simulation'), (12, b'Running simulation'), (15, b'Finishing simulation'), (13, b'Finished simulation'), (14, b'Stopping simulation'), (60, b'Allocating processing resources'), (61, b'Starting processing'), (62, b'Running processing'), (63, b'Finished processing'), (20, b'Allocating postprocessing resources'), (21, b'Starting postprocessing'), (22, b'Running postprocessing'), (23, b'Finished postprocessing'), (30, b'Allocating export resources'), (31, b'Starting export'), (32, b'Running export'), (33, b'Finished export'), (17, b'Starting container remove'), (18, b'Removing containers'), (19, b'Containers removed'), (40, b'Allocating synchronization resources'), (41, b'Started synchronization'), (42, b'Running synchronization'), (43, b'Finished synchronization'), (50, b'Allocating synchronization resources'), (51, b'Started synchronization'), (52, b'Running synchronization'), (53, b'Finished synchronization'), (500, b'Finished'), (1000, b'Starting Abort'), (1001, b'Aborting'), (1002, b'Finished Abort'), (1003, b'Queued')]),
+            field=models.PositiveSmallIntegerField(default=0, choices=[(0, 'New'), (2, 'Allocating preprocessing resources'), (3, 'Starting preprocessing'), (4, 'Running preprocessing'), (5, 'Finished preprocessing'), (6, 'Idle: waiting for user input'), (10, 'Allocating simulation resources'), (11, 'Starting simulation'), (12, 'Running simulation'), (15, 'Finishing simulation'), (13, 'Finished simulation'), (14, 'Stopping simulation'), (60, 'Allocating processing resources'), (61, 'Starting processing'), (62, 'Running processing'), (63, 'Finished processing'), (20, 'Allocating postprocessing resources'), (21, 'Starting postprocessing'), (22, 'Running postprocessing'), (23, 'Finished postprocessing'), (30, 'Allocating export resources'), (31, 'Starting export'), (32, 'Running export'), (33, 'Finished export'), (17, 'Starting container remove'), (18, 'Removing containers'), (19, 'Containers removed'), (40, 'Allocating synchronization resources'), (41, 'Started synchronization'), (42, 'Running synchronization'), (43, 'Finished synchronization'), (50, 'Allocating synchronization resources'), (51, 'Started synchronization'), (52, 'Running synchronization'), (53, 'Finished synchronization'), (500, 'Finished'), (1000, 'Starting Abort'), (1001, 'Aborting'), (1002, 'Finished Abort'), (1003, 'Queued')]),
         ),
     ]

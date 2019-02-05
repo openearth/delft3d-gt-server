@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='scene',
             name='workflow',
-            field=models.PositiveSmallIntegerField(default=0, choices=[(0, b'main workflow'), (1, b'redo processing workflow'), (2, b'redo postprocessing workflow'), (3, b'redo processing and postprocessing workflow')]),
+            field=models.PositiveSmallIntegerField(default=0, choices=[(0, 'main workflow'), (1, 'redo processing workflow'), (2, 'redo postprocessing workflow'), (3, 'redo processing and postprocessing workflow')]),
         ),
         migrations.AddField(
             model_name='scene',

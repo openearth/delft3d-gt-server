@@ -8,7 +8,8 @@ from fakeredis import FakeStrictRedis
 
 from mock import patch, PropertyMock
 
-from StringIO import StringIO
+# from StringIO import StringIO
+from io import StringIO
 
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene

@@ -15,11 +15,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='scenario',
             name='state',
-            field=models.CharField(default=b'CREATED', max_length=64),
+            field=models.CharField(default='CREATED', max_length=64),
         ),
         migrations.AlterField(
             model_name='scene',
             name='state',
-            field=models.CharField(default=b'CREATED', max_length=256),
+            field=models.CharField(default='CREATED', max_length=256),
         ),
     ]
