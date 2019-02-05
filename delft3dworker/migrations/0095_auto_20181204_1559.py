@@ -17,6 +17,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='template',
             name='yaml_template',
-            field=models.FileField(default=b'', upload_to=delft3dworker.models.parse_argo_workflow),
+            field=models.FileField(default='', upload_to=delft3dworker.models.parse_argo_workflow),
         ),
     ]

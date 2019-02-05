@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='template',
             name='info',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={b'channel_network_images': {b'images': [], b'location': b'process/'}, b'delta_fringe_images': {b'images': [], b'location': b'process/'}, b'logfile': {b'file': b'', b'location': b'simulation/'}, b'postprocess_output': {}, b'procruns': 0, b'sediment_fraction_images': {b'images': [], b'location': b'process/'}, b'subenvironment_images': {b'images': [], b'location': b'postprocess/'}}),
+            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={b'channel_network_images': {b'images': [], b'location': b'process/'}, b'delta_fringe_images': {b'images': [], b'location': b'process/'}, b'logfile': {b'file': '', b'location': b'simulation/'}, b'postprocess_output': {}, b'procruns': 0, b'sediment_fraction_images': {b'images': [], b'location': b'process/'}, b'subenvironment_images': {b'images': [], b'location': b'postprocess/'}}),
         ),
         migrations.AddField(
             model_name='template',
@@ -56,7 +56,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='template',
             name='yaml_template',
-            field=models.FileField(default=b'', upload_to=b'workflows/'),
+            field=models.FileField(default='', upload_to=b'workflows/'),
         ),
         migrations.AlterField(
             model_name='scene',

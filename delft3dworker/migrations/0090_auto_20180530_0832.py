@@ -16,17 +16,17 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='workflow',
             name='action_log',
-            field=models.TextField(blank=True, default=b''),
+            field=models.TextField(blank=True, default=''),
         ),
         migrations.AddField(
             model_name='workflow',
             name='cluster_log',
-            field=models.TextField(blank=True, default=b''),
+            field=models.TextField(blank=True, default=''),
         ),
         migrations.AddField(
             model_name='workflow',
             name='yaml',
-            field=models.FileField(default=b'', upload_to=b'workflows/'),
+            field=models.FileField(default='', upload_to=b'workflows/'),
         ),
         migrations.AlterField(
             model_name='scene',
@@ -41,6 +41,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='template',
             name='yaml_template',
-            field=models.FileField(default=b'', upload_to=b'workflow_templates/'),
+            field=models.FileField(default='', upload_to=b'workflow_templates/'),
         ),
     ]
