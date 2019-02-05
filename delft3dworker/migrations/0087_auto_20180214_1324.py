@@ -102,7 +102,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='version_svn',
             name='versions',
-            field=django.contrib.postgres.fields.jsonb.JSONField(default=b'{}'),
+            field=django.contrib.postgres.fields.jsonb.JSONField(default={}),
         ),
         migrations.RunSQL('ALTER TABLE delft3dworker_version_svn ALTER COLUMN "versions" TYPE jsonb USING "versions"::text::jsonb;',
             reverse_sql='ALTER TABLE delft3dworker_version_svn ALTER COLUMN "versions" TYPE text USING "versions"::text;'

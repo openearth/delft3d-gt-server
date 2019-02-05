@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('release', models.CharField(max_length=256, db_index=True)),
                 ('revision', models.PositiveSmallIntegerField(db_index=True)),
-                ('versions', jsonfield.fields.JSONField(default=b'{}')),
+                ('versions', jsonfield.fields.JSONField(default={})),
                 ('url', models.URLField()),
                 ('changelog', models.CharField(max_length=256)),
                 ('reviewed', models.BooleanField(default=False)),

@@ -28,6 +28,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='container',
             name='version',
-            field=jsonfield.fields.JSONField(default=b'{}'),
+            field=jsonfield.fields.JSONField(default={}),
         ),
     ]

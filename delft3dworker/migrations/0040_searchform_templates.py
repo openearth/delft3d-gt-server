@@ -16,6 +16,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='searchform',
             name='templates',
-            field=jsonfield.fields.JSONField(default=b'[]'),
+            field=jsonfield.fields.JSONField(default=[]),
         ),
     ]

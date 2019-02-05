@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('release', models.CharField(db_index=True, max_length=256)),
                 ('revision', models.PositiveSmallIntegerField(db_index=True)),
-                ('versions', django.contrib.postgres.fields.jsonb.JSONField(default=b'{}')),
+                ('versions', django.contrib.postgres.fields.jsonb.JSONField(default={})),
                 ('changelog', models.CharField(max_length=256)),
                 ('reviewed', models.BooleanField(default=False)),
             ],
