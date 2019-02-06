@@ -54,11 +54,11 @@ class Version_Docker(models.Model):
     """
     Stores several Docker tags used in an Argo Workflow together.
     In this way versioning of Argo workflows is possible, new releases
-    having other valid combinations of tags defined. A Version_Docker 
+    having other valid combinations of tags defined. A Version_Docker
     is always connected to a specific Template and possibly to a Workflow,
     when those tags are used in running the Workflow.
 
-    To detect whether an updated combination of tags is available, one 
+    To detect whether an updated combination of tags is available, one
     should look for a Version_Docker with a higher revision number than itself.
 
     New Version_Dockers are either created manually from known tags, or created

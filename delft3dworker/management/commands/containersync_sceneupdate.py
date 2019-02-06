@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from celery.result import AsyncResult
 import logging
 from django.core.management import BaseCommand

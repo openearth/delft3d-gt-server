@@ -14,8 +14,6 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: don't run with debug turned on in production!
-from __future__ import absolute_import
-from __future__ import print_function
 import sys
 from os import environ
 from kubernetes import config

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
 from celery.result import AsyncResult
 import logging
 from django.core.management import BaseCommand
@@ -30,7 +28,7 @@ class Command(BaseCommand):
         # Sets task_uuid to None except for when a task is queued
         self._update_workflow_tasks()
 
-        # STEP II : Get current workflows on cluster and sync with 
+        # STEP II : Get current workflows on cluster and sync with
         # Djang workflows models
         if self._get_latest_workflows_status():
 
@@ -103,7 +101,7 @@ class Command(BaseCommand):
         # Call error for mismatch
         workflow_mismatch = m_0_1 | m_0_0
         for wf in workflow_mismatch:
-            print(("Mismatch {}".format(wf)))
+            print("Mismatch {}".format(wf))
             msg = "Workflow {} not found in database!".format(wf)
             self.stderr.write(msg)
             # do_argo_remove.delay(wf)  # comment out for dev
