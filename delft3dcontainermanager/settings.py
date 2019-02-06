@@ -18,7 +18,7 @@ import sys
 from os import environ
 from kubernetes import config
 
-DEBUG = True
+DEBUG = False
 SECRET_KEY = 'notneeded'
 
 # Application definition
