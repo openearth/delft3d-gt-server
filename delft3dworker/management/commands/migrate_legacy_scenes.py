@@ -33,7 +33,7 @@ class Command(BaseCommand):
                 logging.warning("Scene {} has no scenario!".format(scene.id))
                 continue
 
-            logging.info("Migrating {} to idle.".format(scene.id))
+            logging.info("Add workflow to scene {}.".format(scene.id))
             workflow = Workflow.objects.create(
                 scene=scene,
                 name="{}-{}".format(scene.scenario.first().template.shortname, scene.suid),
