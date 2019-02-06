@@ -6,7 +6,7 @@ from django.test import TestCase
 
 from fakeredis import FakeStrictRedis
 
-from mock import patch, PropertyMock
+from mock import patch, PropertyMock, call
 
 # from StringIO import StringIO
 from io import StringIO
@@ -88,10 +88,13 @@ class ManagementTest(TestCase):
 
         # workflow in database
         self.assertEqual(mockWorkflowupdate.call_count, 2)
-        mockWorkflowupdate.assert_called_with(
-            {'metadata': {'name': 'abcdefg', 'labels': {u'workflows.argoproj.io/phase': 'Running'}}}
+        mockWorkflowupdate.assert_has_calls(
+            [
+                call({'metadata': {'name': 'abcdefg', 'labels': {u'workflows.argoproj.io/phase': 'Running'}}}),
+                call(None)
+            ],
+            any_order=True
         )
-
 
     def tearDown(self):
         self.redis.flushall()
