@@ -179,6 +179,8 @@ def scan_output_files(workingdir, info_dict):
     """
     required_keys = ["location", "extensions", "files"]
     for key, value in info_dict.items():
+        if not isinstance(value, dict):
+            continue
         if "_images" in key:
             search_key = key.split("_images")[0]
         elif "log" in key:

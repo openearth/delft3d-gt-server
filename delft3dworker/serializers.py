@@ -140,8 +140,12 @@ class SceneSparseSerializer(serializers.ModelSerializer):
         )
 
     def get_template_name(self, obj):
-        return obj.scenario.first().template.name
-
+        scenario = obj.scenario.first()
+        # Only retrieve template in case of a connected scenario
+        if scenario is not None and scenario.template is not None:
+            return scenario.template.name
+        else:
+            return None
 
 class ScenarioSerializer(serializers.ModelSerializer):
     """
