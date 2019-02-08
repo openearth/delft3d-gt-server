@@ -1,26 +1,26 @@
 # contains celery, celery_once, django, docker-py and redis
 -r worker_requirements.txt
 
-amqp==2.2
+amqp==2.4
 anyjson==0.3.*
 billiard==3.5
-configparser==3.5.*
-django-constance[database]==2.0.*
-django-filter==1.1.*
+configparser==3.7.*
+django-constance[database]==2.3.*
+django-filter==2.1.*
 django-admin-rangefilter==0.3.*
 django-crispy-forms==1.7.*
-django-jsonfield==1.0
-django-guardian==1.4.*
+django-jsonfield==1.0.*
+django-guardian==1.5.*
 django-model-utils==3.1
-djangorestframework==3.7
+djangorestframework==3.9.*
 flower==0.9
-kombu==4.2
+kombu==4.3.*
 Mako==1.0
 markdown==2.6
-MarkupSafe==1.0
+MarkupSafe==1.1
 psycopg2==2.7.*
-pytz==2017.*
+pytz==2018.*
 requests
-six==1.11.*
+six==1.12.*
 svn==0.3.*
-websocket-client==0.46.*
+websocket-client==0.54.*
