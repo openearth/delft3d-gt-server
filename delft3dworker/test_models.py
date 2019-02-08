@@ -630,12 +630,14 @@ class WorkflowTestCase(TestCase):
             versions={"parameters": []},
             template=self.template
             )
+        self.version.save()
 
         self.version2 = Version_Docker.objects.create(
             versions={"parameters": [], "entrypoints":["delft3dgt-main", "update-processing"]},
             changelog="I'm newer",
             template=self.template
             )
+        self.version2.save()
 
         self.workflow = Workflow.objects.create(
             scene=self.scene_1,
@@ -659,6 +661,9 @@ class WorkflowTestCase(TestCase):
 
     def test_outdated_entrypoints(self):
         # Version 2 is newer than connected Version
+        print('version 2 entrypoints:', self.version2.versions["entrypoints"])
+        print('outdated entrypoints:', self.workflow.outdated_entrypoints())
+
         self.assertEqual(self.workflow.outdated_entrypoints(), self.version2.versions["entrypoints"])
 
     @patch('logging.warn', autospec=True)
