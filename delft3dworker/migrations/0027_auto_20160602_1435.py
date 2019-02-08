@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='scenario',
             name='template',
-            field=models.ForeignKey(blank=True, to='delft3dworker.Template', null=True),
+            field=models.ForeignKey(blank=True, to='delft3dworker.Template', null=True, on_delete=models.CASCADE),
         ),
     ]

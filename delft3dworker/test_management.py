@@ -36,7 +36,7 @@ class ManagementTest(TestCase):
             id='0',
             phase=Scene.phases.new
         )
-        self.scene.scenario = [self.scenario]
+        self.scene.scenario.set([self.scenario])
         self.workflow_1_1 = Workflow.objects.create(
             scene=self.scene,
             name='abcdefg'
@@ -47,7 +47,7 @@ class ManagementTest(TestCase):
             id='1',
             phase=Scene.phases.fin
         )
-        self.scene_new.scenario = [self.scenario]
+        self.scene_new.scenario.set([self.scenario])
         self.workflow_1_1_new = Workflow.objects.create(
             scene=self.scene_new,
             name='bar',

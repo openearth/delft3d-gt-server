@@ -749,7 +749,7 @@ class Workflow(models.Model):
     # name combines shortname of linked Template and the scene suid
     name = models.CharField(max_length=256, unique=True)
     scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
-    version = models.ForeignKey(Version_Docker, null=True)
+    version = models.ForeignKey(Version_Docker, null=True, on_delete=models.CASCADE)
     entrypoint = models.CharField(max_length=64, null=True)  # non NULL on update
 
     starttime = models.DateTimeField(default=tz_now, blank=True)
