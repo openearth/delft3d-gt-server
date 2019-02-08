@@ -922,6 +922,7 @@ class Workflow(models.Model):
         v = self.version.versions["parameters"]  # also a list
         c = [{"name": "uuid", "value": str(self.scene.suid)},
              {"name": "s3bucket", "value": settings.BUCKETNAME},
+             {"name": "version", "value": str(self.version.revision)},
              {"name": "parameters", "value": json.dumps(self.scene.parameters)}]
         parameters = merge_list_of_dict(c, v)
 

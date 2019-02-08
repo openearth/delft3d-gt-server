@@ -805,6 +805,7 @@ class WorkflowTestCase(TestCase):
         template["metadata"] = {"name": "{}".format(self.workflow.name)}
         template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": str(self.scene_1.suid)},
                                                        {"name": "s3bucket", "value": settings.BUCKETNAME},
+                                                       {"name": "version", "value": str(self.version.revision)},
                                                        {"name": "parameters", "value": json.dumps(self.scene_1.parameters)}]
 
         # create workflow
