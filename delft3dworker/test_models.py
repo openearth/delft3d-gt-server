@@ -610,6 +610,7 @@ class WorkflowTestCase(TestCase):
         self.template = Template.objects.create(name="template")
         self.scenario = Scenario.objects.create(name="parent", template=self.template)
         self.scene_1 = Scene.objects.create(name="some-long-name", phase=Scene.phases.fin)
+        self.scene_1.save()
         self.scene_1.scenario.set([self.scenario])
 
         yaml = """

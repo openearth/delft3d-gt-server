@@ -603,6 +603,7 @@ class SceneSearchTestCase(TestCase):
             state='SUCCESS',
             shared='p',
         )
+        self.scene_1.save()
         self.scene_1.scenario.add(self.scenario)
         self.scene_1.info = {
             'postprocess_output': {
@@ -622,6 +623,7 @@ class SceneSearchTestCase(TestCase):
             state='SUCCESS',
             shared='p',
         )
+        self.scene_2.save()
         self.scene_2.scenario.add(self.scenario)
         self.scene_2.info = {
             'postprocess_output': {
