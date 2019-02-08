@@ -20,11 +20,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='container',
             name='desired_state',
-            field=models.CharField(default=b'non-existent', max_length=16, choices=[(b'non-existent', b'non-existent'), (b'created', b'created'), (b'restarting', b'restarting'), (b'running', b'running'), (b'paused', b'paused'), (b'exited', b'exited'), (b'dead', b'dead'), (b'unknown', b'unknown')]),
+            field=models.CharField(default='non-existent', max_length=16, choices=[('non-existent', 'non-existent'), ('created', 'created'), ('restarting', 'restarting'), ('running', 'running'), ('paused', 'paused'), ('exited', 'exited'), ('dead', 'dead'), ('unknown', 'unknown')]),
         ),
         migrations.AlterField(
             model_name='container',
             name='docker_state',
-            field=models.CharField(default=b'non-existent', max_length=16, choices=[(b'non-existent', b'non-existent'), (b'created', b'created'), (b'restarting', b'restarting'), (b'running', b'running'), (b'paused', b'paused'), (b'exited', b'exited'), (b'dead', b'dead'), (b'unknown', b'unknown')]),
+            field=models.CharField(default='non-existent', max_length=16, choices=[('non-existent', 'non-existent'), ('created', 'created'), ('restarting', 'restarting'), ('running', 'running'), ('paused', 'paused'), ('exited', 'exited'), ('dead', 'dead'), ('unknown', 'unknown')]),
         ),
     ]

@@ -210,7 +210,7 @@ REST_FRAMEWORK = {
 
 # import provisioned settings
 try:
-    from provisionedsettings import *
+    from .provisionedsettings import *
 except ImportError:
     print("Failed to import provisioned settings!")
     SECRET_KEY = 'test'
@@ -218,7 +218,7 @@ except ImportError:
 # TESTING
 if 'test' in sys.argv:
 
-    from celery import Celery
+    from .celery import Celery
     import logging
     logging.disable(logging.CRITICAL)
 

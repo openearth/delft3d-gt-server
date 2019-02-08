@@ -13,14 +13,14 @@ from rangefilter.filter import DateRangeFilter, DateTimeRangeFilter
 
 from guardian.admin import GuardedModelAdmin
 
-from models import Scenario
-from models import Scene
-from models import Workflow
-from models import Version_Docker
-from models import SearchForm
-from models import Template
-from models import GroupUsageSummary
-from models import UserUsageSummary
+from .models import Scenario
+from .models import Scene
+from .models import Workflow
+from .models import Version_Docker
+from .models import SearchForm
+from .models import Template
+from .models import GroupUsageSummary
+from .models import UserUsageSummary
 
 
 class WorkflowInline(admin.StackedInline):

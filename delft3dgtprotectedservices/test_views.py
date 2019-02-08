@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from django.contrib.auth.models import User, Permission
 from django.test.client import Client
 from django.test import TestCase

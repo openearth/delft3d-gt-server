@@ -23,8 +23,8 @@ class Migration(migrations.Migration):
                 ('starttime', models.DateTimeField(blank=True, default=delft3dworker.utils.tz_now)),
                 ('task_uuid', models.UUIDField(blank=True, default=None, null=True)),
                 ('task_starttime', models.DateTimeField(blank=True, default=delft3dworker.utils.tz_now)),
-                ('desired_state', models.CharField(choices=[(b'non-existent', b'Non-existent'), (b'pending', b'Pending'), (b'unknown', b'Unknown'), (b'running', b'Running'), (b'paused', b'Running (Suspended)'), (b'succeeded', b'Succeeded'), (b'skipped', b'Skipped'), (b'failed', b'Failed'), (b'error', b'Error')], default=b'non-existent', max_length=16)),
-                ('cluster_state', models.CharField(choices=[(b'non-existent', b'Non-existent'), (b'pending', b'Pending'), (b'unknown', b'Unknown'), (b'running', b'Running'), (b'paused', b'Running (Suspended)'), (b'succeeded', b'Succeeded'), (b'skipped', b'Skipped'), (b'failed', b'Failed'), (b'error', b'Error')], default=b'non-existent', max_length=16)),
+                ('desired_state', models.CharField(choices=[('non-existent', 'Non-existent'), ('pending', 'Pending'), ('unknown', 'Unknown'), ('running', 'Running'), ('paused', 'Running (Suspended)'), ('succeeded', 'Succeeded'), ('skipped', 'Skipped'), ('failed', 'Failed'), ('error', 'Error')], default='non-existent', max_length=16)),
+                ('cluster_state', models.CharField(choices=[('non-existent', 'Non-existent'), ('pending', 'Pending'), ('unknown', 'Unknown'), ('running', 'Running'), ('paused', 'Running (Suspended)'), ('succeeded', 'Succeeded'), ('skipped', 'Skipped'), ('failed', 'Failed'), ('error', 'Error')], default='non-existent', max_length=16)),
                 ('progress', models.PositiveSmallIntegerField(default=0)),
             ],
         ),
@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='scene',
             name='entrypoint',
-            field=models.PositiveSmallIntegerField(choices=[(0, b'main workflow')], default=0),
+            field=models.PositiveSmallIntegerField(choices=[(0, 'main workflow')], default=0),
         ),
         migrations.AddField(
             model_name='template',
@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='template',
             name='info',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={b'channel_network_images': {b'images': [], b'location': b'process/'}, b'delta_fringe_images': {b'images': [], b'location': b'process/'}, b'logfile': {b'file': b'', b'location': b'simulation/'}, b'postprocess_output': {}, b'procruns': 0, b'sediment_fraction_images': {b'images': [], b'location': b'process/'}, b'subenvironment_images': {b'images': [], b'location': b'postprocess/'}}),
+            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default={'channel_network_images': {'images': [], 'location': 'process/'}, 'delta_fringe_images': {'images': [], 'location': 'process/'}, 'logfile': {'file': '', 'location': 'simulation/'}, 'postprocess_output': {}, 'procruns': 0, 'sediment_fraction_images': {'images': [], 'location': 'process/'}, 'subenvironment_images': {'images': [], 'location': 'postprocess/'}}),
         ),
         migrations.AddField(
             model_name='template',
@@ -55,12 +55,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='template',
             name='yaml_template',
-            field=models.FileField(default=b'', upload_to=b'workflows/'),
+            field=models.FileField(default='', upload_to='workflows/'),
         ),
         migrations.AlterField(
             model_name='scene',
             name='phase',
-            field=models.PositiveSmallIntegerField(choices=[(0, b'New'), (6, b'Idle: waiting for user input'), (11, b'Starting workflow'), (12, b'Running workflow'), (13, b'Removing workflow'), (500, b'Finished')], default=0),
+            field=models.PositiveSmallIntegerField(choices=[(0, 'New'), (6, 'Idle: waiting for user input'), (11, 'Starting workflow'), (12, 'Running workflow'), (13, 'Removing workflow'), (500, 'Finished')], default=0),
         ),
         migrations.AddField(
             model_name='workflow',

@@ -139,7 +139,7 @@ class Scenario(models.Model):
         for i, sceneparameters in enumerate(self.scenes_parameters):
             # Create hash
             m = hashlib.sha256()
-            m.update(str(sceneparameters))
+            m.update(str(sceneparameters).encode('utf-8'))
             phash = m.hexdigest()
 
             # Check if hash already exists

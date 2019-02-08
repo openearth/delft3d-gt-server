@@ -15,31 +15,31 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='workflow',
             name='action_log',
-            field=models.TextField(blank=True, default=b''),
+            field=models.TextField(blank=True, default=''),
         ),
         migrations.AddField(
             model_name='workflow',
             name='cluster_log',
-            field=models.TextField(blank=True, default=b''),
+            field=models.TextField(blank=True, default=''),
         ),
         migrations.AddField(
             model_name='workflow',
             name='yaml',
-            field=models.FileField(default=b'', upload_to=b'workflows/'),
+            field=models.FileField(default='', upload_to='workflows/'),
         ),
         migrations.AlterField(
             model_name='scene',
             name='phase',
-            field=models.PositiveSmallIntegerField(choices=[(0, b'New'), (6, b'Idle: waiting for user input'), (11, b'Starting workflow'), (12, b'Running workflow'), (13, b'Removing workflow'), (500, b'Finished'), (501, b'Failed')], default=0),
+            field=models.PositiveSmallIntegerField(choices=[(0, 'New'), (6, 'Idle: waiting for user input'), (11, 'Starting workflow'), (12, 'Running workflow'), (13, 'Removing workflow'), (500, 'Finished'), (501, 'Failed')], default=0),
         ),
         migrations.AlterField(
             model_name='template',
             name='shortname',
-            field=models.CharField(default=b'gt', max_length=256),
+            field=models.CharField(default='gt', max_length=256),
         ),
         migrations.AlterField(
             model_name='template',
             name='yaml_template',
-            field=models.FileField(default=b'', upload_to=b'workflow_templates/'),
+            field=models.FileField(default='', upload_to='workflow_templates/'),
         ),
     ]

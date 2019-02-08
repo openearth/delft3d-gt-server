@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='searchform',
             name='sections',
-            field=jsonfield.fields.JSONField(default=b'[]'),
+            field=jsonfield.fields.JSONField(default=[]),
         ),
     ]
