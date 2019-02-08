@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='container',
             name='docker_log',
-            field=models.TextField(default=b'', blank=True),
+            field=models.TextField(default='', blank=True),
         ),
     ]

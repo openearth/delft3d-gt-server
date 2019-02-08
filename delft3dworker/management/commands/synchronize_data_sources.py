@@ -45,7 +45,7 @@ class Command(BaseCommand):
                     scenedir = scenedir[:-1]
                 linked.add(scenedir)
 
-            r, d, f = walk(settings.WORKER_FILEDIR).next()
+            r, d, f = next(walk(settings.WORKER_FILEDIR))
             existing = set([join(r, directory) for directory in d])
 
             unlinked = existing - linked
@@ -100,11 +100,11 @@ class Command(BaseCommand):
                             else:
                                 self.stdout.write("-- Skipping {}\n".format(directory))
 
-                        except KeyboardInterrupt, e:
+                        except KeyboardInterrupt as e:
                             self.stdout.write('\n')
                             exit(1)
 
-                        except Exception, e:
+                        except Exception as e:
                             self.stdout.write("-- Couldn't delete {}!\n".format(directory))
                             print(e)
 
@@ -178,11 +178,11 @@ class Command(BaseCommand):
 
                                 self.stdout.write("-- Skipping \"{}\"\n".format(scene))
 
-                        except KeyboardInterrupt, e:
+                        except KeyboardInterrupt as e:
                             self.stdout.write('\n')
                             exit(1)
 
-                        except Exception, e:
+                        except Exception as e:
                             self.stdout.write("-- Couldn't reset Scene \"{}\" with working directory {}!\n".format(scene, directory))
                             print(e)
 

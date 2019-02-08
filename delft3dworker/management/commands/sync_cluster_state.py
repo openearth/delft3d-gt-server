@@ -28,7 +28,7 @@ class Command(BaseCommand):
         # Sets task_uuid to None except for when a task is queued
         self._update_workflow_tasks()
 
-        # STEP II : Get current workflows on cluster and sync with 
+        # STEP II : Get current workflows on cluster and sync with
         # Djang workflows models
         if self._get_latest_workflows_status():
 
