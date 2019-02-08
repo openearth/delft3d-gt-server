@@ -40,6 +40,7 @@ from rest_framework import viewsets
 from rest_framework import permissions
 from rest_framework.decorators import detail_route
 from rest_framework.decorators import list_route
+from rest_framework.decorators import action
 from rest_framework.decorators import parser_classes
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser
@@ -114,7 +115,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
     # Our own custom filter to create custom search fields
     # this creates &name= among others
-    filter_class = ScenarioFilter
+    filterset_class = ScenarioFilter
 
     queryset = Scenario.objects.none()
 
@@ -149,7 +150,8 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         instance.delete(self.request.user)
 
-    @detail_route(methods=["put"])  # denied after publish to company/world
+    # @detail_route(methods=["put"])  # denied after publish to company/world
+    @action(methods=["put"], detail=True)
     def start(self, request, pk=None):
         scenario = self.get_object()
         scenario.start(request.user)
@@ -157,7 +159,8 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["put"])  # denied after publish to company/world
+    # @detail_route(methods=["put"])  # denied after publish to company/world
+    @action(methods=["put"], detail=True)
     def stop(self, request, pk=None):
         scenario = self.get_object()
 
@@ -167,12 +170,14 @@ class ScenarioViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["post"])  # denied after publish to world
+    # @detail_route(methods=["post"])  # denied after publish to world
+    @action(methods=["post"], detail=True)
     def publish_company(self, request, pk=None):
         self.get_object().publish_company(request.user)
         return Response({'status': 'Published scenario to company'})
 
-    @detail_route(methods=["post"])  # denied after publish to world
+    # @detail_route(methods=["post"])  # denied after publish to world
+    @action(methods=["post"], detail=True)
     def publish_world(self, request, pk=None):
         self.get_object().publish_world(request.user)
         return Response({'status': 'Published scenario to world'})
@@ -194,7 +199,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     # Our own custom filter to create custom search fields
     # this creates &template= among others
-    filter_class = SceneFilter
+    filterset_class = SceneFilter
 
     # Searchfilter backend for field &search=
     search_fields = ('name',)
@@ -395,7 +400,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return queryset.distinct().order_by('name')
 
-    @detail_route(methods=["put"])  # denied after publish to company/world
+    # @detail_route(methods=["put"])  # denied after publish to company/world
+    @action(detail=True, methods=["put"])
     def reset(self, request, pk=None):
         scene = self.get_object()
         scene.reset()
@@ -403,7 +409,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["put"])  # denied after publish to company/world
+    # @detail_route(methods=["put"])  # denied after publish to company/world
+    @action(methods=["put"], detail=True)
     def start(self, request, pk=None):
         scene = self.get_object()
         scene.start()
@@ -411,7 +418,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["put"])
+    # @detail_route(methods=["put"])
+    @action(methods=["put"], detail=True)
     def redo(self, request, pk=None):
         # Update and redo the mode, based on a specific entrypoint
         d = request.data
@@ -431,7 +439,8 @@ class SceneViewSet(viewsets.ModelViewSet):
         else:
             return Response("No (valid) entrypoint provided.", status=status.HTTP_400_BAD_REQUEST)
 
-    @detail_route(methods=["put"])  # denied after publish to company/world
+    # @detail_route(methods=["put"])  # denied after publish to company/world
+    @action(methods=["put"], detail=True)
     def stop(self, request, pk=None):
         scene = self.get_object()
         scene.abort()
@@ -439,7 +448,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @detail_route(methods=["post"])  # denied after publish to world
+    # @detail_route(methods=["post"])  # denied after publish to world
+    @action(methods=["post"], detail=True)
     def publish_company(self, request, pk=None):
         published = self.get_object().publish_company(request.user)
 
@@ -451,7 +461,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scene to company'})
 
-    @list_route(methods=["post"])  # denied after publish to world
+    # @list_route(methods=["post"])  # denied after publish to world
+    @action(methods=["post"], detail=False)
     def publish_company_all(self, request):
         queryset = Scene.objects.filter(owner=self.request.user).filter(
                 suid__in=request.data.getlist('suid', []))
@@ -467,7 +478,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scenes to company'})
 
-    @detail_route(methods=["post"])  # denied after publish to world
+    # @detail_route(methods=["post"])  # denied after publish to world
+    @action(methods=["post"], detail=True)
     def publish_world(self, request, pk=None):
         published = self.get_object().publish_world(request.user)
 
@@ -479,7 +491,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scene to world'})
 
-    @list_route(methods=["post"])  # denied after publish to world
+    # @list_route(methods=["post"])  # denied after publish to world
+    @action(methods=["post"], detail=False)
     def publish_world_all(self, request):
         queryset = Scene.objects.filter(owner=self.request.user).filter(
             suid__in=request.data.getlist('suid', []))
@@ -495,7 +508,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scenes to world'})
 
-    @detail_route(methods=["get"])
+    # @detail_route(methods=["get"])
+    @action(methods=["get"], detail=True)
     def export(self, request, pk=None):
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
@@ -534,7 +548,8 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return resp
 
-    @list_route(methods=["get"])
+    # @list_route(methods=["get"])
+    @action(methods=["get"], detail=False)
     def export_all(self, request):
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
@@ -573,7 +588,8 @@ class SceneViewSet(viewsets.ModelViewSet):
         resp['Content-Disposition'] = 'attachment; filename=Delft3DGTFiles.zip'
         return resp
 
-    @list_route(methods=["get"])
+    # @list_route(methods=["get"])
+    @action(methods=["get"], detail=False)
     def versions(self, request):
         return Response({})
 
@@ -632,7 +648,8 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = User.objects.filter(groups__name__in=wanted)
         return queryset
 
-    @list_route()
+    # @list_route()
+    @action(detail=False)
     def me(self, request):
 
         me = User.objects.filter(pk=request.user.pk)

@@ -57,11 +57,11 @@ class DateTests(TestCase):
     def test_apply_default_tz(self):
         self.assertTrue(apply_default_tz(None) is None)
         dt = apply_default_tz(datetime.now())
-        self.assertEquals(dt.tzinfo, timezone.get_default_timezone())
+        self.assertEqual(dt.tzinfo, timezone.get_default_timezone())
 
     def test_tz_midnight(self):
         dt = tz_midnight(date.today())
-        self.assertEquals(dt.hour, 0)
-        self.assertEquals(dt.minute, 0)
-        self.assertEquals(dt.second, 0)
-        self.assertEquals(dt.tzinfo, timezone.get_default_timezone())
+        self.assertEqual(dt.hour, 0)
+        self.assertEqual(dt.minute, 0)
+        self.assertEqual(dt.second, 0)
+        self.assertEqual(dt.tzinfo, timezone.get_default_timezone())
