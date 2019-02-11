@@ -444,9 +444,22 @@ class ScenarioPhasesTestCase(TestCase):
         # set up dictionary for output files per directory, modelled after delft3d output
         self.output_dir = {
             "process/": ["delta_fringe.png", "channel_network.jpg", "sediment_fraction.gif"],
-            "postprocess/": ["subenvironment.png", ],
-            "simulation/": ["delft3d.log", ]
+            "postprocess/": ["subenvironment.png", "output.json"],
+            "simulation/": ["delft3d.log", ],
         }
+
+        self.data = {
+            "DeltaFrontsorting": 0.161,
+            "ProDeltaD50": 0.0718,
+            "ProDeltasorting": 0.0272,
+            "DeltaFrontD50": 0.102,
+            "DeltaTopD50": 0.354,
+            "DeltaFrontsand_fraction": 0.394,
+            "DeltaTopsand_fraction": 0.887,
+            "DeltaTopsorting": 0.299,
+            "ProDeltasand_fraction": 0.00785
+        }
+
         # create directories and image/log files from dictionary
         for folder, files in self.output_dir.items():
             test_path = os.path.join(self.scene_1.workingdir, folder)
@@ -455,6 +468,9 @@ class ScenarioPhasesTestCase(TestCase):
 
             for file in files:
                 open(os.path.join(test_path, file), 'a').close()
+                if file == "output.json":
+                    with open(file, 'w') as f:
+                        json.dump(self.data, f)
 
         # set default template info for delft3d
         self.scene_1.info = {
@@ -486,14 +502,13 @@ class ScenarioPhasesTestCase(TestCase):
                 "filetype": "log",
                 "extensions": [".log", ],
                 "files": [],
-                "location": "simulation/",
-                "filename": "delft3d"
+                "location": "simulation/"
             },
             "postprocess_output": {
-                "filetype": "",
-                "extensions": [],
-                "files": [],
-                "location": ""
+                "filetype": "json",
+                "extensions": ['.json',],
+                "files": {},
+                "location": 'postprocess/'
             },
         }
 
@@ -552,6 +567,8 @@ class ScenarioPhasesTestCase(TestCase):
         self.assertEqual(self.scene_1.info["logfile"]["files"], ["delft3d.log", ])
 
         # TODO check if the progress is updated
+        # Check if json was loaded into info by filename
+        self.assertEqual(self.scene_1.info["postprocess_output"]["files"]["output"], self.data)
 
         workflow.cluster_state = "failed"
         workflow.save()

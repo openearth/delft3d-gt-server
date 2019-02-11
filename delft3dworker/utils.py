@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import json
 import os
 import re
 import logging
@@ -182,23 +183,30 @@ def scan_output_files(workingdir, info_dict):
     for key, value in info_dict.items():
         if not isinstance(value, dict):
             continue
-        if "_images" in key:
-            search_key = key.split("_images")[0]
-        elif "log" in key:
-            search_key = value.get("filename")
-        else:
-            search_key = key
 
-        if search_key is not None and all([k in value for k in required_keys]):
-
+        if all([k in value for k in required_keys]):
             for root, dirs, files in os.walk(
                     os.path.join(workingdir, value["location"])
             ):
-                for f in sorted(files):
-                    name, ext = os.path.splitext(f)
+                for file in sorted(files):
+                    name, ext = os.path.splitext(file)
                     if ext in (value["extensions"]):
-                        if (search_key in name and f not in value["files"]):
-                            info_dict[key]["files"].append(f)
+                        if (file not in value["files"]):
+                            # If images, search by key
+                            if "_images" in key:
+                                search_key = key.split("_images")[0]
+                                if (search_key in name):
+                                    info_dict[key]["files"].append(file)
+                            # If json, use filename as key and load json
+                            elif ".json" in ext:
+                                with open(file) as f:
+                                    try:
+                                        output_dict = json.load(f)
+                                    except:
+                                        logging.error("Error parsing postprocessing output.json")
+                                info_dict[key]["files"][name] = output_dict
+                            else:
+                                info_dict[key]["files"].append(file)
 
     return info_dict
 

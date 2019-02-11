@@ -26,4 +26,4 @@ class Command(BaseCommand):
         # STEP II : Call local scan
         for scene in fin_scenes:
             scene._local_scan_process()  # update images and logfile
-            scene._parse_postprocessing()  # parse output.ini
+            # scene._parse_postprocessing()  # parse output.ini
