@@ -3,7 +3,7 @@
 
 amqp==2.4
 anyjson==0.3.*
-billiard==3.5
+billiard==3.5.*
 configparser==3.7.*
 django-constance[database]==2.3.*
 django-filter==2.1.*
