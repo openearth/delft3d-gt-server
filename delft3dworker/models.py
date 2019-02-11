@@ -86,7 +86,7 @@ class Version_Docker(models.Model):
         verbose_name = "Docker version"
         verbose_name_plural = "Docker versions"
 
-    def __unicode__(self):
+    def __str__(self):
         return "Release {} at revision {}".format(self.release, self.revision)
 
 
@@ -281,7 +281,7 @@ class Scenario(models.Model):
                 if key not in scene:
                     scene[key] = setting
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -583,7 +583,7 @@ class Scene(models.Model):
             logging.error("Couldn't find postprocessing output.json")
         self.save()
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 # ################################### SEARCHFORM & TEMPLATE & WORKFLOW
@@ -704,7 +704,7 @@ class SearchForm(models.Model):
         self.save()
         return
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -736,7 +736,7 @@ class Template(models.Model):
 
     #     return returnval
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     def save(self, *args, **kwargs):
@@ -981,7 +981,7 @@ class Workflow(models.Model):
         self.task_uuid = result.id
         self.save()
 
-    def __unicode__(self):
+    def __str__(self):
         return "Workflow of scene {}".format(self.scene.name)
 
 
