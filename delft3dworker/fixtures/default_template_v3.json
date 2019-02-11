@@ -367,10 +367,10 @@
             "location": "simulation/"
         },
         "postprocess_output": {
-            "filetype": "",
-            "extensions": [],
-            "files": [],
-            "location": ""
+            "filetype": "json",
+            "extensions": [".json"],
+            "files": {},
+            "location": "postprocess/"
         }
       }
     },

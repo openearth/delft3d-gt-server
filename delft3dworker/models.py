@@ -509,7 +509,6 @@ class Scene(models.Model):
         # While running, scan for new pictures
         elif self.phase == self.phases.sim_run:
             self._local_scan_process()  # update images and logfile
-            # self._parse_postprocessing()
             self.progress = self.workflow.progress
             self.save()
 
