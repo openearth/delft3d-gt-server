@@ -37,6 +37,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='scene',
             name='version',
-            field=models.ForeignKey(default=delft3dworker.models.default_svn_version, to='delft3dworker.Version_SVN'),
+            field=models.ForeignKey(default=delft3dworker.models.default_svn_version, to='delft3dworker.Version_SVN', on_delete=models.CASCADE),
         ),
     ]

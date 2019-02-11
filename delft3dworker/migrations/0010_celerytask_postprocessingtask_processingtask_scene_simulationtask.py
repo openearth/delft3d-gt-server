@@ -37,24 +37,24 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='PostprocessingTask',
             fields=[
-                ('celerytask_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='delft3dworker.CeleryTask')),
-                ('scene', models.ForeignKey(to='delft3dworker.Scene')),
+                ('celerytask_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='delft3dworker.CeleryTask', on_delete=models.CASCADE)),
+                ('scene', models.ForeignKey(to='delft3dworker.Scene', on_delete=models.CASCADE)),
             ],
             bases=('delft3dworker.celerytask',),
         ),
         migrations.CreateModel(
             name='ProcessingTask',
             fields=[
-                ('celerytask_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='delft3dworker.CeleryTask')),
-                ('scene', models.OneToOneField(to='delft3dworker.Scene')),
+                ('celerytask_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='delft3dworker.CeleryTask', on_delete=models.CASCADE)),
+                ('scene', models.OneToOneField(to='delft3dworker.Scene', on_delete=models.CASCADE)),
             ],
             bases=('delft3dworker.celerytask',),
         ),
         migrations.CreateModel(
             name='SimulationTask',
             fields=[
-                ('celerytask_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='delft3dworker.CeleryTask')),
-                ('scene', models.OneToOneField(to='delft3dworker.Scene')),
+                ('celerytask_ptr', models.OneToOneField(parent_link=True, auto_created=True, primary_key=True, serialize=False, to='delft3dworker.CeleryTask', on_delete=models.CASCADE)),
+                ('scene', models.OneToOneField(to='delft3dworker.Scene', on_delete=models.CASCADE)),
             ],
             bases=('delft3dworker.celerytask',),
         ),

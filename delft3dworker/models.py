@@ -50,6 +50,15 @@ def default_svn_version():
     pass
 
 
+# Transition field untill we clean up all
+# migrations
+class JSONFieldTransition(JSONField):
+    def from_db_value(self, value, expression, connection, context):
+            if isinstance(value, str):
+                return json.loads(value)
+            return value
+
+
 class Version_Docker(models.Model):
     """
     Stores several Docker tags used in an Argo Workflow together.
@@ -67,7 +76,7 @@ class Version_Docker(models.Model):
     release = models.CharField(
         max_length=256, db_index=True)  # tag/release name
     revision = models.AutoField(primary_key=True)  # general version
-    versions = JSONField(default='{}')  # docker revisions
+    versions = JSONFieldTransition(default=dict)  # docker revisions
     changelog = models.CharField(max_length=256)  # release notes
     reviewed = models.BooleanField(default=False)
     template = models.ForeignKey('Template', related_name="versions", on_delete=models.CASCADE)
@@ -77,7 +86,7 @@ class Version_Docker(models.Model):
         verbose_name = "Docker version"
         verbose_name_plural = "Docker versions"
 
-    def __unicode__(self):
+    def __str__(self):
         return "Release {} at revision {}".format(self.release, self.revision)
 
 
@@ -111,8 +120,8 @@ class Scenario(models.Model):
     template = models.ForeignKey(
         'Template', blank=True, null=True, on_delete=models.CASCADE)
 
-    scenes_parameters = JSONField(blank=True, default={})
-    parameters = JSONField(blank=True, default={})
+    scenes_parameters = JSONFieldTransition(blank=True, default=dict)
+    parameters = JSONFieldTransition(blank=True, default=dict)
 
     owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
@@ -272,7 +281,7 @@ class Scenario(models.Model):
                 if key not in scene:
                     scene[key] = setting
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -292,8 +301,8 @@ class Scene(models.Model):
     date_started = models.DateTimeField(blank=True, null=True)
 
     fileurl = models.CharField(max_length=256)
-    info = JSONField(blank=True, default={})
-    parameters = JSONField(blank=True, default={})  # {"dt":20}
+    info = JSONFieldTransition(blank=True, default=dict)
+    parameters = JSONFieldTransition(blank=True, default=dict)  # {"dt":20}
     state = models.CharField(max_length=256, default="CREATED")
     progress = models.IntegerField(default=0)
     task_id = models.CharField(max_length=256, blank=True)
@@ -574,7 +583,7 @@ class Scene(models.Model):
             logging.error("Couldn't find postprocessing output.json")
         self.save()
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 # ################################### SEARCHFORM & TEMPLATE & WORKFLOW
@@ -593,12 +602,12 @@ class SearchForm(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    templates = JSONField(default=[])
-    sections = JSONField(default=[])
+    templates = JSONFieldTransition(default=list)
+    sections = JSONFieldTransition(default=list)
 
     def update(self):
-        self.templates = "[]"
-        self.sections = "[]"
+        self.templates = []
+        self.sections = []
         for template in Template.objects.all():
             self._update_templates(template.name, template.id, template.info)
             self._update_sections(template.sections)
@@ -695,7 +704,7 @@ class SearchForm(models.Model):
         self.save()
         return
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -706,12 +715,12 @@ class Template(models.Model):
     """
 
     name = models.CharField(max_length=256)
-    shortname = models.CharField(max_length=256, default={})
-    meta = JSONField(blank=True, default={})
-    info = JSONField(blank=True, default={})
-    sections = JSONField(blank=True, default={})
-    visualisation = JSONField(blank=True, default={})
-    export_options = JSONField(blank=True, default={})
+    shortname = models.CharField(max_length=256, default=dict)
+    meta = JSONFieldTransition(blank=True, default=dict)
+    info = JSONFieldTransition(blank=True, default=dict)
+    sections = JSONFieldTransition(blank=True, default=dict)
+    visualisation = JSONFieldTransition(blank=True, default=dict)
+    export_options = JSONFieldTransition(blank=True, default=dict)
     yaml_template = models.FileField(upload_to=parse_argo_workflow, default="")
 
     # The following method is disabled as it adds to much garbage
@@ -727,7 +736,7 @@ class Template(models.Model):
 
     #     return returnval
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     def save(self, *args, **kwargs):
@@ -749,7 +758,7 @@ class Workflow(models.Model):
     # name combines shortname of linked Template and the scene suid
     name = models.CharField(max_length=256, unique=True)
     scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
-    version = models.ForeignKey(Version_Docker, null=True)
+    version = models.ForeignKey(Version_Docker, null=True, on_delete=models.CASCADE)
     entrypoint = models.CharField(max_length=64, null=True)  # non NULL on update
 
     starttime = models.DateTimeField(default=tz_now, blank=True)
@@ -973,7 +982,7 @@ class Workflow(models.Model):
         self.task_uuid = result.id
         self.save()
 
-    def __unicode__(self):
+    def __str__(self):
         return "Workflow of scene {}".format(self.scene.name)
 
 

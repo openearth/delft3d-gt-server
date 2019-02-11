@@ -412,7 +412,7 @@ class ScenarioZeroPhaseTestCase(TestCase):
         self.template = Template.objects.create(name="Template parent")
         self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
         scene = Scene.objects.create(name="scene 1")
-        scene.scenario = [self.scenario]
+        scene.scenario.set([self.scenario])
 
         scene.phase = scene.phases.new
         scene.update_and_phase_shift()
@@ -440,7 +440,7 @@ class ScenarioPhasesTestCase(TestCase):
 
         self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
         self.scene_1 = Scene.objects.create(name="scene 1")
-        self.scene_1.scenario = [self.scenario]
+        self.scene_1.scenario.set([self.scenario])
         # set up dictionary for output files per directory, modelled after delft3d output
         self.output_dir = {
             "process/": ["delta_fringe.png", "channel_network.jpg", "sediment_fraction.gif"],
@@ -610,7 +610,8 @@ class WorkflowTestCase(TestCase):
         self.template = Template.objects.create(name="template")
         self.scenario = Scenario.objects.create(name="parent", template=self.template)
         self.scene_1 = Scene.objects.create(name="some-long-name", phase=Scene.phases.fin)
-        self.scene_1.scenario = [self.scenario]
+        self.scene_1.save()
+        self.scene_1.scenario.set([self.scenario])
 
         yaml = """
         metadata:
@@ -629,12 +630,14 @@ class WorkflowTestCase(TestCase):
             versions={"parameters": []},
             template=self.template
             )
+        self.version.save()
 
         self.version2 = Version_Docker.objects.create(
-            versions={"parameters": [], "entrypoints":["delft3dgt-main", "update-processing"]},
+            versions={"parameters": [], "entrypoints": ["delft3dgt-main", "update-processing"]},
             changelog="I'm newer",
             template=self.template
             )
+        self.version2.save()
 
         self.workflow = Workflow.objects.create(
             scene=self.scene_1,

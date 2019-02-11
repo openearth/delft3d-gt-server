@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='scenario',
             name='template',
-            field=models.OneToOneField(null=True, to='delft3dworker.Template'),
+            field=models.OneToOneField(null=True, to='delft3dworker.Template', on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='scene',
@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='scene',
             name='scenario',
-            field=models.ForeignKey(to='delft3dworker.Scenario', null=True),
+            field=models.ForeignKey(to='delft3dworker.Scenario', null=True, on_delete=models.CASCADE),
         ),
         migrations.AlterField(
             model_name='template',

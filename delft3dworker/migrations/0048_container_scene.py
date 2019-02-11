@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='container',
             name='scene',
-            field=models.ForeignKey(default=None, to='delft3dworker.Scene'),
+            field=models.ForeignKey(default=None, to='delft3dworker.Scene', on_delete=models.CASCADE),
             preserve_default=False,
         ),
     ]
