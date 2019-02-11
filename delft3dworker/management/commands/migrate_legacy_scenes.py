@@ -33,6 +33,12 @@ class Command(BaseCommand):
                 logging.warning("Scene {} has no scenario!".format(scene.id))
                 continue
 
+            # reset info field and scan for files again
+            scene.info = scene.scenario.first().template.info
+            scene._local_scan_files()
+            scene.info.update({"legacy": True})  # help debugging in the future
+            scene.save()
+
             logging.info("Add workflow to scene {}.".format(scene.id))
             workflow = Workflow.objects.create(
                 scene=scene,

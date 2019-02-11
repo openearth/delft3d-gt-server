@@ -60,7 +60,7 @@ class ManagementTest(TestCase):
         self.mocked_redis.return_value = self.redis
 
     @patch('delft3dworker.management.commands.'
-           'sync_cluster_state.Scene._local_scan_process')
+           'sync_cluster_state.Scene._local_scan_files')
     def test_scanbucket_command(self, mocklocalscan):
         call_command('scanbucket')
         self.assertEqual(mocklocalscan.call_count, 1)

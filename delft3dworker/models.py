@@ -508,7 +508,7 @@ class Scene(models.Model):
 
         # While running, scan for new pictures
         elif self.phase == self.phases.sim_run:
-            self._local_scan_process()  # update images and logfile
+            self._local_scan_files()  # update images and logfile
             self.progress = self.workflow.progress
             self.save()
 
@@ -560,7 +560,7 @@ class Scene(models.Model):
         # TODO: write _update_state_and_save method
         return self.state
 
-    def _local_scan_process(self):
+    def _local_scan_files(self):
         # scan for files in workingdir based on structure in template info dictionary
         self.info = scan_output_files(self.workingdir, self.info)
         self.save()
