@@ -254,7 +254,7 @@
               "name": "Tidal amplitude",
               "default": 1,
               "validators": {
-                "max": 2,
+                "max": 3,
                 "required": true,
                 "min": 0
               },
