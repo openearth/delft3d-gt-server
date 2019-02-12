@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import json
 import os
 import re
 import logging
@@ -178,27 +179,57 @@ def scan_output_files(workingdir, info_dict):
     an example of structure.
     :return: dict: now with files subkey list filled for each key
     """
+    processed_files = 0
     required_keys = ["location", "extensions", "files"]
     for key, value in info_dict.items():
+
+        # Check whether info dict is nested
         if not isinstance(value, dict):
             continue
-        if "_images" in key:
-            search_key = key.split("_images")[0]
-        elif "log" in key:
-            search_key = value.get("filename")
-        else:
-            search_key = key
 
-        if search_key is not None and all([k in value for k in required_keys]):
+        # and has required keys to scan for
+        if not all([k in value for k in required_keys]):
+            continue
 
-            for root, dirs, files in os.walk(
-                    os.path.join(workingdir, value["location"])
-            ):
-                for f in sorted(files):
-                    name, ext = os.path.splitext(f)
-                    if ext in (value["extensions"]):
-                        if (search_key in name and f not in value["files"]):
-                            info_dict[key]["files"].append(f)
+        foldername = os.path.join(workingdir, value["location"])
+        for _, __, files in os.walk(foldername):
+            # sort to correctly order images
+            for fn in sorted(files):
+                name, ext = os.path.splitext(fn)
+
+                # Check if we use this file
+                if ext not in value["extensions"]:
+                    continue
+
+                # and if we already have it
+                if fn in value["files"]:
+                    continue
+
+                processed_files += 1
+
+                # If images, search by key
+                # TODO Use regex expressions in the future
+                if "_images" in key:
+                    type_of_image = key.split("_images")[0]
+                    if (type_of_image in name):
+                        info_dict[key]["files"].append(fn)
+
+                # If json, use filename as key and load json
+                elif ".json" in ext:
+                    with open(fn) as f:
+                        try:
+                            output_dict = json.load(f)
+                        except json.JSONDecodeError as e:
+                            logging.error("Error parsing postprocessing {}: {}".format(f, e))
+
+                    info_dict[key]["files"][name] = output_dict
+
+                # Add files without parsing
+                else:
+                    info_dict[key]["files"].append(fn)
+
+        if processed_files > 0:
+            logging.info("Processed {} files.".format(processed_files))
 
     return info_dict
 

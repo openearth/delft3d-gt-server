@@ -508,8 +508,7 @@ class Scene(models.Model):
 
         # While running, scan for new pictures
         elif self.phase == self.phases.sim_run:
-            self._local_scan_process()  # update images and logfile
-            self._parse_postprocessing()
+            self._local_scan_files()  # update images and logfile
             self.progress = self.workflow.progress
             self.save()
 
@@ -561,26 +560,9 @@ class Scene(models.Model):
         # TODO: write _update_state_and_save method
         return self.state
 
-    def _local_scan_process(self):
+    def _local_scan_files(self):
         # scan for files in workingdir based on structure in template info dictionary
         self.info = scan_output_files(self.workingdir, self.info)
-        self.save()
-
-    # Run this after post processing
-    # TODO Determine post processing step in workflow
-    # Now this runs every processing loop
-
-    def _parse_postprocessing(self):
-        outputfn = os.path.join(self.workingdir, 'postprocess', 'output.json')
-        if os.path.exists(outputfn):
-            with open(outputfn) as f:
-                try:
-                    output_dict = json.load(f)
-                except:
-                    logging.error("Error parsing postprocessing output.json")
-            self.info["postprocess_output"].update(output_dict)
-        else:
-            logging.error("Couldn't find postprocessing output.json")
         self.save()
 
     def __str__(self):
