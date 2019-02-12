@@ -229,7 +229,7 @@ def scan_output_files(workingdir, info_dict):
                     info_dict[key]["files"].append(fn)
 
         if processed_files > 0:
-            print("Processed {} files.".format(processed_files))
+            logging.info("Processed {} files.".format(processed_files))
 
     return info_dict
 

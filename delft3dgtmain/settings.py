@@ -219,7 +219,7 @@ if 'test' in sys.argv:
 
     from .celery import Celery
     import logging
-    logging.disable(logging.CRITICAL)
+    logging.getLogger().setLevel(logging.INFO)
 
     if 'TRAVIS' in os.environ:
         DATABASES = {
