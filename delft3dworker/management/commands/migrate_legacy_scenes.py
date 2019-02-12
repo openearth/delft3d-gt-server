@@ -17,6 +17,7 @@ production database involves:
 - Start models where applicable
 """
 
+logging.getLogger().setLevel(logging.INFO)
 
 class Command(BaseCommand):
     help = "Scan for old Scenes and update them to the new ET architecture."
