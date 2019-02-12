@@ -178,11 +178,11 @@
           "variables": [
             {
               "name": "Stop time",
-              "default": 60,
+              "default": 160,
               "validators": {
-                "max": 200,
+                "max": 160,
                 "required": true,
-                "min": 1
+                "min": 2
               },
               "units": "days",
               "type": "numeric",
@@ -221,7 +221,7 @@
             },
             {
               "name": "River width",
-              "default": 300,
+              "default": 500,
               "validators": {
                 "max": 1000,
                 "required": true,
@@ -281,9 +281,9 @@
               "name": "Base level change",
               "default": 0,
               "validators": {
-                "max": 10.0,
+                "max": 80.0,
                 "required": true,
-                "min": -10.0
+                "min": -80.0
               },
               "factor": true,
               "units": "%",
@@ -298,7 +298,7 @@
           "variables": [
             {
               "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
-              "default": "medium-sand",
+              "default": "fine-sand",
               "id": "composition",
               "validators": {
                 "required": true
