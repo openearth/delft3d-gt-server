@@ -1,6 +1,6 @@
 from rest_framework import permissions
 
-class HasViewPermission(permissions.BasePermission):
+class HasObjectViewPermission(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         can_view = request.user.has_perm('delft3dworker.view_scene', obj)
