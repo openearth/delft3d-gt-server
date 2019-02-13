@@ -932,10 +932,6 @@ class Workflow(models.Model):
         self.save()
 
     def remove_workflow(self):
-        # Catch removing unfinished workflow
-        if self.cluster_state not in Workflow.FINISHED:
-            logging.warning("Can't remove unfinished workflow")
-            return
 
         result = do_argo_remove.apply_async(
             args=(self.name,),
