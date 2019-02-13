@@ -1,6 +1,12 @@
 from rest_framework import permissions
 
-class HasObjectViewPermission(permissions.BasePermission):
+
+class RedoScenePermission(permissions.BasePermission):
+    """
+    Custom Permission for Scene redo function. If a user has permission to view scene,
+    they should have permission to redo scene. Apart from users' own scenes, allows all
+    published runs to be redone by other users.
+    """
 
     def has_object_permission(self, request, view, obj):
         can_view = request.user.has_perm('delft3dworker.view_scene', obj)

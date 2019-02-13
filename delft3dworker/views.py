@@ -54,7 +54,7 @@ from delft3dworker.models import SearchForm
 from delft3dworker.models import Workflow
 from delft3dworker.models import GroupUsageSummary
 from delft3dworker.models import UserUsageSummary
-from delft3dworker.permissions import ViewObjectPermissions, HasObjectViewPermission
+from delft3dworker.permissions import ViewObjectPermissions, RedoScenePermission
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import VersionSerializer
 from delft3dworker.serializers import ScenarioSerializer
@@ -413,7 +413,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(methods=["put"], detail=True, permission_classes=[permissions.IsAuthenticated, HasObjectViewPermission])
+    @action(methods=["put"], detail=True, permission_classes=[permissions.IsAuthenticated, RedoScenePermission])
     def redo(self, request, pk=None):
         # Update and redo the mode, based on a specific entrypoint
         d = request.data
