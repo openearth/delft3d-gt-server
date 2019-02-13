@@ -198,6 +198,10 @@ class SceneTestCase(APITestCase):
                 user.user_permissions.add(
                     Permission.objects.get(codename=perm))
 
+        groups_world = Group.objects.create(name="access:world")
+        groups_world.user_set.add(self.user_foo)
+        groups_world.user_set.add(self.user_bar)
+
         # create Scene instance and assign permissions for user_foo
         self.scene_1 = Scene.objects.create(
             suid="11111111-1111-1111-1111-111111111111",
@@ -213,19 +217,20 @@ class SceneTestCase(APITestCase):
             shared="p",
             phase=Scene.phases.fin
         )
-        for perm in ['view_scene', 'add_scene',
-                     'change_scene', 'delete_scene']:
-            assign_perm(perm, self.user_foo, self.scene_1)
 
         self.workflow_1 = Workflow.objects.create(
             scene=self.scene_1,
             name="workflow 1"
         )
-
         self.workflow_2 = Workflow.objects.create(
             scene=self.scene_2,
             name="workflow 2"
         )
+
+        for perm in ['view_scene', 'add_scene',
+                     'change_scene', 'delete_scene']:
+            assign_perm(perm, self.user_foo, self.scene_1)
+            assign_perm(perm, self.user_foo, self.scene_2)
 
     def test_scene_get(self):
         # detail view
@@ -396,7 +401,7 @@ class SceneTestCase(APITestCase):
         query_entrypoint = {'entrypoint':'delft3dgt-main'}
         url = reverse('scene-redo', args=[self.scene_1.pk])
 
-        # bar cannot see
+        # bar cannot view unpublished scene, so no redo
         self.client.login(username='bar', password='secret')
         response = self.client.put(url, query_entrypoint, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -404,6 +409,15 @@ class SceneTestCase(APITestCase):
 
         # foo can update model
         self.client.login(username='foo', password='secret')
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mocked_scene_method.assert_called_with(self.scene_1, 'delft3dgt-main')
+
+        # Foo publishes to world
+        self.scene_1.publish_world(self.user_foo)
+
+        # bar can now view and redo scene_1 by foo
+        self.client.login(username='bar', password='secret')
         response = self.client.put(url, query_entrypoint, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         mocked_scene_method.assert_called_with(self.scene_1, 'delft3dgt-main')
@@ -429,7 +443,6 @@ class SceneTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         self.assertEqual(mocked_scene_method.call_count, 1)
-
 
     @patch('delft3dworker.models.Scene.publish_company', autospec=True)
     def test_multiple_scenes_publish_company(self, mocked_scene_method_company):
