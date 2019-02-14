@@ -932,6 +932,10 @@ class Workflow(models.Model):
         self.save()
 
     def remove_workflow(self):
+        # Catch removing unfinished workflow
+        if self.cluster_state == 'non-existent':
+            logging.warning("Can't remove non-existent workflow")
+            return
 
         result = do_argo_remove.apply_async(
             args=(self.name,),
