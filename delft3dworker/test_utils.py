@@ -75,4 +75,4 @@ class LogMergeTest(TestCase):
         b = """3.0%\n4.0%\n5.0%"""
         expected = """1.0%\n2.0%\n3.0%\n4.0%\n5.0%"""
         merged = merge_log_unique(a, b)
-        self.asserEqual(merged, expected)
+        self.assertEqual(merged, expected)
