@@ -37,7 +37,8 @@ from guardian.shortcuts import remove_perm
 
 from django.contrib.postgres.fields import JSONField
 
-from delft3dworker.utils import log_progress_parser, tz_now, scan_output_files, merge_list_of_dict, derive_defaults_from_argo
+from delft3dworker.utils import log_progress_parser, tz_now, scan_output_files
+from delft3dworker.utils import merge_log_unique, merge_list_of_dict, derive_defaults_from_argo
 
 from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create
 from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
@@ -820,8 +821,7 @@ class Workflow(models.Model):
                 if "get_kube_log" in result.result:
                     log = result.result["get_kube_log"]
 
-                    self.cluster_log += "---------\n"
-                    self.cluster_log += log
+                    self.cluster_log = merge_log_unique(self.cluster_log, log)
 
                     progress = log_progress_parser(log, "delft3d")
                     if progress is not None:

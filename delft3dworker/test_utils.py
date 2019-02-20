@@ -8,6 +8,7 @@ from datetime import time, datetime, date
 
 from delft3dworker.utils import log_progress_parser
 from delft3dworker.utils import apply_default_tz, tz_midnight
+from delft3dworker.utils import merge_log_unique
 
 from django.test import TestCase
 
@@ -65,3 +66,13 @@ class DateTests(TestCase):
         self.assertEqual(dt.minute, 0)
         self.assertEqual(dt.second, 0)
         self.assertEqual(dt.tzinfo, timezone.get_default_timezone())
+
+
+class LogMergeTest(TestCase):
+
+    def test_merge_log(self):
+        a = """1.0%\n2.0%\n3.0%\n4.0%"""
+        b = """3.0%\n4.0%\n5.0%"""
+        expected = """1.0%\n2.0%\n3.0%\n4.0%\n5.0%"""
+        merged = merge_log_unique(a, b)
+        self.asserEqual(merged, expected)

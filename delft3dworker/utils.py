@@ -243,3 +243,29 @@ def merge_list_of_dict(a, b, key="name"):
         else:
             a.append(d)
     return a
+
+
+def merge_log_unique(original, update):
+    """Merge the output of log files.
+    This should keep our log files quite small."""
+
+    overlap = False
+
+    # Split logs into lines
+    o = original.split("\n")
+    u = update.split("\n")
+
+    # Find overlap
+    for i, oline in enumerate(o):
+        if oline == u[0]:
+            overlap = True
+            break
+
+    # If overlap, merge and return
+    if overlap:
+        new = o[0:i]
+        new.extend(u)
+        return "\n".join(new)
+    # Otherwise return both logs
+    else:
+        return original + update
