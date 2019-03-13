@@ -22,7 +22,6 @@ from .models import Template
 from .models import GroupUsageSummary
 from .models import UserUsageSummary
 
-
 class WorkflowInline(admin.StackedInline):
     extra = 0
     model = Workflow
@@ -69,10 +68,11 @@ class SceneAdmin(GuardedModelAdmin):
         else:
             subject = "Delft3D-GT: Synchronization problems"
 
-        message = ', '.join(sync_failed)           
+        message = ', '.join(sync_failed)
         from_email = settings.DEFAULT_FROM_EMAIL
         recipient_list = ["delft3d-gt@deltares.nl"]
         send_mail(subject, message, from_email, recipient_list)
+
 
 
 @admin.register(Workflow)
@@ -97,7 +97,6 @@ class TemplateAdmin(GuardedModelAdmin):
         VersionInline,
     ]
 
-
 @admin.register(GroupUsageSummary)
 class GroupUsageSummaryAdmin(admin.ModelAdmin):
     """
@@ -119,11 +118,13 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
         try:
             qs = response.context_data['cl'].queryset
             # Exclude Groups with world access as they will be counted twice in totals
+
             qs = qs.exclude(name='access:world').order_by('name')
         except (AttributeError, KeyError) as e:
             return response
         # Summarize by group values
         values = ['name', 'id']
+
         # Sum the total runtime.
         # Runtime is considered the difference in time between the start and stop time
         # of a workflow.
@@ -154,6 +155,7 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
     # Filter by time period
     list_filter = (('scene__workflow__stoptime', DateRangeFilter),)
 
+
     def changelist_view(self, request, extra_context=None):
         """
         Display summary of usage organized by users in a group
@@ -171,6 +173,7 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
             return response
         # Summarize by user values, display group name
         values = ['username', 'groups__name']
+
         # Sum the total runtime.
         # Runtime is considered the difference in time between the start and stop time
         # of a workflow.
@@ -178,6 +181,7 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
             'sum_runtime': ExpressionWrapper(
                 Sum(F('scene__workflow__stoptime') -
                     F('scene__workflow__starttime')),
+
                 output_field=DurationField()
             ),
         }

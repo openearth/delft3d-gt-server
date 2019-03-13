@@ -1,6 +1,8 @@
 
 import datetime
 
+import datetime
+
 from mock import Mock
 
 from django.contrib.auth.models import Permission
@@ -24,7 +26,6 @@ from delft3dworker.admin import GroupUsageSummaryAdmin
 #                 name='Scene A',
 #                 phase=Scene.phases.new
 #             )
-
 #             self.scene_b = Scene.objects.create(
 #                 id=1,
 #                 name='Scene B',
@@ -79,6 +80,7 @@ class GroupUsageSummaryAdminTest(TestCase):
             name='Scene B',
             owner=self.user_b
         )
+        
         self.scene_c = Scene.objects.create(
             id=2,
             name='Scene C',
@@ -107,7 +109,6 @@ class GroupUsageSummaryAdminTest(TestCase):
             starttime=datetime.datetime(
                 2010, 10, 10, 10, 30, 00, tzinfo=timezone.utc)
         )
-
         self.group_usage_summary_admin = GroupUsageSummaryAdmin(
             Group, AdminSite())
 
@@ -126,3 +127,4 @@ class GroupUsageSummaryAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(summary_total['num_users'], 2)
         self.assertEqual(summary_total['sum_runtime'], datetime.timedelta(minutes=30))
+

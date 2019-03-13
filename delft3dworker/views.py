@@ -663,7 +663,6 @@ class GroupUsageSummaryViewSet(viewsets.ModelViewSet):
     serializer_class = GroupSerializer
     queryset = Group.objects.none()  # Required for DjangoModelPermissions
 
-
 class UserUsageSummaryViewSet(viewsets.ModelViewSet):
     """
     View of Docker container usage summary for a group, sorted by user.

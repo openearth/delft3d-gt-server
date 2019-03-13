@@ -90,7 +90,7 @@ STATICFILES_DIRS = ['/opt/delft3d-gt/delft3d-gt-ui/dist/']
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [STATIC_ROOT],
+        'DIRS': STATIC_ROOT,
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
