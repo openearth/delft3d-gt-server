@@ -219,7 +219,7 @@ def scan_output_files(workingdir, info_dict):
                     with open(os.path.join(root, fn)) as f:
                         try:
                             output_dict = json.load(f)
-                        except json.JSONDecodeError as e:
+                        except ValueError as e:
                             logging.error("Error parsing postprocessing {}: {}".format(f, e))
 
                     info_dict[key]["files"][name] = output_dict
