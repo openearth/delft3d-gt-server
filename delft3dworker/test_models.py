@@ -27,7 +27,8 @@ from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 from delft3dworker.models import User
 from delft3dworker.models import Version_SVN
-
+from delft3dworker.models import GroupUsageSummary
+from delft3dworker.models import UserUsageSummary
 
 class Version_SVNTestCase(TestCase):
 
@@ -175,7 +176,7 @@ class ScenarioControlTestCase(TestCase):
         Test if redo_proc is called when processing for scenario is started
         """
         self.scenario_multi.redo_proc(self.user_foo)
-        self.asserEqual(mocked_scene_method.call_count, 3)
+        self.assertEqual(mocked_scene_method.call_count, 3)
 
     @patch('delft3dworker.models.Scene.redo_postproc', autospec=True)
     def redo_postproc(self, mocked_scene_method):

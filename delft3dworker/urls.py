@@ -17,6 +17,8 @@ router.register(r'searchforms', views.SearchFormViewSet, 'searchform')
 router.register(r'templates', views.TemplateViewSet, 'template')
 router.register(r'users', views.UserViewSet, 'user')
 router.register(r'svnversions', views.Version_SVNViewSet, 'svnversion')
+router.register(r'groupusagesummaries', views.GroupUsageSummaryViewSet, 'groupusagesummary')
+router.register(r'userusagesummaries', views.UserUsageSummaryViewSet, 'userusagesummary')
 
 # url patterns
 
