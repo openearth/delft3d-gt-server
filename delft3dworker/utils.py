@@ -192,7 +192,7 @@ def scan_output_files(workingdir, info_dict):
             continue
 
         foldername = os.path.join(workingdir, value["location"])
-        for _, __, files in os.walk(foldername):
+        for root, __, files in os.walk(foldername):
             # sort to correctly order images
             for fn in sorted(files):
                 name, ext = os.path.splitext(fn)
@@ -216,7 +216,7 @@ def scan_output_files(workingdir, info_dict):
 
                 # If json, use filename as key and load json
                 elif ".json" in ext:
-                    with open(fn) as f:
+                    with open(os.path.join(root, fn)) as f:
                         try:
                             output_dict = json.load(f)
                         except json.JSONDecodeError as e:
