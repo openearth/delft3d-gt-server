@@ -469,7 +469,7 @@ class ScenarioPhasesTestCase(TestCase):
             for file in files:
                 open(os.path.join(test_path, file), 'a').close()
                 if file == "output.json":
-                    with open(file, 'w') as f:
+                    with open(os.path.join(test_path, file), 'w') as f:
                         json.dump(self.data, f)
 
         # set default template info for delft3d
