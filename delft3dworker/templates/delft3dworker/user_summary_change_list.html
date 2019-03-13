@@ -22,11 +22,6 @@
         </th>
         <th>
           <div class="text">
-            <a href="#">Total Containers</a>
-          </div>
-        </th>
-        <th>
-          <div class="text">
             <a href="#">Total Runtime</a>
           </div>
         </th>
@@ -42,7 +37,6 @@
       <tr class="{% cycle 'row1' 'row2' %}">
         <td> {{ row.username }} </td>
         <td> {{ row.groups__name }} </td>
-        <td> {{ row.num_containers }} </td>
         <td> {{ row.sum_runtime }} </td>
         <td>
           <strong>
@@ -55,7 +49,6 @@
     <tr style="font-weight:bold; border-top:2px solid #DDDDDD;">
         <td> Total </td>
         <td>  </td>
-        <td> {{ summary_total.num_containers | intcomma }} </td>
         <td> {{ summary_total.sum_runtime | intcomma }} </td>
         <td> {{ summary_total.sum_runtime | divtime:summary_total.sum_runtime | floatformat }}% </td>
     </tr>

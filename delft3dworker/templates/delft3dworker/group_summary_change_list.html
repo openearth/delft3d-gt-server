@@ -22,11 +22,6 @@
         </th>
         <th>
           <div class="text">
-            <a href="#">Total Containers</a>
-          </div>
-        </th>
-        <th>
-          <div class="text">
             <a href="#">Total Runtime</a>
           </div>
         </th>
@@ -42,7 +37,6 @@
       <tr class="{% cycle 'row1' 'row2' %}">
         <td><a href="/admin/delft3dworker/userusagesummary/?groups__id={{row.id}}">{{ row.name }} </a></td>
         <td> {{ row.num_users }} </td>
-        <td> {{ row.num_containers }} </td>
         <td> {{ row.sum_runtime }} </td>
         <td>
           <strong>
@@ -55,7 +49,6 @@
     <tr style="font-weight:bold; border-top:2px solid #DDDDDD;">
         <td> Total </td>
         <td> {{ summary_total.num_users | intcomma }} </td>
-        <td> {{ summary_total.num_containers | intcomma }} </td>
         <td> {{ summary_total.sum_runtime | intcomma }} </td>
         <td> 100% </td>
     </tr>
@@ -64,3 +57,4 @@
 </div>
 {% endblock %}
 {% block pagination %}{% endblock %}
+

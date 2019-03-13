@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import json
 import os
 import uuid
+import yaml
 import zipfile
 from datetime import timedelta
 
@@ -11,6 +12,8 @@ from constance import config as cconfig
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils.timezone import now
 
@@ -21,81 +24,27 @@ from mock import Mock
 from mock import patch
 
 from delft3dworker.models import Scenario
+from delft3dworker.models import Version_Docker
 from delft3dworker.models import Scene
-from delft3dworker.models import Container
+from delft3dworker.models import Workflow
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
-from delft3dworker.models import User
-from delft3dworker.models import Version_SVN
-from delft3dworker.models import GroupUsageSummary
-from delft3dworker.models import UserUsageSummary
-
-class Version_SVNTestCase(TestCase):
-
-    def setUp(self):
-        self.trunk = Version_SVN.objects.create(
-            release='trunk', revision=500, reviewed=True, url='', changelog='',
-            versions={})        
-        self.trunk2 = Version_SVN.objects.create(
-            release='trunk', revision=501, reviewed=False, url='', changelog='',
-            versions={})
-        self.tag1 = Version_SVN.objects.create(
-            release='trunk', revision=100, reviewed=False, url='', changelog='',
-            versions={'process': 200, 'postprocess': 300, 'export': 250})
-        self.tag2 = Version_SVN.objects.create(
-            release='trunk', revision=200, reviewed=True, url='', changelog='',
-            versions={'process': 200, 'postprocess': 300, 'export': 250})
-        self.tag3 = Version_SVN.objects.create(
-            release='trunk', revision=300, reviewed=False, url='', changelog='',
-            versions={'process': 200, 'postprocess': 305, 'export': 250})
-
-    def test_outdated(self):
-        # Can update to both non-reviewed and reviewed versions
-        settings.REQUIRE_REVIEW = False
-        self.assertTrue(self.tag3.outdated())
-        self.assertTrue(self.trunk.outdated())
-        self.assertTrue(not self.trunk2.outdated())
-
-        # Only update to reviewed version
-        settings.REQUIRE_REVIEW = True
-        self.assertTrue(self.tag3.outdated())
-        self.assertTrue(not self.trunk.outdated())
-
-    def test_compare_outdated(self):
-        settings.REQUIRE_REVIEW = False
-        outdated_folders = self.tag3.compare_outdated()
-        self.assertEqual(outdated_folders, [])  # trunk is empty
-
-        settings.REQUIRE_REVIEW = True
-        outdated_folders = self.tag3.compare_outdated()
-        self.assertEqual(outdated_folders, [])  # trunk is empty
-
-        # Set tag3 up to be latest
-        self.trunk.delete()
-        self.tag3.reviewed = True
-        self.tag3.save()
-
-        # Tag3 only differs in postprocess
-        outdated_folders = self.tag2.compare_outdated()
-        self.assertEqual(outdated_folders, ['postprocess'])
-
-    def tearDown(self):
-        settings.REQUIRE_REVIEW = False
+from delft3dworker.utils import tz_now
 
 
 class ScenarioTestCase(TestCase):
 
     def setUp(self):
-        self.user_foo = User.objects.create_user(username='foo')
-
+        self.user_foo = User.objects.create_user(username="foo")
+        self.template = Template.objects.create(name="Template parent")
         self.scenario_single = Scenario.objects.create(
-            name="Test single scene", owner=self.user_foo)
+            name="Test single scene", owner=self.user_foo, template=self.template)
         self.scenario_multi = Scenario.objects.create(
-            name="Test multiple scenes", owner=self.user_foo)
+            name="Test multiple scenes", owner=self.user_foo, template=self.template)
         self.scenario_A = Scenario.objects.create(
-            name="Test hash A", owner=self.user_foo)
+            name="Test hash A", owner=self.user_foo, template=self.template)
         self.scenario_B = Scenario.objects.create(
-            name="Test hash B", owner=self.user_foo)
+            name="Test hash B", owner=self.user_foo, template=self.template)
 
     def test_scenario_parses_input(self):
         """Correctly parse scenario input"""
@@ -150,10 +99,11 @@ class ScenarioTestCase(TestCase):
 class ScenarioControlTestCase(TestCase):
 
     def setUp(self):
-        self.user_foo = User.objects.create_user(username='foo')
+        self.user_foo = User.objects.create_user(username="foo")
 
+        self.template = Template.objects.create(name="bar")
         self.scenario_multi = Scenario.objects.create(
-            name="Test multiple scenes", owner=self.user_foo)
+            name="Test multiple scenes", owner=self.user_foo, template=self.template)
         multi_input = {
             "basinslope": {
                 "values": [0.0143, 0.0145, 0.0146]
@@ -251,16 +201,13 @@ class SceneTestCase(TestCase):
             owner=self.user_a,
             shared='p',
             phase=Scene.phases.fin,
-            workflow=Scene.workflows.main
         )
         self.scene_2 = Scene.objects.create(
             name='Scene 2',
             owner=self.user_a,
             shared='p',
             phase=Scene.phases.idle,
-            workflow=Scene.workflows.main
         )
-        self.wd = self.scene_1.workingdir
 
         assign_perm('view_scene', self.user_a, self.scene_1)
         assign_perm('add_scene', self.user_a, self.scene_1)
@@ -415,10 +362,10 @@ class SceneTestCase(TestCase):
             # start scene
             self.scene_1.start()
 
-            # check that phase is unshifted unless Idle: then it becomes queued
+            # check that phase is unshifted unless Idle: then it becomes started
             self.assertEqual(
                 self.scene_1.phase,
-                self.scene_1.phases.queued if (
+                self.scene_1.phases.sim_start if (
                     phase[0] == self.scene_1.phases.idle) else phase[0]
             )
 
@@ -436,94 +383,6 @@ class SceneTestCase(TestCase):
 
                 self.assertEqual(self.scene_1.date_started, started_date)
 
-    def test_redo(self):
-        started_date = None
-
-        version_old = Version_SVN.objects.create(
-            release='', revision=1, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
-        version_new = Version_SVN.objects.create(
-            release='', revision=999, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
-
-        self.scene_1.version = version_old
-
-        # a scene should only start redo processing when phase is finished
-        for phase in self.scene_1.phases:
-
-            #  shift scene to phase
-            self.scene_1.shift_to_phase(phase[0])
-
-            # start scene
-            self.scene_1.redo()
-
-            # check that phase is unshifted unless finished and outdated: 
-            # then it becomes queued
-            if phase[0] == self.scene_1.phases.fin:
-
-                # Old version, update ->  queued
-                self.assertEqual(self.scene_1.phase, self.scene_1.phases.queued)
-
-                # Newer version, no update -> not queued
-                self.scene_1.shift_to_phase(phase[0])
-                self.version = version_new
-                self.scene_1.redo()
-                self.assertEqual(self.scene_1.phase, phase[0])
-
-            else:
-                self.assertEqual(self.scene_1.phase, phase[0])
-
-
-
-            # check date_started is untouched unless started from finished state
-            if phase[0] == self.scene_1.phases.fin:
-                self.assertTrue(self.scene_1.date_started <= now())
-                started_date = self.scene_1.date_started  # store started date
-            else:
-                self.assertEqual(self.scene_1.date_started, started_date)
-
-            # Restore behaviour
-            self.scene_1.version = version_old
-
-
-        # Check if we don't shift without new version
-        self.scene_1.workflow = self.scene_1.workflows.main
-        self.scene_1.version = version_new
-        self.scene_1.shift_to_phase(self.scene_1.phases.fin)
-        self.scene_1.redo()
-        self.assertEqual(self.scene_1.workflow,
-                         self.scene_1.workflows.main)
-
-        #  Redo all (trunk)
-        version = Version_SVN.objects.create(
-            release='', revision=1000, versions={}, url='', changelog='')
-        self.scene_1.shift_to_phase(self.scene_1.phases.fin)
-        self.scene_1.redo()
-        self.assertEqual(self.scene_1.workflow,
-                         self.scene_1.workflows.redo_proc_postproc)
-
-        #  Redo processing
-        version = Version_SVN.objects.create(
-            release='', revision=2000, versions={'visualisation': 501}, url='', changelog='')
-        self.scene_1.shift_to_phase(self.scene_1.phases.fin)
-        self.scene_1.redo()
-        self.assertEqual(self.scene_1.workflow,
-                         self.scene_1.workflows.redo_proc)
-
-        #  Redo postprocessing
-        version = Version_SVN.objects.create(
-            release='', revision=3000, versions={'postprocess': 502}, url='', changelog='')
-        self.scene_1.shift_to_phase(self.scene_1.phases.fin)
-        self.scene_1.redo()
-        self.assertEqual(self.scene_1.workflow,
-                         self.scene_1.workflows.redo_postproc)
-
-        #  Redo all (tag)
-        version = Version_SVN.objects.create(
-            release='', revision=4000, versions={'postprocess': 505, 'process': 505, 'export': 505, 'visualisation': 505}, url='', changelog='')
-        self.scene_1.shift_to_phase(self.scene_1.phases.fin)
-        self.scene_1.redo()
-        self.assertEqual(self.scene_1.workflow,
-                         self.scene_1.workflows.redo_proc_postproc)
-
     def test_abort_scene(self):
 
         # abort is more complex
@@ -540,21 +399,516 @@ class SceneTestCase(TestCase):
                     phase[0] <= self.scene_1.phases.sim_fin):
                 # check that phase is shifted to stopped
                 self.assertEqual(self.scene_1.phase,
-                                 self.scene_1.phases.sim_stop)
+                                 self.scene_1.phases.sim_fin)
 
-            # if the phase is queued
-            elif phase[0] == self.scene_1.phases.queued:
-                # check that phase is shifted to idle
-                self.assertEqual(self.scene_1.phase, self.scene_1.phases.idle)
-
-            # else
             else:
                 # check the abort is ignored
                 self.assertEqual(self.scene_1.phase, phase[0])
 
+
+class ScenarioZeroPhaseTestCase(TestCase):
+
+    def test_phase_00(self):
+        self.template = Template.objects.create(name="Template parent")
+        self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
+        scene = Scene.objects.create(name="scene 1")
+        scene.scenario.set([self.scenario])
+
+        scene.phase = scene.phases.new
+        scene.update_and_phase_shift()
+
+        # Even if multiple tasks run new or scene is
+        # put into new again, only one workflow is created
+        scene.phase = scene.phases.new
+        scene.update_and_phase_shift()
+
+        self.assertEqual(scene.phase, scene.phases.idle)
+        self.assertEqual(scene.workflow.desired_state, "non-existent")
+        self.assertEqual(scene.workflow.cluster_state, "non-existent")
+
+
+class ScenarioPhasesTestCase(TestCase):
+    """TODO Some sort of flow matrix should be defined between phases.
+    We can then randomly set workflow states, and check whether the
+    resulting phases are allowed. This is way too verbose.
+
+    Basicly we create a framework for phases and check its function,
+    not (what we're doing now) checking for each phase if changes are correct."""
+
+    def setUp(self):
+        self.template = Template.objects.create(name="Template parent")
+
+        self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
+        self.scene_1 = Scene.objects.create(name="scene 1")
+        self.scene_1.scenario.set([self.scenario])
+        # set up dictionary for output files per directory, modelled after delft3d output
+        self.output_dir = {
+            "process/": ["delta_fringe.png", "channel_network.jpg", "sediment_fraction.gif"],
+            "postprocess/": ["subenvironment.png", "output.json"],
+            "simulation/": ["delft3d.log", ],
+        }
+
+        self.data = {
+            "DeltaFrontsorting": 0.161,
+            "ProDeltaD50": 0.0718,
+            "ProDeltasorting": 0.0272,
+            "DeltaFrontD50": 0.102,
+            "DeltaTopD50": 0.354,
+            "DeltaFrontsand_fraction": 0.394,
+            "DeltaTopsand_fraction": 0.887,
+            "DeltaTopsorting": 0.299,
+            "ProDeltasand_fraction": 0.00785
+        }
+
+        # create directories and image/log files from dictionary
+        for folder, files in self.output_dir.items():
+            test_path = os.path.join(self.scene_1.workingdir, folder)
+            if not os.path.exists(test_path):
+                os.makedirs(test_path)
+
+            for file in files:
+                open(os.path.join(test_path, file), 'a').close()
+                if file == "output.json":
+                    with open(file, 'w') as f:
+                        json.dump(self.data, f)
+
+        # set default template info for delft3d
+        self.scene_1.info = {
+            "delta_fringe_images": {
+                "filetype": "images",
+                "extensions": [".png", ".jpg", ".gif"],
+                "files": [],
+                "location": "process/"
+            },
+            "channel_network_images": {
+                "filetype": "images",
+                "extensions": ['.png', '.jpg', '.gif'],
+                "files": [],
+                "location": "process/"
+            },
+            "sediment_fraction_images": {
+                "filetype": "images",
+                "extensions": ['.png', '.jpg', '.gif'],
+                "files": [],
+                "location": "process/"
+            },
+            "subenvironment_images": {
+                "filetype": "images",
+                "extensions": ['.png', '.jpg', '.gif'],
+                "files": [],
+                "location": "postprocess/"
+            },
+            "logfile": {
+                "filetype": "log",
+                "extensions": [".log", ],
+                "files": [],
+                "location": "simulation/"
+            },
+            "postprocess_output": {
+                "filetype": "json",
+                "extensions": ['.json',],
+                "files": {},
+                "location": 'postprocess/'
+            },
+        }
+
+        self.scene_1.update_and_phase_shift()  # put all into new
+
+        self.p = self.scene_1.phases  # shorthand
+
+    def test_phase_new(self):
+        self.scene_1.phase = self.p.new
+        self.scene_1.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.idle)
+
+        # check if scene remains in phase 1 when not all workflows are created
+        # check if scene moved to phase 2 when all workflows are created
+
+    def test_phase_idle(self):
+        self.scene_1.phase = self.p.idle
+        self.scene_1.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.idle)
+
+    def test_phase_sim_start(self):
+        self.scene_1.phase = self.p.sim_start
+        self.scene_1.save()
+
+        # Keep in start without a running workflow
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sim_start)
+
+        # Move to running when a workflow is running
+        self.scene_1.workflow.cluster_state = "running"
+        self.scene_1.workflow.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sim_run)
+
+    def test_phase_sim_run(self):
+        workflow = self.scene_1.workflow
+        workflow.cluster_state = "running"
+        workflow.desired_state = "running"
+        workflow.save()
+
+        self.scene_1.phase = self.p.sim_run
+        self.scene_1.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sim_run)
+
+        # Check if _local_scan was called
+        # Should return list of images found in the directories
+        self.assertEqual(self.scene_1.info["delta_fringe_images"]["files"], ["delta_fringe.png",])
+        self.assertEqual(self.scene_1.info["subenvironment_images"]["files"], ["subenvironment.png", ])
+        self.assertEqual(self.scene_1.info["logfile"]["files"], ["delft3d.log", ])
+
+        # TODO check if the progress is updated
+        # Check if json was loaded into info by filename
+        self.assertEqual(self.scene_1.info["postprocess_output"]["files"]["output"], self.data)
+
+        workflow.cluster_state = "failed"
+        workflow.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.sim_fin)
+
+    def test_phase_sim_fin(self):
+        self.scene_1.phase = self.p.sim_fin
+
+        workflow = self.scene_1.workflow
+        workflow.cluster_state = "non-existent"
+        workflow.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.fin)
+
+
+class WorkflowTestCase(TestCase):
+
+    def setUp(self):
+
+        self.run_argo_ps_dict = {
+            "apiVersion": "argoproj.io/v1alpha1",
+            "kind": "Workflow",
+            "metadata": {
+                "labels": {
+                    "workflows.argoproj.io/phase": "Running"
+                },
+                "name": "delft3dgt-lftrz",
+            }
+        }
+
+        self.fin_argo_ps_dict = {
+            "apiVersion": "argoproj.io/v1alpha1",
+            "kind": "Workflow",
+            "metadata": {
+                "labels": {
+                    "workflows.argoproj.io/phase": "Succeeded"
+                },
+                "name": "delft3dgt-lftrz",
+            }
+        }
+
+        self.fail_argo_ps_dict = {
+            "apiVersion": "argoproj.io/v1alpha1",
+            "kind": "Workflow",
+            "metadata": {
+                "labels": {
+                    "workflows.argoproj.io/phase": "Failed"
+                },
+                "name": "delft3dgt-lftrz",
+            }
+        }
+
+        self.template = Template.objects.create(name="template")
+        self.scenario = Scenario.objects.create(name="parent", template=self.template)
+        self.scene_1 = Scene.objects.create(name="some-long-name", phase=Scene.phases.fin)
+        self.scene_1.save()
+        self.scene_1.scenario.set([self.scenario])
+
+        yaml = """
+        metadata:
+          name: delft3dgt-1
+        spec:
+          entrypoint: delft3dgt-main
+          arguments:
+            parameters:
+            - name: uuid
+              value: "test-images-3"
+        """
+        self.template.yaml_template = SimpleUploadedFile("dummy.yaml", bytes(yaml, 'UTF-8'))
+        self.template.save()
+
+        self.version = Version_Docker.objects.create(
+            versions={"parameters": []},
+            template=self.template
+            )
+        self.version.save()
+
+        self.version2 = Version_Docker.objects.create(
+            versions={"parameters": [], "entrypoints": ["delft3dgt-main", "update-processing"]},
+            changelog="I'm newer",
+            template=self.template
+            )
+        self.version2.save()
+
+        self.workflow = Workflow.objects.create(
+            scene=self.scene_1,
+            desired_state='created',
+            cluster_state='non-existent',
+            version=self.version,
+            entrypoint='delft3dgt-main'
+        )
+
+    def test_is_outdated(self):
+        # Version 2 is newer than connected Version
+        self.assertTrue(self.workflow.is_outdated())
+
+    def test_latest_version(self):
+        # Version 2 is newer than connected Version
+        self.assertEqual(self.workflow.latest_version(), self.version2)
+
+    def test_outdated_changelog(self):
+        # Version 2 is newer than connected Version
+        self.assertEqual(self.workflow.outdated_changelog(), self.version2.changelog)
+
+    def test_outdated_entrypoints(self):
+        # Version 2 is newer than connected Version
+        self.assertEqual(self.workflow.outdated_entrypoints(), self.version2.versions["entrypoints"])
+
+    @patch('logging.warn', autospec=True)
+    @patch('delft3dworker.models.AsyncResult', autospec=True)
+    def test_update_task_result(self, MockedAsyncResult, mocked_warn_method):
+
+        async_result = MockedAsyncResult.return_value
+
+        # Set up: A previous task is not yet finished
+        self.workflow.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.workflow.task_starttime = now()
+        async_result.ready.return_value = False
+        async_result.state = "STARTED"
+        async_result.result = "dockerid", "None"
+        async_result.successful.return_value = False
+        # call method
+        self.workflow.update_task_result()
+
+        # one time check for ready, no get and the task id remains
+        self.assertEqual(async_result.ready.call_count, 1)
+        self.assertEqual(self.workflow.task_uuid, uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792'))
+
+        # Time has passed, task should expire
+        self.workflow.task_starttime = now() - timedelta(seconds=settings.TASK_EXPIRE_TIME * 2)
+        self.workflow.update_task_result()
+        self.assertEqual(self.workflow.task_uuid, None)
+
+        # Set up: task is now finished with Failure
+        self.workflow.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.workflow.task_starttime = now()
+        async_result.ready.return_value = True
+        async_result.result = (
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        ), 'ERror MesSAge'
+        async_result.state = "FAILURE"
+
+        # call method
+        self.workflow.update_task_result()
+
+        # check that warning is logged
+        self.assertEqual(mocked_warn_method.call_count, 3)
+
+        # Set up: task is now finished
+        self.workflow.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        async_result.ready.return_value = True
+        async_result.successful.return_value = True
+        async_result.result = (
+            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
+        ), 'INFO:root:Time to finish 70.0, 10.0% completed,'
+        async_result.state = "SUCCESS"
+
+        # call method
+        self.workflow.update_task_result()
+
+        # second check for ready, now one get and the task id is set to
+        # None
+        self.assertIsNone(self.workflow.task_uuid)
+
+    @patch('delft3dworker.models.AsyncResult', autospec=True)
+    def test_update_progress(self, MockedAsyncResult):
+
+        async_result = MockedAsyncResult.return_value
+
+        # Set up: A previous task is not yet finished
+        self.workflow.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.workflow.task_starttime = now()
+        async_result.ready.return_value = True
+        async_result.state = "SUCCESS"
+        async_result.result = "dockerid", u"None"
+        async_result.successful.return_value = True
+
+        # call method
+        self.workflow.update_task_result()
+
+        # check progress changed
+        self.assertEqual(self.workflow.progress, 0)
+
+        # Set up: task is now finished
+        self.workflow.task_uuid = uuid.UUID(
+            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        async_result.ready.return_value = True
+        async_result.successful.return_value = True
+        async_result.result = {"get_kube_log":
+        """INFO:root:Time to finish 70.0, 22.2222222222% completed, time steps  left 7.0
+        INFO:root:Time to finish 60.0, 33.3333333333% completed, time steps  left 6.0
+        INFO:root:Time to finish 50.0, 44.4444444444% completed, time steps  left 5.0
+        INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""}
+        async_result.state = "SUCCESS"
+
+        # call method
+        self.workflow.update_task_result()
+
+        # check progress changed
+        self.assertEqual(self.workflow.progress, 56.0)
+
+    @patch('logging.error', autospec=True)
+    def test_update_state_and_save(self, mocked_error_method):
+
+        # This test will test the behavior of a workflow
+        # when it receives snapshot
+
+        self.workflow.sync_cluster_state(
+            None)
+        self.assertEqual(
+            self.workflow.cluster_state, 'non-existent')
+
+        self.workflow.sync_cluster_state(
+            self.run_argo_ps_dict)
+        self.assertEqual(
+            self.workflow.cluster_state, 'running')
+
+        self.workflow.sync_cluster_state(
+            self.fail_argo_ps_dict)
+        self.assertEqual(
+            self.workflow.cluster_state, 'failed')
+
+        self.workflow.sync_cluster_state(
+            self.fin_argo_ps_dict)
+        self.assertEqual(
+            self.workflow.cluster_state, 'succeeded')
+
+        self.assertEqual(
+            mocked_error_method.call_count, 1)  # event is logged as an error!
+
+    @patch('delft3dcontainermanager.tasks.do_argo_create.apply_async',
+           autospec=True)
+    def test_create_workflow(self, mocked_task):
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        result = Mock()
+        mocked_task.return_value = result
+        result.id = task_uuid
+
+        # call method, check if do_docker_create is called once, uuid updates
+        self.workflow.create_workflow()
+
+        template_model = self.workflow.scene.scenario.first().template
+        with open(template_model.yaml_template.path) as f:
+            template = yaml.load(f)
+        template["metadata"] = {"name": "{}".format(self.workflow.name)}
+        template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": str(self.scene_1.suid)},
+                                                       {"name": "s3bucket", "value": settings.BUCKETNAME},
+                                                       {"name": "version", "value": str(self.version.revision)},
+                                                       {"name": "parameters", "value": json.dumps(self.scene_1.parameters)}]
+
+        # create workflow
+        mocked_task.assert_called_once_with(
+            args=(template,),
+            expires=settings.TASK_EXPIRE_TIME)
+        self.assertEqual(self.workflow.task_uuid, task_uuid)
+
+        # update workflow state, call method multiple times
+        self.workflow.cluster_state = 'running'
+        self.workflow.create_workflow()
+        self.workflow.create_workflow()
+        self.workflow.create_workflow()
+        self.workflow.create_workflow()
+
+        # all subsequent calls were ignored
+        mocked_task.assert_called_once_with(
+            args=(template,),
+            expires=settings.TASK_EXPIRE_TIME)
+
+    @patch('delft3dcontainermanager.tasks.do_argo_remove.apply_async',
+           autospec=True)
+    def test_remove_workflow(self, mocked_task):
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.workflow.desired_state = 'non-existent'
+        self.workflow.cluster_state = 'succeeded'
+
+        result = Mock()
+        result.id = task_uuid
+        # result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, check if do_docker_stop is called once, uuid updates
+        self.workflow.remove_workflow()
+        mocked_task.assert_called_once_with(
+            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
+        self.assertEqual(self.workflow.task_uuid, task_uuid)
+
+        # update workflow state, call method multiple times
+        self.workflow.cluster_state = 'non-existent'
+        self.workflow.remove_workflow()
+        self.workflow.remove_workflow()
+        self.workflow.remove_workflow()
+        self.workflow.remove_workflow()
+
+        # all subsequent calls were ignored
+        mocked_task.assert_called_once_with(
+            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
+
+    @patch('delft3dcontainermanager.tasks.get_kube_log.apply_async',
+           autospec=True)
+    def test_update_log(self, mocked_task):
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.workflow.desired_state = 'running'
+        self.workflow.cluster_state = 'running'
+
+        result = Mock()
+        result.id = task_uuid
+        mocked_task.return_value = result
+
+        # call method, update_log is called once, uuid updates
+        self.workflow.update_log()
+        mocked_task.assert_called_once_with(
+            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
+        self.assertEqual(self.workflow.task_uuid, task_uuid)
+
+        # 'finish' task, call method, update_log is called again
+        self.workflow.task_uuid = None
+        self.workflow.update_log()
+        self.assertEqual(mocked_task.call_count, 2)
+
+        # 'exit' workflow, call method, update_log is not called again
+        self.workflow.cluster_state = 'exited'
+        self.workflow.update_log()
+        self.assertEqual(mocked_task.call_count, 2)
+
     def test_reset_scene(self):
         date_started = now()
         progress = 10
+        # Keep the workflow entrypoint for reset
+        self.workflow.entrypoint = 'delft3dgt-main'
 
         # a scene should only start when it's idle: check for each phase
         for phase in self.scene_1.phases:
@@ -570,1027 +924,61 @@ class SceneTestCase(TestCase):
             # check that phase is unshifted unless Finished: then it becomes New
             self.assertEqual(
                 self.scene_1.phase,
-                self.scene_1.phases.new if (
+                self.scene_1.phases.sim_start if (
                     phase[0] == self.scene_1.phases.fin) else phase[0]
             )
 
             # check properties are untouched unless reset from finished state
             if phase[0] == self.scene_1.phases.fin:
-                self.assertEqual(self.scene_1.date_started, None)
+                self.assertTrue((tz_now() - self.scene_1.date_started).seconds < 10)
                 self.assertEqual(self.scene_1.progress, 0)
-                self.assertEqual(self.scene_1.phase, self.scene_1.phases.new)
+                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
 
             else:
                 self.assertEqual(self.scene_1.date_started, date_started)
                 self.assertEqual(self.scene_1.progress, progress)
                 self.assertEqual(self.scene_1.phase, phase[0])
 
-
-class ScenarioZeroPhaseTestCase(TestCase):
-
-    def test_phase_00(self):
-        scene = Scene.objects.create(name='scene 1')
-
-        scene.phase = scene.phases.new
-        scene.update_and_phase_shift()
-
-        # Even if multiple tasks run new or scene is
-        # put into new again, only one container is created
-        scene.phase = scene.phases.new
-        scene.update_and_phase_shift()
-
-        self.assertEqual(scene.phase, scene.phases.preproc_create)
-
-        self.assertEqual(
-            len(scene.container_set.filter(container_type='preprocess')), 1)
-        container = scene.container_set.get(container_type='preprocess')
-        self.assertEqual(container.desired_state, 'non-existent')
-        self.assertEqual(container.docker_state, 'non-existent')
-
-        self.assertEqual(
-            len(scene.container_set.filter(container_type='delft3d')), 1)
-        container = scene.container_set.get(container_type='delft3d')
-        self.assertEqual(container.desired_state, 'non-existent')
-        self.assertEqual(container.docker_state, 'non-existent')
-
-        self.assertEqual(
-            len(scene.container_set.filter(container_type='process')), 1)
-        container = scene.container_set.get(container_type='process')
-        self.assertEqual(container.desired_state, 'non-existent')
-        self.assertEqual(container.docker_state, 'non-existent')
-
-        self.assertEqual(
-            len(scene.container_set.filter(container_type='export')), 1)
-        container = scene.container_set.get(container_type='export')
-        self.assertEqual(container.desired_state, 'non-existent')
-        self.assertEqual(container.docker_state, 'non-existent')
-
-
-class ScenarioPhasesTestCase(TestCase):
-    """TODO Some sort of flow matrix should be defined between phases.
-    We can then randomly set container states, and check whether the
-    resulting phases are allowed. This is way too verbose.
-
-    Basicly we create a framework for phases and check its function,
-    not (what we're doing now) checking for each phase if changes are correct."""
-
-    def setUp(self):
-        self.scene_1 = Scene.objects.create(name='scene 1')
-        self.scene_1.update_and_phase_shift()
-        self.scene_2 = Scene.objects.create(name='scene 2')
-        self.scene_2.update_and_phase_shift()
-        self.scene_3 = Scene.objects.create(name='scene 3')
-        self.scene_3.update_and_phase_shift()
-        self.scene_4 = Scene.objects.create(name='scene 4')
-        self.scene_4.update_and_phase_shift()
-
-        self.p = self.scene_1.phases  # shorthand
-        self.w = self.scene_1.workflows
-
-    def test_phase_new(self):
-        self.scene_1.phase = self.p.new
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.preproc_create)
-
-        # check if scene remains in phase 1 when not all containers are created
-        # check if scene moved to phase 2 when all containers are created
-
-    def test_phase_preproc_create(self):
-        self.scene_1.phase = self.p.preproc_create
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.preproc_create)
-
-        # check to see if the preprocessing container is set to running as
-        # desired state
-
-        # check if scene moved to phase 4 when preprocessing container is
-        # running
-
-    def test_phase_preproc_start(self):
-        self.scene_1.phase = self.p.preproc_start
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.preproc_create)
-
-        self.scene_1.phase = self.p.preproc_start
-        container = self.scene_1.container_set.get(container_type='preprocess')
-        container.docker_state = 'running'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.preproc_run)
-
-    def test_phase_preproc_run(self):
-        self.scene_1.phase = self.p.preproc_run
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.preproc_start)
-
-        self.scene_1.phase = self.p.preproc_start
-        container = self.scene_1.container_set.get(container_type='preprocess')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.preproc_fin)
-
-    def test_phase_preproc_fin(self):
-        self.scene_1.phase = self.p.preproc_fin
-
-        container = self.scene_1.container_set.get(container_type='preprocess')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.preproc_fin)
-
-        container = self.scene_1.container_set.get(container_type='preprocess')
-        container.docker_state = 'non-existent'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.idle)
-
-    def test_phase_idle(self):
-        self.scene_1.phase = self.p.idle
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.idle)
-
-    def test_phase_sim_create(self):
-        self.scene_1.phase = self.p.sim_create
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_create)
-
-    def test_phase_sim_start(self):
-        self.scene_1.phase = self.p.sim_start
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_create)
-
-        self.scene_1.phase = self.p.sim_start
-        container = self.scene_1.container_set.get(container_type='delft3d')
-        container.docker_state = 'running'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_run)
-
-    def test_phase_sim_run(self):
-        self.scene_1.phase = self.p.sim_run
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_create)
-
-        # check if _local_scan was called
-
-        # check if the progress is updated
-
-        self.scene_1.phase = self.p.sim_run
-        container = self.scene_1.container_set.get(container_type='delft3d')
-        container.docker_state = 'exited'
-        container.save()
-        container = self.scene_1.container_set.get(container_type='process')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_last_proc)
-
-    def test_phase_sim_last_proc(self):
-        self.scene_1.phase = self.p.sim_last_proc
-        container = self.scene_1.container_set.get(container_type='delft3d')
-        container.docker_state = 'exited'
-        container.save()
-        container = self.scene_1.container_set.get(container_type='process')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_fin)
-
-    def test_phase_sim_lost_proc(self):
-        # Race condition were connection was lost a long time
-        # Processing disappeared and Delft3D is finished already
-        # we shouldn't restart Delft3D
-        self.scene_1.phase = self.p.sim_run
-        d_container = self.scene_1.container_set.get(container_type='delft3d')
-        d_container.docker_state = 'running'
-        d_container.save()
-        p_container = self.scene_1.container_set.get(container_type='process')
-        p_container.docker_state = 'non-existent'
-        p_container.save()
-
-        # Create process
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_create)
-        p_container.docker_state = 'created'
-        p_container.save()
-
-        # In the meantime, delft3d has finished
-        d_container.docker_state = 'exited'
-        d_container.save()
-
-        # Start process
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_start)
-        # self.assertEqual(d_container.desired_state, 'exited')
-        p_container.docker_state = 'running'
-        p_container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_last_proc)
-
-    def test_phase_sim_fin(self):
-        self.scene_1.phase = self.p.sim_fin
-
-        container = self.scene_1.container_set.get(container_type='delft3d')
-        container.docker_state = 'exited'
-        container.save()
-        container = self.scene_1.container_set.get(container_type='process')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_fin)
-
-        container = self.scene_1.container_set.get(container_type='delft3d')
-        container.docker_state = 'non-existent'
-        container.save()
-        container = self.scene_1.container_set.get(container_type='process')
-        container.docker_state = 'non-existent'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.postproc_create)
-
-        # check if the progress is updated
-
-    def test_phase_sim_stop(self):
-        self.scene_1.phase = self.p.sim_stop
-
-        container = self.scene_1.container_set.get(container_type='delft3d')
-        container.docker_state = 'running'
-        container.save()
-        container = self.scene_1.container_set.get(container_type='process')
-        container.docker_state = 'running'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_stop)
-
-        # check if the simulation and processing containers are set to exited
-        # as desired state
-
-        # check if scene moved to phase 14 when simulation container is
-        # exited
-
-    def test_phase_proc_create(self):
-        # Started processing
-        self.scene_1.phase = self.p.proc_create
-        container = self.scene_1.container_set.get(container_type='process')
-        container.docker_state = 'created'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.proc_start)
-
-    def test_phase_proc_start(self):
-        # Started processing
-        self.scene_1.phase = self.p.proc_start
-        container = self.scene_1.container_set.get(container_type='process')
-        container.docker_state = 'running'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.proc_run)
-
-    def test_phase_proc_run(self):
-        self.scene_1.phase = self.p.proc_run
-        container = self.scene_1.container_set.get(container_type='process')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.proc_fin)
-
-    def test_phase_postproc_fin(self):
-        # Finished processing
-        self.scene_1.phase = self.p.proc_fin
-
-        container = self.scene_1.container_set.get(container_type='process')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.proc_fin)
-
-        container = self.scene_1.container_set.get(container_type='process')
-        container.docker_state = 'non-existent'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_create)
-
-    def test_phase_sync_redo_create(self):
-        # Started sync
-        self.scene_1.phase = self.p.sync_redo_create
-        container = self.scene_1.container_set.get(container_type='sync_rerun')
-        container.docker_state = 'created'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_redo_start)
-
-    def test_phase_sync_rerun_start(self):
-        # Started sync
-        self.scene_1.phase = self.p.sync_redo_start
-        container = self.scene_1.container_set.get(container_type='sync_rerun')
-        container.docker_state = 'running'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_redo_run)
-
-    def test_phase_sync_rerun_run(self):
-        self.scene_1.phase = self.p.sync_redo_run
-        container = self.scene_1.container_set.get(container_type='sync_rerun')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_redo_fin)
-
-    def test_phase_sync_rerun_fin_proc_workflow(self):
-        # Finished sync
-        self.scene_1.phase = self.p.sync_redo_fin
-        self.scene_1.workflow = self.w.redo_proc
-
-        container = self.scene_1.container_set.get(container_type='sync_rerun')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_redo_fin)
-
-        container = self.scene_1.container_set.get(container_type='sync_rerun')
-        container.docker_state = 'non-existent'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.proc_create)
-
-    def test_phase_sync_rerun_fin_postproc_workflow(self):
-        # Finished sync
-        self.scene_1.phase = self.p.sync_redo_fin
-        self.scene_1.workflow = self.w.redo_postproc
-
-        container = self.scene_1.container_set.get(container_type='sync_rerun')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_redo_fin)
-
-        container = self.scene_1.container_set.get(container_type='sync_rerun')
-        container.docker_state = 'non-existent'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.postproc_create)
-
-    def test_phase_postproc_create(self):
-        # Started postprocessing
-        self.scene_1.phase = self.p.postproc_create
-        container = self.scene_1.container_set.get(container_type='postprocess')
-        container.docker_state = 'created'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.postproc_start)
-
-    def test_phase_postproc_start(self):
-        # Started postprocessing
-        self.scene_1.phase = self.p.postproc_start
-        container = self.scene_1.container_set.get(container_type='postprocess')
-        container.docker_state = 'running'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.postproc_run)
-
-    def test_phase_postproc_run(self):
-        self.scene_1.phase = self.p.postproc_run
-        container = self.scene_1.container_set.get(container_type='postprocess')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.postproc_fin)
-
-    def test_phase_postproc_fin(self):
-        # Finished postprocessing
-        self.scene_1.phase = self.p.postproc_fin
-
-        container = self.scene_1.container_set.get(container_type='postprocess')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.postproc_fin)
-
-        container = self.scene_1.container_set.get(container_type='postprocess')
-        container.docker_state = 'non-existent'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.exp_create)
-
-    def test_phase_exp_create(self):
-        self.scene_1.phase = self.p.exp_create
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.exp_create)
-
-        # check if the export container is set to exited
-        # as desired state
-
-        # check if scene moved to phase 15 when export container is
-        # running
-
-    def test_phase_exp_start(self):
-        self.scene_1.phase = self.p.exp_start
-
-        # Moves back to create if non-existent
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.exp_create)
-
-        # But moves on if created
-        self.scene_1.phase = self.p.exp_start
-        container = self.scene_1.container_set.get(container_type='export')
-        container.docker_state = 'running'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.exp_run)
-
-    def test_phase_exp_run(self):
-        self.scene_1.phase = self.p.exp_run
-
-        # Moves back to create if non-existent
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.exp_create)
-
-        # But stays in phase if running
-        container = self.scene_1.container_set.get(container_type='export')
-        container.docker_state = 'running'
-        container.save()
-
-        self.scene_1.phase = self.p.exp_start
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.exp_run)
-
-    def test_phase_exp_fin(self):
-        self.scene_1.phase = self.p.exp_fin
-
-        container = self.scene_1.container_set.get(container_type='export')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.exp_fin)
-
-        container = self.scene_1.container_set.get(container_type='export')
-        container.docker_state = 'non-existent'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_create)
-
-    def test_phase_sync_create(self):
-        self.scene_1.phase = self.p.sync_create
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_create)
-
-        # check if all containers are set to non-existent
-        # as desired state
-
-    def test_phase_sync_start(self):
-        self.scene_1.phase = self.p.sync_start
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_create)
-
-        self.scene_1.phase = self.p.sync_start
-        container = self.scene_1.container_set.get(
-            container_type='sync_cleanup')
-        container.docker_state = 'running'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_run)
-
-    def test_phase_sync_run(self):
-        self.scene_1.phase = self.p.sync_run
-        for container in self.scene_1.container_set.all():
-            container.docker_state = 'exited'
-            container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_fin)
-
-        # check if scene stays in phase 18 when not all containers are
-        # exited
-
-        # check if scene moves to phase 19 when all containers are
-        # exited
-
-    def test_phase_sync_fin(self):
-        self.scene_1.phase = self.p.sync_fin
-
-        container = self.scene_1.container_set.get(
-            container_type='sync_cleanup')
-        container.docker_state = 'exited'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_fin)
-
-        container = self.scene_1.container_set.get(
-            container_type='sync_cleanup')
-        container.docker_state = 'non-existent'
-        container.save()
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.fin)
-
-    def test_phase_abort_start(self):
-        self.scene_1.phase = self.p.abort_start
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.abort_run)
-
-        # check if simulation and processing containers are set to exited
-        # as desired state
-
-    def test_phase_abort_run(self):
-        self.scene_1.phase = self.p.abort_run
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.abort_run)
-
-        # check if scene remains in phase 1001 when not all containers are
-        # exited
-
-        # check if scene moves to phase 1002 when all containers are
-        # exited
-
-    def test_phase_abort_fin(self):
-        self.scene_1.phase = self.p.abort_fin
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.idle)
-
-    def test_phase_queued_main_workflow(self):
-        self.scene_1.phase = self.p.queued
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sim_create)
-
-    def test_phase_queued_proc_workflow(self):
-        self.scene_1.phase = self.p.queued
-        self.scene_1.workflow = self.w.redo_proc
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
-
-    def test_phase_queued_postproc_workflow(self):
-        self.scene_1.phase = self.p.queued
-        self.scene_1.workflow = self.w.redo_postproc
-
-        self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.phase, self.p.sync_redo_create)
-
-    def test_set_max_simulations(self):
-        cconfig.MAX_SIMULATIONS = 42
-        self.assertEqual(cconfig.MAX_SIMULATIONS, 42)
-
-    def test_max_simulations(self):
-        cconfig.MAX_SIMULATIONS = 2
-
-        self.scene_1.phase = self.p.sim_create
-        self.scene_2.phase = self.p.queued
-        self.scene_3.phase = self.p.proc_create
-        self.scene_4.phase = self.p.queued
-
-        self.scene_3.workflow = self.w.redo_proc
-        self.scene_4.workflow = self.w.redo_proc
-
-        self.scene_1.save()
-        self.scene_2.save()
-        self.scene_3.save()
-        self.scene_4.save()
-
-        self.scene_2.update_and_phase_shift()
-        self.scene_4.update_and_phase_shift()
-
-        # Scene 2 is simulation and can't be started because it needs 2 containers
-        self.assertEqual(self.scene_2.phase, self.p.queued)
-        # While Scene 4 only needs 1 container and can be started.
-        self.assertEqual(self.scene_4.phase, self.p.sync_redo_create)
-
-        # Nothing can be started, scenes should stay queued
-        cconfig.MAX_SIMULATIONS = 0
-
-        self.scene_2.phase = self.p.queued
-        self.scene_4.phase = self.p.queued
-
-        self.scene_2.save()
-        self.scene_4.save()
-
-        self.scene_2.update_and_phase_shift()
-        self.scene_4.update_and_phase_shift()
-
-        self.assertEqual(self.scene_2.phase, self.p.queued)
-        self.assertEqual(self.scene_4.phase, self.p.queued)
-
-
-class ContainerTestCase(TestCase):
-
-    def setUp(self):
-
-        self.created_docker_ps_dict = {'State': {
-            'Status': 'created',
-            'Id':
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        }}
-
-        self.up_docker_ps_dict = {'State': {
-            'Status': 'running',
-            'Id':
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        }}
-
-        self.exited_docker_ps_dict = {'State': {
-            'Status': 'exited',
-            'Id':
-            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvw'
-        }}
-
-        self.error_docker_ps_dict = {'State': {
-            'Status': 'nvkeirwtynvowi',
-            'Id':
-            'abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvw'
-        }}
-
-        self.scene_1 = Scene.objects.create()
-
-        self.container = Container.objects.create(
-            scene=self.scene_1,
-            container_type='preprocess',
-            desired_state='created',
-            docker_state='non-existent',
-        )
-        self.delft3d_container = Container.objects.create(
-            scene=self.scene_1,
-            container_type='delft3d',
-            desired_state='created',
-            docker_state='non-existent',
-        )
-
-    @patch('logging.warn', autospec=True)
-    @patch('delft3dworker.models.AsyncResult', autospec=True)
-    def test_update_task_result(self, MockedAsyncResult, mocked_warn_method):
-
-        async_result = MockedAsyncResult.return_value
-
-        # Set up: A previous task is not yet finished
-        self.container.task_uuid = uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792')
-        self.container.task_starttime = now()
-        async_result.ready.return_value = False
-        async_result.state = "STARTED"
-        async_result.result = "dockerid", "None"
-        async_result.successful.return_value = False
-        # call method
-        self.container.update_task_result()
-
-        # one time check for ready, no get and the task id remains
-        self.assertEqual(async_result.ready.call_count, 1)
-        self.assertEqual(self.container.task_uuid, uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792'))
-
-        # Time has passed, task should expire
-        self.container.task_starttime = now() - timedelta(seconds=settings.TASK_EXPIRE_TIME * 2)
-        self.container.update_task_result()
-        self.assertEqual(self.container.task_uuid, None)
-
-        # Set up: task is now finished with Failure
-        self.container.task_uuid = uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792')
-        self.container.task_starttime = now()
-        async_result.ready.return_value = True
-        async_result.result = (
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        ), 'ERror MesSAge'
-        async_result.state = "FAILURE"
-
-        # call method
-        self.container.update_task_result()
-
-        # check that warning is logged
-        self.assertEqual(mocked_warn_method.call_count, 3)
-
-        # Set up: task is now finished
-        self.container.task_uuid = uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792')
-        async_result.ready.return_value = True
-        async_result.successful.return_value = True
-        async_result.result = (
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        ), 'INFO:root:Time to finish 70.0, 10.0% completed,'
-        async_result.state = "SUCCESS"
-
-        # call method
-        self.container.update_task_result()
-
-        # second check for ready, now one get and the task id is set to
-        # None
-        self.assertIsNone(self.container.task_uuid)
-        self.assertEqual(
-            self.container.docker_id,
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        )
-
-    @patch('delft3dworker.models.AsyncResult', autospec=True)
-    def test_update_progress(self, MockedAsyncResult):
-
-        async_result = MockedAsyncResult.return_value
-
-        # Set up: A previous task is not yet finished
-        self.delft3d_container.task_uuid = uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792')
-        self.delft3d_container.task_starttime = now()
-        async_result.ready.return_value = True
-        async_result.state = "SUCCESS"
-        async_result.result = "dockerid", u"None"
-        async_result.successful.return_value = True
-
-        # call method
-        self.delft3d_container.update_task_result()
-
-        # check progress changed
-        self.assertEqual(self.delft3d_container.container_progress, 0)
-
-        # Set up: task is now finished
-        self.delft3d_container.task_uuid = uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792')
-        async_result.ready.return_value = True
-        async_result.successful.return_value = True
-        async_result.result = (
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        ), u"""INFO:root:Time to finish 70.0, 22.2222222222% completed, time steps  left 7.0
-INFO:root:Time to finish 60.0, 33.3333333333% completed, time steps  left 6.0
-INFO:root:Time to finish 50.0, 44.4444444444% completed, time steps  left 5.0
-INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
-        async_result.state = "SUCCESS"
-
-        # call method
-        self.delft3d_container.update_task_result()
-
-        # check progress changed
-        self.assertEqual(self.delft3d_container.container_progress, 56.0)
-
-    @patch('logging.error', autospec=True)
-    def test_update_state_and_save(self, mocked_error_method):
-
-        # This test will test the behavior of a Container
-        # when it receives snapshot
-
-        self.container.update_from_docker_snapshot(
-            None)
-        self.assertEqual(
-            self.container.docker_state, 'non-existent')
-
-        self.container.update_from_docker_snapshot(
-            self.created_docker_ps_dict)
-        self.assertEqual(
-            self.container.docker_state, 'created')
-
-        self.container.update_from_docker_snapshot(
-            self.up_docker_ps_dict)
-        self.assertEqual(
-            self.container.docker_state, 'running')
-
-        self.container.update_from_docker_snapshot(
-            self.exited_docker_ps_dict)
-        self.assertEqual(
-            self.container.docker_state, 'exited')
-
-        self.container.update_from_docker_snapshot(
-            self.error_docker_ps_dict)
-        self.assertEqual(
-            self.container.docker_state, 'unknown')
-        self.assertEqual(
-            mocked_error_method.call_count, 1)  # event is logged as an error!
-
-    @patch('delft3dcontainermanager.tasks.do_docker_create.apply_async',
-           autospec=True)
-    def test_create_container(self, mocked_task):
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
-
-        result = Mock()
-        mocked_task.return_value = result
-        result.id = task_uuid
-
-        # call method, check if do_docker_create is called once, uuid updates
-        name = self.container._create_container()
-
-        mocked_task.assert_called_once_with(
-            args=({'type': 'preprocess'}, {}),
-            expires=settings.TASK_EXPIRE_TIME,
-            kwargs={'command': '/data/run.sh /data/svn/scripts/'
-                    'preprocess/preprocess.py',
-                    'folders': ['test/{}/preprocess'.format(self.scene_1.suid),
-                                'test/{}/simulation'.format(self.scene_1.suid)],
-                    'memory_limit': '200m',
-                    'image': 'dummy_preprocessing',
-                    'environment': {'uuid': str(self.scene_1.suid),
-                                    'folder': os.path.join(
-                                        self.scene_1.workingdir, 'simulation'),
-                                    'REPOS_URL': u'{}{}'.format(settings.REPOS_URL, '/trunk/'),
-                                    'SVN_REV': int(settings.SVN_REV)},
-                    'name': name,
-                    'volumes': [
-                        'test/{}/simulation:/data/output:z'.format(
-                            self.scene_1.suid),
-                        'test/{}/preprocess:/data/input:ro'.format(
-                            self.scene_1.suid)]}
-        )
-        self.assertEqual(self.container.task_uuid, task_uuid)
-
-        # update container state, call method multiple times
-        self.container.docker_state = 'created'
-        self.container._create_container()
-        self.container._create_container()
-        self.container._create_container()
-        self.container._create_container()
-
-        # all subsequent calls were ignored
-        mocked_task.assert_called_once_with(args=(
-            {'type': 'preprocess'}, {},),
-            kwargs={'command': '/data/run.sh /data/svn/scripts/'
-                    'preprocess/preprocess.py',
-                    'folders': ['test/{}/preprocess'.format(self.scene_1.suid),
-                                'test/{}/simulation'.format(self.scene_1.suid)],
-                    'memory_limit': '200m',
-                    'image': 'dummy_preprocessing',
-                    'environment': {'uuid': str(self.scene_1.suid),
-                                    'folder': os.path.join(
-                                        self.scene_1.workingdir, 'simulation'),
-                                    'REPOS_URL': u'{}{}'.format(settings.REPOS_URL, '/trunk/'),
-                                    'SVN_REV': int(settings.SVN_REV)},
-                    'name': name,
-                    'volumes': [
-                        'test/{}/simulation:/data/output:z'.format(
-                            self.scene_1.suid),
-                        'test/{}/preprocess:/data/input:ro'.format(
-                            self.scene_1.suid
-                        )]},
-            expires=settings.TASK_EXPIRE_TIME
-        )
-
-    @patch('delft3dcontainermanager.tasks.do_docker_start.apply_async',
-           autospec=True)
-    def test_start_container(self, mocked_task):
-        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
-
-        self.container.desired_state = 'running'
-        self.container.docker_state = 'created'
-        self.container.docker_id = docker_id
-
-        result = Mock()
-        result.id = task_uuid
-        result.get.return_value = docker_id
-        mocked_task.return_value = result
-
-        # call method, check if do_docker_start is called once, uuid updates
-        self.container._start_container()
-        mocked_task.assert_called_once_with(
-            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
-        self.assertEqual(self.container.task_uuid, task_uuid)
-        self.assertEqual(self.container.task_uuid, task_uuid)
-
-        # update container state, call method multiple times
-        self.container.docker_state = 'running'
-        self.container._start_container()
-        self.container._start_container()
-        self.container._start_container()
-        self.container._start_container()
-
-        # all subsequent calls were ignored
-        mocked_task.assert_called_once_with(
-            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
-
-    @patch('delft3dcontainermanager.tasks.do_docker_stop.apply_async',
-           autospec=True)
-    def test_stop_container(self, mocked_task):
-        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
-
-        self.container.desired_state = 'exited'
-        self.container.docker_state = 'running'
-        self.container.docker_id = docker_id
-
-        result = Mock()
-        result.id = task_uuid
-        result.get.return_value = docker_id
-        mocked_task.return_value = result
-
-        # call method, check if do_docker_stop is called once, uuid updates
-        self.container._stop_container()
-        mocked_task.assert_called_once_with(
-            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
-        self.assertEqual(self.container.task_uuid, task_uuid)
-
-        # update container state, call method multiple times
-        self.container.docker_state = 'exited'
-        self.container._stop_container()
-        self.container._stop_container()
-        self.container._stop_container()
-        self.container._stop_container()
-
-        # all subsequent calls were ignored
-        mocked_task.assert_called_once_with(
-            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
-
-    @patch('delft3dcontainermanager.tasks.do_docker_remove.apply_async',
-           autospec=True)
-    def test_remove_container(self, mocked_task):
-        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
-
-        self.container.desired_state = 'non-existent'
-        self.container.docker_state = 'created'
-        self.container.docker_id = docker_id
-
-        result = Mock()
-        result.id = task_uuid
-        result.get.return_value = docker_id
-        mocked_task.return_value = result
-
-        # call method, check if do_docker_remove is called once, uuid updates
-        self.container._remove_container()
-        mocked_task.assert_called_once_with(
-            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
-        self.assertEqual(self.container.task_uuid, task_uuid)
-
-        # update container state, call method multiple times
-        self.container.docker_state = 'non-existent'
-        self.container._remove_container()
-        self.container._remove_container()
-        self.container._remove_container()
-        self.container._remove_container()
-
-        # all subsequent calls were ignored
-        mocked_task.assert_called_once_with(
-            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
-
-    @patch('delft3dcontainermanager.tasks.get_docker_log.apply_async',
-           autospec=True)
-    def test_update_log(self, mocked_task):
-        docker_id = '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghi'
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
-
-        self.container.desired_state = 'running'
-        self.container.docker_state = 'running'
-        self.container.docker_id = docker_id
-
-        result = Mock()
-        result.id = task_uuid
-        result.get.return_value = docker_id
-        mocked_task.return_value = result
-
-        # call method, get_docker_log is called once, uuid updates
-        self.container._update_log()
-        mocked_task.assert_called_once_with(
-            args=(docker_id,), expires=settings.TASK_EXPIRE_TIME)
-        self.assertEqual(self.container.task_uuid, task_uuid)
-
-        # 'finish' task, call method, get_docker_log is called again
-        self.container.task_uuid = None
-        self.container._update_log()
-        self.assertEqual(mocked_task.call_count, 2)
-
-        # 'exit' container, call method, get_docker_log is not called again
-        self.container.docker_state = 'exited'
-        self.container._update_log()
-        self.assertEqual(mocked_task.call_count, 2)
+    def test_redo_workflow(self):
+        result = self.scene_1.redo("delft3dgt-main")
+        self.assertEqual(self.workflow.version, self.version2)
+        self.assertTrue(result)
+
+    def test_redo_scene(self):
+        entrypoint = 'update-processing'
+        # self.entrypoint = 'main'
+        date_started = now()
+        progress = 10
+
+        # a workflow can only be updated once it's Scene is finished,
+        # loop through all phases to test
+        for phase in self.scene_1.phases:
+            # Need to reset entrypoint with each phase, is not reset by function
+            self.workflow.entrypoint = 'delft3dgt-main'
+
+            #  shift scene to phase
+            self.scene_1.date_started = date_started
+            self.scene_1.progress = progress
+            self.scene_1.shift_to_phase(phase[0])
+
+            # update workflow
+            self.scene_1.redo(entrypoint)
+
+            # check that phase is unshifted unless Finished: then it becomes New
+            self.assertEqual(
+                self.scene_1.phase,
+                self.scene_1.phases.sim_start if (
+                        phase[0] == self.scene_1.phases.fin) else phase[0]
+            )
+            # check that entry point is the same and redo steps done
+            # check properties are untouched unless reset from finished state
+            if phase[0] == self.scene_1.phases.fin:
+                self.assertEqual(self.workflow.entrypoint, 'update-processing')
+                self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
+
+            else:
+                self.assertEqual(self.workflow.entrypoint, 'delft3dgt-main')
+                self.assertEqual(self.scene_1.phase, phase[0])
 
 
 class SearchFormTestCase(TestCase):

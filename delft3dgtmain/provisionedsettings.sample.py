@@ -57,6 +57,7 @@ CELERY_ONCE = {
   }
 }
 
+BUCKETNAME = "s3bucket"
 REQUIRE_REVIEW = False
 
 # EMAIL backend

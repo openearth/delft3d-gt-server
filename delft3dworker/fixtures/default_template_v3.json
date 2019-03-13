@@ -1,0 +1,380 @@
+[
+  {
+    "fields": {
+      "templates": [
+        {
+          "name": "River dominated delta",
+          "id": 53
+        }
+      ],
+      "sections": [
+        {
+          "variables": [
+            {
+              "units": "days",
+              "type": "numeric",
+              "id": "simstoptime",
+              "name": "Stop time",
+              "validators": {
+                "max": 200,
+                "min": 1
+              }
+            },
+            {
+              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+              "validators": {
+                "max": 2,
+                "min": 0.5
+              },
+              "units": "days",
+              "type": "numeric",
+              "id": "outputinterval",
+              "name": "Output timestep"
+            }
+          ],
+          "name": "Simulation settings"
+        },
+        {
+          "variables": [
+            {
+              "name": "Basin slope",
+              "validators": {
+                "max": 0.3,
+                "min": 0.01
+              },
+              "factor": true,
+              "units": "deg",
+              "type": "numeric",
+              "id": "basinslope"
+            },
+            {
+              "name": "River width",
+              "validators": {
+                "max": 1000,
+                "min": 100
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "riverwidth"
+            }
+          ],
+          "name": "Geometry"
+        },
+        {
+          "variables": [
+            {
+              "name": "River discharge",
+              "validators": {
+                "max": 2000,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m³/s",
+              "type": "numeric",
+              "id": "riverdischarge"
+            },
+            {
+              "name": "Tidal amplitude",
+              "validators": {
+                "max": 2,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "tidalamplitude"
+            },
+            {
+              "name": "Wave height",
+              "validators": {
+                "max": 2,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "waveheight",
+              "description": "Please note: for model stability, a wave height larger than 1 meter will double(!) the required simulation time."
+            },
+            {
+              "name": "Base level change",
+              "validators": {
+                "max": 10.0,
+                "min": -10.0
+              },
+              "factor": true,
+              "units": "%",
+              "type": "numeric",
+              "id": "baselevel",
+              "description": "This is a percentage of the level change produced by the basin slope.<br><br>Click on the button below to see a table with the absolute values."
+            }
+          ],
+          "name": "Forcing"
+        },
+        {
+          "variables": [
+            {
+              "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
+              "id": "composition",
+              "validators": {},
+              "type": "select",
+              "options": [
+                {
+                  "text": "coarse sand",
+                  "value": "coarse-sand"
+                },
+                {
+                  "text": "medium sand",
+                  "value": "medium-sand"
+                },
+                {
+                  "text": "fine sand",
+                  "value": "fine-sand"
+                },
+                {
+                  "text": "very fine sand",
+                  "value": "veryfine-sand"
+                },
+                {
+                  "text": "coarse silt",
+                  "value": "coarse-silt"
+                }
+              ],
+              "name": "Sediment classes"
+            }
+          ],
+          "name": "Sediment composition",
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+        }
+      ],
+      "name": "MAIN"
+    },
+    "model": "delft3dworker.searchform",
+    "pk": 1
+  },
+  {
+    "fields": {
+      "meta": {
+        "description": "A template for a river dominated basin fill scenario.",
+        "creator": "Liang.Li@tudelft.nl"
+      },
+      "sections": [
+        {
+          "variables": [
+            {
+              "default": "River dominated basin fill",
+              "type": "text",
+              "id": "name",
+              "name": "Name",
+              "validators": {
+                "required": true
+              }
+            }
+          ],
+          "name": "Scenario"
+        },
+        {
+          "variables": [
+            {
+              "name": "Stop time",
+              "default": 60,
+              "validators": {
+                "max": 200,
+                "required": true,
+                "min": 1
+              },
+              "units": "days",
+              "type": "numeric",
+              "id": "simstoptime"
+            },
+            {
+              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+              "default": 1,
+              "validators": {
+                "max": 2,
+                "required": true,
+                "min": 0.5
+              },
+              "units": "days",
+              "type": "numeric",
+              "id": "outputinterval",
+              "name": "Output timestep"
+            }
+          ],
+          "name": "Simulation settings"
+        },
+        {
+          "variables": [
+            {
+              "name": "Basin slope",
+              "default": 0.1,
+              "validators": {
+                "max": 0.3,
+                "required": true,
+                "min": 0.01
+              },
+              "factor": true,
+              "units": "deg",
+              "type": "numeric",
+              "id": "basinslope"
+            },
+            {
+              "name": "River width",
+              "default": 300,
+              "validators": {
+                "max": 1000,
+                "required": true,
+                "min": 100
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "riverwidth"
+            }
+          ],
+          "name": "Geometry"
+        },
+        {
+          "variables": [
+            {
+              "name": "River discharge",
+              "default": 1000,
+              "validators": {
+                "max": 2000,
+                "required": true,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m\u00b3/s",
+              "type": "numeric",
+              "id": "riverdischarge"
+            },
+            {
+              "name": "Tidal amplitude",
+              "default": 1,
+              "validators": {
+                "max": 2,
+                "required": true,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "tidalamplitude"
+            },
+            {
+              "name": "Wave height",
+              "default": 0.0,
+              "validators": {
+                "max": 2,
+                "required": true,
+                "min": 0
+              },
+              "factor": true,
+              "units": "m",
+              "type": "numeric",
+              "id": "waveheight",
+              "description": "Please note: for model stability, a wave height larger than 1 meter will double(!) the required simulation time."
+            },
+            {
+              "name": "Base level change",
+              "default": 0,
+              "validators": {
+                "max": 10.0,
+                "required": true,
+                "min": -10.0
+              },
+              "factor": true,
+              "units": "%",
+              "type": "numeric",
+              "id": "baselevel",
+              "description": "This is a percentage of the level change produced by the basin slope.<br><br>Click on the button below to see a table with the absolute values."
+            }
+          ],
+          "name": "Forcing"
+        },
+        {
+          "variables": [
+            {
+              "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
+              "default": "medium-sand",
+              "id": "composition",
+              "validators": {
+                "required": true
+              },
+              "type": "select",
+              "options": [
+                {
+                  "text": "coarse sand",
+                  "value": "coarse-sand"
+                },
+                {
+                  "text": "medium sand",
+                  "value": "medium-sand"
+                },
+                {
+                  "text": "fine sand",
+                  "value": "fine-sand"
+                },
+                {
+                  "text": "very fine sand",
+                  "value": "veryfine-sand"
+                },
+                {
+                  "text": "coarse silt",
+                  "value": "coarse-silt"
+                }
+              ],
+              "name": "Sediment classes"
+            }
+          ],
+          "name": "Sediment composition",
+          "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+        }
+      ],
+      "name": "River dominated delta",
+      "shortname": "gt",
+      "info": {
+        "delta_fringe_images": {
+            "filetype": "images",
+            "extensions": [".png", ".jpg", ".gif"],
+            "files": [],
+            "location": "process/"
+        },
+        "channel_network_images": {
+            "filetype": "images",
+            "extensions": [".png", ".jpg", ".gif"],
+            "files": [],
+            "location": "process/"
+        },
+        "sediment_fraction_images": {
+            "filetype": "images",
+            "extensions": [".png", ".jpg", ".gif"],
+            "files": [],
+            "location": "process/"
+        },
+        "subenvironment_images": {
+            "filetype": "images",
+            "extensions": [".png", ".jpg", ".gif"],
+            "files": [],
+            "location": "postprocess/"
+        },
+        "logfile": {
+            "filetype": "log",
+            "extensions": [".log"],
+            "files": [],
+            "location": "simulation/"
+        },
+        "postprocess_output": {
+            "filetype": "json",
+            "extensions": [".json"],
+            "files": {},
+            "location": "postprocess/"
+        }
+      }
+    },
+    "model": "delft3dworker.template",
+    "pk": 53
+  }
+]

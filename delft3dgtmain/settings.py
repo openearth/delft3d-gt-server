@@ -14,6 +14,7 @@ import os
 import sys
 
 from datetime import timedelta
+from kubernetes import config
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -64,7 +65,6 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -145,6 +145,9 @@ USE_TZ = True
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 
+# Max form size for large scenarios with logs
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB
+
 # ######
 # Celery
 # ######
@@ -172,15 +175,10 @@ CELERY_ACKS_LATE = False
 CELERYD_PREFETCH_MULTIPLIER = 1
 
 # Celerybeat
-CELERYBEAT_SCHEDULE = {
-    'sync': {
-        'task': 'delft3dcontainermanager.tasks.delft3dgt_pulse',
+CELERY_BEAT_SCHEDULE = {
+    'sync_kube_cluster': {
+        'task': 'delft3dcontainermanager.tasks.delft3dgt_kube_pulse',
         'schedule': timedelta(seconds=15),
-        'options': {'queue': 'beat', 'expires': TASK_EXPIRE_TIME}
-    },
-    'latest_svn': {
-        'task': 'delft3dcontainermanager.tasks.delft3dgt_latest_svn',
-        'schedule': timedelta(hours=6),
         'options': {'queue': 'beat', 'expires': TASK_EXPIRE_TIME}
     },
 }
@@ -209,18 +207,17 @@ REST_FRAMEWORK = {
     ]
 }
 
-
 # import provisioned settings
 try:
-    from provisionedsettings import *
+    from .provisionedsettings import *
 except ImportError:
+    print("Failed to import provisioned settings!")
     SECRET_KEY = 'test'
 
 # TESTING
-
 if 'test' in sys.argv:
 
-    from celery import Celery
+    from .celery import Celery
     import logging
     logging.disable(logging.CRITICAL)
 
@@ -290,6 +287,7 @@ if 'test' in sys.argv:
     # max number of simulations
     MAX_SIMULATIONS = 1
     REQUIRE_REVIEW = False
+    BUCKETNAME = ""
 
     # Docker URL this setting is from the delf3dcontainermanger app
     DOCKER_URL = 'unix:///var/run/docker.sock'

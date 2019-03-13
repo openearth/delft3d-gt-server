@@ -1,14 +1,27 @@
 from rest_framework import serializers
 from rest_framework.renderers import JSONRenderer
 
+from delft3dworker.models import Version_Docker
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
-from delft3dworker.models import Version_SVN
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+
+
+class VersionSerializer(serializers.ModelSerializer):
+    """
+    A default REST Framework ModelSerializer for the Version_Docker model
+    source: http://www.django-rest-framework.org/api-guide/serializers/
+    """
+
+    # here we will write custom serialization and validation methods
+
+    class Meta:
+        model = Version_Docker
+        fields = '__all__'
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -56,11 +69,11 @@ class SceneFullSerializer(serializers.ModelSerializer):
     """
 
     owner = UserSerializer(read_only=True)
-
     state = serializers.CharField(source='get_phase_display', read_only=True)
-    outdated = serializers.BooleanField(source='is_outdated', read_only=True)
-    outdated_workflow = serializers.SerializerMethodField()
-    outdated_changelog = serializers.CharField(read_only=True)
+    template = serializers.SerializerMethodField()
+    outdated = serializers.BooleanField(source='workflow.is_outdated', read_only=True)
+    entrypoints = serializers.SerializerMethodField(read_only=True)
+    outdated_changelog = serializers.CharField(source='workflow.outdated_changelog', read_only=True)
 
     class Meta:
         model = Scene
@@ -80,16 +93,26 @@ class SceneFullSerializer(serializers.ModelSerializer):
             'state',
             'suid',
             'task_id',
-            'versions',
             'workingdir',
+            'template',
             'outdated',
-            'outdated_workflow',
+            'entrypoints',
             'outdated_changelog'
         )
 
-    def get_outdated_workflow(self, obj):
-        wf = obj.outdated_workflow()
-        return obj.workflows[wf] if wf is not None else ""
+    def get_entrypoints(self, obj):
+        if hasattr(obj, 'workflow'):
+            return obj.workflow.outdated_entrypoints()
+        else:
+            return None
+
+    def get_template(self, obj):
+        scenario = obj.scenario.first()
+        # Only retrieve template in case of a connected scenario
+        if scenario is not None and scenario.template is not None:
+            return scenario.template.name
+        else:
+            return None
 
 
 class SceneSparseSerializer(serializers.ModelSerializer):
@@ -101,6 +124,7 @@ class SceneSparseSerializer(serializers.ModelSerializer):
     """
 
     state = serializers.CharField(source='get_phase_display', read_only=True)
+    template_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Scene
@@ -111,9 +135,17 @@ class SceneSparseSerializer(serializers.ModelSerializer):
             'owner',
             'progress',
             'shared',
-            'state'
+            'state',
+            'template_name',
         )
 
+    def get_template_name(self, obj):
+        scenario = obj.scenario.first()
+        # Only retrieve template in case of a connected scenario
+        if scenario is not None and scenario.template is not None:
+            return scenario.template.name
+        else:
+            return None
 
 class ScenarioSerializer(serializers.ModelSerializer):
     """
@@ -158,17 +190,6 @@ class SearchFormSerializer(serializers.ModelSerializer):
             'sections',
             'templates',
         )
-
-
-class Version_SVNSerializer(serializers.ModelSerializer):
-    """
-    A default REST Framework ModelSerializer for the Version_SVN model
-    source: http://www.django-rest-framework.org/api-guide/serializers/
-    """
-
-    class Meta:
-        model = Version_SVN
-        fields = '__all__'
 
 
 class TemplateSerializer(serializers.ModelSerializer):

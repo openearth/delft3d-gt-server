@@ -1,0 +1,484 @@
+{
+    "apiVersion": "argoproj.io/v1alpha1",
+    "kind": "Workflow",
+    "metadata": {
+        "clusterName": "",
+        "creationTimestamp": "2018-05-29T12:58:25Z",
+        "generateName": "delft3dgt-",
+        "generation": 0,
+        "labels": {
+            "workflows.argoproj.io/phase": "Running"
+        },
+        "name": "delft3dgt-lftrz",
+        "namespace": "default",
+        "resourceVersion": "2150134",
+        "selfLink": "/apis/argoproj.io/v1alpha1/namespaces/default/workflows/delft3dgt-lftrz",
+        "uid": "f9797eba-633f-11e8-87a5-068c6e8c1a1e"
+    },
+    "spec": {
+        "arguments": {
+            "parameters": [
+                {
+                    "name": "uuid",
+                    "value": "1234567"
+                },
+                {
+                    "name": "s3bucket",
+                    "value": "delft3d-gt-dev"
+                },
+                {
+                    "name": "parameters",
+                    "value": "{\"simstoptime\": {\"units\": \"days\", \"name\": \"Stop time\", \"value\": 2}, \"baselevel\": {\"units\": \"%\", \"name\": \"Base level change\", \"value\": 0, \"description\": \"This is a percentage of the level change produced by the basin slope.<br><br>Click on the button below to see a table with the absolute values.\"}, \"waveheight\": {\"units\": \"m\", \"name\": \"Wave height\", \"value\": 0, \"description\": \"Please note: for model stability, a wave height larger than 1 meter will double(!) the required simulation time.\"}, \"tidalamplitude\": {\"units\": \"m\", \"name\": \"Tidal amplitude\", \"value\": 0}, \"riverdischarge\": {\"units\": \"m\\u00b3/s\", \"name\": \"River discharge\", \"value\": 1000}, \"template\": {\"value\": \"River dominated delta\"}, \"riverwidth\": {\"units\": \"m\", \"name\": \"River width\", \"value\": 500}, \"basinslope\": {\"units\": \"deg\", \"name\": \"Basin slope\", \"value\": 0.1}, \"composition\": {\"name\": \"Sediment classes\", \"value\": \"veryfine-sand\", \"description\": \"test\"}, \"outputinterval\": {\"units\": \"days\", \"name\": \"Output timestep\", \"value\": 0.5, \"description\": \"Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.\"}}"
+                }
+            ]
+        },
+        "entrypoint": "delft3dgt-main",
+        "imagePullSecrets": [
+            {
+                "name": "regcred"
+            }
+        ],
+        "templates": [
+            {
+                "inputs": {},
+                "metadata": {},
+                "name": "delft3dgt-main",
+                "outputs": {},
+                "steps": [
+                    [
+                        {
+                            "arguments": {},
+                            "name": "preprocess",
+                            "template": "preprocess"
+                        }
+                    ],
+                    [
+                        {
+                            "arguments": {},
+                            "name": "delft3d",
+                            "template": "delft3d"
+                        },
+                        {
+                            "arguments": {},
+                            "name": "process-loop",
+                            "template": "processing"
+                        }
+                    ],
+                    [
+                        {
+                            "arguments": {},
+                            "name": "postprocess",
+                            "template": "postprocess"
+                        }
+                    ]
+                ]
+            },
+            {
+                "inputs": {},
+                "metadata": {},
+                "name": "processing",
+                "outputs": {},
+                "steps": [
+                    [
+                        {
+                            "arguments": {},
+                            "name": "process",
+                            "template": "process"
+                        }
+                    ],
+                    [
+                        {
+                            "arguments": {},
+                            "name": "parse-delft3d-log",
+                            "template": "parse-delft3d-log"
+                        }
+                    ],
+                    [
+                        {
+                            "arguments": {},
+                            "name": "restart-process",
+                            "template": "processing",
+                            "when": "{{steps.parse-delft3d-log.outputs.parameters.result}} != done"
+                        },
+                        {
+                            "arguments": {},
+                            "name": "done-processing",
+                            "template": "process",
+                            "when": "{{steps.parse-delft3d-log.outputs.parameters.result}} == done"
+                        }
+                    ]
+                ]
+            },
+            {
+                "container": {
+                    "args": [
+                        "/data/run.sh /data/svn/scripts/preprocess/write_ini.py /data/svn/scripts/preprocess/preprocess.py"
+                    ],
+                    "command": [
+                        "sh",
+                        "-c"
+                    ],
+                    "env": [
+                        {
+                            "name": "uuid",
+                            "value": "{{workflow.parameters.uuid}}"
+                        },
+                        {
+                            "name": "INPUT",
+                            "value": "{{workflow.parameters.parameters}}"
+                        },
+                        {
+                            "name": "s3bucket",
+                            "value": "{{workflow.parameters.s3bucket}}"
+                        },
+                        {
+                            "name": "folder",
+                            "value": "{{workflow.parameters.uuid}}/simulation"
+                        }
+                    ],
+                    "image": "deltares/delft3dgt:python_worker",
+                    "imagePullPolicy": "Always",
+                    "name": "",
+                    "resources": {
+                        "limits": {
+                            "memory": "200M"
+                        }
+                    },
+                    "volumeMounts": [
+                        {
+                            "mountPath": "/data/input",
+                            "name": "efs-pvc",
+                            "subPath": "{{workflow.parameters.uuid}}/preprocess"
+                        },
+                        {
+                            "mountPath": "/data/output",
+                            "name": "efs-pvc",
+                            "subPath": "{{workflow.parameters.uuid}}/simulation"
+                        },
+                        {
+                            "mountPath": "/data/folders",
+                            "name": "efs-pvc",
+                            "subPath": "{{workflow.parameters.uuid}}"
+                        },
+                        {
+                            "mountPath": "/root/.aws",
+                            "name": "aws-cred",
+                            "readOnly": true
+                        }
+                    ]
+                },
+                "inputs": {},
+                "metadata": {},
+                "name": "preprocess",
+                "outputs": {}
+            },
+            {
+                "container": {
+                    "image": "deltares/delft3d4:gt",
+                    "name": "",
+                    "resources": {},
+                    "volumeMounts": [
+                        {
+                            "mountPath": "/data",
+                            "name": "efs-pvc",
+                            "subPath": "{{workflow.parameters.uuid}}/simulation"
+                        }
+                    ]
+                },
+                "inputs": {},
+                "metadata": {},
+                "name": "delft3d",
+                "outputs": {}
+            },
+            {
+                "container": {
+                    "args": [
+                        "/data/svn/scripts/wrapper/process.py"
+                    ],
+                    "command": [
+                        "/data/run.sh"
+                    ],
+                    "env": [
+                        {
+                            "name": "s3bucket",
+                            "value": "{{workflow.parameters.s3bucket}}"
+                        },
+                        {
+                            "name": "uuid",
+                            "value": "{{workflow.parameters.uuid}}"
+                        },
+                        {
+                            "name": "folder",
+                            "value": "{{workflow.parameters.uuid}}/process"
+                        }
+                    ],
+                    "image": "deltares/delft3dgt:python_worker",
+                    "imagePullPolicy": "Always",
+                    "name": "",
+                    "resources": {},
+                    "volumeMounts": [
+                        {
+                            "mountPath": "/data/output",
+                            "name": "efs-pvc",
+                            "subPath": "{{workflow.parameters.uuid}}/process"
+                        },
+                        {
+                            "mountPath": "/root/.aws",
+                            "name": "aws-cred",
+                            "readOnly": true
+                        }
+                    ]
+                },
+                "inputs": {},
+                "metadata": {},
+                "name": "process",
+                "outputs": {}
+            },
+            {
+                "container": {
+                    "image": "deltares/delft3dgt:delft3d_logparser",
+                    "imagePullPolicy": "Always",
+                    "name": "",
+                    "resources": {},
+                    "volumeMounts": [
+                        {
+                            "mountPath": "/data/simulation",
+                            "name": "efs-pvc",
+                            "subPath": "{{workflow.parameters.uuid}}/simulation"
+                        },
+                        {
+                            "mountPath": "/data/processing",
+                            "name": "efs-pvc",
+                            "subPath": "{{workflow.parameters.uuid}}/processing"
+                        }
+                    ]
+                },
+                "inputs": {},
+                "metadata": {},
+                "name": "parse-delft3d-log",
+                "outputs": {
+                    "parameters": [
+                        {
+                            "name": "result",
+                            "valueFrom": {
+                                "path": "/data/simulation/delft3d_state.txt"
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "container": {
+                    "args": [
+                        "/data/svn/scripts/wrapper/postprocess.py.py"
+                    ],
+                    "command": [
+                        "/data/run.sh"
+                    ],
+                    "env": [
+                        {
+                            "name": "s3bucket",
+                            "value": "{{workflow.parameters.s3bucket}}"
+                        },
+                        {
+                            "name": "uuid",
+                            "value": "{{workflow.parameters.uuid}}"
+                        },
+                        {
+                            "name": "folder",
+                            "value": "{{workflow.parameters.uuid}}/postprocess"
+                        }
+                    ],
+                    "image": "deltares/delft3dgt:python_worker",
+                    "imagePullPolicy": "Always",
+                    "name": "",
+                    "resources": {},
+                    "volumeMounts": [
+                        {
+                            "mountPath": "/data/output",
+                            "name": "efs-pvc",
+                            "subPath": "{{workflow.parameters.uuid}}/postprocess"
+                        },
+                        {
+                            "mountPath": "/root/.aws",
+                            "name": "aws-cred",
+                            "readOnly": true
+                        }
+                    ]
+                },
+                "inputs": {},
+                "metadata": {},
+                "name": "postprocess",
+                "outputs": {}
+            }
+        ],
+        "volumes": [
+            {
+                "name": "efs-pvc",
+                "persistentVolumeClaim": {
+                    "claimName": "efs"
+                }
+            },
+            {
+                "name": "aws-cred",
+                "secret": {
+                    "secretName": "aws-s3"
+                }
+            }
+        ]
+    },
+    "status": {
+        "finishedAt": null,
+        "nodes": {
+            "delft3dgt-lftrz": {
+                "children": [
+                    "delft3dgt-lftrz-2476909059"
+                ],
+                "displayName": "delft3dgt-lftrz",
+                "finishedAt": null,
+                "id": "delft3dgt-lftrz",
+                "name": "delft3dgt-lftrz",
+                "phase": "Running",
+                "startedAt": "2018-05-29T12:58:25Z",
+                "templateName": "delft3dgt-main",
+                "type": "Steps"
+            },
+            "delft3dgt-lftrz-1455456822": {
+                "boundaryID": "delft3dgt-lftrz",
+                "children": [
+                    "delft3dgt-lftrz-3433942184"
+                ],
+                "displayName": "process-loop",
+                "finishedAt": "2018-05-29T12:58:46Z",
+                "id": "delft3dgt-lftrz-1455456822",
+                "message": "child 'delft3dgt-lftrz-3828655170' failed",
+                "name": "delft3dgt-lftrz[1].process-loop",
+                "outboundNodes": [
+                    "delft3dgt-lftrz-835226719"
+                ],
+                "phase": "Failed",
+                "startedAt": "2018-05-29T12:58:33Z",
+                "templateName": "processing",
+                "type": "Steps"
+            },
+            "delft3dgt-lftrz-1567744080": {
+                "boundaryID": "delft3dgt-lftrz",
+                "displayName": "delft3d",
+                "finishedAt": null,
+                "id": "delft3dgt-lftrz-1567744080",
+                "name": "delft3dgt-lftrz[1].delft3d",
+                "phase": "Running",
+                "startedAt": "2018-05-29T12:58:33Z",
+                "templateName": "delft3d",
+                "type": "Pod"
+            },
+            "delft3dgt-lftrz-2427137949": {
+                "boundaryID": "delft3dgt-lftrz-1455456822",
+                "children": [
+                    "delft3dgt-lftrz-3828655170"
+                ],
+                "displayName": "[1]",
+                "finishedAt": "2018-05-29T12:58:46Z",
+                "id": "delft3dgt-lftrz-2427137949",
+                "message": "child 'delft3dgt-lftrz-3828655170' failed",
+                "name": "delft3dgt-lftrz[1].process-loop[1]",
+                "phase": "Failed",
+                "startedAt": "2018-05-29T12:58:40Z",
+                "type": "StepGroup"
+            },
+            "delft3dgt-lftrz-2476909059": {
+                "boundaryID": "delft3dgt-lftrz",
+                "children": [
+                    "delft3dgt-lftrz-293345773"
+                ],
+                "displayName": "[0]",
+                "finishedAt": "2018-05-29T12:58:33Z",
+                "id": "delft3dgt-lftrz-2476909059",
+                "name": "delft3dgt-lftrz[0]",
+                "phase": "Succeeded",
+                "startedAt": "2018-05-29T12:58:25Z",
+                "type": "StepGroup"
+            },
+            "delft3dgt-lftrz-2544166630": {
+                "boundaryID": "delft3dgt-lftrz",
+                "children": [
+                    "delft3dgt-lftrz-1567744080",
+                    "delft3dgt-lftrz-1455456822"
+                ],
+                "displayName": "[1]",
+                "finishedAt": null,
+                "id": "delft3dgt-lftrz-2544166630",
+                "name": "delft3dgt-lftrz[1]",
+                "phase": "Running",
+                "startedAt": "2018-05-29T12:58:33Z",
+                "type": "StepGroup"
+            },
+            "delft3dgt-lftrz-293345773": {
+                "boundaryID": "delft3dgt-lftrz",
+                "children": [
+                    "delft3dgt-lftrz-2544166630"
+                ],
+                "displayName": "preprocess",
+                "finishedAt": "2018-05-29T12:58:32Z",
+                "id": "delft3dgt-lftrz-293345773",
+                "name": "delft3dgt-lftrz[0].preprocess",
+                "phase": "Succeeded",
+                "startedAt": "2018-05-29T12:58:25Z",
+                "templateName": "preprocess",
+                "type": "Pod"
+            },
+            "delft3dgt-lftrz-3433942184": {
+                "boundaryID": "delft3dgt-lftrz-1455456822",
+                "children": [
+                    "delft3dgt-lftrz-835226719"
+                ],
+                "displayName": "[0]",
+                "finishedAt": "2018-05-29T12:58:40Z",
+                "id": "delft3dgt-lftrz-3433942184",
+                "name": "delft3dgt-lftrz[1].process-loop[0]",
+                "phase": "Succeeded",
+                "startedAt": "2018-05-29T12:58:33Z",
+                "type": "StepGroup"
+            },
+            "delft3dgt-lftrz-3828655170": {
+                "boundaryID": "delft3dgt-lftrz-1455456822",
+                "displayName": "parse-delft3d-log",
+                "finishedAt": "2018-05-29T12:58:46Z",
+                "id": "delft3dgt-lftrz-3828655170",
+                "message": "failed with exit code 1",
+                "name": "delft3dgt-lftrz[1].process-loop[1].parse-delft3d-log",
+                "outputs": {
+                    "parameters": [
+                        {
+                            "name": "result",
+                            "value": "running",
+                            "valueFrom": {
+                                "path": "/data/simulation/delft3d_state.txt"
+                            }
+                        }
+                    ]
+                },
+                "phase": "Failed",
+                "startedAt": "2018-05-29T12:58:40Z",
+                "templateName": "parse-delft3d-log",
+                "type": "Pod"
+            },
+            "delft3dgt-lftrz-835226719": {
+                "boundaryID": "delft3dgt-lftrz-1455456822",
+                "children": [
+                    "delft3dgt-lftrz-2427137949"
+                ],
+                "displayName": "process",
+                "finishedAt": "2018-05-29T12:58:39Z",
+                "id": "delft3dgt-lftrz-835226719",
+                "name": "delft3dgt-lftrz[1].process-loop[0].process",
+                "phase": "Succeeded",
+                "startedAt": "2018-05-29T12:58:33Z",
+                "templateName": "process",
+                "type": "Pod"
+            }
+        },
+        "phase": "Running",
+        "startedAt": "2018-05-29T12:58:25Z"
+    }
+}

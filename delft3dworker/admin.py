@@ -13,24 +13,28 @@ from rangefilter.filter import DateRangeFilter, DateTimeRangeFilter
 
 from guardian.admin import GuardedModelAdmin
 
-from models import Scenario
-from models import Scene
-from models import Container
-from models import SearchForm
-from models import Template
-from models import Version_SVN
-from models import GroupUsageSummary
-from models import UserUsageSummary
+from .models import Scenario
+from .models import Scene
+from .models import Workflow
+from .models import Version_Docker
+from .models import SearchForm
+from .models import Template
+from .models import GroupUsageSummary
+from .models import UserUsageSummary
 
-
-class ContainerInline(admin.StackedInline):
+class WorkflowInline(admin.StackedInline):
     extra = 0
-    model = Container
+    model = Workflow
 
 
 class SceneInline(admin.StackedInline):
     extra = 0
     model = Scene
+
+
+class VersionInline(admin.StackedInline):
+    extra = 0
+    model = Version_Docker
 
 
 @admin.register(Scenario)
@@ -41,21 +45,10 @@ class ScenarioAdmin(GuardedModelAdmin):
 @admin.register(Scene)
 class SceneAdmin(GuardedModelAdmin):
     inlines = [
-        ContainerInline,
+        WorkflowInline,
     ]
 
-    actions = ['resync',
-               'check_sync']
-
-    def resync(self, request, queryset):
-        """
-        This action will sync EFS with S3 again.
-        Use this action if objects are missing after run is finished.
-        """
-        rows_updated = queryset.filter(phase=Scene.phases.fin).update(
-            phase=Scene.phases.sync_create)
-        self.message_user(
-            request, "{} scene(s) set to sychronization phase.".format(rows_updated))
+    actions = ['check_sync']
 
     def check_sync(self, request, queryset):
         """
@@ -81,8 +74,14 @@ class SceneAdmin(GuardedModelAdmin):
         send_mail(subject, message, from_email, recipient_list)
 
 
-@admin.register(Container)
-class ContainerAdmin(GuardedModelAdmin):
+
+@admin.register(Workflow)
+class WorkflowAdmin(GuardedModelAdmin):
+    pass
+
+
+@admin.register(Version_Docker)
+class VersionAdmin(GuardedModelAdmin):
     pass
 
 
@@ -93,23 +92,20 @@ class SearchFormAdmin(GuardedModelAdmin):
 
 @admin.register(Template)
 class TemplateAdmin(GuardedModelAdmin):
-    pass
-
-
-@admin.register(Version_SVN)
-class Version_SVN_Admin(GuardedModelAdmin):
+    extra = 0
     inlines = [
-        SceneInline,
+        VersionInline,
     ]
 
 @admin.register(GroupUsageSummary)
 class GroupUsageSummaryAdmin(admin.ModelAdmin):
+    """
     # Following example available at:
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
-
+    """
     change_list_template = 'delft3dworker/group_summary_change_list.html'
     # Filter by time period
-    list_filter = (('user__scene__container__container_stoptime', DateRangeFilter),)
+    list_filter = (('user__scene__workflow__stoptime', DateRangeFilter),)
 
     def changelist_view(self, request, extra_context=None):
         """
@@ -121,20 +117,22 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
         )
         try:
             qs = response.context_data['cl'].queryset
+            # Exclude Groups with world access as they will be counted twice in totals
+
             qs = qs.exclude(name='access:world').order_by('name')
         except (AttributeError, KeyError) as e:
             return response
         # Summarize by group values
         values = ['name', 'id']
-        # Count the users and containers per group, and sum total runtime.
+
+        # Sum the total runtime.
         # Runtime is considered the difference in time between the start and stop time
-        # of a container.
+        # of a workflow.
         metrics = {
             'num_users': Count('user__username', distinct=True),
-            'num_containers': Count('user__scene__container', distinct=True),
             'sum_runtime': ExpressionWrapper(
-                Sum(F('user__scene__container__container_stoptime') -
-                    F('user__scene__container__container_starttime')),
+                Sum(F('user__scene__workflow__stoptime') -
+                    F('user__scene__workflow__starttime')),
                 output_field=DurationField()
             ),
         }
@@ -155,7 +153,8 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
 class UserUsageSummaryAdmin(admin.ModelAdmin):
     change_list_template = 'delft3dworker/user_summary_change_list.html'
     # Filter by time period
-    list_filter = (('scene__container__container_stoptime', DateRangeFilter),)
+    list_filter = (('scene__workflow__stoptime', DateRangeFilter),)
+
 
     def changelist_view(self, request, extra_context=None):
         """
@@ -174,14 +173,15 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
             return response
         # Summarize by user values, display group name
         values = ['username', 'groups__name']
-        # Count the containers per user, and sum total runtime.
+
+        # Sum the total runtime.
         # Runtime is considered the difference in time between the start and stop time
-        # of a container.
+        # of a workflow.
         metrics = {
-            'num_containers': Count('scene__container', distinct=True),
             'sum_runtime': ExpressionWrapper(
-                Sum(F('scene__container__container_stoptime') -
-                    F('scene__container__container_starttime')),
+                Sum(F('scene__workflow__stoptime') -
+                    F('scene__workflow__starttime')),
+
                 output_field=DurationField()
             ),
         }

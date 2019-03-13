@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='container',
             name='docker_id',
-            field=models.CharField(default=b'', unique=True, max_length=64),
+            field=models.CharField(default='', unique=True, max_length=64),
         ),
     ]

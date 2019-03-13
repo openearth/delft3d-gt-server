@@ -20,11 +20,10 @@ from guardian.shortcuts import assign_perm
 from mock import MagicMock
 from mock import patch
 
-from delft3dworker.models import Container
 from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
-from delft3dworker.models import Version_SVN
 from delft3dworker.models import Template
+from delft3dworker.models import Workflow
 from delft3dworker.views import ScenarioViewSet
 from delft3dworker.views import SceneViewSet
 from delft3dworker.views import UserViewSet
@@ -48,6 +47,21 @@ class ApiAccessTestCase(TestCase):
             username='foo', password="secret")
         self.user_bar = User.objects.create_user(
             username='bar', password="secret")
+        self.user_other = User.objects.create_user(
+            username='other', password="secret")
+
+        # Everyone is in group world
+        groups_world = Group.objects.create(name="access:world")
+        groups_world.user_set.add(self.user_foo)
+        groups_world.user_set.add(self.user_other)
+        groups_world.user_set.add(self.user_bar)
+
+        groups_foo = Group.objects.create(name="org:Foo_Company")
+        groups_foo.user_set.add(self.user_foo)
+        groups_foo.user_set.add(self.user_other)
+
+        groups_bar = Group.objects.create(name="org:Bar_Company")
+        groups_bar.user_set.add(self.user_bar)
 
         # create models in dB
         self.template = Template.objects.create(
@@ -56,7 +70,7 @@ class ApiAccessTestCase(TestCase):
         self.scenario = Scenario.objects.create(
             name='Test Scenario',
             owner=self.user_foo,
-            template=self.template
+            template=self.template,
         )
         a = Scene.objects.create(
             name='Test Scene 1',
@@ -108,6 +122,7 @@ class ApiAccessTestCase(TestCase):
         # Refetch to empty permissions cache
         self.user_foo = User.objects.get(pk=self.user_foo.pk)
         self.user_bar = User.objects.get(pk=self.user_bar.pk)
+        self.user_other = User.objects.get(pk=self.user_other.pk)
 
     @patch('delft3dworker.models.Scenario.start', autospec=True,)
     def test_scenario_post(self, mockedStartMethod):
@@ -125,7 +140,6 @@ class ApiAccessTestCase(TestCase):
 
     def test_search(self):
         # User Foo can access own models
-
         self.assertEqual(
             len(self._request(ScenarioViewSet, self.user_foo)), 1)
 
@@ -137,6 +151,16 @@ class ApiAccessTestCase(TestCase):
             len(self._request(ScenarioViewSet, self.user_bar)), 0)
         self.assertEqual(
             len(self._request(SceneViewSet, self.user_bar)), 0)
+
+        # User Foo and Other can see eachother, same company, in user list
+        self.assertEqual(
+            len(self._request(UserViewSet, self.user_foo)), 2)
+        self.assertEqual(
+            len(self._request(UserViewSet, self.user_other)), 2)
+
+        # User Bar can only see themselves
+        self.assertEqual(
+            len(self._request(UserViewSet, self.user_bar)), 1)
 
     def _request(self, viewset, user):
         # create view and request
@@ -174,6 +198,10 @@ class SceneTestCase(APITestCase):
                 user.user_permissions.add(
                     Permission.objects.get(codename=perm))
 
+        groups_world = Group.objects.create(name="access:world")
+        groups_world.user_set.add(self.user_foo)
+        groups_world.user_set.add(self.user_bar)
+
         # create Scene instance and assign permissions for user_foo
         self.scene_1 = Scene.objects.create(
             suid="11111111-1111-1111-1111-111111111111",
@@ -189,9 +217,20 @@ class SceneTestCase(APITestCase):
             shared="p",
             phase=Scene.phases.fin
         )
+
+        self.workflow_1 = Workflow.objects.create(
+            scene=self.scene_1,
+            name="workflow 1"
+        )
+        self.workflow_2 = Workflow.objects.create(
+            scene=self.scene_2,
+            name="workflow 2"
+        )
+
         for perm in ['view_scene', 'add_scene',
                      'change_scene', 'delete_scene']:
             assign_perm(perm, self.user_foo, self.scene_1)
+            assign_perm(perm, self.user_foo, self.scene_2)
 
     def test_scene_get(self):
         # detail view
@@ -294,6 +333,37 @@ class SceneTestCase(APITestCase):
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    @patch('delft3dworker.models.Scene.start', autospec=True)
+    def test_scene_start(self, mocked_scene_method):
+        # start view
+        url = reverse('scene-start', args=[self.scene_1.pk])
+
+        # bar cannot see
+        self.client.login(username='bar', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(mocked_scene_method.call_count, 0)
+
+        # foo can start
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mocked_scene_method.assert_called_with(self.scene_1)
+
+    @patch('delft3dworker.models.Scene.start', autospec=True)
+    def test_scene_no_start_after_publish(self, mocked_scene_method):
+        # the scene is published
+        self.scene_1.publish_company(self.user_foo)
+
+        # start view
+        url = reverse('scene-start', args=[self.scene_1.pk])
+
+        # foo cannot start (forbidden)
+        self.client.login(username='foo', password='secret')
+        response = self.client.put(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(mocked_scene_method.call_count, 0)
+
     @patch('delft3dworker.models.Scene.reset', autospec=True)
     def test_scene_reset(self, mocked_scene_method):
         # reset view
@@ -325,36 +395,54 @@ class SceneTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(mocked_scene_method.call_count, 0)
 
-    @patch('delft3dworker.models.Scene.start', autospec=True)
-    def test_scene_start(self, mocked_scene_method):
-        # start view
-        url = reverse('scene-start', args=[self.scene_1.pk])
+    @patch('delft3dworker.models.Scene.redo', autospec=True)
+    def test_scene_redo(self, mocked_scene_method):
+        # update model view with selected entrypoint
+        query_entrypoint = {'entrypoint':'delft3dgt-main'}
+        url = reverse('scene-redo', args=[self.scene_1.pk])
 
-        # bar cannot see
+        # bar cannot view unpublished scene, so no redo
         self.client.login(username='bar', password='secret')
-        response = self.client.put(url, {}, format='json')
+        response = self.client.put(url, query_entrypoint, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(mocked_scene_method.call_count, 0)
 
-        # foo can start
+        # foo can update model
         self.client.login(username='foo', password='secret')
-        response = self.client.put(url, {}, format='json')
+        response = self.client.put(url, query_entrypoint, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mocked_scene_method.assert_called_with(self.scene_1)
+        mocked_scene_method.assert_called_with(self.scene_1, 'delft3dgt-main')
 
-    @patch('delft3dworker.models.Scene.start', autospec=True)
-    def test_scene_no_start_after_publish(self, mocked_scene_method):
-        # the scene is published
-        self.scene_1.publish_company(self.user_foo)
+        # Foo publishes to world
+        self.scene_1.publish_world(self.user_foo)
 
-        # start view
-        url = reverse('scene-start', args=[self.scene_1.pk])
+        # bar can now view and redo scene_1 by foo
+        self.client.login(username='bar', password='secret')
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mocked_scene_method.assert_called_with(self.scene_1, 'delft3dgt-main')
 
-        # foo cannot start (forbidden)
+    @patch('delft3dworker.models.Scene.redo', autospec=True)
+    def test_scene_evil_redo(self, mocked_scene_method):
+        mocked_scene_method.return_value = False
+
+        # update model view with selected entrypoint
+        url = reverse('scene-redo', args=[self.scene_1.pk])
         self.client.login(username='foo', password='secret')
-        response = self.client.put(url, {}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(mocked_scene_method.call_count, 0)
+
+        query_entrypoint = {'entrypoint': 'nope'}
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        query_entrypoint = {'nope': 'nope'}
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        query_entrypoint = "nope"
+        response = self.client.put(url, query_entrypoint, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertEqual(mocked_scene_method.call_count, 1)
 
     @patch('delft3dworker.models.Scene.publish_company', autospec=True)
     def test_multiple_scenes_publish_company(self, mocked_scene_method_company):
@@ -502,21 +590,21 @@ class SceneSearchTestCase(TestCase):
     """
 
     def setUp(self):
-        Version_SVN.objects.all().delete()
-        self.version_old = Version_SVN.objects.create(
-            release='OLD', revision=500, versions={'postprocess': 500, 'process': 500, 'export': 500, 'visualisation': 500}, url='', changelog='')
-        self.version_new = Version_SVN.objects.create(
-            release='NEW', revision=501, versions={'postprocess': 501, 'process': 501, 'export': 501, 'visualisation': 501}, url='', changelog='')
 
         self.user_bar = User.objects.create_user(
             id=1,
             username='bar',
             password='secret'
         )
+        self.template = Template.objects.create(
+            name = 'Test template'
+        )
         self.scenario = Scenario.objects.create(
             name='Testscenario',
             owner=self.user_bar,
+            template=self.template,
         )
+
         self.scene_1 = Scene.objects.create(
             name='Testscene 1',
             owner=self.user_bar,
@@ -528,6 +616,7 @@ class SceneSearchTestCase(TestCase):
             state='SUCCESS',
             shared='p',
         )
+        self.scene_1.save()
         self.scene_1.scenario.add(self.scenario)
         self.scene_1.info = {
             'postprocess_output': {
@@ -535,12 +624,6 @@ class SceneSearchTestCase(TestCase):
             }
         }
         self.scene_1.save()
-        self.scene_1.version = self.version_old
-        self.scene_1.save()  # Required for foreign key!
-
-        container_1 = Container.objects.create(
-            scene=self.scene_1
-        )
 
         self.scene_2 = Scene.objects.create(
             name='Testscene 2',
@@ -553,6 +636,7 @@ class SceneSearchTestCase(TestCase):
             state='SUCCESS',
             shared='p',
         )
+        self.scene_2.save()
         self.scene_2.scenario.add(self.scenario)
         self.scene_2.info = {
             'postprocess_output': {
@@ -561,14 +645,6 @@ class SceneSearchTestCase(TestCase):
             }
         }
         self.scene_2.save()
-        self.scene_2.version = self.version_new
-        self.scene_2.save()  # Required for foreign key!
-        container_2 = Container.objects.create(
-            scene=self.scene_2
-        )
-        container_3 = Container.objects.create(
-            scene=self.scene_2
-        )
 
         # Object general
         assign_perm('view_scenario', self.user_bar, self.scenario)
@@ -715,22 +791,6 @@ class SceneSearchTestCase(TestCase):
 
         self.assertEqual(len(self._request(search_query_date_before_08)), 1)
         self.assertEqual(len(self._request(search_query_date_before_09)), 0)
-
-    def test_search_outdated(self):
-        """Test search for outdated scenes
-        
-        Search option has three states:
-        not enabled = None
-        on = True
-        off = False
-        """
-        search_query_default = {}
-        search_query_on = {'outdated': True}
-        search_query_off = {'outdated': False}
-
-        self.assertEqual(len(self._request(search_query_default)), 2)
-        self.assertEqual(len(self._request(search_query_off)), 1)
-        self.assertEqual(len(self._request(search_query_on)), 1)
 
     def test_search_hack(self):
         """

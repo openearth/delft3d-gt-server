@@ -182,7 +182,7 @@
               "validators": {
                 "max": 160,
                 "required": true,
-                "min": 0
+                "min": 2
               },
               "units": "days",
               "type": "numeric",
@@ -333,9 +333,50 @@
           "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
         }
       ],
-      "name": "River dominated delta"
+      "name": "River dominated delta",
+      "shortname": "gt",
+      "yaml_template": "workflow_templates/delft3dgt-main.yaml",
+      "info": {
+        "delta_fringe_images": {
+            "filetype": "images",
+            "extensions": [".png", ".jpg", ".gif"],
+            "files": [],
+            "location": "process/"
+        },
+        "channel_network_images": {
+            "filetype": "images",
+            "extensions": [".png", ".jpg", ".gif"],
+            "files": [],
+            "location": "process/"
+        },
+        "sediment_fraction_images": {
+            "filetype": "images",
+            "extensions": [".png", ".jpg", ".gif"],
+            "files": [],
+            "location": "process/"
+        },
+        "subenvironment_images": {
+            "filetype": "images",
+            "extensions": [".png", ".jpg", ".gif"],
+            "files": [],
+            "location": "postprocess/"
+        },
+        "logfile": {
+            "filetype": "log",
+            "extensions": [".log"],
+            "files": [],
+            "location": "simulation/"
+        },
+        "postprocess_output": {
+            "filetype": "json",
+            "extensions": [".json"],
+            "files": {},
+            "location": "postprocess/"
+        }
+      }
     },
     "model": "delft3dworker.template",
     "pk": 53
   }
 ]
+

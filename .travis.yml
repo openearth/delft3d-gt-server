@@ -10,7 +10,7 @@ addons:
       - postgresql-server-dev-9.6
 
 python:
-  - 2.7
+  - 3.4
 
 install:
   - pip install -r test_requirements.txt
@@ -22,5 +22,5 @@ before_script:
 script:
   - coverage run manage.py test
 
-after_success: 
+after_success:
   - codecov

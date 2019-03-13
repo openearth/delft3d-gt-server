@@ -15,8 +15,10 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 # SECURITY WARNING: don't run with debug turned on in production!
 import sys
+from os import environ
+from kubernetes import config
 
-DEBUG = True
+DEBUG = False
 SECRET_KEY = 'notneeded'
 
 # Application definition
@@ -66,17 +68,19 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 
 # import provisioned settings
 try:
-    from provisionedsettings import *
+    from .provisionedsettings import *
+    environ["PATH"] += ":{}".format(AWS_IAM_PATH)
 except ImportError:
+    print("Failed to import provisioned settings!")
     SECRET_KEY = 'test'
 
 if 'test' in sys.argv:
-    from celery import Celery
+    from .celery import Celery
 
     CELERY_ONCE = {
       'backend': 'celery_once.backends.Redis',
       'settings': {
-        'url': 'redis://127.0.0.1:6379/0',
+        'url': 'redis://127.0.0.1/0',
         'default_timeout': 60 * 60
       }
     }
