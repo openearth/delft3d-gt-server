@@ -453,7 +453,18 @@ class ScenarioPhasesTestCase(TestCase):
             "ProDeltaD50": 0.0718,
             "ProDeltasorting": 0.0272,
             "DeltaFrontD50": 0.102,
-            "DeltaTopD50": 0.354,
+            "DeltaTopD50": float("nan"),
+            "DeltaFrontsand_fraction": 0.394,
+            "DeltaTopsand_fraction": 0.887,
+            "DeltaTopsorting": 0.299,
+            "ProDeltasand_fraction": 0.00785
+        }
+        self.cleaned_data = {
+            "DeltaFrontsorting": 0.161,
+            "ProDeltaD50": 0.0718,
+            "ProDeltasorting": 0.0272,
+            "DeltaFrontD50": 0.102,
+            "DeltaTopD50": None,
             "DeltaFrontsand_fraction": 0.394,
             "DeltaTopsand_fraction": 0.887,
             "DeltaTopsorting": 0.299,
@@ -568,7 +579,7 @@ class ScenarioPhasesTestCase(TestCase):
 
         # TODO check if the progress is updated
         # Check if json was loaded into info by filename
-        self.assertEqual(self.scene_1.info["postprocess_output"]["files"]["output"], self.data)
+        self.assertEqual(self.scene_1.info["postprocess_output"]["files"]["output"], self.cleaned_data)
 
         workflow.cluster_state = "failed"
         workflow.save()
