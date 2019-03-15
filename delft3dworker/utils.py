@@ -219,6 +219,7 @@ def scan_output_files(workingdir, info_dict):
                     with open(os.path.join(root, fn)) as f:
                         try:
                             output_dict = json.load(f)
+                            output_dict = clean(output_dict)  #  remove nan
                             info_dict[key]["files"][name] = output_dict
                         except ValueError as e:
                             logging.error("Error parsing postprocessing {}: {}".format(f, e))
@@ -231,6 +232,17 @@ def scan_output_files(workingdir, info_dict):
             logging.info("Processed {} files.".format(processed_files))
 
     return info_dict
+
+
+def clean(jsondict):
+    """Remove invalid JSON values from dict.
+    Invalid values are -inf, nan, inf
+    Assumes flat structure for now."""
+    for k, v in jsondict.items():
+        if isinstance(v, float):
+            if not (float('-inf') < float(v) < float('inf')):
+                jsondict[k] = None
+    return jsondict
 
 
 def merge_list_of_dict(a, b, key="name"):
