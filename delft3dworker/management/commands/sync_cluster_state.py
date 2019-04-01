@@ -104,7 +104,7 @@ class Command(BaseCommand):
             print("Mismatch {}".format(wf))
             msg = "Workflow {} not found in database!".format(wf)
             self.stderr.write(msg)
-            # do_argo_remove.delay(wf)  # comment out for dev
+            do_argo_remove.delay(wf)  # comment out for dev
 
         return True  # successful
 
