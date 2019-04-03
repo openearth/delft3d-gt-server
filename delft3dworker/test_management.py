@@ -97,8 +97,7 @@ class ManagementTest(TestCase):
             ],
             any_order=True
         )
-        self.assertEqual(mockWorkflowremove.call_count, 1)
-
+        self.assertEqual(mockWorkflowremove.delay.call_count, 1)
 
     def tearDown(self):
         self.redis.flushall()
