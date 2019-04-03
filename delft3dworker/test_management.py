@@ -70,7 +70,9 @@ class ManagementTest(TestCase):
            'sync_cluster_state.Workflow.sync_cluster_state')
     @patch('delft3dworker.management.commands.'
            'sync_cluster_state.get_argo_workflows', **mock_options)
-    def test_sync_cluster_state(self, mockWorkflows, mockWorkflowupdate):
+    @patch('delft3dworker.management.commands.'
+           'sync_cluster_state.do_argo_remove', **mock_options)
+    def test_sync_cluster_state(self, mockWorkflowremove, mockWorkflows, mockWorkflowupdate):
         """
         Test match matrix for argo workflow and model workflow
         """
@@ -95,6 +97,7 @@ class ManagementTest(TestCase):
             ],
             any_order=True
         )
+        self.assertEqual(mockWorkflowremove.delay.call_count, 1)
 
     def tearDown(self):
         self.redis.flushall()
