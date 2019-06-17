@@ -373,6 +373,25 @@
             "files": {},
             "location": "postprocess/"
         }
+      },
+      "export_options": {
+          "export_d3dinput": {
+              "extensions": [".bcc", ".bch", ".bct", ".bnd", ".dep", ".enc",
+                             ".fil", ".grd", ".ini", ".mdf", ".mdw", ".mor",
+                             ".obs", ".sed", ".sh", ".url", ".xml", ".tr1",
+                             ".tr2", ".tr3", ".tr4", ".tr5"],
+              "location": "simulation"
+          },
+          "export_images": {
+              "extensions": [".png", ".jpg", ".gif"],
+          },
+          "export_movie": {
+              "extensions": [".mp4"],
+          },
+          "export_thirdparty": {
+              "extensions": [".gz"],
+              "location": "export",
+          },
       }
     },
     "model": "delft3dworker.template",
