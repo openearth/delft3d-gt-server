@@ -24,7 +24,7 @@ class ManagementTest(TestCase):
 
     def setUp(self):
         self.template = Template.objects.create(
-            name='Template'
+            name='Test Template',
         )
         self.scenario = Scenario.objects.create(
             name='Scenario',
@@ -39,7 +39,7 @@ class ManagementTest(TestCase):
         self.scene.scenario.set([self.scenario])
         self.workflow_1_1 = Workflow.objects.create(
             scene=self.scene,
-            name='abcdefg'
+            name='test-template-abcdefg'
         )
 
         self.scene_new = Scene.objects.create(
@@ -78,21 +78,25 @@ class ManagementTest(TestCase):
         """
 
         # Mock return of all workflows
-        mockWorkflows.apply_async().result = {"get_argo_workflows": """{"items":[{"metadata":{"name":"abcdefg", "labels": {"workflows.argoproj.io/phase": "Running"}}},
-                               {"metadata":{"name":"orphan", "labels": {"workflows.argoproj.io/phase": "Running"}}}]}"""}
+        # test-template-abcdefg is known and should be updated
+        # test-template-orphan is not known, but has known shortname and should be removed
+        # other-test-run is not known and has no known shortname and should be ignored
+        mockWorkflows.apply_async().result = {"get_argo_workflows": """{"items":[{"metadata":{"name":"test-template-abcdefg", "labels": {"workflows.argoproj.io/phase": "Running"}}},
+                               {"metadata":{"name":"test-template-orphan", "labels": {"workflows.argoproj.io/phase": "Running"}}},
+                               {"metadata":{"name":"other-test-run", "labels": {"workflows.argoproj.io/phase": "Running"}}}]}"""}
 
         out = StringIO()
         call_command('sync_cluster_state', stderr=out)
 
         # Workflow not in database
         self.assertIn(
-            'Workflow orphan not found in database!', out.getvalue())
+            'Workflow test-template-orphan with known shortname not found in database', out.getvalue())
 
         # workflow in database
         self.assertEqual(mockWorkflowupdate.call_count, 2)
         mockWorkflowupdate.assert_has_calls(
             [
-                call({'metadata': {'name': 'abcdefg', 'labels': {u'workflows.argoproj.io/phase': 'Running'}}}),
+                call({'metadata': {'name': 'test-template-abcdefg', 'labels': {u'workflows.argoproj.io/phase': 'Running'}}}),
                 call(None)
             ],
             any_order=True
