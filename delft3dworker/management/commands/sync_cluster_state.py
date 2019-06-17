@@ -8,6 +8,7 @@ from delft3dcontainermanager.tasks import get_argo_workflows
 from delft3dcontainermanager.tasks import do_argo_remove
 from delft3dworker.models import Workflow
 from delft3dworker.models import Scene
+from delft3dworker.models import Template
 
 """
 Synchronization command that's called periodically.
@@ -54,6 +55,7 @@ class Command(BaseCommand):
         """
 
         ps = get_argo_workflows.apply_async(queue='priority')
+        shortnames = Template.objects.values("shortname")
 
         # Wait until the task finished successfully
         # or return if waiting too long
@@ -98,13 +100,14 @@ class Command(BaseCommand):
             for wf in Workflow.objects.filter(name=wf_name):
                 wf.sync_cluster_state(snapshot)
 
-        # Call error for mismatch
+        # Call error for mismatch and remove workflow
+        # but only if its name matches existing Templates,
+        # so tests can be run by using non-existing shortnames (like test-)
         workflow_mismatch = m_0_1 | m_0_0
-        for wf in workflow_mismatch:
-            print("Mismatch {}".format(wf))
-            msg = "Workflow {} not found in database!".format(wf)
+        for wf in workflow_mismatch and wf.name.startswith(tuple(shortnames)):
+            msg = "Workflow {} not found in database".format(wf)
             self.stderr.write(msg)
-            do_argo_remove.delay(wf)  # comment out for dev
+            do_argo_remove.delay(wf)
 
         return True  # successful
 
