@@ -383,15 +383,15 @@
               "location": "simulation"
           },
           "export_images": {
-              "extensions": [".png", ".jpg", ".gif"],
+              "extensions": [".png", ".jpg", ".gif"]
           },
           "export_movie": {
-              "extensions": [".mp4"],
+              "extensions": [".mp4"]
           },
           "export_thirdparty": {
               "extensions": [".gz"],
-              "location": "export",
-          },
+              "location": "export"
+          }
       }
     },
     "model": "delft3dworker.template",
