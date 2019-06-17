@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import io
 import json
 import os
 import uuid
@@ -196,6 +197,18 @@ class SceneTestCase(TestCase):
         company_y.user_set.add(self.user_c)
 
         # scene
+        self.template = Template.objects.create(
+            name="Template parent",
+            export_options={
+                "export_images": {
+                  "extensions": [".png", ".jpg", ".gif"],
+                },
+                "export_thirdparty": {
+                  "extensions": [".gz"],
+                  "location": "export",
+                },
+            })
+        self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
         self.scene_1 = Scene.objects.create(
             name='Scene 1',
             owner=self.user_a,
@@ -208,6 +221,9 @@ class SceneTestCase(TestCase):
             shared='p',
             phase=Scene.phases.idle,
         )
+        self.scene_1.scenario.set([self.scenario])
+        self.scene_2.scenario.set([self.scenario])
+
 
         assign_perm('view_scene', self.user_a, self.scene_1)
         assign_perm('add_scene', self.user_a, self.scene_1)
@@ -219,10 +235,22 @@ class SceneTestCase(TestCase):
         assign_perm('delete_scene', self.user_a, self.scene_2)
 
         # Add files mimicking export options.
-        self.images = ['image.png', 'image.jpg', 'image.gif', 'image.jpeg']
-        self.simulation = ['simulation/a.sim', 'simulation/b.sim']
-        self.movies = ['movie_empty.mp4', 'movie_big.mp4', 'movie.mp5']
-        self.export = ['export/export.something']
+        self.output_dir = {
+            "process/": ["delta_fringe.png", "channel_network.jpg", "sediment_fraction.gz"],
+            "postprocess/": ["subenvironment.png", "output.json"],
+            "simulation/": ["delft3d.jpg", ],
+            "export/": ["export.gz", ],
+        }
+
+        # create directories and image/log files from dictionary
+        for folder, files in self.output_dir.items():
+            test_path = os.path.join(self.scene_1.workingdir, folder)
+            if not os.path.exists(test_path):
+                os.makedirs(test_path)
+
+            for file in files:
+                open(os.path.join(test_path, file), 'a').close()
+
 
     def test_after_publishing_rights_are_revoked(self):
         self.assertEqual(self.scene_1.shared, 'p')
@@ -404,6 +432,42 @@ class SceneTestCase(TestCase):
             else:
                 # check the abort is ignored
                 self.assertEqual(self.scene_1.phase, phase[0])
+
+    def test_export_scene(self):
+
+        # As taken from `views.py`
+        stream = io.BytesIO()
+        zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
+
+        # No files
+        files_added = self.scene_1.export(zf, [])
+        self.assertFalse(files_added)
+
+        # Images
+        files_added = self.scene_1.export(zf, ["export_images"])
+        self.assertTrue(files_added)
+        
+        self.assertEqual(len(zf.namelist()), 4)  # 4 images in all folders
+
+        # Reset
+        zf.close()
+        stream = io.BytesIO()
+        zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
+
+        files_added = self.scene_1.export(zf, ["export_thirdparty"])
+        self.assertTrue(files_added)
+        self.assertEqual(len(zf.namelist()), 1)  # 1 export file in correct folder
+
+        # Reset
+        zf.close()
+        stream = io.BytesIO()
+        zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
+
+        # Images + export
+        files_added = self.scene_1.export(zf, ["export_images", "export_thirdparty"])
+        self.assertEqual(len(zf.namelist()), 5)
+        zf.close()
+
 
 
 class ScenarioZeroPhaseTestCase(TestCase):

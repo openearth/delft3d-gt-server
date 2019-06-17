@@ -397,7 +397,7 @@ class Scene(models.Model):
         Modifies zipfile and returns whether files are added.
         """
 
-        available_options = self.Template.export_options
+        available_options = self.scenario.first().template.export_options
         export_options = [v for (k,v) in available_options.items() if k in options]
 
         files_added = False
