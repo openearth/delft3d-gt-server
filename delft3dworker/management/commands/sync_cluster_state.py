@@ -55,7 +55,7 @@ class Command(BaseCommand):
         """
 
         ps = get_argo_workflows.apply_async(queue='priority')
-        shortnames = Template.objects.values("shortname")
+        shortnames = tuple(Template.objects.values_list("shortname", flat=True))
 
         # Wait until the task finished successfully
         # or return if waiting too long
@@ -104,10 +104,11 @@ class Command(BaseCommand):
         # but only if its name matches existing Templates,
         # so tests can be run by using non-existing shortnames (like test-)
         workflow_mismatch = m_0_1 | m_0_0
-        for wf in workflow_mismatch and wf.name.startswith(tuple(shortnames)):
-            msg = "Workflow {} not found in database".format(wf)
-            self.stderr.write(msg)
-            do_argo_remove.delay(wf)
+        for wf in workflow_mismatch:
+            if wf.startswith(shortnames):
+                msg = "Workflow {} with known shortname not found in database".format(wf)
+                self.stderr.write(msg)
+                do_argo_remove.delay(wf)
 
         return True  # successful
 
