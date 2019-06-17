@@ -14,7 +14,7 @@ django-guardian==1.5.*
 django-model-utils==3.1
 djangorestframework==3.9.*
 djangorestframework-guardian==0.1.*
-flower==0.9
+flower==0.9.2
 kombu==4.3.*
 Mako==1.0
 markdown==2.6
