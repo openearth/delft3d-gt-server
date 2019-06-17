@@ -387,30 +387,33 @@ class Scene(models.Model):
             self.shift_to_phase(self.phases.sim_fin)   # stop Simulation
 
     def export(self, zipfile, options):
-        # Add files here.
-        # If you run out of memory you have 2 options:
-        # - stream
-        # - zip in a subprocess shell with zip
-        # - zip to temporary file
+        """Add files to given zipfile based on given options.
 
-        # TODO Export based on export in Template
+        Zipfile and options come from `views.py`. Options are checked against
+        available export options defined in the Template (export_options) which
+        define both a folder as extensions. See default_template fixture for the
+        format.
 
-        available_options = self.Template.export_options
+        Modifies zipfile and returns whether files are added.
+        """
+
+        available_options = self.scenario.first().template.export_options
+        export_options = [v for (k,v) in available_options.items() if k in options]
+
         files_added = False
 
-        # for root, dirs, files in os.walk(self.workingdir):
-        #     for f in files:
-        #         name, ext = os.path.splitext(f)
+        for root, dirs, files in os.walk(self.workingdir):
+            for f in files:
+                name, ext = os.path.splitext(f)
 
-        #         # Available options and extensions logic
-        #         add = False
+                for option in export_options:
+                    if root.endswith(option.get("location", "")) and ext in option.get("extensions", []):
 
-        #         if add:
-        #             files_added = True
-        #             abs_path = os.path.join(root, f)
-        #             rel_path = os.path.join(slugify(self.name),
-        #                                     os.path.relpath(abs_path, self.workingdir))
-        #             zipfile.write(abs_path, rel_path)
+                        files_added = True
+                        abs_path = os.path.join(root, f)
+                        rel_path = os.path.join(slugify(self.name),
+                                                os.path.relpath(abs_path, self.workingdir))
+                        zipfile.write(abs_path, rel_path)
 
         return files_added
 
