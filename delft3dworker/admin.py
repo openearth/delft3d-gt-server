@@ -130,6 +130,7 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
         # of a workflow.
         metrics = {
             'num_users': Count('user__username', distinct=True),
+            'num_models': Count('user__scene__workflow'),
             'sum_runtime': ExpressionWrapper(
                 Sum(F('user__scene__workflow__stoptime') -
                     F('user__scene__workflow__starttime')),
@@ -171,13 +172,14 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
 
         except (AttributeError, KeyError) as e:
             return response
-        # Summarize by user values, display group name
-        values = ['username', 'groups__name']
+        # Summarize by user values
+        values = ['username']
 
         # Sum the total runtime.
         # Runtime is considered the difference in time between the start and stop time
         # of a workflow.
         metrics = {
+            'num_models': Count('scene__workflow'),
             'sum_runtime': ExpressionWrapper(
                 Sum(F('scene__workflow__stoptime') -
                     F('scene__workflow__starttime')),

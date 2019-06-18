@@ -17,7 +17,7 @@
         </th>
         <th>
           <div class="text">
-            <a href="#">Group</a>
+            <a href="#"># Models</a>
           </div>
         </th>
         <th>
@@ -36,7 +36,7 @@
       {% for row in summary %}
       <tr class="{% cycle 'row1' 'row2' %}">
         <td> {{ row.username }} </td>
-        <td> {{ row.groups__name }} </td>
+        <td> {{ row.num_models }} </td>
         <td> {{ row.sum_runtime }} </td>
         <td>
           <strong>
@@ -48,7 +48,7 @@
     </tbody>
     <tr style="font-weight:bold; border-top:2px solid #DDDDDD;">
         <td> Total </td>
-        <td>  </td>
+        <td> {{ summary_total.num_models | intcomma }} </td>
         <td> {{ summary_total.sum_runtime | intcomma }} </td>
         <td> {{ summary_total.sum_runtime | divtime:summary_total.sum_runtime | floatformat }}% </td>
     </tr>
