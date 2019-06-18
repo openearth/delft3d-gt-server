@@ -168,12 +168,11 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
         )
         try:
             qs = response.context_data['cl'].queryset
-            # qs = qs.exclude(groups__name='access:world')
             qs = qs.order_by('username')
 
         except (AttributeError, KeyError) as e:
             return response
-        # Summarize by user values, display group name
+        # Summarize by user values
         values = ['username']
 
         # Sum the total runtime.
