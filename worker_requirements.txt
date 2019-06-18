@@ -1,5 +1,6 @@
 celery==4.2.*
 celery-once==1.2.*
+ddtrace==0.26.0
 Django==2.0.*
 kubernetes==8.*
 redis==3.1.*

@@ -25,6 +25,7 @@ SECRET_KEY = 'notneeded'
 
 INSTALLED_APPS = [
     'delft3dcontainermanager',
+    'ddtrace.contrib.django',
 ]
 
 # Internationalization

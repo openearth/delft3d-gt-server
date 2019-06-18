@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'constance',
     'constance.backends.database',
     'rangefilter',
+    'ddtrace.contrib.django',
 
     'delft3dcontainermanager',
     'delft3dworker',
