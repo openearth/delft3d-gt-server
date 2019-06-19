@@ -48,12 +48,18 @@ INSTALLED_APPS = [
     'constance',
     'constance.backends.database',
     'rangefilter',
+    'ddtrace.contrib.django',
 
     'delft3dcontainermanager',
     'delft3dworker',
     'delft3dgtfrontend',
     'delft3dgtprotectedservices',
 ]
+
+DATADOG_TRACE = {
+    'DEFAULT_SERVICE': 'delft3dgtmain',
+    'DEFAULT_DATABASE_PREFIX': 'delft3dgtmain',
+}
 
 CONSTANCE_CONFIG = {
     'MAX_SIMULATIONS': (2, "Max simulations that can run in Amazon."),
