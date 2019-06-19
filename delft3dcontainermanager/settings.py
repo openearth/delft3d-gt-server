@@ -28,6 +28,11 @@ INSTALLED_APPS = [
     'ddtrace.contrib.django',
 ]
 
+DATADOG_TRACE = {
+    'DEFAULT_SERVICE': 'delft3dcontainermanager',
+    'DEFAULT_DATABASE_PREFIX': 'delft3dcontainermanager',
+}
+
 # Internationalization
 # https://docs.djangoproject.com/en/1.9/topics/i18n/
 
