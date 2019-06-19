@@ -982,6 +982,8 @@ class WorkflowTestCase(TestCase):
     def test_reset_scene(self):
         date_started = now()
         progress = 10
+        info = {"image": "test"}
+
         # Keep the workflow entrypoint for reset
         self.workflow.entrypoint = 'delft3dgt-main'
 
@@ -991,6 +993,7 @@ class WorkflowTestCase(TestCase):
             #  shift scene to phase
             self.scene_1.date_started = date_started
             self.scene_1.progress = progress
+            self.scene_1.info = info
             self.scene_1.shift_to_phase(phase[0])
 
             # start scene
@@ -1008,11 +1011,13 @@ class WorkflowTestCase(TestCase):
                 self.assertTrue((tz_now() - self.scene_1.date_started).seconds < 10)
                 self.assertEqual(self.scene_1.progress, 0)
                 self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
+                self.assertEqual(self.scene_1.info, {})
 
             else:
                 self.assertEqual(self.scene_1.date_started, date_started)
                 self.assertEqual(self.scene_1.progress, progress)
                 self.assertEqual(self.scene_1.phase, phase[0])
+                self.assertEqual(self.scene_1.info, {"image": "test"})
 
     def test_redo_workflow(self):
         result = self.scene_1.redo("delft3dgt-main")
@@ -1024,6 +1029,7 @@ class WorkflowTestCase(TestCase):
         # self.entrypoint = 'main'
         date_started = now()
         progress = 10
+        info = {"image": "test"}
 
         # a workflow can only be updated once it's Scene is finished,
         # loop through all phases to test
@@ -1034,6 +1040,7 @@ class WorkflowTestCase(TestCase):
             #  shift scene to phase
             self.scene_1.date_started = date_started
             self.scene_1.progress = progress
+            self.scene_1.info = info
             self.scene_1.shift_to_phase(phase[0])
 
             # update workflow
@@ -1045,15 +1052,18 @@ class WorkflowTestCase(TestCase):
                 self.scene_1.phases.sim_start if (
                         phase[0] == self.scene_1.phases.fin) else phase[0]
             )
+
             # check that entry point is the same and redo steps done
             # check properties are untouched unless reset from finished state
             if phase[0] == self.scene_1.phases.fin:
                 self.assertEqual(self.workflow.entrypoint, 'update-processing')
                 self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
+                self.assertEqual(self.scene_1.info, {})
 
             else:
                 self.assertEqual(self.workflow.entrypoint, 'delft3dgt-main')
                 self.assertEqual(self.scene_1.phase, phase[0])
+                self.assertEqual(self.scene_1.info, {"image": "test"})
 
 
 class SearchFormTestCase(TestCase):

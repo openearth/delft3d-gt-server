@@ -349,6 +349,7 @@ class Scene(models.Model):
             self.shift_to_phase(self.phases.sim_start)  # shift to Queued
             self.date_started = tz_now()
             self.progress = 0
+            self.info = self.scenario.first().template.info
             self.save()
 
     def start(self):
@@ -374,6 +375,7 @@ class Scene(models.Model):
             self.date_started = tz_now()
             self.shift_to_phase(self.phases.sim_start)
             self.progress = 0
+            self.info = self.scenario.first().template.info
             self.save()
             return True
 
