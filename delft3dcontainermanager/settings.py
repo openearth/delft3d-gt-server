@@ -104,4 +104,4 @@ if 'test' in sys.argv:
     app = Celery('delft3dgt')
     app.conf.CELERY_ALWAYS_EAGER = True
     app.conf.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
-    app.conf.ONCE = ONCE
+    app.conf.ONCE = CELERY_ONCE
