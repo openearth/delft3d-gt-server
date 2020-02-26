@@ -896,7 +896,7 @@ class WorkflowTestCase(TestCase):
 
         template_model = self.workflow.scene.scenario.first().template
         with open(template_model.yaml_template.path) as f:
-            template = yaml.load(f)
+            template = yaml.load(f, Loader=yaml.FullLoader)
         template["metadata"] = {"name": "{}".format(self.workflow.name)}
         template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": str(self.scene_1.suid)},
                                                        {"name": "s3bucket", "value": settings.BUCKETNAME},

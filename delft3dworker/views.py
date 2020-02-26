@@ -38,8 +38,6 @@ from rest_framework import filters
 from rest_framework import status
 from rest_framework import viewsets
 from rest_framework import permissions
-from rest_framework.decorators import detail_route
-from rest_framework.decorators import list_route
 from rest_framework.decorators import action
 from rest_framework.decorators import parser_classes
 from rest_framework.response import Response

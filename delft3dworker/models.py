@@ -95,7 +95,7 @@ def parse_argo_workflow(instance, filename):
     # If new worklow is uploaded, define a version
 
     # Load yaml and derive defaults
-    template = yaml.load(instance.yaml_template.read())
+    template = yaml.load(instance.yaml_template.read(), Loader=yaml.FullLoader)
     defaults = derive_defaults_from_argo(template)
 
     # Create version based on defaults
@@ -897,7 +897,7 @@ class Workflow(models.Model):
         # Open and edit workflow Template
         template_model = self.scene.scenario.first().template
         with open(template_model.yaml_template.path) as f:
-            template = yaml.load(f)
+            template = yaml.load(f, Loader=yaml.FullLoader)
         template["metadata"] = {"name": "{}".format(self.name)}
 
         if self.entrypoint is not None:
