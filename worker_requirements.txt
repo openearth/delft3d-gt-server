@@ -1,7 +1,7 @@
 celery==4.4.*
 celery-once==3.0.*
 ddtrace==0.34.*
-Django==2.2.10
+Django==2.2.*
 kubernetes==10.0.*
 redis==3.4.*
 tornado==5.1.*
