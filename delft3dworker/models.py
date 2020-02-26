@@ -2,31 +2,24 @@ from __future__ import absolute_import
 
 import copy
 import hashlib
-import io
 import json
 import logging
 import math
 import os
-import random
 import shutil
-import string
 import uuid
 import yaml
-import zipfile
 from os.path import join
 
 from celery.result import AsyncResult
 
 from django.conf import settings  # noqa
-from constance import config as cconfig
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
-from django.urls import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
 from django.utils.timezone import now
-from django.forms.models import model_to_dict
 
 from model_utils import Choices
 

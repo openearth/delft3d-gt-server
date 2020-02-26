@@ -7,17 +7,14 @@ from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.test import TestCase
-from django.utils.timezone import make_aware
 
 from rest_framework import status
-from rest_framework.test import APIClient
 from rest_framework.test import APITestCase
 from rest_framework.test import APIRequestFactory
 from rest_framework.test import force_authenticate
 
 from guardian.shortcuts import assign_perm
 
-from mock import MagicMock
 from mock import patch
 
 from delft3dworker.models import Scenario
