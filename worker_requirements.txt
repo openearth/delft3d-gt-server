@@ -4,4 +4,4 @@ ddtrace==0.34.*
 Django==2.2.10
 kubernetes==10.0.*
 redis==3.4.*
-tornado==6.0.*
+tornado==5.1.*

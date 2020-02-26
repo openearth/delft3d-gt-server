@@ -1,7 +1,7 @@
 # contains celery, celery_once, django, docker-py and redis
 -r worker_requirements.txt
 
-amqp==2.5
+amqp==2.5.2
 anyjson==0.3.*
 billiard==3.6.*
 configparser==4.0.*
