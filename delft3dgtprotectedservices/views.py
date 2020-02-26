@@ -68,7 +68,8 @@ def thredds(request, folder, simulation_uuid, loc):
         auth = request.META['HTTP_AUTHORIZATION'].split()
         if len(auth) == 2:
             if auth[0].lower() == "basic":
-                uname, passwd = base64.b64decode(auth[1]).split(':')
+                decoded_auth = base64.b64decode(auth[1])
+                uname, passwd = decoded_auth.decode("utf-8").split(':')
                 user = authenticate(username=uname, password=passwd)
                 if user is not None:
                     if user.is_active:
