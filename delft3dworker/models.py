@@ -131,11 +131,6 @@ class Scenario(models.Model):
 
     # PROPERTY METHODS
 
-    class Meta:
-        permissions = (
-            ('view_scenario', 'View Scenario'),
-        )
-
     def load_settings(self, settings):
         self.parameters = settings
         self.scenes_parameters = [{}]
@@ -337,10 +332,7 @@ class Scene(models.Model):
 
     # PROPERTY METHODS
 
-    class Meta:
-        permissions = (
-            ('view_scene', 'View Scene'),
-        )
+
 
     # UI CONTROL METHODS
 
@@ -735,10 +727,6 @@ class Template(models.Model):
 
         super(Template, self).save(*args, **kwargs)
 
-    class Meta:
-        permissions = (
-            ('view_template', 'View Template'),
-        )
 
 
 class Workflow(models.Model):
