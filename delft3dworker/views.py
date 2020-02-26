@@ -3,32 +3,19 @@ Views for the ui.
 """
 from __future__ import absolute_import
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import django_filters
 import io
 import logging
 import zipfile
 
-# import sys
-# reload(sys)
-# sys.setdefaultencoding('utf-8')
-
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
-from django.urls import reverse_lazy
 from django.core.exceptions import ValidationError
-from django.db.models import Q
-from django.forms.models import model_to_dict
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from django.utils.dateparse import parse_date
-from django.utils.decorators import method_decorator
 from django.utils.text import slugify
-from django.views.decorators.csrf import csrf_exempt
-from django.views.generic import CreateView
-from django.views.generic import DeleteView
-from django.views.generic import View
 
 from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_objects_for_user
@@ -38,12 +25,8 @@ from rest_framework import filters
 from rest_framework import status
 from rest_framework import viewsets
 from rest_framework import permissions
-from rest_framework.decorators import detail_route
-from rest_framework.decorators import list_route
 from rest_framework.decorators import action
-from rest_framework.decorators import parser_classes
 from rest_framework.response import Response
-from rest_framework.parsers import JSONParser
 from rest_framework_guardian import filters as guardian_filter
 
 from delft3dworker.models import Version_Docker
@@ -51,9 +34,6 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
-from delft3dworker.models import Workflow
-from delft3dworker.models import GroupUsageSummary
-from delft3dworker.models import UserUsageSummary
 from delft3dworker.permissions import ViewObjectPermissions, RedoScenePermission
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import VersionSerializer

@@ -4,37 +4,37 @@ from django.conf.urls import url  # noqa
 from django.contrib.auth.decorators import login_required
 from django.views.static import serve
 
-from django.contrib.auth.views import login
-from django.contrib.auth.views import logout
-from django.contrib.auth.views import password_reset
-from django.contrib.auth.views import password_reset_complete
-from django.contrib.auth.views import password_reset_confirm
-from django.contrib.auth.views import password_reset_done
+from django.contrib.auth.views import LoginView
+from django.contrib.auth.views import LogoutView
+from django.contrib.auth.views import PasswordResetView
+from django.contrib.auth.views import PasswordResetCompleteView
+from django.contrib.auth.views import PasswordResetConfirmView
+from django.contrib.auth.views import PasswordResetDoneView
 
 urlpatterns = (
 
     # Login
-    url(r'^login/$', login, {'template_name': 'login.html'},
+    url(r'^login/$', LoginView.as_view(template_name='login.html'),
         name="login"),
 
     # Logout
-    url(r'^logout/$', logout, {'template_name': 'login.html'},
+    url(r'^logout/$', LogoutView.as_view(template_name='login.html'),
         name="logout"),
 
     # Password Reset
-    url(r'^forgot/$', password_reset, {'template_name': 'forgot.html'},
+    url(r'^forgot/$', PasswordResetView.as_view(template_name='forgot.html'),
         name="password_reset"),
 
     # Password Reset Done
-    url(r'^done/$', password_reset_done, {'template_name': 'done.html'},
+    url(r'^done/$', PasswordResetDoneView.as_view(template_name='done.html'),
         name="password_reset_done"),
 
     # Password Reset Done
-    url(r'^reset/(?P<uidb64>[0-9A-Za-z]+)-(?P<token>.+)/$', password_reset_confirm,
-        {'template_name' : 'confirm.html'}, name="password_reset_confirm"),
+    url(r'^reset/(?P<uidb64>[0-9A-Za-z]+)-(?P<token>.+)/$', PasswordResetConfirmView.as_view(template_name=
+        'confirm.html'), name="password_reset_confirm"),
 
     # Password Reset Complete
-    url(r'^complete/$', password_reset_complete, {'template_name' : 'complete.html'},
+    url(r'^complete/$', PasswordResetCompleteView.as_view(template_name='complete.html'),
         name="password_reset_complete"),
 
     # Index

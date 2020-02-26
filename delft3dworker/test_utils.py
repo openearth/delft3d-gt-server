@@ -1,8 +1,5 @@
 from __future__ import absolute_import
 
-# from celery.states import SUCCESS, PENDING
-
-from django.conf import settings
 from django.utils import timezone
 from datetime import time, datetime, date
 

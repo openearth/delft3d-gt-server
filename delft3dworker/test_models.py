@@ -9,11 +9,9 @@ import zipfile
 from datetime import timedelta
 
 from django.conf import settings
-from constance import config as cconfig
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
-from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils.timezone import now
@@ -28,7 +26,6 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Version_Docker
 from delft3dworker.models import Scene
 from delft3dworker.models import Workflow
-from delft3dworker.models import SearchForm
 from delft3dworker.models import Template
 from delft3dworker.utils import tz_now
 
@@ -896,7 +893,7 @@ class WorkflowTestCase(TestCase):
 
         template_model = self.workflow.scene.scenario.first().template
         with open(template_model.yaml_template.path) as f:
-            template = yaml.load(f)
+            template = yaml.load(f, Loader=yaml.FullLoader)
         template["metadata"] = {"name": "{}".format(self.workflow.name)}
         template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": str(self.scene_1.suid)},
                                                        {"name": "s3bucket", "value": settings.BUCKETNAME},

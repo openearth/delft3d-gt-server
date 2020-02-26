@@ -10,7 +10,7 @@ addons:
       - postgresql-server-dev-9.6
 
 python:
-  - 3.4
+  - 3.6
 
 install:
   - pip install -r test_requirements.txt

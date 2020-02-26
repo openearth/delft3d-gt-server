@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from rest_framework.renderers import JSONRenderer
 
 from delft3dworker.models import Version_Docker
 from delft3dworker.models import Scenario

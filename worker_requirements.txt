@@ -1,7 +1,7 @@
-celery==4.2.*
-celery-once==1.2.*
-ddtrace==0.26.0
-Django==2.0.*
-kubernetes==8.*
-redis==3.1.*
+celery==4.4.*
+celery-once==3.0.*
+ddtrace==0.34.*
+Django==2.2.*
+kubernetes==10.0.*
+redis==3.4.*
 tornado==5.1.*

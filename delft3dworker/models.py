@@ -2,31 +2,24 @@ from __future__ import absolute_import
 
 import copy
 import hashlib
-import io
 import json
 import logging
 import math
 import os
-import random
 import shutil
-import string
 import uuid
 import yaml
-import zipfile
 from os.path import join
 
 from celery.result import AsyncResult
 
 from django.conf import settings  # noqa
-from constance import config as cconfig
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
-from django.urls import reverse_lazy
 from django.db import models
 from django.utils.text import slugify
 from django.utils.timezone import now
-from django.forms.models import model_to_dict
 
 from model_utils import Choices
 
@@ -95,7 +88,7 @@ def parse_argo_workflow(instance, filename):
     # If new worklow is uploaded, define a version
 
     # Load yaml and derive defaults
-    template = yaml.load(instance.yaml_template.read())
+    template = yaml.load(instance.yaml_template.read(), Loader=yaml.FullLoader)
     defaults = derive_defaults_from_argo(template)
 
     # Create version based on defaults
@@ -130,11 +123,6 @@ class Scenario(models.Model):
     progress = models.IntegerField(default=0)  # 0-100
 
     # PROPERTY METHODS
-
-    class Meta:
-        permissions = (
-            ('view_scenario', 'View Scenario'),
-        )
 
     def load_settings(self, settings):
         self.parameters = settings
@@ -337,10 +325,7 @@ class Scene(models.Model):
 
     # PROPERTY METHODS
 
-    class Meta:
-        permissions = (
-            ('view_scene', 'View Scene'),
-        )
+
 
     # UI CONTROL METHODS
 
@@ -735,10 +720,6 @@ class Template(models.Model):
 
         super(Template, self).save(*args, **kwargs)
 
-    class Meta:
-        permissions = (
-            ('view_template', 'View Template'),
-        )
 
 
 class Workflow(models.Model):
@@ -909,7 +890,7 @@ class Workflow(models.Model):
         # Open and edit workflow Template
         template_model = self.scene.scenario.first().template
         with open(template_model.yaml_template.path) as f:
-            template = yaml.load(f)
+            template = yaml.load(f, Loader=yaml.FullLoader)
         template["metadata"] = {"name": "{}".format(self.name)}
 
         if self.entrypoint is not None:

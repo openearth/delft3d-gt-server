@@ -4,7 +4,6 @@ import os
 import re
 import logging
 import sys
-from django.conf import settings
 from django.utils import timezone
 from datetime import time, datetime
 
