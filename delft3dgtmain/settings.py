@@ -239,6 +239,10 @@ if 'test' in sys.argv:
     else:
         DATABASES['default'].update({'NAME': 'djangodb_test'})
 
+    PASSWORD_HASHERS = [
+        'django.contrib.auth.hashers.MD5PasswordHasher',
+    ]
+
     # Debug on running tests
     DEBUG = True
 
