@@ -2,5 +2,5 @@
 -r requirements.txt
 
 fakeredis==1.2.*
-coverage==4.5.*
-mock==2.*
+coverage==5.0.*
+mock==4.0.*
