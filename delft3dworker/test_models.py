@@ -1039,11 +1039,11 @@ class WorkflowTestCase(TestCase):
             self.assertEqual(
                 self.scene_1.phase,
                 self.scene_1.phases.sim_start if (
-                    phase[0] == self.scene_1.phases.fin) else phase[0]
+                    phase[0] >= 500) else phase[0]
             )
 
             # check properties are untouched unless reset from finished state
-            if phase[0] == self.scene_1.phases.fin:
+            if phase[0] >= 500:
                 self.assertTrue((tz_now() - self.scene_1.date_started).seconds < 10)
                 self.assertEqual(self.scene_1.progress, 0)
                 self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
@@ -1070,8 +1070,9 @@ class WorkflowTestCase(TestCase):
         # a workflow can only be updated once it's Scene is finished,
         # loop through all phases to test
         for phase in self.scene_1.phases:
-            # Need to reset entrypoint with each phase, is not reset by function
+            # Need to reset entrypoint and version with each phase, is not reset by function
             self.workflow.entrypoint = 'delft3dgt-main'
+            self.workflow.version = self.version
 
             #  shift scene to phase
             self.scene_1.date_started = date_started
@@ -1082,16 +1083,16 @@ class WorkflowTestCase(TestCase):
             # update workflow
             self.scene_1.redo(entrypoint)
 
-            # check that phase is unshifted unless Finished: then it becomes New
+            # check that phase is unshifted unless in Finished phases: then it becomes New
             self.assertEqual(
                 self.scene_1.phase,
                 self.scene_1.phases.sim_start if (
-                        phase[0] == self.scene_1.phases.fin) else phase[0]
+                        phase[0] >= 500) else phase[0]
             )
 
             # check that entry point is the same and redo steps done
             # check properties are untouched unless reset from finished state
-            if phase[0] == self.scene_1.phases.fin:
+            if phase[0] >= 500:
                 self.assertEqual(self.workflow.entrypoint, 'update-processing')
                 self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
                 self.assertEqual(self.scene_1.info, {})

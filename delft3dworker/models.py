@@ -322,7 +322,7 @@ class Scene(models.Model):
         # Other phases
         (500, 'fin', 'Finished'),
         (501, 'fail', 'Failed'),
-        (503, 'stopped', 'Stopped')
+        (502, 'stopped', 'Stopped')
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
@@ -330,7 +330,7 @@ class Scene(models.Model):
     # UI CONTROL METHODS
 
     def reset(self):
-        if self.phase == (self.phases.fin or self.phases.stopped):
+        if self.phase >= 500:
             self.shift_to_phase(self.phases.sim_start)  # shift to Queued
             self.date_started = tz_now()
             self.progress = 0
@@ -351,7 +351,7 @@ class Scene(models.Model):
             return False
 
         # Is phase finished and version outdated?
-        elif self.phase == (self.phases.fin or self.phases.stopped) and self.workflow.is_outdated:
+        elif self.phase >= 500 and self.workflow.is_outdated:
             # change entrypoint argo workflow
             self.workflow.entrypoint = entrypoint
             # change version tag in argo workflow
