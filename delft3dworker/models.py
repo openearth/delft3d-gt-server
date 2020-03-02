@@ -540,7 +540,6 @@ class Scene(models.Model):
             return
 
         else:
-
             return
 
     def shift_to_phase(self, new_phase):
@@ -938,7 +937,9 @@ class Workflow(models.Model):
             args=(self.name,),
             expires=settings.TASK_EXPIRE_TIME
         )
-        self.action_log += "{} | Stopped \n".format(now())
+        # calculate runtime
+        self.stoptime = now()
+        self.action_log += "{} | Stopped \n".format(self.stoptime)
         self.save()
 
     def remove_workflow(self):
