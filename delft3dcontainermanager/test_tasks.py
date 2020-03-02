@@ -12,6 +12,7 @@ from delft3dcontainermanager.tasks import delft3dgt_kube_pulse
 from delft3dcontainermanager.tasks import get_argo_workflows
 from delft3dcontainermanager.tasks import get_kube_log
 from delft3dcontainermanager.tasks import do_argo_create
+from delft3dcontainermanager.tasks import do_argo_stop
 from delft3dcontainermanager.tasks import do_argo_remove
 
 
@@ -110,6 +111,37 @@ class TaskTest(TestCase):
         do_argo_create.delay(yaml)
         mockClient.CustomObjectsApi().create_namespaced_custom_object.assert_called_with(
             "argoproj.io", "v1alpha1", "default", "workflows", yaml)
+
+    @patch('delft3dcontainermanager.tasks.client', **mock_options)
+    @patch('delft3dcontainermanager.tasks.config', **mock_options)
+    def test_do_argo_stop(self, mockConfig, mockClient):
+        """
+        Assert that the argo_remove task
+        calls the kubernetes delete_namespaced_custom_object function
+        """
+
+        wf_id = "id"
+        pod_id = "foo"
+
+        # Mock return of all pods
+        pods = Mock()
+        pods.to_dict.return_value = {
+            "items": [{
+                "metadata": {
+                    "name": pod_id,
+                    "labels": {
+                        "workflows.argoproj.io/completed": "false"
+                    }
+                }
+            }]
+        }
+        mockClient.CoreV1Api().list_namespaced_pod.return_value = pods
+
+        do_argo_stop.delay(wf_id)
+        mockClient.CoreV1Api().list_namespaced_pod.assert_called_with(
+            "default", label_selector="workflows.argoproj.io/workflow={}".format(wf_id))
+        mockClient.CoreV1Api().delete_namespaced_pod.assert_called_with(
+            pod_id, "default")
 
     @patch('delft3dcontainermanager.tasks.client', **mock_options)
     @patch('delft3dcontainermanager.tasks.config', **mock_options)
