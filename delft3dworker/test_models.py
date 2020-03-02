@@ -422,9 +422,9 @@ class SceneTestCase(TestCase):
             # if the phase is after simulation start and before stopped
             if (phase[0] >= self.scene_1.phases.sim_start) and (
                     phase[0] <= self.scene_1.phases.sim_fin):
-                # check that phase is shifted to stopped
+                # check that phase is shifted to sim_stop
                 self.assertEqual(self.scene_1.phase,
-                                 self.scene_1.phases.sim_fin)
+                                 self.scene_1.phases.stopping)
 
             else:
                 # check the abort is ignored
@@ -657,6 +657,26 @@ class ScenarioPhasesTestCase(TestCase):
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.fin)
+
+    def test_phase_stopping(self):
+        self.scene_1.phase = self.p.stopping
+
+        workflow = self.scene_1.workflow
+        workflow.cluster_state = "running"
+        workflow.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.workflow.desired_state, 'failed')
+
+    def test_phase_stopped(self):
+        self.scene_1.phase = self.p.stopping
+
+        workflow = self.scene_1.workflow
+        workflow.cluster_state = "failed"
+        workflow.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.stopped)
 
 
 class WorkflowTestCase(TestCase):
@@ -947,6 +967,25 @@ class WorkflowTestCase(TestCase):
         # all subsequent calls were ignored
         mocked_task.assert_called_once_with(
             args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
+
+    @patch('delft3dcontainermanager.tasks.do_argo_stop.apply_async',
+           autospec=True)
+    def test_stop_workflow(self, mocked_task):
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.workflow.desired_state = 'failed'
+        self.workflow.cluster_state = 'running'
+
+        result = Mock()
+        result.id = task_uuid
+        # result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, check if do_docker_stop is called once, uuid updates
+        self.workflow.stop_workflow()
+        mocked_task.assert_called_once_with(
+            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
+
 
     @patch('delft3dcontainermanager.tasks.get_kube_log.apply_async',
            autospec=True)
