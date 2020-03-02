@@ -11,6 +11,7 @@ from django.conf import settings
 from django.core.management import call_command
 from json import dumps
 from kubernetes import client, config
+from kubernetes.client.rest import ApiException
 from requests.exceptions import HTTPError
 logger = get_task_logger(__name__)
 
@@ -73,6 +74,29 @@ def do_argo_create(self, yaml):
         "argoproj.io", "v1alpha1", "default", "workflows", yaml)
 
     return {"do_argo_create": status}
+
+
+@shared_task(bind=True, throws=(HTTPError,))
+def do_argo_stop(self, wf_id):
+    """
+    Stop argo workflow by deleting running pod
+    """
+    status = {}
+    client_api = config.new_client_from_config()
+    v1 = client.CoreV1Api(client_api)
+    pods = v1.list_namespaced_pod("default", label_selector="workflows.argoproj.io/workflow={}".format(wf_id))
+    pods_dict = pods.to_dict()
+    for item in pods_dict.get("items", []):
+        # Only delete one uncompleted pod
+        if item["metadata"].get("labels", {}).get("workflows.argoproj.io/completed", "true") == "false":
+            name = item["metadata"]["name"]
+            try:
+                status = v1.delete_namespaced_pod(name, "default")
+            except ApiException as e:
+                logger.error("Exception when deleting a pod: {}\n".format(e))
+            break
+
+    return {"do_argo_stop": status}
 
 
 @shared_task(bind=True, throws=(HTTPError))
