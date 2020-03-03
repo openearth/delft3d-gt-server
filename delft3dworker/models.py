@@ -318,12 +318,15 @@ class Scene(models.Model):
 
         # Stopping phase
         (20, 'stopping', 'Stopping workflow'),
+        (21, 'stop_fin', 'Removing stopped workflow'),
 
         # Other phases
         (500, 'fin', 'Finished'),
         (501, 'fail', 'Failed'),
         (502, 'stopped', 'Stopped')
     )
+
+    REMOVE_WORKFLOW = [phases.sim_fin, phases.stop_fin]
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
 
@@ -522,20 +525,21 @@ class Scene(models.Model):
         elif self.phase == self.phases.stopping:
             self.workflow.set_desired_state('failed')
             if self.workflow.cluster_state == 'failed':
-                self.shift_to_phase(self.phases.stopped)
+                self.shift_to_phase(self.phases.stop_fin)
 
             return
 
         # Delete workflow in cluster
-        elif self.phase == self.phases.sim_fin:
-
+        elif self.phase in self.REMOVE_WORKFLOW:
             self.workflow.set_desired_state('non-existent')
-
             if (self.workflow.cluster_state != 'non-existent'):
                 self.progress = self.workflow.progress
                 self.save()
             else:
-                self.shift_to_phase(self.phases.fin)
+                if self.phase == self.phases.sim_fin:
+                    self.shift_to_phase(self.phases.fin)
+                elif self.phase == self.phases.stop_fin:
+                    self.shift_to_phase(self.phases.stopped)
 
             return
 
