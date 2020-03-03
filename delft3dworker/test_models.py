@@ -1039,11 +1039,11 @@ class WorkflowTestCase(TestCase):
             self.assertEqual(
                 self.scene_1.phase,
                 self.scene_1.phases.sim_start if (
-                    phase[0] >= 500) else phase[0]
+                    phase[0] >= Scene.phases.fin) else phase[0]
             )
 
             # check properties are untouched unless reset from finished state
-            if phase[0] >= 500:
+            if phase[0] >= Scene.phases.fin:
                 self.assertTrue((tz_now() - self.scene_1.date_started).seconds < 10)
                 self.assertEqual(self.scene_1.progress, 0)
                 self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
@@ -1087,12 +1087,12 @@ class WorkflowTestCase(TestCase):
             self.assertEqual(
                 self.scene_1.phase,
                 self.scene_1.phases.sim_start if (
-                        phase[0] >= 500) else phase[0]
+                        phase[0] >= Scene.phases.fin) else phase[0]
             )
 
             # check that entry point is the same and redo steps done
             # check properties are untouched unless reset from finished state
-            if phase[0] >= 500:
+            if phase[0] >= Scene.phases.fin:
                 self.assertEqual(self.workflow.entrypoint, 'update-processing')
                 self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
                 self.assertEqual(self.scene_1.info, {})

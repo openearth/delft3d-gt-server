@@ -330,7 +330,7 @@ class Scene(models.Model):
     # UI CONTROL METHODS
 
     def reset(self):
-        if self.phase >= 500:
+        if self.phase >= self.phases.fin:
             self.shift_to_phase(self.phases.sim_start)  # shift to Queued
             self.date_started = tz_now()
             self.progress = 0
@@ -351,7 +351,7 @@ class Scene(models.Model):
             return False
 
         # Is phase finished and version outdated?
-        elif self.phase >= 500 and self.workflow.is_outdated:
+        elif self.phase >= self.phases.fin and self.workflow.is_outdated:
             # change entrypoint argo workflow
             self.workflow.entrypoint = entrypoint
             # change version tag in argo workflow
