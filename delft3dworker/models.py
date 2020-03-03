@@ -225,7 +225,7 @@ class Scenario(models.Model):
                     self.state = 'active'
 
             self.progress = progress / count
-            self.save()
+            self.save(update_fields=["state", "progress"])
 
         return self.state
 
@@ -338,14 +338,14 @@ class Scene(models.Model):
             self.date_started = tz_now()
             self.progress = 0
             self.info = self.scenario.first().template.info
-            self.save()
+            self.save(update_fields=["date_started", "progress", "info"])
 
     def start(self):
         # only allow a start when Scene is 'Idle'
         if self.phase == self.phases.idle:
             self.shift_to_phase(self.phases.sim_start)
             self.date_started = tz_now()
-            self.save()
+            self.save(update_fields=["date_started"])
 
     def redo(self, entrypoint):
         # Does entrypoint exist?
@@ -453,7 +453,7 @@ class Scene(models.Model):
 
         # update scene
         self.shared = "c"
-        self.save()
+        self.save(update_fields=["shared"])
 
     def publish_world(self, user):
         if self.phase != self.phases.fin:
@@ -471,7 +471,7 @@ class Scene(models.Model):
 
         # update scene
         self.shared = "w"
-        self.save()
+        self.save(update_fields=["shared"])
 
     # HEARTBEAT UPDATE AND SAVE
 
@@ -508,7 +508,7 @@ class Scene(models.Model):
         elif self.phase == self.phases.sim_run:
             self._local_scan_files()  # update images and logfile
             self.progress = self.workflow.progress
-            self.save()
+            self.save(update_fields=["progress"])
 
             # If workflow is finished, shift to finished
             if (self.workflow.cluster_state in Workflow.FINISHED):
@@ -534,7 +534,7 @@ class Scene(models.Model):
             self.workflow.set_desired_state('non-existent')
             if (self.workflow.cluster_state != 'non-existent'):
                 self.progress = self.workflow.progress
-                self.save()
+                self.save(update_fields=["progress"])
             else:
                 if self.phase == self.phases.sim_fin:
                     self.shift_to_phase(self.phases.fin)
@@ -548,7 +548,7 @@ class Scene(models.Model):
 
     def shift_to_phase(self, new_phase):
         self.phase = new_phase
-        self.save()
+        self.save(update_fields=["phase"])
 
     # INTERNALS
 
@@ -570,7 +570,7 @@ class Scene(models.Model):
     def _local_scan_files(self):
         # scan for files in workingdir based on structure in template info dictionary
         self.info = scan_output_files(self.workingdir, self.info)
-        self.save()
+        self.save(update_fields=["info"])
 
     def __str__(self):
         return self.name
@@ -839,7 +839,7 @@ class Workflow(models.Model):
                     format(self, result.state, error))
 
             self.task_uuid = None
-            self.save()
+            self.save(update_fields=["cluster_log", "progress", "task_uuid"])
 
         # Forget task after expire_time
         elif time_passed.total_seconds() > settings.TASK_EXPIRE_TIME:
@@ -848,7 +848,7 @@ class Workflow(models.Model):
                     time_passed.total_seconds()))
             result.revoke()
             self.task_uuid = None
-            self.save()
+            self.save(update_fields=["task_uuid"])
 
         else:
             logging.warn("Celery task of {} is still {}.".format(self,
@@ -862,7 +862,7 @@ class Workflow(models.Model):
             if state == "Failed" or state == "Error":
                 logging.error("{} failed!".format(self.name))
             self.cluster_state = state.lower()
-        self.save()
+        self.save(update_fields=["cluster_state"])
 
     def fix_mismatch_or_log(self):
         """
@@ -897,7 +897,7 @@ class Workflow(models.Model):
     # INTERNALS
     def set_desired_state(self, desired_state):
         self.desired_state = desired_state
-        self.save()
+        self.save(update_fields=["desired_state"])
 
     # CELERY TASK CALLS
     def create_workflow(self):
@@ -934,7 +934,7 @@ class Workflow(models.Model):
         self.starttime = now()
         self.action_log += "{} | Created \n".format(self.task_starttime)
         self.task_uuid = result.id
-        self.save()
+        self.save(update_fields=["task_starttime", "starttime", "action_log", "task_uuid", "yaml"])
 
     def stop_workflow(self):
         result = do_argo_stop.apply_async(
@@ -944,7 +944,7 @@ class Workflow(models.Model):
         # calculate runtime
         self.stoptime = now()
         self.action_log += "{} | Stopped \n".format(self.stoptime)
-        self.save()
+        self.save(update_fields=["stoptime", "action_log"])
 
     def remove_workflow(self):
         # Catch removing unfinished workflow
@@ -963,7 +963,7 @@ class Workflow(models.Model):
         self.action_log += "{} | Removed \n".format(self.stoptime)
 
         self.task_uuid = result.id
-        self.save()
+        self.save(update_fields=["task_starttime", "stoptime", "action_log", "task_uuid"])
 
     def update_log(self):
         # return if container still has an active task
@@ -977,7 +977,7 @@ class Workflow(models.Model):
                                           expires=settings.TASK_EXPIRE_TIME)
         self.task_starttime = now()
         self.task_uuid = result.id
-        self.save()
+        self.save(update_fields=["task_starttime", "task_uuid"])
 
     def __str__(self):
         return "Workflow of scene {}".format(self.scene.name)
