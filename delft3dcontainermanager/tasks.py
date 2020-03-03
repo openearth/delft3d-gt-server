@@ -91,7 +91,7 @@ def do_argo_stop(self, wf_id):
         if item["metadata"].get("labels", {}).get("workflows.argoproj.io/completed", "true") == "false":
             name = item["metadata"]["name"]
             try:
-                status = v1.delete_namespaced_pod(name, "default")
+                status = v1.delete_namespaced_pod(name, "default").to_dict()
             except ApiException as e:
                 logger.error("Exception when deleting a pod: {}\n".format(e))
             break
