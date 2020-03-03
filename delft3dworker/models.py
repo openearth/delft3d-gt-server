@@ -835,7 +835,7 @@ class Workflow(models.Model):
                     format(self, result.state, error))
 
             self.task_uuid = None
-            self.save(update_fields=["cluster_log", "task_uuid"])
+            self.save(update_fields=["cluster_log", "progress", "task_uuid"])
 
         # Forget task after expire_time
         elif time_passed.total_seconds() > settings.TASK_EXPIRE_TIME:
