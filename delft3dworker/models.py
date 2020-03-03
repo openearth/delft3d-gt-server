@@ -33,7 +33,7 @@ from django.contrib.postgres.fields import JSONField
 from delft3dworker.utils import log_progress_parser, tz_now, scan_output_files
 from delft3dworker.utils import merge_log_unique, merge_list_of_dict, derive_defaults_from_argo
 
-from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create
+from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create, do_argo_stop
 from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
 
 
@@ -311,26 +311,26 @@ class Scene(models.Model):
         # User input wait phase
         (6, 'idle', 'Idle: waiting for user input'),
 
-        # Workflow phases
+        # Main workflow phases
         (11, 'sim_start', 'Starting workflow'),
         (12, 'sim_run', 'Running workflow'),
         (13, 'sim_fin', 'Removing workflow'),
 
+        # Stopping phase
+        (20, 'stopping', 'Stopping workflow'),
+
         # Other phases
         (500, 'fin', 'Finished'),
         (501, 'fail', 'Failed'),
+        (502, 'stopped', 'Stopped')
     )
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
 
-    # PROPERTY METHODS
-
-
-
     # UI CONTROL METHODS
 
     def reset(self):
-        if self.phase == self.phases.fin:
+        if self.phase >= self.phases.fin:
             self.shift_to_phase(self.phases.sim_start)  # shift to Queued
             self.date_started = tz_now()
             self.progress = 0
@@ -351,7 +351,7 @@ class Scene(models.Model):
             return False
 
         # Is phase finished and version outdated?
-        elif self.phase == self.phases.fin and self.workflow.is_outdated:
+        elif self.phase >= self.phases.fin and self.workflow.is_outdated:
             # change entrypoint argo workflow
             self.workflow.entrypoint = entrypoint
             # change version tag in argo workflow
@@ -371,7 +371,11 @@ class Scene(models.Model):
     def abort(self):
         # Stop simulation
         if self.phase >= self.phases.sim_start and self.phase <= self.phases.sim_fin:
-            self.shift_to_phase(self.phases.sim_fin)   # stop Simulation
+            self.shift_to_phase(self.phases.stopping)
+            return True
+        # phase does not allow stop of simulation
+        else:
+            return False
 
     def export(self, zipfile, options):
         """Add files to given zipfile based on given options.
@@ -511,6 +515,14 @@ class Scene(models.Model):
             elif (self.workflow.cluster_state == 'non-existent'):
                 logging.error("Lost workflow in cluster!")
                 self.shift_to_phase(self.phases.sim_start)
+
+            return
+
+        # Stop workflow, will delete pods and workflow cluster_state will show failed
+        elif self.phase == self.phases.stopping:
+            self.workflow.set_desired_state('failed')
+            if self.workflow.cluster_state == 'failed':
+                self.shift_to_phase(self.phases.stopped)
 
             return
 
@@ -872,6 +884,9 @@ class Workflow(models.Model):
         if self.desired_state == 'running':
             self.create_workflow()
 
+        if self.desired_state == 'failed':
+            self.stop_workflow()
+
         if self.desired_state == 'non-existent':
             self.remove_workflow()
 
@@ -915,6 +930,16 @@ class Workflow(models.Model):
         self.starttime = now()
         self.action_log += "{} | Created \n".format(self.task_starttime)
         self.task_uuid = result.id
+        self.save()
+
+    def stop_workflow(self):
+        result = do_argo_stop.apply_async(
+            args=(self.name,),
+            expires=settings.TASK_EXPIRE_TIME
+        )
+        # calculate runtime
+        self.stoptime = now()
+        self.action_log += "{} | Stopped \n".format(self.stoptime)
         self.save()
 
     def remove_workflow(self):

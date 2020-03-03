@@ -422,9 +422,9 @@ class SceneTestCase(TestCase):
             # if the phase is after simulation start and before stopped
             if (phase[0] >= self.scene_1.phases.sim_start) and (
                     phase[0] <= self.scene_1.phases.sim_fin):
-                # check that phase is shifted to stopped
+                # check that phase is shifted to sim_stop
                 self.assertEqual(self.scene_1.phase,
-                                 self.scene_1.phases.sim_fin)
+                                 self.scene_1.phases.stopping)
 
             else:
                 # check the abort is ignored
@@ -657,6 +657,26 @@ class ScenarioPhasesTestCase(TestCase):
 
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.phase, self.p.fin)
+
+    def test_phase_stopping(self):
+        self.scene_1.phase = self.p.stopping
+
+        workflow = self.scene_1.workflow
+        workflow.cluster_state = "running"
+        workflow.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.workflow.desired_state, 'failed')
+
+    def test_phase_stopped(self):
+        self.scene_1.phase = self.p.stopping
+
+        workflow = self.scene_1.workflow
+        workflow.cluster_state = "failed"
+        workflow.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.stopped)
 
 
 class WorkflowTestCase(TestCase):
@@ -948,6 +968,25 @@ class WorkflowTestCase(TestCase):
         mocked_task.assert_called_once_with(
             args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
 
+    @patch('delft3dcontainermanager.tasks.do_argo_stop.apply_async',
+           autospec=True)
+    def test_stop_workflow(self, mocked_task):
+        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+
+        self.workflow.desired_state = 'failed'
+        self.workflow.cluster_state = 'running'
+
+        result = Mock()
+        result.id = task_uuid
+        # result.get.return_value = docker_id
+        mocked_task.return_value = result
+
+        # call method, check if do_docker_stop is called once, uuid updates
+        self.workflow.stop_workflow()
+        mocked_task.assert_called_once_with(
+            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
+
+
     @patch('delft3dcontainermanager.tasks.get_kube_log.apply_async',
            autospec=True)
     def test_update_log(self, mocked_task):
@@ -1000,11 +1039,11 @@ class WorkflowTestCase(TestCase):
             self.assertEqual(
                 self.scene_1.phase,
                 self.scene_1.phases.sim_start if (
-                    phase[0] == self.scene_1.phases.fin) else phase[0]
+                    phase[0] >= Scene.phases.fin) else phase[0]
             )
 
             # check properties are untouched unless reset from finished state
-            if phase[0] == self.scene_1.phases.fin:
+            if phase[0] >= Scene.phases.fin:
                 self.assertTrue((tz_now() - self.scene_1.date_started).seconds < 10)
                 self.assertEqual(self.scene_1.progress, 0)
                 self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
@@ -1031,8 +1070,9 @@ class WorkflowTestCase(TestCase):
         # a workflow can only be updated once it's Scene is finished,
         # loop through all phases to test
         for phase in self.scene_1.phases:
-            # Need to reset entrypoint with each phase, is not reset by function
+            # Need to reset entrypoint and version with each phase, is not reset by function
             self.workflow.entrypoint = 'delft3dgt-main'
+            self.workflow.version = self.version
 
             #  shift scene to phase
             self.scene_1.date_started = date_started
@@ -1043,16 +1083,16 @@ class WorkflowTestCase(TestCase):
             # update workflow
             self.scene_1.redo(entrypoint)
 
-            # check that phase is unshifted unless Finished: then it becomes New
+            # check that phase is unshifted unless in Finished phases: then it becomes New
             self.assertEqual(
                 self.scene_1.phase,
                 self.scene_1.phases.sim_start if (
-                        phase[0] == self.scene_1.phases.fin) else phase[0]
+                        phase[0] >= Scene.phases.fin) else phase[0]
             )
 
             # check that entry point is the same and redo steps done
             # check properties are untouched unless reset from finished state
-            if phase[0] == self.scene_1.phases.fin:
+            if phase[0] >= Scene.phases.fin:
                 self.assertEqual(self.workflow.entrypoint, 'update-processing')
                 self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
                 self.assertEqual(self.scene_1.info, {})
