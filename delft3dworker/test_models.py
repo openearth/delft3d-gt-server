@@ -668,11 +668,21 @@ class ScenarioPhasesTestCase(TestCase):
         self.scene_1.update_and_phase_shift()
         self.assertEqual(self.scene_1.workflow.desired_state, 'failed')
 
-    def test_phase_stopped(self):
+    def test_phase_stop_fin(self):
         self.scene_1.phase = self.p.stopping
 
         workflow = self.scene_1.workflow
         workflow.cluster_state = "failed"
+        workflow.save()
+
+        self.scene_1.update_and_phase_shift()
+        self.assertEqual(self.scene_1.phase, self.p.stop_fin)
+
+    def test_phase_stopped(self):
+        self.scene_1.phase = self.p.stop_fin
+
+        workflow = self.scene_1.workflow
+        workflow.cluster_state = "non-existent"
         workflow.save()
 
         self.scene_1.update_and_phase_shift()
