@@ -435,10 +435,10 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @action(methods=["post"], detail=False)  # denied after publish to world
     def publish_company_all(self, request):
-        queryset = Scene.objects.filter(owner=self.request.user).filter(
-                suid__in=request.data.getlist('suid', []))
 
         try:
+            queryset = Scene.objects.filter(owner=self.request.user).filter(
+                    suid__in=request.data.getlist('suid', []))
             for scene in queryset:
                 scene.publish_company(request.user)
         except (ValidationError, ValueError) as e:
@@ -463,10 +463,10 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @action(methods=["post"], detail=False)  # denied after publish to world
     def publish_world_all(self, request):
-        queryset = Scene.objects.filter(owner=self.request.user).filter(
-            suid__in=request.data.getlist('suid', []))
 
         try:
+            queryset = Scene.objects.filter(owner=self.request.user).filter(
+                suid__in=request.data.getlist('suid', []))
             for scene in queryset:
                 scene.publish_world(request.user)
         except (ValidationError, ValueError) as e:
