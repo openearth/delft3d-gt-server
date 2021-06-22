@@ -21,7 +21,7 @@ router.register(r'userusagesummaries', views.UserUsageSummaryViewSet, 'userusage
 # url patterns
 
 urlpatterns = (
-
+    url(r'^oidc/', include('mozilla_django_oidc.urls')),
     # REST Framework
     url(r'^api/v1/', include(router.urls)),
     url(r'^api-auth/',

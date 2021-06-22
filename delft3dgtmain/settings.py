@@ -34,6 +34,7 @@ CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
+    'mozilla_django_oidc',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -72,6 +73,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'mozilla_django_oidc.middleware.SessionRefresh',
 ]
 
 ROOT_URLCONF = 'delft3dgtmain.urls'
@@ -79,6 +81,7 @@ ROOT_URLCONF = 'delft3dgtmain.urls'
 # Object permissions
 
 AUTHENTICATION_BACKENDS = [
+    "delft3dworker.authentication.MyDeltaresOnlyOIDC",
     'django.contrib.auth.backends.ModelBackend',  # default
     'guardian.backends.ObjectPermissionBackend',
 ]
@@ -198,6 +201,7 @@ WORKER_FILEURL = '/files'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'mozilla_django_oidc.contrib.drf.OIDCAuthentication',
         'rest_framework.authentication.TokenAuthentication',
         'delft3dworker.authentication.CsrfExemptSessionAuthentication',
     ],
