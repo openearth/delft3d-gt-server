@@ -7,9 +7,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0084_migrate_scene_finished_state'),
-        ('delft3dworker', '0084_auto_20170419_1510'),
+        ("delft3dworker", "0084_migrate_scene_finished_state"),
+        ("delft3dworker", "0084_auto_20170419_1510"),
     ]
 
-    operations = [
-    ]
+    operations = []

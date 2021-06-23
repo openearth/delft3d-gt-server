@@ -8,7 +8,7 @@ def divtime(value, arg):
     if value is None or arg is None:
         return 0
     else:
-        return value.total_seconds() / arg.total_seconds() * 100. if arg != 0 else 0
+        return value.total_seconds() / arg.total_seconds() * 100.0 if arg != 0 else 0
 
 
-register.filter('divtime', divtime)
+register.filter("divtime", divtime)

@@ -7,16 +7,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0029_auto_20160531_0908'),
+        ("delft3dworker", "0029_auto_20160531_0908"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='scenario',
-            options={'permissions': (('view_scenario', 'View Scenario'),)},
+            name="scenario",
+            options={"permissions": (("view_scenario", "View Scenario"),)},
         ),
         migrations.AlterModelOptions(
-            name='scene',
-            options={'permissions': (('view_scene', 'View Scene'),)},
+            name="scene",
+            options={"permissions": (("view_scene", "View Scene"),)},
         ),
     ]

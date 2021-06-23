@@ -1,14 +1,12 @@
-from celery.result import AsyncResult
 import logging
-from django.core.management import BaseCommand
 from json import loads
 from time import sleep
 
-from delft3dcontainermanager.tasks import get_argo_workflows
-from delft3dcontainermanager.tasks import do_argo_remove
-from delft3dworker.models import Workflow
-from delft3dworker.models import Scene
-from delft3dworker.models import Template
+from celery.result import AsyncResult
+from django.core.management import BaseCommand
+
+from delft3dcontainermanager.tasks import do_argo_remove, get_argo_workflows
+from delft3dworker.models import Scene, Template, Workflow
 
 """
 Synchronization command that's called periodically.
@@ -44,7 +42,9 @@ class Command(BaseCommand):
         """
         Update workflows with results from finished tasks.
         """
-        workflows_with_running_tasks = set(Workflow.objects.exclude(task_uuid__exact=None))
+        workflows_with_running_tasks = set(
+            Workflow.objects.exclude(task_uuid__exact=None)
+        )
 
         for workflow in workflows_with_running_tasks:
             workflow.update_task_result()
@@ -54,7 +54,7 @@ class Command(BaseCommand):
         Synchronise local Django Workflow models with remote Argo workflows
         """
 
-        ps = get_argo_workflows.apply_async(queue='priority')
+        ps = get_argo_workflows.apply_async(queue="priority")
         shortnames = tuple(Template.objects.values_list("shortname", flat=True))
 
         # Wait until the task finished successfully
@@ -77,7 +77,7 @@ class Command(BaseCommand):
         cluster_set = set(cluster_dict.keys())
 
         # retrieve workflows from database
-        database_set = set(Workflow.objects.all().values_list('name', flat=True))
+        database_set = set(Workflow.objects.all().values_list("name", flat=True))
 
         # Work out matching matrix
         #       argo wf yes no
@@ -88,10 +88,11 @@ class Command(BaseCommand):
         m_1_1 = database_set & cluster_set
         m_1_0 = database_set - cluster_set
         m_0_1 = cluster_set - database_set
-        m_0_0 = ((cluster_set | database_set) -
-                 (cluster_set ^ database_set) -
-                 (cluster_set & database_set)
-                 )
+        m_0_0 = (
+            (cluster_set | database_set)
+            - (cluster_set ^ database_set)
+            - (cluster_set & database_set)
+        )
 
         # Update state of all matching workflows
         workflow_match = m_1_1 | m_1_0
@@ -106,7 +107,9 @@ class Command(BaseCommand):
         workflow_mismatch = m_0_1 | m_0_0
         for wf in workflow_mismatch:
             if wf.startswith(shortnames):
-                msg = "Workflow {} with known shortname not found in database".format(wf)
+                msg = "Workflow {} with known shortname not found in database".format(
+                    wf
+                )
                 self.stderr.write(msg)
                 do_argo_remove.delay(wf)
 
@@ -121,7 +124,7 @@ class Command(BaseCommand):
         # ordering is done on start date (first, and id second):
         # if a simulation slot is available, we want simulations to start
         # in order of their date_started
-        for scene in Scene.objects.all().order_by('date_started', 'id'):
+        for scene in Scene.objects.all().order_by("date_started", "id"):
             scene.update_and_phase_shift()
 
     def _fix_workflow_state_mismatch(self):

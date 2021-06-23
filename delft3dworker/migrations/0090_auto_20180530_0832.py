@@ -8,38 +8,49 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0089_template_shortname'),
+        ("delft3dworker", "0089_template_shortname"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='workflow',
-            name='action_log',
-            field=models.TextField(blank=True, default=''),
+            model_name="workflow",
+            name="action_log",
+            field=models.TextField(blank=True, default=""),
         ),
         migrations.AddField(
-            model_name='workflow',
-            name='cluster_log',
-            field=models.TextField(blank=True, default=''),
+            model_name="workflow",
+            name="cluster_log",
+            field=models.TextField(blank=True, default=""),
         ),
         migrations.AddField(
-            model_name='workflow',
-            name='yaml',
-            field=models.FileField(default='', upload_to='workflows/'),
+            model_name="workflow",
+            name="yaml",
+            field=models.FileField(default="", upload_to="workflows/"),
         ),
         migrations.AlterField(
-            model_name='scene',
-            name='phase',
-            field=models.PositiveSmallIntegerField(choices=[(0, 'New'), (6, 'Idle: waiting for user input'), (11, 'Starting workflow'), (12, 'Running workflow'), (13, 'Removing workflow'), (500, 'Finished'), (501, 'Failed')], default=0),
+            model_name="scene",
+            name="phase",
+            field=models.PositiveSmallIntegerField(
+                choices=[
+                    (0, "New"),
+                    (6, "Idle: waiting for user input"),
+                    (11, "Starting workflow"),
+                    (12, "Running workflow"),
+                    (13, "Removing workflow"),
+                    (500, "Finished"),
+                    (501, "Failed"),
+                ],
+                default=0,
+            ),
         ),
         migrations.AlterField(
-            model_name='template',
-            name='shortname',
-            field=models.CharField(default='gt', max_length=256),
+            model_name="template",
+            name="shortname",
+            field=models.CharField(default="gt", max_length=256),
         ),
         migrations.AlterField(
-            model_name='template',
-            name='yaml_template',
-            field=models.FileField(default='', upload_to='workflow_templates/'),
+            model_name="template",
+            name="yaml_template",
+            field=models.FileField(default="", upload_to="workflow_templates/"),
         ),
     ]

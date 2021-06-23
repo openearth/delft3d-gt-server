@@ -8,20 +8,23 @@ import math
 import os
 import shutil
 import uuid
-import yaml
 from os.path import join
 
+import yaml
 from celery.result import AsyncResult
-
 from django.conf import settings  # noqa
-from django.contrib.auth.models import Group
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models import JSONField
 from django.utils.text import slugify
 from django.utils.timezone import now
-
+from guardian.shortcuts import (
+    assign_perm,
+    get_groups_with_perms,
+    get_objects_for_user,
+    remove_perm,
+)
 from model_utils import Choices
 
 from guardian.shortcuts import assign_perm

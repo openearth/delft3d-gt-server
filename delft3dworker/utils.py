@@ -1,11 +1,13 @@
 from __future__ import absolute_import
+
 import json
+import logging
 import os
 import re
-import logging
 import sys
+from datetime import datetime, time
+
 from django.utils import timezone
-from datetime import time, datetime
 
 
 def tz_now():
@@ -38,7 +40,9 @@ def derive_defaults_from_argo(argo_yaml):
     versions = {}
 
     try:
-        versions["parameters"] = argo_yaml.get("spec", {}).get("arguments", {}).get("parameters")
+        versions["parameters"] = (
+            argo_yaml.get("spec", {}).get("arguments", {}).get("parameters")
+        )
         templates = argo_yaml.get("spec", {}).get("templates", [{}])
         entrypoints = [x["name"] for x in templates if "steps" in x.keys()]
         versions["entrypoints"] = entrypoints
@@ -51,16 +55,16 @@ def derive_defaults_from_argo(argo_yaml):
 
 def log_progress_parser(log, container_type):
     lines = log.splitlines()
-    if container_type == 'delft3d':
+    if container_type == "delft3d":
         for line in lines[::-1]:
             parsed = delft3d_logparser(line)
-            if parsed['progress'] is not None:
-                return parsed['progress']
+            if parsed["progress"] is not None:
+                return parsed["progress"]
     else:  # TODO: improve method to raise error if type is unknown
         for line in lines[::-1]:
             parsed = python_logparser(line)
-            if parsed['progress'] is not None:
-                return parsed['progress']
+            if parsed["progress"] is not None:
+                return parsed["progress"]
 
 
 def delft3d_logparser(line):
@@ -72,30 +76,32 @@ def delft3d_logparser(line):
 
     try:
 
-        percentage_re = re.compile(r"""
+        percentage_re = re.compile(
+            r"""
         ^(?P<message>.*?        # capture whole string as message
         (?P<progress>[\d\.]+)%  # capture num with . delim & ending with %
         .*
         )
-        """, re.VERBOSE)
+        """,
+            re.VERBOSE,
+        )
         match = percentage_re.search(line)
 
         if match:
             match = match.groupdict()
             match["message"] = line
             if (
-                "progress" in match and
-                match["progress"] is not None and
-                match["progress"] != ""
+                "progress" in match
+                and match["progress"] is not None
+                and match["progress"] != ""
             ):
-                match['progress'] = float(match['progress'])
+                match["progress"] = float(match["progress"])
             # add default log level
-            match['level'] = 'INFO'
+            match["level"] = "INFO"
             # add state
-            match['state'] = None
+            match["state"] = None
         else:
-            match = {"message": None, "level": "INFO",
-                     "state": None, "progress": None}
+            match = {"message": None, "level": "INFO", "state": None, "progress": None}
         return match
 
     except:
@@ -106,7 +112,7 @@ def delft3d_logparser(line):
             "message": "error '%s' on line '%s'" % (e.message, line),
             "level": "ERROR",
             "state": None,
-            "progress": None
+            "progress": None,
         }
 
 
@@ -120,7 +126,8 @@ def python_logparser(line):
 
     try:
 
-        python_re = re.compile(r"""
+        python_re = re.compile(
+            r"""
         ^(?P<message>
             (?P<level>
                 [A-Z]+\w+
@@ -137,21 +144,21 @@ def python_logparser(line):
             )?  # capture num with . delim & ending with %
             .*
         )   # capture whole string as message
-        """, re.VERBOSE)
+        """,
+            re.VERBOSE,
+        )
         match = python_re.search(line)
 
         if match:
             match = match.groupdict()
             if (
-                "progress" in match and
-                match["progress"] is not None and
-                match["progress"] != ""
+                "progress" in match
+                and match["progress"] is not None
+                and match["progress"] != ""
             ):
-                match['progress'] = format(
-                    float(match['progress']) / 100, '.2f')
+                match["progress"] = format(float(match["progress"]) / 100, ".2f")
         else:
-            match = {"message": line, "level": "INFO",
-                     "state": None, "progress": None}
+            match = {"message": line, "level": "INFO", "state": None, "progress": None}
         return match
 
     except:
@@ -162,7 +169,7 @@ def python_logparser(line):
             "message": "error '%s' on line '%s'" % (e.message, line),
             "level": "ERROR",
             "state": None,
-            "progress": None
+            "progress": None,
         }
 
 
@@ -210,7 +217,7 @@ def scan_output_files(workingdir, info_dict):
                 # TODO Use regex expressions in the future
                 if "_images" in key:
                     type_of_image = key.split("_images")[0]
-                    if (type_of_image in name):
+                    if type_of_image in name:
                         info_dict[key]["files"].append(fn)
 
                 # If json, use filename as key and load json
@@ -221,7 +228,9 @@ def scan_output_files(workingdir, info_dict):
                             output_dict = clean(output_dict)  #  remove nan
                             info_dict[key]["files"][name] = output_dict
                         except ValueError as e:
-                            logging.error("Error parsing postprocessing {}: {}".format(f, e))
+                            logging.error(
+                                "Error parsing postprocessing {}: {}".format(f, e)
+                            )
 
                 # Add files without parsing
                 else:
@@ -239,7 +248,7 @@ def clean(jsondict):
     Assumes flat structure for now."""
     for k, v in jsondict.items():
         if isinstance(v, float):
-            if not (float('-inf') < float(v) < float('inf')):
+            if not (float("-inf") < float(v) < float("inf")):
                 jsondict[k] = None
     return jsondict
 

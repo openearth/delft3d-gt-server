@@ -7,15 +7,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0013_delete_delft3dworker'),
+        ("delft3dworker", "0013_delete_delft3dworker"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Scenario',
+            name="Scenario",
             fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('name', models.CharField(max_length=256)),
+                (
+                    "id",
+                    models.AutoField(
+                        verbose_name="ID",
+                        serialize=False,
+                        auto_created=True,
+                        primary_key=True,
+                    ),
+                ),
+                ("name", models.CharField(max_length=256)),
             ],
         ),
     ]

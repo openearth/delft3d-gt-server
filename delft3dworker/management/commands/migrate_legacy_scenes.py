@@ -1,7 +1,8 @@
-from django.core.management import BaseCommand
-from delft3dworker.models import Scene
-from delft3dworker.models import Workflow
 import logging
+
+from django.core.management import BaseCommand
+
+from delft3dworker.models import Scene, Workflow
 
 """
 Script to migrate legacy scenes:
@@ -18,6 +19,7 @@ production database involves:
 """
 
 logging.getLogger().setLevel(logging.INFO)
+
 
 class Command(BaseCommand):
     help = "Scan for old Scenes and update them to the new ET architecture."
@@ -43,9 +45,11 @@ class Command(BaseCommand):
             logging.info("Add workflow to scene {}.".format(scene.id))
             workflow = Workflow.objects.create(
                 scene=scene,
-                name="{}-{}".format(scene.scenario.first().template.shortname, scene.suid),
+                name="{}-{}".format(
+                    scene.scenario.first().template.shortname, scene.suid
+                ),
                 progress=scene.progress,
-                version=scene.scenario.first().template.versions.first()  # latest
+                version=scene.scenario.first().template.versions.first(),  # latest
             )
             workflow.save()
 
