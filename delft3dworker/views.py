@@ -34,7 +34,7 @@ from delft3dworker.models import Scenario
 from delft3dworker.models import Scene
 from delft3dworker.models import Template
 from delft3dworker.models import SearchForm
-from delft3dworker.permissions import ViewObjectPermissions, RedoScenePermission
+from delft3dworker.permissions import ViewObjectPermissions, ExtendedScenePermission
 from delft3dworker.serializers import GroupSerializer
 from delft3dworker.serializers import VersionSerializer
 from delft3dworker.serializers import ScenarioSerializer
@@ -393,7 +393,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(methods=["put"], detail=True, permission_classes=[permissions.IsAuthenticated, RedoScenePermission])
+    @action(methods=["put"], detail=True, permission_classes=[permissions.IsAuthenticated, ExtendedScenePermission])
     def redo(self, request, pk=None):
         # Update and redo the mode, based on a specific entrypoint
         d = request.data
@@ -477,7 +477,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({'status': 'Published scenes to world'})
 
-    @action(methods=["get"], detail=True)
+    @action(methods=["get"], detail=True, permission_classes=[permissions.IsAuthenticated, ExtendedScenePermission])
     def export(self, request, pk=None):
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
@@ -516,7 +516,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return resp
 
-    @action(methods=["get"], detail=False)
+    @action(methods=["get"], detail=False, permission_classes=[permissions.IsAuthenticated, ExtendedScenePermission])
     def export_all(self, request):
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
@@ -608,7 +608,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = get_object_or_404(User, id=self.request.user.id)
-        wanted = [group.name for group in user.groups.exclude(name='access:world')]
+        wanted = [group.name for group in user.groups.exclude(name='access:world').exclude(name='access:world_restricted')]
         queryset = User.objects.filter(groups__name__in=wanted)
         return queryset
 

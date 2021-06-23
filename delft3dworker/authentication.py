@@ -1,6 +1,8 @@
-from rest_framework.authentication import SessionAuthentication
-from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 import logging
+
+from django.contrib.auth.models import Group
+from mozilla_django_oidc.auth import OIDCAuthenticationBackend
+from rest_framework.authentication import SessionAuthentication
 
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
@@ -11,12 +13,11 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
 class MyDeltaresOnlyOIDC(OIDCAuthenticationBackend):
     def create_user(self, claims):
         """Create read-only user."""
-        email = claims.get("email")
-        if not email.endswith("@deltares.nl"):
-            logging.warning("Only Deltares users can create users")
-            return None
-
         user = super(MyDeltaresOnlyOIDC, self).create_user(claims)
         user.save()
+
+        # Give user restricted view rights by default
+        world_restricted = Group.objects.get(name="access:world_restricted")
+        world_restricted.user_set.add(user)
 
         return user
