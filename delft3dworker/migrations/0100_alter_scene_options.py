@@ -6,12 +6,16 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0099_alter_scene_phase'),
+        ("delft3dworker", "0099_alter_scene_phase"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='scene',
-            options={'permissions': [('restricted_view_scene', 'Can view scene without actions.')]},
+            name="scene",
+            options={
+                "permissions": [
+                    ("restricted_view_scene", "Can view scene without actions.")
+                ]
+            },
         ),
     ]
