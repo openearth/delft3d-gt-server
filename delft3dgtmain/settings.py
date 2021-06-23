@@ -153,6 +153,9 @@ LOGIN_REDIRECT_URL = '/'
 # Max form size for large scenarios with logs
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB
 
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+
 # ######
 # Celery
 # ######

@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.pyc
 *$py.class
+.pytest_cache
 
 # C extensions
 *.so
@@ -65,3 +66,9 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+# Mypy
+.mypy_cache/
+
+# Idea editors
+.idea

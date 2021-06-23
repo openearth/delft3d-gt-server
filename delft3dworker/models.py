@@ -18,6 +18,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 from django.db import models
+from django.db.models import JSONField
 from django.utils.text import slugify
 from django.utils.timezone import now
 
@@ -27,8 +28,6 @@ from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_groups_with_perms
 from guardian.shortcuts import get_objects_for_user
 from guardian.shortcuts import remove_perm
-
-from django.contrib.postgres.fields import JSONField
 
 from delft3dworker.utils import log_progress_parser, tz_now, scan_output_files
 from delft3dworker.utils import merge_log_unique, merge_list_of_dict, derive_defaults_from_argo
@@ -47,7 +46,7 @@ def default_svn_version():
 # Transition field untill we clean up all
 # migrations
 class JSONFieldTransition(JSONField):
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
             if isinstance(value, str):
                 return json.loads(value)
             return value
