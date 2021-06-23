@@ -1,26 +1,23 @@
 import os
 
+from django.conf import settings
 from django.contrib import admin
 from django.core.mail import send_mail
-from django.conf import settings
-from django.db.models import F
-from django.db.models import Sum
-from django.db.models import Count
-from django.db.models import ExpressionWrapper
-from django.db.models import DurationField
-
+from django.db.models import Count, DurationField, ExpressionWrapper, F, Sum
+from guardian.admin import GuardedModelAdmin
 from rangefilter.filter import DateRangeFilter, DateTimeRangeFilter
 
-from guardian.admin import GuardedModelAdmin
+from .models import (
+    GroupUsageSummary,
+    Scenario,
+    Scene,
+    SearchForm,
+    Template,
+    UserUsageSummary,
+    Version_Docker,
+    Workflow,
+)
 
-from .models import Scenario
-from .models import Scene
-from .models import Workflow
-from .models import Version_Docker
-from .models import SearchForm
-from .models import Template
-from .models import GroupUsageSummary
-from .models import UserUsageSummary
 
 class WorkflowInline(admin.StackedInline):
     extra = 0
@@ -48,7 +45,7 @@ class SceneAdmin(GuardedModelAdmin):
         WorkflowInline,
     ]
 
-    actions = ['check_sync']
+    actions = ["check_sync"]
 
     def check_sync(self, request, queryset):
         """
@@ -58,9 +55,9 @@ class SceneAdmin(GuardedModelAdmin):
         sync_failed = []
 
         for obj in finshed_runs:
-            sync_log = os.path.join(obj.workingdir, 'log', 'sync_cleanup.log')
+            sync_log = os.path.join(obj.workingdir, "log", "sync_cleanup.log")
             if os.path.exists(sync_log):
-                if 'SYNC_STATUS' in open(sync_log).read():
+                if "SYNC_STATUS" in open(sync_log).read():
                     sync_failed.append(obj.name)
 
         if len(sync_failed) == 0:
@@ -68,11 +65,10 @@ class SceneAdmin(GuardedModelAdmin):
         else:
             subject = "Delft3D-GT: Synchronization problems"
 
-        message = ', '.join(sync_failed)
+        message = ", ".join(sync_failed)
         from_email = settings.DEFAULT_FROM_EMAIL
         recipient_list = ["delft3d-gt@deltares.nl"]
         send_mail(subject, message, from_email, recipient_list)
-
 
 
 @admin.register(Workflow)
@@ -97,15 +93,17 @@ class TemplateAdmin(GuardedModelAdmin):
         VersionInline,
     ]
 
+
 @admin.register(GroupUsageSummary)
 class GroupUsageSummaryAdmin(admin.ModelAdmin):
     """
     # Following example available at:
     # https://medium.com/@hakibenita/how-to-turn-django-admin-into-a-lightweight-dashboard-a0e0bbf609ad
     """
-    change_list_template = 'delft3dworker/group_summary_change_list.html'
+
+    change_list_template = "delft3dworker/group_summary_change_list.html"
     # Filter by time period
-    list_filter = (('user__scene__workflow__stoptime', DateRangeFilter),)
+    list_filter = (("user__scene__workflow__stoptime", DateRangeFilter),)
 
     def changelist_view(self, request, extra_context=None):
         """
@@ -116,46 +114,42 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
             extra_context=extra_context,
         )
         try:
-            qs = response.context_data['cl'].queryset
+            qs = response.context_data["cl"].queryset
             # Exclude Groups with world access as they will be counted twice in totals
 
-            qs = qs.exclude(name='access:world').order_by('name')
+            qs = qs.exclude(name="access:world").order_by("name")
         except (AttributeError, KeyError) as e:
             return response
         # Summarize by group values
-        values = ['name', 'id']
+        values = ["name", "id"]
 
         # Sum the total runtime.
         # Runtime is considered the difference in time between the start and stop time
         # of a workflow.
         metrics = {
-            'num_users': Count('user__username', distinct=True),
-            'num_models': Count('user__scene__workflow'),
-            'sum_runtime': ExpressionWrapper(
-                Sum(F('user__scene__workflow__stoptime') -
-                    F('user__scene__workflow__starttime')),
-                output_field=DurationField()
+            "num_users": Count("user__username", distinct=True),
+            "num_models": Count("user__scene__workflow"),
+            "sum_runtime": ExpressionWrapper(
+                Sum(
+                    F("user__scene__workflow__stoptime")
+                    - F("user__scene__workflow__starttime")
+                ),
+                output_field=DurationField(),
             ),
         }
         # Content for table
-        response.context_data['summary'] = list(
-            qs.values(*values)
-                .annotate(**metrics)
-        )
+        response.context_data["summary"] = list(qs.values(*values).annotate(**metrics))
         # Content for totals in table
-        response.context_data['summary_total'] = dict(
-            qs.aggregate(**metrics)
-        )
+        response.context_data["summary_total"] = dict(qs.aggregate(**metrics))
 
         return response
 
 
 @admin.register(UserUsageSummary)
 class UserUsageSummaryAdmin(admin.ModelAdmin):
-    change_list_template = 'delft3dworker/user_summary_change_list.html'
+    change_list_template = "delft3dworker/user_summary_change_list.html"
     # Filter by time period
-    list_filter = (('scene__workflow__stoptime', DateRangeFilter),)
-
+    list_filter = (("scene__workflow__stoptime", DateRangeFilter),)
 
     def changelist_view(self, request, extra_context=None):
         """
@@ -167,34 +161,27 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
             extra_context=extra_context,
         )
         try:
-            qs = response.context_data['cl'].queryset
-            qs = qs.order_by('username')
+            qs = response.context_data["cl"].queryset
+            qs = qs.order_by("username")
 
         except (AttributeError, KeyError) as e:
             return response
         # Summarize by user values
-        values = ['username']
+        values = ["username"]
 
         # Sum the total runtime.
         # Runtime is considered the difference in time between the start and stop time
         # of a workflow.
         metrics = {
-            'num_models': Count('scene__workflow'),
-            'sum_runtime': ExpressionWrapper(
-                Sum(F('scene__workflow__stoptime') -
-                    F('scene__workflow__starttime')),
-
-                output_field=DurationField()
+            "num_models": Count("scene__workflow"),
+            "sum_runtime": ExpressionWrapper(
+                Sum(F("scene__workflow__stoptime") - F("scene__workflow__starttime")),
+                output_field=DurationField(),
             ),
         }
         # Content for table
-        response.context_data['summary'] = list(
-            qs.values(*values)
-                .annotate(**metrics)
-        )
+        response.context_data["summary"] = list(qs.values(*values).annotate(**metrics))
         # Content for totals in table
-        response.context_data['summary_total'] = dict(
-            qs.aggregate(**metrics)
-        )
+        response.context_data["summary_total"] = dict(qs.aggregate(**metrics))
 
         return response

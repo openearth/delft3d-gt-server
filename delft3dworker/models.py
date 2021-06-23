@@ -8,33 +8,40 @@ import math
 import os
 import shutil
 import uuid
-import yaml
 from os.path import join
 
+import yaml
 from celery.result import AsyncResult
-
 from django.conf import settings  # noqa
-from django.contrib.auth.models import Group
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models import JSONField
 from django.utils.text import slugify
 from django.utils.timezone import now
-
+from guardian.shortcuts import (
+    assign_perm,
+    get_groups_with_perms,
+    get_objects_for_user,
+    remove_perm,
+)
 from model_utils import Choices
 
-from guardian.shortcuts import assign_perm
-from guardian.shortcuts import get_groups_with_perms
-from guardian.shortcuts import get_objects_for_user
-from guardian.shortcuts import remove_perm
-
-from delft3dworker.utils import log_progress_parser, tz_now, scan_output_files
-from delft3dworker.utils import merge_log_unique, merge_list_of_dict, derive_defaults_from_argo
-
-from delft3dcontainermanager.tasks import get_argo_workflows, do_argo_create, do_argo_stop
-from delft3dcontainermanager.tasks import do_argo_remove, get_kube_log
-
+from delft3dcontainermanager.tasks import (
+    do_argo_create,
+    do_argo_remove,
+    do_argo_stop,
+    get_argo_workflows,
+    get_kube_log,
+)
+from delft3dworker.utils import (
+    derive_defaults_from_argo,
+    log_progress_parser,
+    merge_list_of_dict,
+    merge_log_unique,
+    scan_output_files,
+    tz_now,
+)
 
 # ################################### VERSION_DOCKER, SCENARIO, SCENE
 
@@ -47,9 +54,9 @@ def default_svn_version():
 # migrations
 class JSONFieldTransition(JSONField):
     def from_db_value(self, value, expression, connection):
-            if isinstance(value, str):
-                return json.loads(value)
-            return value
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
 
 
 class Version_Docker(models.Model):
@@ -66,13 +73,15 @@ class Version_Docker(models.Model):
     New Version_Dockers are either created manually from known tags, or created
     based on each new upload of a Argo workflow to a Template.
     """
-    release = models.CharField(
-        max_length=256, db_index=True)  # tag/release name
+
+    release = models.CharField(max_length=256, db_index=True)  # tag/release name
     revision = models.AutoField(primary_key=True)  # general version
     versions = JSONFieldTransition(default=dict)  # docker revisions
     changelog = models.CharField(max_length=256)  # release notes
     reviewed = models.BooleanField(default=False)
-    template = models.ForeignKey('Template', related_name="versions", on_delete=models.CASCADE)
+    template = models.ForeignKey(
+        "Template", related_name="versions", on_delete=models.CASCADE
+    )
 
     class Meta:
         ordering = ["-revision"]
@@ -91,11 +100,12 @@ def parse_argo_workflow(instance, filename):
     defaults = derive_defaults_from_argo(template)
 
     # Create version based on defaults
-    version = Version_Docker(release='Default for {}'.format(filename),
-                             versions=defaults,
-                             changelog='default release based on template',
-                             template=instance
-                             )
+    version = Version_Docker(
+        release="Default for {}".format(filename),
+        versions=defaults,
+        changelog="default release based on template",
+        template=instance,
+    )
     version.save()
 
     # Otherwise just return the filepath
@@ -111,7 +121,8 @@ class Scenario(models.Model):
     name = models.CharField(max_length=256)
 
     template = models.ForeignKey(
-        'Template', blank=True, null=True, on_delete=models.CASCADE)
+        "Template", blank=True, null=True, on_delete=models.CASCADE
+    )
 
     scenes_parameters = JSONFieldTransition(blank=True, default=dict)
     parameters = JSONFieldTransition(blank=True, default=dict)
@@ -136,13 +147,14 @@ class Scenario(models.Model):
         for i, sceneparameters in enumerate(self.scenes_parameters):
             # Create hash
             m = hashlib.sha256()
-            m.update(str(sceneparameters).encode('utf-8'))
+            m.update(str(sceneparameters).encode("utf-8"))
             phash = m.hexdigest()
 
             # Check if hash already exists
             scenes = Scene.objects.filter(parameters_hash=phash)
             clones = get_objects_for_user(
-                user, "view_scene", scenes, accept_global_perms=False)
+                user, "view_scene", scenes, accept_global_perms=False
+            )
 
             # If so, add scenario to scene
             if len(clones) > 0:
@@ -157,15 +169,15 @@ class Scenario(models.Model):
                     parameters=sceneparameters,
                     shared="p",  # private
                     parameters_hash=phash,
-                    info=self.template.info
+                    info=self.template.info,
                 )
                 scene.save()
                 scene.scenario.add(self)
 
-                assign_perm('add_scene', self.owner, scene)
-                assign_perm('change_scene', self.owner, scene)
-                assign_perm('delete_scene', self.owner, scene)
-                assign_perm('view_scene', self.owner, scene)
+                assign_perm("add_scene", self.owner, scene)
+                assign_perm("change_scene", self.owner, scene)
+                assign_perm("delete_scene", self.owner, scene)
+                assign_perm("view_scene", self.owner, scene)
 
         self.save()
 
@@ -173,13 +185,13 @@ class Scenario(models.Model):
 
     def start(self, user):
         for scene in self.scene_set.all():
-            if user.has_perm('delft3dworker.change_scene', scene):
+            if user.has_perm("delft3dworker.change_scene", scene):
                 scene.start()
         return "started"
 
     def abort(self, user):
         for scene in self.scene_set.all():
-            if user.has_perm('delft3dworker.change_scene', scene):
+            if user.has_perm("delft3dworker.change_scene", scene):
                 scene.abort()
         self.state = "ABORTED"
         return self.state
@@ -189,7 +201,8 @@ class Scenario(models.Model):
     def delete(self, user, *args, **kwargs):
         for scene in self.scene_set.all():
             if len(scene.scenario.all()) == 1 and user.has_perm(
-                    'delft3dworker.delete_scene', scene):
+                "delft3dworker.delete_scene", scene
+            ):
                 scene.delete()
         super(Scenario, self).delete(*args, **kwargs)
 
@@ -198,13 +211,13 @@ class Scenario(models.Model):
     def publish_company(self, user):
         # Loop over all scenes and publish where possible
         for scene in self.scene_set.all():
-            if user.has_perm('delft3dworker.add_scene', scene):
+            if user.has_perm("delft3dworker.add_scene", scene):
                 scene.publish_company(user)
 
     def publish_world(self, user):
         # Loop over all scenes and publish where possible
         for scene in self.scene_set.all():
-            if user.has_perm('delft3dworker.add_scene', scene):
+            if user.has_perm("delft3dworker.add_scene", scene):
                 scene.publish_world(user)
 
     # INTERNALS
@@ -213,7 +226,7 @@ class Scenario(models.Model):
     def _update_state_and_save(self):
 
         count = self.scene_set.all().count()
-        self.state = 'inactive'
+        self.state = "inactive"
 
         if count > 0:
             progress = 0
@@ -221,7 +234,7 @@ class Scenario(models.Model):
                 progress = progress + scene.progress
                 # TODO Fix phases here
                 if scene.phase != 6:
-                    self.state = 'active'
+                    self.state = "active"
 
             self.progress = progress / count
             self.save(update_fields=["state", "progress"])
@@ -229,10 +242,10 @@ class Scenario(models.Model):
         return self.state
 
     def _parse_setting(self, key, setting):
-        if not ('values' in setting):
+        if not ("values" in setting):
             return
 
-        values = setting['values']
+        values = setting["values"]
 
         if key == "scenarioname":
             self.name = values
@@ -246,8 +259,7 @@ class Scenario(models.Model):
             # 3 original runs (1 2 3), this settings adds two (a b) thus we now
             # have 6 scenes ( 1 1 2 2 3 3).
             self.scenes_parameters = [
-                copy.copy(p) for p in
-                self.scenes_parameters for _ in range(len(values))
+                copy.copy(p) for p in self.scenes_parameters for _ in range(len(values))
             ]
 
             i = 0
@@ -257,9 +269,9 @@ class Scenario(models.Model):
                 # way (1a 1b 2a 2b 3a 3b), because at index 2 (the first 2)
                 # modulo gives 0 which is again the first value (a)
                 # Rename key in settings
-                s['value'] = values[i % len(values)]
+                s["value"] = values[i % len(values)]
                 # delete keys named 'values'
-                s.pop('values')
+                s.pop("values")
                 scene[key] = s
                 i += 1
 
@@ -299,30 +311,26 @@ class Scene(models.Model):
     workingdir = models.CharField(max_length=256)
     parameters_hash = models.CharField(max_length=64, blank=True)
 
-    shared_choices = [('p', 'private'), ('c', 'company'), ('w', 'world')]
+    shared_choices = [("p", "private"), ("c", "company"), ("w", "world")]
     shared = models.CharField(max_length=1, choices=shared_choices)
     owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
     phases = Choices(
         # Create workflow models
-        (0, 'new', 'New'),
-
+        (0, "new", "New"),
         # User input wait phase
-        (6, 'idle', 'Idle: waiting for user input'),
-
+        (6, "idle", "Idle: waiting for user input"),
         # Main workflow phases
-        (11, 'sim_start', 'Starting workflow'),
-        (12, 'sim_run', 'Running workflow'),
-        (13, 'sim_fin', 'Removing workflow'),
-
+        (11, "sim_start", "Starting workflow"),
+        (12, "sim_run", "Running workflow"),
+        (13, "sim_fin", "Removing workflow"),
         # Stopping phase
-        (20, 'stopping', 'Stopping workflow'),
-        (21, 'stop_fin', 'Removing stopped workflow'),
-
+        (20, "stopping", "Stopping workflow"),
+        (21, "stop_fin", "Removing stopped workflow"),
         # Other phases
-        (500, 'fin', 'Finished'),
-        (501, 'fail', 'Failed'),
-        (502, 'stopped', 'Stopped')
+        (500, "fin", "Finished"),
+        (501, "fail", "Failed"),
+        (502, "stopped", "Stopped"),
     )
 
     REMOVE_WORKFLOW = [phases.sim_fin, phases.stop_fin]
@@ -391,7 +399,7 @@ class Scene(models.Model):
         """
 
         available_options = self.scenario.first().template.export_options
-        export_options = [v for (k,v) in available_options.items() if k in options]
+        export_options = [v for (k, v) in available_options.items() if k in options]
 
         files_added = False
 
@@ -400,12 +408,16 @@ class Scene(models.Model):
                 name, ext = os.path.splitext(f)
 
                 for option in export_options:
-                    if root.endswith(option.get("location", "")) and ext in option.get("extensions", []):
+                    if root.endswith(option.get("location", "")) and ext in option.get(
+                        "extensions", []
+                    ):
 
                         files_added = True
                         abs_path = os.path.join(root, f)
-                        rel_path = os.path.join(slugify(self.name),
-                                                os.path.relpath(abs_path, self.workingdir))
+                        rel_path = os.path.join(
+                            slugify(self.name),
+                            os.path.relpath(abs_path, self.workingdir),
+                        )
                         zipfile.write(abs_path, rel_path)
 
         return files_added
@@ -416,13 +428,8 @@ class Scene(models.Model):
 
         # On first save
         if self.pk is None:
-            self.workingdir = os.path.join(
-                settings.WORKER_FILEDIR,
-                str(self.suid),
-                ''
-            )
-            self.fileurl = os.path.join(
-                settings.WORKER_FILEURL, str(self.suid), '')
+            self.workingdir = os.path.join(settings.WORKER_FILEDIR, str(self.suid), "")
+            self.fileurl = os.path.join(settings.WORKER_FILEURL, str(self.suid), "")
 
         super(Scene, self).save(*args, **kwargs)
 
@@ -440,15 +447,17 @@ class Scene(models.Model):
         if self.phase != self.phases.fin:
             return
 
-        remove_perm('change_scene', user, self)  # revoke PUT rights
-        remove_perm('delete_scene', user, self)  # revoke POST rights
+        remove_perm("change_scene", user, self)  # revoke PUT rights
+        remove_perm("delete_scene", user, self)  # revoke POST rights
 
         # Set permissions for groups
-        groups = [group for group in user.groups.all() if (
-            "access" in group.name and "world" not in group.name
-        )]
+        groups = [
+            group
+            for group in user.groups.all()
+            if ("access" in group.name and "world" not in group.name)
+        ]
         for group in groups:
-            assign_perm('view_scene', group, self)
+            assign_perm("view_scene", group, self)
 
         # update scene
         self.shared = "c"
@@ -458,15 +467,15 @@ class Scene(models.Model):
         if self.phase != self.phases.fin:
             return
 
-        remove_perm('add_scene', user, self)  # revoke POST rights
-        remove_perm('change_scene', user, self)  # revoke PUT rights
-        remove_perm('delete_scene', user, self)  # revoke DELETE rights
+        remove_perm("add_scene", user, self)  # revoke POST rights
+        remove_perm("change_scene", user, self)  # revoke PUT rights
+        remove_perm("delete_scene", user, self)  # revoke DELETE rights
 
         # Set permissions for groups
         for group in get_groups_with_perms(self):
-            remove_perm('view_scene', group, self)
+            remove_perm("view_scene", group, self)
         world = Group.objects.get(name="access:world")
-        assign_perm('view_scene', world, self)
+        assign_perm("view_scene", world, self)
 
         # update scene
         self.shared = "w"
@@ -479,11 +488,13 @@ class Scene(models.Model):
         # Create Workflow model and shift to idle
         if self.phase == self.phases.new:
 
-            if not hasattr(self, 'workflow'):
+            if not hasattr(self, "workflow"):
                 workflow = Workflow.objects.create(
                     scene=self,
-                    name="{}-{}".format(self.scenario.first().template.shortname, self.suid),
-                    version=self.scenario.first().template.versions.first()  # get latest version
+                    name="{}-{}".format(
+                        self.scenario.first().template.shortname, self.suid
+                    ),
+                    version=self.scenario.first().template.versions.first(),  # get latest version
                 )
                 workflow.save()
 
@@ -494,11 +505,11 @@ class Scene(models.Model):
         # User started a scene. Create Workflow and shift if it's running.
         elif self.phase == self.phases.sim_start:
 
-            self.workflow.set_desired_state('running')
-            if (self.workflow.cluster_state == 'running'):
+            self.workflow.set_desired_state("running")
+            if self.workflow.cluster_state == "running":
                 self.shift_to_phase(self.phases.sim_run)
 
-            elif (self.workflow.cluster_state in Workflow.FINISHED):
+            elif self.workflow.cluster_state in Workflow.FINISHED:
                 self.shift_to_phase(self.phases.sim_fin)
 
             return
@@ -510,11 +521,11 @@ class Scene(models.Model):
             self.save(update_fields=["progress"])
 
             # If workflow is finished, shift to finished
-            if (self.workflow.cluster_state in Workflow.FINISHED):
+            if self.workflow.cluster_state in Workflow.FINISHED:
                 self.shift_to_phase(self.phases.sim_fin)
 
             # If workflow disappeared, shift back
-            elif (self.workflow.cluster_state == 'non-existent'):
+            elif self.workflow.cluster_state == "non-existent":
                 logging.error("Lost workflow in cluster!")
                 self.shift_to_phase(self.phases.sim_start)
 
@@ -522,16 +533,16 @@ class Scene(models.Model):
 
         # Stop workflow, will delete pods and workflow cluster_state will show failed
         elif self.phase == self.phases.stopping:
-            self.workflow.set_desired_state('failed')
-            if self.workflow.cluster_state == 'failed':
+            self.workflow.set_desired_state("failed")
+            if self.workflow.cluster_state == "failed":
                 self.shift_to_phase(self.phases.stop_fin)
 
             return
 
         # Delete workflow in cluster
         elif self.phase in self.REMOVE_WORKFLOW:
-            self.workflow.set_desired_state('non-existent')
-            if (self.workflow.cluster_state != 'non-existent'):
+            self.workflow.set_desired_state("non-existent")
+            if self.workflow.cluster_state != "non-existent":
                 self.progress = self.workflow.progress
                 self.save(update_fields=["progress"])
             else:
@@ -574,6 +585,7 @@ class Scene(models.Model):
     def __str__(self):
         return self.name
 
+
 # ################################### SEARCHFORM & TEMPLATE & WORKFLOW
 
 
@@ -602,11 +614,13 @@ class SearchForm(models.Model):
         return
 
     def _update_templates(self, tmpl_name, tmpl_id, tmpl_info):
-        self.templates.append({
-            'name': tmpl_name,
-            'id': tmpl_id,
-            'info': tmpl_info,
-        })
+        self.templates.append(
+            {
+                "name": tmpl_name,
+                "id": tmpl_id,
+                "info": tmpl_info,
+            }
+        )
 
     def _update_sections(self, tmpl_sections):
 
@@ -615,9 +629,11 @@ class SearchForm(models.Model):
 
             # find matching (i.e. name && type equal) sections
             # in this search form
-            matching_sections = [section for section in self.sections if (
-                section["name"] == tmpl_section["name"]
-            )]
+            matching_sections = [
+                section
+                for section in self.sections
+                if (section["name"] == tmpl_section["name"])
+            ]
 
             # add or update
             if not matching_sections:
@@ -645,9 +661,9 @@ class SearchForm(models.Model):
                     # find matching (i.e. name equal) sections
                     # in this search form
                     matching_variables = [
-                        variable for variable in srch_section["variables"] if (
-                            variable["name"] == tmpl_variable["name"]
-                        )
+                        variable
+                        for variable in srch_section["variables"]
+                        if (variable["name"] == tmpl_variable["name"])
                     ]
 
                     # add or update
@@ -670,22 +686,20 @@ class SearchForm(models.Model):
 
                         # only update min and max validators if numeric
                         if (
-                            srch_variable["type"] == "numeric" and
-                            tmpl_variable["type"] == "numeric"
+                            srch_variable["type"] == "numeric"
+                            and tmpl_variable["type"] == "numeric"
                         ):
 
                             tmpl_validators = tmpl_variable["validators"]
                             srch_validators = srch_variable["validators"]
 
-                            if (
-                                float(tmpl_validators["min"]) < float(
-                                    srch_validators["min"])
+                            if float(tmpl_validators["min"]) < float(
+                                srch_validators["min"]
                             ):
                                 srch_validators["min"] = tmpl_validators["min"]
 
-                            if (
-                                float(tmpl_validators["max"]) > float(
-                                    srch_validators["max"])
+                            if float(tmpl_validators["max"]) > float(
+                                srch_validators["max"]
                             ):
                                 srch_validators["max"] = tmpl_validators["max"]
 
@@ -736,9 +750,9 @@ class Template(models.Model):
         super(Template, self).save(*args, **kwargs)
 
 
-
 class Workflow(models.Model):
     """Argo Workflow Instance."""
+
     # name combines shortname of linked Template and the scene suid
     name = models.CharField(max_length=256, unique=True)
     scene = models.OneToOneField(Scene, on_delete=models.CASCADE)
@@ -747,30 +761,31 @@ class Workflow(models.Model):
 
     starttime = models.DateTimeField(default=tz_now, blank=True)
     stoptime = models.DateTimeField(null=True, blank=True)
-    yaml = models.FileField(upload_to='workflows/', default="")
+    yaml = models.FileField(upload_to="workflows/", default="")
 
     # Celery connected task
-    task_uuid = models.UUIDField(
-        default=None, blank=True, null=True)
+    task_uuid = models.UUIDField(default=None, blank=True, null=True)
     task_starttime = models.DateTimeField(default=tz_now, blank=True)
 
     # State management
     WORKFLOW_STATE_CHOICES = (
-        ('non-existent', 'Non-existent'),  # on creation
-        ('pending', 'Pending'),  # argo ""
-        ('unknown', 'Unknown'),  # argo ""
-        ('running', 'Running'),
-        ('paused', 'Running (Suspended)'),
-        ('succeeded', 'Succeeded'),
-        ('skipped', 'Skipped'),
-        ('failed', 'Failed'),
-        ('error', 'Error'),
+        ("non-existent", "Non-existent"),  # on creation
+        ("pending", "Pending"),  # argo ""
+        ("unknown", "Unknown"),  # argo ""
+        ("running", "Running"),
+        ("paused", "Running (Suspended)"),
+        ("succeeded", "Succeeded"),
+        ("skipped", "Skipped"),
+        ("failed", "Failed"),
+        ("error", "Error"),
     )
-    FINISHED = ['succeeded', 'failed', 'error', 'skipped']
+    FINISHED = ["succeeded", "failed", "error", "skipped"]
     desired_state = models.CharField(
-        max_length=16, choices=WORKFLOW_STATE_CHOICES, default='non-existent')
+        max_length=16, choices=WORKFLOW_STATE_CHOICES, default="non-existent"
+    )
     cluster_state = models.CharField(
-        max_length=16, choices=WORKFLOW_STATE_CHOICES, default='non-existent')
+        max_length=16, choices=WORKFLOW_STATE_CHOICES, default="non-existent"
+    )
 
     # Logging and progress
     progress = models.PositiveSmallIntegerField(default=0)
@@ -834,8 +849,10 @@ class Workflow(models.Model):
             else:
                 error = result.result
                 logging.warn(
-                    "Task of Container [{}] resulted in {}: {}".
-                    format(self, result.state, error))
+                    "Task of Container [{}] resulted in {}: {}".format(
+                        self, result.state, error
+                    )
+                )
 
             self.task_uuid = None
             self.save(update_fields=["cluster_log", "progress", "task_uuid"])
@@ -844,20 +861,23 @@ class Workflow(models.Model):
         elif time_passed.total_seconds() > settings.TASK_EXPIRE_TIME:
             logging.warn(
                 "Celery task expired after {} seconds".format(
-                    time_passed.total_seconds()))
+                    time_passed.total_seconds()
+                )
+            )
             result.revoke()
             self.task_uuid = None
             self.save(update_fields=["task_uuid"])
 
         else:
-            logging.warn("Celery task of {} is still {}.".format(self,
-                                                                 result.state))
+            logging.warn("Celery task of {} is still {}.".format(self, result.state))
 
     def sync_cluster_state(self, latest_cluster_state):
         if latest_cluster_state is None:
             self.cluster_state = "non-existent"
         else:
-            state = latest_cluster_state["metadata"]["labels"]["workflows.argoproj.io/phase"]
+            state = latest_cluster_state["metadata"]["labels"][
+                "workflows.argoproj.io/phase"
+            ]
             if state == "Failed" or state == "Error":
                 logging.error("{} failed!".format(self.name))
             self.cluster_state = state.lower()
@@ -884,13 +904,13 @@ class Workflow(models.Model):
             return
 
         # apparently there is something to do, so let's act:
-        if self.desired_state == 'running':
+        if self.desired_state == "running":
             self.create_workflow()
 
-        if self.desired_state == 'failed':
+        if self.desired_state == "failed":
             self.stop_workflow()
 
-        if self.desired_state == 'non-existent':
+        if self.desired_state == "non-existent":
             self.remove_workflow()
 
     # INTERNALS
@@ -901,7 +921,7 @@ class Workflow(models.Model):
     # CELERY TASK CALLS
     def create_workflow(self):
         # Catch creating already existing workflows
-        if self.cluster_state != 'non-existent':
+        if self.cluster_state != "non-existent":
             logging.warning("Can't create already existing workflow.")
             return
 
@@ -915,30 +935,42 @@ class Workflow(models.Model):
             template["spec"]["entrypoint"] = self.entrypoint
 
         v = self.version.versions["parameters"]  # also a list
-        c = [{"name": "uuid", "value": str(self.scene.suid)},
-             {"name": "s3bucket", "value": settings.BUCKETNAME},
-             {"name": "version", "value": str(self.version.revision)},
-             {"name": "parameters", "value": json.dumps(self.scene.parameters)}]
+        c = [
+            {"name": "uuid", "value": str(self.scene.suid)},
+            {"name": "s3bucket", "value": settings.BUCKETNAME},
+            {"name": "version", "value": str(self.version.revision)},
+            {"name": "parameters", "value": json.dumps(self.scene.parameters)},
+        ]
         parameters = merge_list_of_dict(c, v)
 
         template["spec"]["arguments"]["parameters"] = parameters
-        yaml_template = yaml.safe_dump(template, encoding='utf-8', allow_unicode=True)
+        yaml_template = yaml.safe_dump(template, encoding="utf-8", allow_unicode=True)
 
-        self.yaml.save("{}.yaml".format(self.name), ContentFile(yaml_template), save=False)
+        self.yaml.save(
+            "{}.yaml".format(self.name), ContentFile(yaml_template), save=False
+        )
 
         # Call celery create task
-        result = do_argo_create.apply_async(args=(template,),
-                                            expires=settings.TASK_EXPIRE_TIME)
+        result = do_argo_create.apply_async(
+            args=(template,), expires=settings.TASK_EXPIRE_TIME
+        )
         self.task_starttime = now()
         self.starttime = now()
         self.action_log += "{} | Created \n".format(self.task_starttime)
         self.task_uuid = result.id
-        self.save(update_fields=["task_starttime", "starttime", "action_log", "task_uuid", "yaml"])
+        self.save(
+            update_fields=[
+                "task_starttime",
+                "starttime",
+                "action_log",
+                "task_uuid",
+                "yaml",
+            ]
+        )
 
     def stop_workflow(self):
         result = do_argo_stop.apply_async(
-            args=(self.name,),
-            expires=settings.TASK_EXPIRE_TIME
+            args=(self.name,), expires=settings.TASK_EXPIRE_TIME
         )
         # calculate runtime
         self.stoptime = now()
@@ -947,13 +979,12 @@ class Workflow(models.Model):
 
     def remove_workflow(self):
         # Catch removing unfinished workflow
-        if self.cluster_state == 'non-existent':
+        if self.cluster_state == "non-existent":
             logging.warning("Can't remove non-existent workflow")
             return
 
         result = do_argo_remove.apply_async(
-            args=(self.name,),
-            expires=settings.TASK_EXPIRE_TIME
+            args=(self.name,), expires=settings.TASK_EXPIRE_TIME
         )
 
         self.task_starttime = now()
@@ -962,18 +993,21 @@ class Workflow(models.Model):
         self.action_log += "{} | Removed \n".format(self.stoptime)
 
         self.task_uuid = result.id
-        self.save(update_fields=["task_starttime", "stoptime", "action_log", "task_uuid"])
+        self.save(
+            update_fields=["task_starttime", "stoptime", "action_log", "task_uuid"]
+        )
 
     def update_log(self):
         # return if container still has an active task
         if self.task_uuid is not None:
             return
 
-        if self.cluster_state != 'running':
+        if self.cluster_state != "running":
             return  # the container is done, no logging needed
 
-        result = get_kube_log.apply_async(args=(self.name,),
-                                          expires=settings.TASK_EXPIRE_TIME)
+        result = get_kube_log.apply_async(
+            args=(self.name,), expires=settings.TASK_EXPIRE_TIME
+        )
         self.task_starttime = now()
         self.task_uuid = result.id
         self.save(update_fields=["task_starttime", "task_uuid"])
@@ -985,12 +1019,12 @@ class Workflow(models.Model):
 class GroupUsageSummary(Group):
     class Meta:
         proxy = True
-        verbose_name = 'Group Usage Summary'
-        verbose_name_plural = 'Group Usage Summary'
+        verbose_name = "Group Usage Summary"
+        verbose_name_plural = "Group Usage Summary"
 
 
 class UserUsageSummary(User):
     class Meta:
         proxy = True
-        verbose_name = 'User Usage Summary'
-        verbose_name_plural = 'User Usage Summary'
+        verbose_name = "User Usage Summary"
+        verbose_name_plural = "User Usage Summary"

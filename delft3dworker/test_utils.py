@@ -1,17 +1,19 @@
 from __future__ import absolute_import
 
-from django.utils import timezone
-from datetime import time, datetime, date
-
-from delft3dworker.utils import log_progress_parser
-from delft3dworker.utils import apply_default_tz, tz_midnight
-from delft3dworker.utils import merge_log_unique
+from datetime import date, datetime, time
 
 from django.test import TestCase
+from django.utils import timezone
+
+from delft3dworker.utils import (
+    apply_default_tz,
+    log_progress_parser,
+    merge_log_unique,
+    tz_midnight,
+)
 
 
 class LogTests(TestCase):
-
     def test_progress_parser(self):
         """
         Test if progress can be read from logfile
@@ -31,27 +33,26 @@ INFO:root:Time to finish 0.0, 100.0% completed, time steps  left 0.0
 INFO:root:Finished
         """
 
-        progress = log_progress_parser(log, 'delft3d')
+        progress = log_progress_parser(log, "delft3d")
         self.assertTrue(progress == 100.0)
 
         log = """
         INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0
         """
-        progress = log_progress_parser(log, 'delft3d')
+        progress = log_progress_parser(log, "delft3d")
         self.assertTrue(progress == 55.5555555556)
 
         log = """INFO:root:Finished"""
-        progress = log_progress_parser(log, 'delft3d')
+        progress = log_progress_parser(log, "delft3d")
         self.assertTrue(progress is None)
 
         # python log parsing
         log = """INFO:preprocess:writing /data/output/a.dep"""
-        progress = log_progress_parser(log, 'python')
+        progress = log_progress_parser(log, "python")
         self.assertTrue(progress is None)
 
 
 class DateTests(TestCase):
-
     def test_apply_default_tz(self):
         self.assertTrue(apply_default_tz(None) is None)
         dt = apply_default_tz(datetime.now())
@@ -66,7 +67,6 @@ class DateTests(TestCase):
 
 
 class LogMergeTest(TestCase):
-
     def test_merge_log(self):
         a = """1.0%\n2.0%\n3.0%\n4.0%"""
         b = """3.0%\n4.0%\n5.0%"""

@@ -8,14 +8,14 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0007_delft3dworker_workerid'),
+        ("delft3dworker", "0007_delft3dworker_workerid"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='delft3dworker',
-            name='info',
-            field=models.CharField(default='', max_length=256),
+            model_name="delft3dworker",
+            name="info",
+            field=models.CharField(default="", max_length=256),
             preserve_default=False,
         ),
     ]

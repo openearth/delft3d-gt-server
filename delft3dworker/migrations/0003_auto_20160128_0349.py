@@ -8,15 +8,15 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0002_modelruns'),
+        ("delft3dworker", "0002_modelruns"),
     ]
 
     operations = [
         migrations.RenameModel(
-            old_name='ModelRuns',
-            new_name='ModelRun',
+            old_name="ModelRuns",
+            new_name="ModelRun",
         ),
         migrations.DeleteModel(
-            name='WorkerTask',
+            name="WorkerTask",
         ),
     ]

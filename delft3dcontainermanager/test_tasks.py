@@ -2,32 +2,33 @@ from __future__ import absolute_import
 
 import os
 import sys
+from time import time
 
 from django.test import TestCase
 from fakeredis import FakeStrictRedis
-from mock import patch, Mock, MagicMock
-from time import time
+from mock import MagicMock, Mock, patch
 
-from delft3dcontainermanager.tasks import delft3dgt_kube_pulse
-from delft3dcontainermanager.tasks import get_argo_workflows
-from delft3dcontainermanager.tasks import get_kube_log
-from delft3dcontainermanager.tasks import do_argo_create
-from delft3dcontainermanager.tasks import do_argo_stop
-from delft3dcontainermanager.tasks import do_argo_remove
+from delft3dcontainermanager.tasks import (
+    delft3dgt_kube_pulse,
+    do_argo_create,
+    do_argo_remove,
+    do_argo_stop,
+    get_argo_workflows,
+    get_kube_log,
+)
 
 
 class AsyncTaskTest(TestCase):
-    mock_options = {
-    }
+    mock_options = {}
 
     def setUp(self):
-        self.get_redis = patch('celery_once.backends.redis.get_redis')
+        self.get_redis = patch("celery_once.backends.redis.get_redis")
         self.mocked_redis = self.get_redis.start()
 
         self.redis = FakeStrictRedis()
         self.mocked_redis.return_value = self.redis
 
-    @patch('delft3dcontainermanager.tasks.call_command')
+    @patch("delft3dcontainermanager.tasks.call_command")
     def test_delft3dgt_kube_pulse(self, mockCall):
         """
         Assert that de delft3dgt_kube_pulse task
@@ -37,12 +38,14 @@ class AsyncTaskTest(TestCase):
 
         # Set redis key with TTL 100 seconds from now
         # so subsequent tasks won't run
-        self.redis.set('qo_delft3dcontainermanager.tasks.delft3dgt_kube_pulse', int(time()) + 100)
+        self.redis.set(
+            "qo_delft3dcontainermanager.tasks.delft3dgt_kube_pulse", int(time()) + 100
+        )
 
         delft3dgt_kube_pulse.delay()
         delft3dgt_kube_pulse.delay()
 
-        mockCall.assert_called_with('sync_cluster_state')
+        mockCall.assert_called_with("sync_cluster_state")
         self.assertEqual(mockCall.call_count, 1)
 
     def tearDown(self):
@@ -51,18 +54,17 @@ class AsyncTaskTest(TestCase):
 
 
 class TaskTest(TestCase):
-    mock_options = {
-    }
+    mock_options = {}
 
     def setUp(self):
-        self.get_redis = patch('celery_once.backends.redis.get_redis')
+        self.get_redis = patch("celery_once.backends.redis.get_redis")
         self.mocked_redis = self.get_redis.start()
 
         self.redis = FakeStrictRedis()
         self.mocked_redis.return_value = self.redis
 
-    @patch('delft3dcontainermanager.tasks.client', **mock_options)
-    @patch('delft3dcontainermanager.tasks.config', **mock_options)
+    @patch("delft3dcontainermanager.tasks.client", **mock_options)
+    @patch("delft3dcontainermanager.tasks.config", **mock_options)
     def test_get_argo_workflows(self, mockConfig, mockClient):
         """
         Assert that the get_argo_workflows task
@@ -72,11 +74,16 @@ class TaskTest(TestCase):
         # Mock return of all workflows
         mockConfig.new_client_from_config.return_value = Mock()
         get_argo_workflows.delay()
-        mockConfig.new_client_from_config().call_api.assert_called_with("/apis/argoproj.io/v1alpha1/workflows",
-                             "GET", auth_settings=['BearerToken'], response_type="V1ConfigMapList", _return_http_data_only=True)
+        mockConfig.new_client_from_config().call_api.assert_called_with(
+            "/apis/argoproj.io/v1alpha1/workflows",
+            "GET",
+            auth_settings=["BearerToken"],
+            response_type="V1ConfigMapList",
+            _return_http_data_only=True,
+        )
 
-    @patch('delft3dcontainermanager.tasks.client', **mock_options)
-    @patch('delft3dcontainermanager.tasks.config', **mock_options)
+    @patch("delft3dcontainermanager.tasks.client", **mock_options)
+    @patch("delft3dcontainermanager.tasks.config", **mock_options)
     def test_get_kube_log(self, mockConfig, mockClient):
         """
         Assert that the argo_log task
@@ -95,12 +102,14 @@ class TaskTest(TestCase):
         # and the logs for each individual pod
         get_kube_log.delay(wf_id)
         mockClient.CoreV1Api().list_namespaced_pod.assert_called_with(
-            "default", label_selector="workflows.argoproj.io/workflow={}".format(wf_id))
+            "default", label_selector="workflows.argoproj.io/workflow={}".format(wf_id)
+        )
         mockClient.CoreV1Api().read_namespaced_pod_log.assert_called_with(
-            pod_id, "default", container="main", tail_lines=25)
+            pod_id, "default", container="main", tail_lines=25
+        )
 
-    @patch('delft3dcontainermanager.tasks.client', **mock_options)
-    @patch('delft3dcontainermanager.tasks.config', **mock_options)
+    @patch("delft3dcontainermanager.tasks.client", **mock_options)
+    @patch("delft3dcontainermanager.tasks.config", **mock_options)
     def test_do_argo_create(self, mockConfig, mockClient):
         """
         Assert that the do_argo_create task
@@ -110,10 +119,11 @@ class TaskTest(TestCase):
 
         do_argo_create.delay(yaml)
         mockClient.CustomObjectsApi().create_namespaced_custom_object.assert_called_with(
-            "argoproj.io", "v1alpha1", "default", "workflows", yaml)
+            "argoproj.io", "v1alpha1", "default", "workflows", yaml
+        )
 
-    @patch('delft3dcontainermanager.tasks.client', **mock_options)
-    @patch('delft3dcontainermanager.tasks.config', **mock_options)
+    @patch("delft3dcontainermanager.tasks.client", **mock_options)
+    @patch("delft3dcontainermanager.tasks.config", **mock_options)
     def test_do_argo_stop(self, mockConfig, mockClient):
         """
         Assert that the argo_remove task
@@ -126,25 +136,27 @@ class TaskTest(TestCase):
         # Mock return of all pods
         pods = Mock()
         pods.to_dict.return_value = {
-            "items": [{
-                "metadata": {
-                    "name": pod_id,
-                    "labels": {
-                        "workflows.argoproj.io/completed": "false"
+            "items": [
+                {
+                    "metadata": {
+                        "name": pod_id,
+                        "labels": {"workflows.argoproj.io/completed": "false"},
                     }
                 }
-            }]
+            ]
         }
         mockClient.CoreV1Api().list_namespaced_pod.return_value = pods
 
         do_argo_stop.delay(wf_id)
         mockClient.CoreV1Api().list_namespaced_pod.assert_called_with(
-            "default", label_selector="workflows.argoproj.io/workflow={}".format(wf_id))
+            "default", label_selector="workflows.argoproj.io/workflow={}".format(wf_id)
+        )
         mockClient.CoreV1Api().delete_namespaced_pod.assert_called_with(
-            pod_id, "default")
+            pod_id, "default"
+        )
 
-    @patch('delft3dcontainermanager.tasks.client', **mock_options)
-    @patch('delft3dcontainermanager.tasks.config', **mock_options)
+    @patch("delft3dcontainermanager.tasks.client", **mock_options)
+    @patch("delft3dcontainermanager.tasks.config", **mock_options)
     def test_do_argo_remove(self, mockConfig, mockClient):
         """
         Assert that the argo_remove task
@@ -153,4 +165,5 @@ class TaskTest(TestCase):
         wf_id = "id"
         do_argo_remove.delay(wf_id)
         mockClient.CustomObjectsApi().delete_namespaced_custom_object.assert_called_with(
-            "argoproj.io", "v1alpha1", "default", "workflows", wf_id, {})
+            "argoproj.io", "v1alpha1", "default", "workflows", wf_id, {}
+        )

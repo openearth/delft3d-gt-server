@@ -1,12 +1,11 @@
-from celery.result import AsyncResult
 import logging
-from django.core.management import BaseCommand
 from time import sleep
 
-from delft3dcontainermanager.tasks import get_docker_ps
-from delft3dcontainermanager.tasks import do_docker_remove
-from delft3dworker.models import Container
-from delft3dworker.models import Scene
+from celery.result import AsyncResult
+from django.core.management import BaseCommand
+
+from delft3dcontainermanager.tasks import do_docker_remove, get_docker_ps
+from delft3dworker.models import Container, Scene
 
 """
 Synchronization command that's called periodically.
@@ -52,7 +51,7 @@ class Command(BaseCommand):
         Synchronise local Django Container models with remote Docker containers
         """
 
-        ps = get_docker_ps.apply_async(queue='priority')
+        ps = get_docker_ps.apply_async(queue="priority")
 
         # Wait until the task finished successfully
         # or return if waiting too long
@@ -68,12 +67,15 @@ class Command(BaseCommand):
 
         # task is succesful, so we're getting the result and create a set
         containers_docker = ps.result
-        docker_dict = {x['Id']: x for x in containers_docker}
+        docker_dict = {x["Id"]: x for x in containers_docker}
         docker_set = set(docker_dict.keys())
 
         # retrieve container from database
-        container_set = set(Container.objects.exclude(
-            docker_id__exact='').values_list('docker_id', flat=True))
+        container_set = set(
+            Container.objects.exclude(docker_id__exact="").values_list(
+                "docker_id", flat=True
+            )
+        )
 
         # Work out matching matrix
         #       docker  yes no
@@ -84,16 +86,16 @@ class Command(BaseCommand):
         m_1_1 = container_set & docker_set
         m_1_0 = container_set - docker_set
         m_0_1 = docker_set - container_set
-        m_0_0 = ((docker_set | container_set) -
-                 (docker_set ^ container_set) -
-                 (docker_set & container_set)
-                 )
+        m_0_0 = (
+            (docker_set | container_set)
+            - (docker_set ^ container_set)
+            - (docker_set & container_set)
+        )
 
         # Update state of all matching containers
         container_match = m_1_1 | m_1_0
         for con_id in container_match:
-            snapshot = docker_dict[
-                con_id] if con_id in docker_dict else None
+            snapshot = docker_dict[con_id] if con_id in docker_dict else None
             for c in Container.objects.filter(docker_id=con_id):
                 c.update_from_docker_snapshot(snapshot)
 
@@ -101,15 +103,16 @@ class Command(BaseCommand):
         container_mismatch = m_0_1 | m_0_0
         for container in container_mismatch:
             info = docker_dict[container]
-            if ('Config' in info and
-                'Labels' in info['Config'] and
-                    'type' in info['Config']['Labels']):
-                type = info['Config']['Labels']['type']
+            if (
+                "Config" in info
+                and "Labels" in info["Config"]
+                and "type" in info["Config"]["Labels"]
+            ):
+                type = info["Config"]["Labels"]["type"]
 
                 choices = Container.CONTAINER_TYPE_CHOICES
                 if type in [choice[0] for choice in choices]:
-                    msg = "Docker container {} not found in database!".format(
-                        container)
+                    msg = "Docker container {} not found in database!".format(container)
                     self.stderr.write(msg)
                     do_docker_remove.delay(container, force=True)
             else:
@@ -126,7 +129,7 @@ class Command(BaseCommand):
         # ordering is done on start date (first, and id second):
         # if a simulation slot is available, we want simulations to start
         # in order of their date_started
-        for scene in Scene.objects.all().order_by('date_started','id'):
+        for scene in Scene.objects.all().order_by("date_started", "id"):
             scene.update_and_phase_shift()
 
     def _fix_container_state_mismatches_or_log(self):

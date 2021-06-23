@@ -6,20 +6,20 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0097_auto_20190211_1126'),
+        ("delft3dworker", "0097_auto_20190211_1126"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='scenario',
+            name="scenario",
             options={},
         ),
         migrations.AlterModelOptions(
-            name='scene',
+            name="scene",
             options={},
         ),
         migrations.AlterModelOptions(
-            name='template',
+            name="template",
             options={},
         ),
     ]
