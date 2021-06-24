@@ -4,61 +4,50 @@ import io
 import json
 import os
 import uuid
-import yaml
 import zipfile
 from datetime import timedelta
 
+import yaml
 from django.conf import settings
-from django.contrib.auth.models import Group
-from django.contrib.auth.models import Permission
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, Permission, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils.timezone import now
+from guardian.shortcuts import assign_perm, get_objects_for_user
+from mock import Mock, patch
 
-from guardian.shortcuts import assign_perm
-from guardian.shortcuts import get_objects_for_user
-
-from mock import Mock
-from mock import patch
-
-from delft3dworker.models import Scenario
-from delft3dworker.models import Version_Docker
-from delft3dworker.models import Scene
-from delft3dworker.models import Workflow
-from delft3dworker.models import Template
+from delft3dworker.models import Scenario, Scene, Template, Version_Docker, Workflow
 from delft3dworker.utils import tz_now
 
 
 class ScenarioTestCase(TestCase):
-
     def setUp(self):
         self.user_foo = User.objects.create_user(username="foo")
         self.template = Template.objects.create(name="Template parent")
         self.scenario_single = Scenario.objects.create(
-            name="Test single scene", owner=self.user_foo, template=self.template)
+            name="Test single scene", owner=self.user_foo, template=self.template
+        )
         self.scenario_multi = Scenario.objects.create(
-            name="Test multiple scenes", owner=self.user_foo, template=self.template)
+            name="Test multiple scenes", owner=self.user_foo, template=self.template
+        )
         self.scenario_A = Scenario.objects.create(
-            name="Test hash A", owner=self.user_foo, template=self.template)
+            name="Test hash A", owner=self.user_foo, template=self.template
+        )
         self.scenario_B = Scenario.objects.create(
-            name="Test hash B", owner=self.user_foo, template=self.template)
+            name="Test hash B", owner=self.user_foo, template=self.template
+        )
 
     def test_scenario_parses_input(self):
         """Correctly parse scenario input"""
 
         # This should create only one scene
         single_input = {
-            "basinslope": {
-                "values": 0.0143
-            },
+            "basinslope": {"values": 0.0143},
         }
 
         # This should create 3 scenes
         multi_input = {
-            "basinslope": {
-                "values": [0.0143, 0.0145, 0.0146]
-            },
+            "basinslope": {"values": [0.0143, 0.0145, 0.0146]},
         }
 
         self.scenario_single.load_settings(single_input)
@@ -79,7 +68,7 @@ class ScenarioTestCase(TestCase):
                 "units": "deg",
                 "useautostep": False,
                 "valid": True,
-                "value": 0.0143
+                "value": 0.0143,
             },
         }
 
@@ -95,22 +84,20 @@ class ScenarioTestCase(TestCase):
 
 
 class ScenarioControlTestCase(TestCase):
-
     def setUp(self):
         self.user_foo = User.objects.create_user(username="foo")
 
         self.template = Template.objects.create(name="bar")
         self.scenario_multi = Scenario.objects.create(
-            name="Test multiple scenes", owner=self.user_foo, template=self.template)
+            name="Test multiple scenes", owner=self.user_foo, template=self.template
+        )
         multi_input = {
-            "basinslope": {
-                "values": [0.0143, 0.0145, 0.0146]
-            },
+            "basinslope": {"values": [0.0143, 0.0145, 0.0146]},
         }
         self.scenario_multi.load_settings(multi_input)
         self.scenario_multi.createscenes(self.user_foo)
 
-    @patch('delft3dworker.models.Scene.start', autospec=True)
+    @patch("delft3dworker.models.Scene.start", autospec=True)
     def test_start(self, mocked_scene_method):
         """
         Test if scenes are started when scenario is started
@@ -118,7 +105,7 @@ class ScenarioControlTestCase(TestCase):
         self.scenario_multi.start(self.user_foo)
         self.assertEqual(mocked_scene_method.call_count, 3)
 
-    @patch('delft3dworker.models.Scene.redo_proc', autospec=True)
+    @patch("delft3dworker.models.Scene.redo_proc", autospec=True)
     def redo_proc(self, mocked_scene_method):
         """
         Test if redo_proc is called when processing for scenario is started
@@ -126,7 +113,7 @@ class ScenarioControlTestCase(TestCase):
         self.scenario_multi.redo_proc(self.user_foo)
         self.assertEqual(mocked_scene_method.call_count, 3)
 
-    @patch('delft3dworker.models.Scene.redo_postproc', autospec=True)
+    @patch("delft3dworker.models.Scene.redo_postproc", autospec=True)
     def redo_postproc(self, mocked_scene_method):
         """
         Test if redo_postproc is called when postprocessing for scenario is started
@@ -134,7 +121,7 @@ class ScenarioControlTestCase(TestCase):
         self.scenario_multi.redo_postproc(self.user_foo)
         self.asserEqual(mocked_scene_method.call_count, 3)
 
-    @patch('delft3dworker.models.Scene.abort', autospec=True)
+    @patch("delft3dworker.models.Scene.abort", autospec=True)
     def test_abort(self, mocked_scene_method):
         """
         Test if scenes are aborted when scenario is aborted
@@ -142,7 +129,7 @@ class ScenarioControlTestCase(TestCase):
         self.scenario_multi.abort(self.user_foo)
         self.assertEqual(mocked_scene_method.call_count, 3)
 
-    @patch('delft3dworker.models.Scene.delete', autospec=True)
+    @patch("delft3dworker.models.Scene.delete", autospec=True)
     def test_delete(self, mocked_scene_method):
         """
         Test if scenes are deleted when scenario is deleted
@@ -150,7 +137,7 @@ class ScenarioControlTestCase(TestCase):
         self.scenario_multi.delete(self.user_foo)
         self.assertEqual(mocked_scene_method.call_count, 3)
 
-    @patch('delft3dworker.models.Scene.publish_company', autospec=True)
+    @patch("delft3dworker.models.Scene.publish_company", autospec=True)
     def test_publish_company(self, mocked_scene_method):
         """
         Test if scenes are published to company when scenario is published
@@ -159,7 +146,7 @@ class ScenarioControlTestCase(TestCase):
         self.scenario_multi.publish_company(self.user_foo)
         self.assertEqual(mocked_scene_method.call_count, 3)
 
-    @patch('delft3dworker.models.Scene.publish_world', autospec=True)
+    @patch("delft3dworker.models.Scene.publish_world", autospec=True)
     def test_publish_world(self, mocked_scene_method):
         """
         Test if scenes are published to world when scenario is published
@@ -170,27 +157,23 @@ class ScenarioControlTestCase(TestCase):
 
 
 class SceneTestCase(TestCase):
-
     def setUp(self):
 
         # create users, groups and assign permissions
-        self.user_a = User.objects.create_user(username='A')
-        self.user_b = User.objects.create_user(username='B')
-        self.user_c = User.objects.create_user(username='C')
+        self.user_a = User.objects.create_user(username="A")
+        self.user_b = User.objects.create_user(username="B")
+        self.user_c = User.objects.create_user(username="C")
 
-        company_w = Group.objects.create(name='access:world')
+        company_w = Group.objects.create(name="access:world")
         for user in [self.user_a, self.user_b, self.user_c]:
             company_w.user_set.add(user)
-            for perm in ['view_scene', 'add_scene',
-                         'change_scene', 'delete_scene']:
-                user.user_permissions.add(
-                    Permission.objects.get(codename=perm)
-                )
+            for perm in ["view_scene", "add_scene", "change_scene", "delete_scene"]:
+                user.user_permissions.add(Permission.objects.get(codename=perm))
 
-        company_x = Group.objects.create(name='access:org:Company X')
+        company_x = Group.objects.create(name="access:org:Company X")
         company_x.user_set.add(self.user_a)
         company_x.user_set.add(self.user_b)
-        company_y = Group.objects.create(name='access:org:Company Y')
+        company_y = Group.objects.create(name="access:org:Company Y")
         company_y.user_set.add(self.user_c)
 
         # scene
@@ -198,45 +181,55 @@ class SceneTestCase(TestCase):
             name="Template parent",
             export_options={
                 "export_images": {
-                  "extensions": [".png", ".jpg", ".gif"],
+                    "extensions": [".png", ".jpg", ".gif"],
                 },
                 "export_thirdparty": {
-                  "extensions": [".gz"],
-                  "location": "export",
+                    "extensions": [".gz"],
+                    "location": "export",
                 },
-            })
-        self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
+            },
+        )
+        self.scenario = Scenario.objects.create(
+            name="Scenario parent", template=self.template
+        )
         self.scene_1 = Scene.objects.create(
-            name='Scene 1',
+            name="Scene 1",
             owner=self.user_a,
-            shared='p',
+            shared="p",
             phase=Scene.phases.fin,
         )
         self.scene_2 = Scene.objects.create(
-            name='Scene 2',
+            name="Scene 2",
             owner=self.user_a,
-            shared='p',
+            shared="p",
             phase=Scene.phases.idle,
         )
         self.scene_1.scenario.set([self.scenario])
         self.scene_2.scenario.set([self.scenario])
 
-
-        assign_perm('view_scene', self.user_a, self.scene_1)
-        assign_perm('add_scene', self.user_a, self.scene_1)
-        assign_perm('change_scene', self.user_a, self.scene_1)
-        assign_perm('delete_scene', self.user_a, self.scene_1)
-        assign_perm('view_scene', self.user_a, self.scene_2)
-        assign_perm('add_scene', self.user_a, self.scene_2)
-        assign_perm('change_scene', self.user_a, self.scene_2)
-        assign_perm('delete_scene', self.user_a, self.scene_2)
+        assign_perm("view_scene", self.user_a, self.scene_1)
+        assign_perm("add_scene", self.user_a, self.scene_1)
+        assign_perm("change_scene", self.user_a, self.scene_1)
+        assign_perm("delete_scene", self.user_a, self.scene_1)
+        assign_perm("view_scene", self.user_a, self.scene_2)
+        assign_perm("add_scene", self.user_a, self.scene_2)
+        assign_perm("change_scene", self.user_a, self.scene_2)
+        assign_perm("delete_scene", self.user_a, self.scene_2)
 
         # Add files mimicking export options.
         self.output_dir = {
-            "process/": ["delta_fringe.png", "channel_network.jpg", "sediment_fraction.gz"],
+            "process/": [
+                "delta_fringe.png",
+                "channel_network.jpg",
+                "sediment_fraction.gz",
+            ],
             "postprocess/": ["subenvironment.png", "output.json"],
-            "simulation/": ["delft3d.jpg", ],
-            "export/": ["export.gz", ],
+            "simulation/": [
+                "delft3d.jpg",
+            ],
+            "export/": [
+                "export.gz",
+            ],
         }
 
         # create directories and image/log files from dictionary
@@ -246,31 +239,30 @@ class SceneTestCase(TestCase):
                 os.makedirs(test_path)
 
             for file in files:
-                open(os.path.join(test_path, file), 'a').close()
-
+                open(os.path.join(test_path, file), "a").close()
 
     def test_after_publishing_rights_are_revoked(self):
-        self.assertEqual(self.scene_1.shared, 'p')
-        self.assertTrue(self.user_a.has_perm('view_scene', self.scene_1))
-        self.assertTrue(self.user_a.has_perm('add_scene', self.scene_1))
-        self.assertTrue(self.user_a.has_perm('change_scene', self.scene_1))
-        self.assertTrue(self.user_a.has_perm('delete_scene', self.scene_1))
+        self.assertEqual(self.scene_1.shared, "p")
+        self.assertTrue(self.user_a.has_perm("view_scene", self.scene_1))
+        self.assertTrue(self.user_a.has_perm("add_scene", self.scene_1))
+        self.assertTrue(self.user_a.has_perm("change_scene", self.scene_1))
+        self.assertTrue(self.user_a.has_perm("delete_scene", self.scene_1))
 
         self.scene_1.publish_company(self.user_a)
 
-        self.assertEqual(self.scene_1.shared, 'c')
-        self.assertTrue(self.user_a.has_perm('view_scene', self.scene_1))
-        self.assertTrue(self.user_a.has_perm('add_scene', self.scene_1))
-        self.assertTrue(not self.user_a.has_perm('change_scene', self.scene_1))
-        self.assertTrue(not self.user_a.has_perm('delete_scene', self.scene_1))
+        self.assertEqual(self.scene_1.shared, "c")
+        self.assertTrue(self.user_a.has_perm("view_scene", self.scene_1))
+        self.assertTrue(self.user_a.has_perm("add_scene", self.scene_1))
+        self.assertTrue(not self.user_a.has_perm("change_scene", self.scene_1))
+        self.assertTrue(not self.user_a.has_perm("delete_scene", self.scene_1))
 
         self.scene_1.publish_world(self.user_a)
 
-        self.assertEqual(self.scene_1.shared, 'w')
-        self.assertTrue(self.user_a.has_perm('view_scene', self.scene_1))
-        self.assertTrue(not self.user_a.has_perm('add_scene', self.scene_1))
-        self.assertTrue(not self.user_a.has_perm('change_scene', self.scene_1))
-        self.assertTrue(not self.user_a.has_perm('delete_scene', self.scene_1))
+        self.assertEqual(self.scene_1.shared, "w")
+        self.assertTrue(self.user_a.has_perm("view_scene", self.scene_1))
+        self.assertTrue(not self.user_a.has_perm("add_scene", self.scene_1))
+        self.assertTrue(not self.user_a.has_perm("change_scene", self.scene_1))
+        self.assertTrue(not self.user_a.has_perm("delete_scene", self.scene_1))
 
     def test_publish_company_and_publish_world(self):
         """
@@ -278,102 +270,146 @@ class SceneTestCase(TestCase):
         to World (after publishing to company)
         """
         scenes = get_objects_for_user(
-            self.user_a,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
+            self.user_a, "view_scene", Scene.objects.all(), accept_global_perms=False
         )
 
-        self.assertEqual(len(get_objects_for_user(
-            self.user_b,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )), 0)
-        self.assertEqual(len(get_objects_for_user(
-            self.user_c,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )), 0)
+        self.assertEqual(
+            len(
+                get_objects_for_user(
+                    self.user_b,
+                    "view_scene",
+                    Scene.objects.all(),
+                    accept_global_perms=False,
+                )
+            ),
+            0,
+        )
+        self.assertEqual(
+            len(
+                get_objects_for_user(
+                    self.user_c,
+                    "view_scene",
+                    Scene.objects.all(),
+                    accept_global_perms=False,
+                )
+            ),
+            0,
+        )
 
         # publish company
         scenes[0].publish_company(self.user_a)
         # should not publish as scene is in idle state
         scenes[1].publish_company(self.user_a)
 
-        self.assertEqual(len(get_objects_for_user(
-            self.user_b,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )), 1)
-        self.assertEqual(len(get_objects_for_user(
-            self.user_c,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )), 0)
+        self.assertEqual(
+            len(
+                get_objects_for_user(
+                    self.user_b,
+                    "view_scene",
+                    Scene.objects.all(),
+                    accept_global_perms=False,
+                )
+            ),
+            1,
+        )
+        self.assertEqual(
+            len(
+                get_objects_for_user(
+                    self.user_c,
+                    "view_scene",
+                    Scene.objects.all(),
+                    accept_global_perms=False,
+                )
+            ),
+            0,
+        )
 
         # publish world
         scenes[0].publish_world(self.user_a)
         # should not publish as scene is in idle state
         scenes[1].publish_world(self.user_a)
 
-        self.assertEqual(len(get_objects_for_user(
-            self.user_b,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )), 1)
-        self.assertEqual(len(get_objects_for_user(
-            self.user_c,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )), 1)
+        self.assertEqual(
+            len(
+                get_objects_for_user(
+                    self.user_b,
+                    "view_scene",
+                    Scene.objects.all(),
+                    accept_global_perms=False,
+                )
+            ),
+            1,
+        )
+        self.assertEqual(
+            len(
+                get_objects_for_user(
+                    self.user_c,
+                    "view_scene",
+                    Scene.objects.all(),
+                    accept_global_perms=False,
+                )
+            ),
+            1,
+        )
 
     def test_publish_world(self):
         """
         Test if we can publish to world (before publishing to dtcompany)
         """
         scenes = get_objects_for_user(
-            self.user_a,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
+            self.user_a, "view_scene", Scene.objects.all(), accept_global_perms=False
         )
 
-        self.assertEqual(len(get_objects_for_user(
-            self.user_b,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )), 0)
-        self.assertEqual(len(get_objects_for_user(
-            self.user_c,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )), 0)
+        self.assertEqual(
+            len(
+                get_objects_for_user(
+                    self.user_b,
+                    "view_scene",
+                    Scene.objects.all(),
+                    accept_global_perms=False,
+                )
+            ),
+            0,
+        )
+        self.assertEqual(
+            len(
+                get_objects_for_user(
+                    self.user_c,
+                    "view_scene",
+                    Scene.objects.all(),
+                    accept_global_perms=False,
+                )
+            ),
+            0,
+        )
 
         # publish world
         scenes[0].publish_world(self.user_a)
         # should not publish as scene is in idle state
         scenes[1].publish_world(self.user_a)
 
-        self.assertEqual(len(get_objects_for_user(
-            self.user_b,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )), 1)
-        self.assertEqual(len(get_objects_for_user(
-            self.user_c,
-            "view_scene",
-            Scene.objects.all(),
-            accept_global_perms=False
-        )), 1)
+        self.assertEqual(
+            len(
+                get_objects_for_user(
+                    self.user_b,
+                    "view_scene",
+                    Scene.objects.all(),
+                    accept_global_perms=False,
+                )
+            ),
+            1,
+        )
+        self.assertEqual(
+            len(
+                get_objects_for_user(
+                    self.user_c,
+                    "view_scene",
+                    Scene.objects.all(),
+                    accept_global_perms=False,
+                )
+            ),
+            1,
+        )
 
     def test_start_scene(self):
         started_date = None
@@ -390,8 +426,9 @@ class SceneTestCase(TestCase):
             # check that phase is unshifted unless Idle: then it becomes started
             self.assertEqual(
                 self.scene_1.phase,
-                self.scene_1.phases.sim_start if (
-                    phase[0] == self.scene_1.phases.idle) else phase[0]
+                self.scene_1.phases.sim_start
+                if (phase[0] == self.scene_1.phases.idle)
+                else phase[0],
             )
 
             # check date_started is untouched unless started from Idle state
@@ -421,10 +458,10 @@ class SceneTestCase(TestCase):
 
             # if the phase is after simulation start and before stopped
             if (phase[0] >= self.scene_1.phases.sim_start) and (
-                    phase[0] <= self.scene_1.phases.sim_fin):
+                phase[0] <= self.scene_1.phases.sim_fin
+            ):
                 # check that phase is shifted to sim_stop
-                self.assertEqual(self.scene_1.phase,
-                                 self.scene_1.phases.stopping)
+                self.assertEqual(self.scene_1.phase, self.scene_1.phases.stopping)
 
             else:
                 # check the abort is ignored
@@ -443,7 +480,7 @@ class SceneTestCase(TestCase):
         # Images
         files_added = self.scene_1.export(zf, ["export_images"])
         self.assertTrue(files_added)
-        
+
         self.assertEqual(len(zf.namelist()), 4)  # 4 images in all folders
 
         # Reset
@@ -466,12 +503,12 @@ class SceneTestCase(TestCase):
         zf.close()
 
 
-
 class ScenarioZeroPhaseTestCase(TestCase):
-
     def test_phase_00(self):
         self.template = Template.objects.create(name="Template parent")
-        self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
+        self.scenario = Scenario.objects.create(
+            name="Scenario parent", template=self.template
+        )
         scene = Scene.objects.create(name="scene 1")
         scene.scenario.set([self.scenario])
 
@@ -499,14 +536,22 @@ class ScenarioPhasesTestCase(TestCase):
     def setUp(self):
         self.template = Template.objects.create(name="Template parent")
 
-        self.scenario = Scenario.objects.create(name="Scenario parent", template=self.template)
+        self.scenario = Scenario.objects.create(
+            name="Scenario parent", template=self.template
+        )
         self.scene_1 = Scene.objects.create(name="scene 1")
         self.scene_1.scenario.set([self.scenario])
         # set up dictionary for output files per directory, modelled after delft3d output
         self.output_dir = {
-            "process/": ["delta_fringe.png", "channel_network.jpg", "sediment_fraction.gif"],
+            "process/": [
+                "delta_fringe.png",
+                "channel_network.jpg",
+                "sediment_fraction.gif",
+            ],
             "postprocess/": ["subenvironment.png", "output.json"],
-            "simulation/": ["delft3d.log", ],
+            "simulation/": [
+                "delft3d.log",
+            ],
         }
 
         self.data = {
@@ -518,7 +563,7 @@ class ScenarioPhasesTestCase(TestCase):
             "DeltaFrontsand_fraction": 0.394,
             "DeltaTopsand_fraction": 0.887,
             "DeltaTopsorting": 0.299,
-            "ProDeltasand_fraction": 0.00785
+            "ProDeltasand_fraction": 0.00785,
         }
         self.cleaned_data = {
             "DeltaFrontsorting": 0.161,
@@ -529,7 +574,7 @@ class ScenarioPhasesTestCase(TestCase):
             "DeltaFrontsand_fraction": 0.394,
             "DeltaTopsand_fraction": 0.887,
             "DeltaTopsorting": 0.299,
-            "ProDeltasand_fraction": 0.00785
+            "ProDeltasand_fraction": 0.00785,
         }
 
         # create directories and image/log files from dictionary
@@ -539,9 +584,9 @@ class ScenarioPhasesTestCase(TestCase):
                 os.makedirs(test_path)
 
             for file in files:
-                open(os.path.join(test_path, file), 'a').close()
+                open(os.path.join(test_path, file), "a").close()
                 if file == "output.json":
-                    with open(os.path.join(test_path, file), 'w') as f:
+                    with open(os.path.join(test_path, file), "w") as f:
                         json.dump(self.data, f)
 
         # set default template info for delft3d
@@ -550,37 +595,41 @@ class ScenarioPhasesTestCase(TestCase):
                 "filetype": "images",
                 "extensions": [".png", ".jpg", ".gif"],
                 "files": [],
-                "location": "process/"
+                "location": "process/",
             },
             "channel_network_images": {
                 "filetype": "images",
-                "extensions": ['.png', '.jpg', '.gif'],
+                "extensions": [".png", ".jpg", ".gif"],
                 "files": [],
-                "location": "process/"
+                "location": "process/",
             },
             "sediment_fraction_images": {
                 "filetype": "images",
-                "extensions": ['.png', '.jpg', '.gif'],
+                "extensions": [".png", ".jpg", ".gif"],
                 "files": [],
-                "location": "process/"
+                "location": "process/",
             },
             "subenvironment_images": {
                 "filetype": "images",
-                "extensions": ['.png', '.jpg', '.gif'],
+                "extensions": [".png", ".jpg", ".gif"],
                 "files": [],
-                "location": "postprocess/"
+                "location": "postprocess/",
             },
             "logfile": {
                 "filetype": "log",
-                "extensions": [".log", ],
+                "extensions": [
+                    ".log",
+                ],
                 "files": [],
-                "location": "simulation/"
+                "location": "simulation/",
             },
             "postprocess_output": {
                 "filetype": "json",
-                "extensions": ['.json',],
+                "extensions": [
+                    ".json",
+                ],
                 "files": {},
-                "location": 'postprocess/'
+                "location": "postprocess/",
             },
         }
 
@@ -634,13 +683,31 @@ class ScenarioPhasesTestCase(TestCase):
 
         # Check if _local_scan was called
         # Should return list of images found in the directories
-        self.assertEqual(self.scene_1.info["delta_fringe_images"]["files"], ["delta_fringe.png",])
-        self.assertEqual(self.scene_1.info["subenvironment_images"]["files"], ["subenvironment.png", ])
-        self.assertEqual(self.scene_1.info["logfile"]["files"], ["delft3d.log", ])
+        self.assertEqual(
+            self.scene_1.info["delta_fringe_images"]["files"],
+            [
+                "delta_fringe.png",
+            ],
+        )
+        self.assertEqual(
+            self.scene_1.info["subenvironment_images"]["files"],
+            [
+                "subenvironment.png",
+            ],
+        )
+        self.assertEqual(
+            self.scene_1.info["logfile"]["files"],
+            [
+                "delft3d.log",
+            ],
+        )
 
         # TODO check if the progress is updated
         # Check if json was loaded into info by filename
-        self.assertEqual(self.scene_1.info["postprocess_output"]["files"]["output"], self.cleaned_data)
+        self.assertEqual(
+            self.scene_1.info["postprocess_output"]["files"]["output"],
+            self.cleaned_data,
+        )
 
         workflow.cluster_state = "failed"
         workflow.save()
@@ -666,7 +733,7 @@ class ScenarioPhasesTestCase(TestCase):
         workflow.save()
 
         self.scene_1.update_and_phase_shift()
-        self.assertEqual(self.scene_1.workflow.desired_state, 'failed')
+        self.assertEqual(self.scene_1.workflow.desired_state, "failed")
 
     def test_phase_stop_fin(self):
         self.scene_1.phase = self.p.stopping
@@ -690,45 +757,40 @@ class ScenarioPhasesTestCase(TestCase):
 
 
 class WorkflowTestCase(TestCase):
-
     def setUp(self):
 
         self.run_argo_ps_dict = {
             "apiVersion": "argoproj.io/v1alpha1",
             "kind": "Workflow",
             "metadata": {
-                "labels": {
-                    "workflows.argoproj.io/phase": "Running"
-                },
+                "labels": {"workflows.argoproj.io/phase": "Running"},
                 "name": "delft3dgt-lftrz",
-            }
+            },
         }
 
         self.fin_argo_ps_dict = {
             "apiVersion": "argoproj.io/v1alpha1",
             "kind": "Workflow",
             "metadata": {
-                "labels": {
-                    "workflows.argoproj.io/phase": "Succeeded"
-                },
+                "labels": {"workflows.argoproj.io/phase": "Succeeded"},
                 "name": "delft3dgt-lftrz",
-            }
+            },
         }
 
         self.fail_argo_ps_dict = {
             "apiVersion": "argoproj.io/v1alpha1",
             "kind": "Workflow",
             "metadata": {
-                "labels": {
-                    "workflows.argoproj.io/phase": "Failed"
-                },
+                "labels": {"workflows.argoproj.io/phase": "Failed"},
                 "name": "delft3dgt-lftrz",
-            }
+            },
         }
 
         self.template = Template.objects.create(name="template")
         self.scenario = Scenario.objects.create(name="parent", template=self.template)
-        self.scene_1 = Scene.objects.create(name="some-long-name", phase=Scene.phases.fin)
+        self.scene_1 = Scene.objects.create(
+            name="some-long-name", phase=Scene.phases.fin
+        )
         self.scene_1.save()
         self.scene_1.scenario.set([self.scenario])
 
@@ -742,28 +804,32 @@ class WorkflowTestCase(TestCase):
             - name: uuid
               value: "test-images-3"
         """
-        self.template.yaml_template = SimpleUploadedFile("dummy.yaml", bytes(yaml, 'UTF-8'))
+        self.template.yaml_template = SimpleUploadedFile(
+            "dummy.yaml", bytes(yaml, "UTF-8")
+        )
         self.template.save()
 
         self.version = Version_Docker.objects.create(
-            versions={"parameters": []},
-            template=self.template
-            )
+            versions={"parameters": []}, template=self.template
+        )
         self.version.save()
 
         self.version2 = Version_Docker.objects.create(
-            versions={"parameters": [], "entrypoints": ["delft3dgt-main", "update-processing"]},
+            versions={
+                "parameters": [],
+                "entrypoints": ["delft3dgt-main", "update-processing"],
+            },
             changelog="I'm newer",
-            template=self.template
-            )
+            template=self.template,
+        )
         self.version2.save()
 
         self.workflow = Workflow.objects.create(
             scene=self.scene_1,
-            desired_state='created',
-            cluster_state='non-existent',
+            desired_state="created",
+            cluster_state="non-existent",
             version=self.version,
-            entrypoint='delft3dgt-main'
+            entrypoint="delft3dgt-main",
         )
 
     def test_is_outdated(self):
@@ -780,17 +846,18 @@ class WorkflowTestCase(TestCase):
 
     def test_outdated_entrypoints(self):
         # Version 2 is newer than connected Version
-        self.assertEqual(self.workflow.outdated_entrypoints(), self.version2.versions["entrypoints"])
+        self.assertEqual(
+            self.workflow.outdated_entrypoints(), self.version2.versions["entrypoints"]
+        )
 
-    @patch('logging.warn', autospec=True)
-    @patch('delft3dworker.models.AsyncResult', autospec=True)
+    @patch("logging.warn", autospec=True)
+    @patch("delft3dworker.models.AsyncResult", autospec=True)
     def test_update_task_result(self, MockedAsyncResult, mocked_warn_method):
 
         async_result = MockedAsyncResult.return_value
 
         # Set up: A previous task is not yet finished
-        self.workflow.task_uuid = uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.workflow.task_uuid = uuid.UUID("6764743a-3d63-4444-8e7b-bc938bff7792")
         self.workflow.task_starttime = now()
         async_result.ready.return_value = False
         async_result.state = "STARTED"
@@ -801,22 +868,24 @@ class WorkflowTestCase(TestCase):
 
         # one time check for ready, no get and the task id remains
         self.assertEqual(async_result.ready.call_count, 1)
-        self.assertEqual(self.workflow.task_uuid, uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792'))
+        self.assertEqual(
+            self.workflow.task_uuid, uuid.UUID("6764743a-3d63-4444-8e7b-bc938bff7792")
+        )
 
         # Time has passed, task should expire
-        self.workflow.task_starttime = now() - timedelta(seconds=settings.TASK_EXPIRE_TIME * 2)
+        self.workflow.task_starttime = now() - timedelta(
+            seconds=settings.TASK_EXPIRE_TIME * 2
+        )
         self.workflow.update_task_result()
         self.assertEqual(self.workflow.task_uuid, None)
 
         # Set up: task is now finished with Failure
-        self.workflow.task_uuid = uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.workflow.task_uuid = uuid.UUID("6764743a-3d63-4444-8e7b-bc938bff7792")
         self.workflow.task_starttime = now()
         async_result.ready.return_value = True
         async_result.result = (
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        ), 'ERror MesSAge'
+            "01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl"
+        ), "ERror MesSAge"
         async_result.state = "FAILURE"
 
         # call method
@@ -826,13 +895,12 @@ class WorkflowTestCase(TestCase):
         self.assertEqual(mocked_warn_method.call_count, 3)
 
         # Set up: task is now finished
-        self.workflow.task_uuid = uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.workflow.task_uuid = uuid.UUID("6764743a-3d63-4444-8e7b-bc938bff7792")
         async_result.ready.return_value = True
         async_result.successful.return_value = True
         async_result.result = (
-            '01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl'
-        ), 'INFO:root:Time to finish 70.0, 10.0% completed,'
+            "01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl"
+        ), "INFO:root:Time to finish 70.0, 10.0% completed,"
         async_result.state = "SUCCESS"
 
         # call method
@@ -842,14 +910,13 @@ class WorkflowTestCase(TestCase):
         # None
         self.assertIsNone(self.workflow.task_uuid)
 
-    @patch('delft3dworker.models.AsyncResult', autospec=True)
+    @patch("delft3dworker.models.AsyncResult", autospec=True)
     def test_update_progress(self, MockedAsyncResult):
 
         async_result = MockedAsyncResult.return_value
 
         # Set up: A previous task is not yet finished
-        self.workflow.task_uuid = uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.workflow.task_uuid = uuid.UUID("6764743a-3d63-4444-8e7b-bc938bff7792")
         self.workflow.task_starttime = now()
         async_result.ready.return_value = True
         async_result.state = "SUCCESS"
@@ -863,15 +930,15 @@ class WorkflowTestCase(TestCase):
         self.assertEqual(self.workflow.progress, 0)
 
         # Set up: task is now finished
-        self.workflow.task_uuid = uuid.UUID(
-            '6764743a-3d63-4444-8e7b-bc938bff7792')
+        self.workflow.task_uuid = uuid.UUID("6764743a-3d63-4444-8e7b-bc938bff7792")
         async_result.ready.return_value = True
         async_result.successful.return_value = True
-        async_result.result = {"get_kube_log":
-        """INFO:root:Time to finish 70.0, 22.2222222222% completed, time steps  left 7.0
+        async_result.result = {
+            "get_kube_log": """INFO:root:Time to finish 70.0, 22.2222222222% completed, time steps  left 7.0
         INFO:root:Time to finish 60.0, 33.3333333333% completed, time steps  left 6.0
         INFO:root:Time to finish 50.0, 44.4444444444% completed, time steps  left 5.0
-        INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""}
+        INFO:root:Time to finish 40.0, 55.5555555556% completed, time steps  left 4.0"""
+        }
         async_result.state = "SUCCESS"
 
         # call method
@@ -880,39 +947,31 @@ class WorkflowTestCase(TestCase):
         # check progress changed
         self.assertEqual(self.workflow.progress, 56.0)
 
-    @patch('logging.error', autospec=True)
+    @patch("logging.error", autospec=True)
     def test_update_state_and_save(self, mocked_error_method):
 
         # This test will test the behavior of a workflow
         # when it receives snapshot
 
-        self.workflow.sync_cluster_state(
-            None)
-        self.assertEqual(
-            self.workflow.cluster_state, 'non-existent')
+        self.workflow.sync_cluster_state(None)
+        self.assertEqual(self.workflow.cluster_state, "non-existent")
 
-        self.workflow.sync_cluster_state(
-            self.run_argo_ps_dict)
-        self.assertEqual(
-            self.workflow.cluster_state, 'running')
+        self.workflow.sync_cluster_state(self.run_argo_ps_dict)
+        self.assertEqual(self.workflow.cluster_state, "running")
 
-        self.workflow.sync_cluster_state(
-            self.fail_argo_ps_dict)
-        self.assertEqual(
-            self.workflow.cluster_state, 'failed')
+        self.workflow.sync_cluster_state(self.fail_argo_ps_dict)
+        self.assertEqual(self.workflow.cluster_state, "failed")
 
-        self.workflow.sync_cluster_state(
-            self.fin_argo_ps_dict)
-        self.assertEqual(
-            self.workflow.cluster_state, 'succeeded')
+        self.workflow.sync_cluster_state(self.fin_argo_ps_dict)
+        self.assertEqual(self.workflow.cluster_state, "succeeded")
 
         self.assertEqual(
-            mocked_error_method.call_count, 1)  # event is logged as an error!
+            mocked_error_method.call_count, 1
+        )  # event is logged as an error!
 
-    @patch('delft3dcontainermanager.tasks.do_argo_create.apply_async',
-           autospec=True)
+    @patch("delft3dcontainermanager.tasks.do_argo_create.apply_async", autospec=True)
     def test_create_workflow(self, mocked_task):
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+        task_uuid = uuid.UUID("6764743a-3d63-4444-8e7b-bc938bff7792")
 
         result = Mock()
         mocked_task.return_value = result
@@ -925,19 +984,21 @@ class WorkflowTestCase(TestCase):
         with open(template_model.yaml_template.path) as f:
             template = yaml.load(f, Loader=yaml.FullLoader)
         template["metadata"] = {"name": "{}".format(self.workflow.name)}
-        template["spec"]["arguments"]["parameters"] = [{"name": "uuid", "value": str(self.scene_1.suid)},
-                                                       {"name": "s3bucket", "value": settings.BUCKETNAME},
-                                                       {"name": "version", "value": str(self.version.revision)},
-                                                       {"name": "parameters", "value": json.dumps(self.scene_1.parameters)}]
+        template["spec"]["arguments"]["parameters"] = [
+            {"name": "uuid", "value": str(self.scene_1.suid)},
+            {"name": "s3bucket", "value": settings.BUCKETNAME},
+            {"name": "version", "value": str(self.version.revision)},
+            {"name": "parameters", "value": json.dumps(self.scene_1.parameters)},
+        ]
 
         # create workflow
         mocked_task.assert_called_once_with(
-            args=(template,),
-            expires=settings.TASK_EXPIRE_TIME)
+            args=(template,), expires=settings.TASK_EXPIRE_TIME
+        )
         self.assertEqual(self.workflow.task_uuid, task_uuid)
 
         # update workflow state, call method multiple times
-        self.workflow.cluster_state = 'running'
+        self.workflow.cluster_state = "running"
         self.workflow.create_workflow()
         self.workflow.create_workflow()
         self.workflow.create_workflow()
@@ -945,16 +1006,15 @@ class WorkflowTestCase(TestCase):
 
         # all subsequent calls were ignored
         mocked_task.assert_called_once_with(
-            args=(template,),
-            expires=settings.TASK_EXPIRE_TIME)
+            args=(template,), expires=settings.TASK_EXPIRE_TIME
+        )
 
-    @patch('delft3dcontainermanager.tasks.do_argo_remove.apply_async',
-           autospec=True)
+    @patch("delft3dcontainermanager.tasks.do_argo_remove.apply_async", autospec=True)
     def test_remove_workflow(self, mocked_task):
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+        task_uuid = uuid.UUID("6764743a-3d63-4444-8e7b-bc938bff7792")
 
-        self.workflow.desired_state = 'non-existent'
-        self.workflow.cluster_state = 'succeeded'
+        self.workflow.desired_state = "non-existent"
+        self.workflow.cluster_state = "succeeded"
 
         result = Mock()
         result.id = task_uuid
@@ -964,11 +1024,12 @@ class WorkflowTestCase(TestCase):
         # call method, check if do_docker_stop is called once, uuid updates
         self.workflow.remove_workflow()
         mocked_task.assert_called_once_with(
-            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
+            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME
+        )
         self.assertEqual(self.workflow.task_uuid, task_uuid)
 
         # update workflow state, call method multiple times
-        self.workflow.cluster_state = 'non-existent'
+        self.workflow.cluster_state = "non-existent"
         self.workflow.remove_workflow()
         self.workflow.remove_workflow()
         self.workflow.remove_workflow()
@@ -976,15 +1037,15 @@ class WorkflowTestCase(TestCase):
 
         # all subsequent calls were ignored
         mocked_task.assert_called_once_with(
-            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
+            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME
+        )
 
-    @patch('delft3dcontainermanager.tasks.do_argo_stop.apply_async',
-           autospec=True)
+    @patch("delft3dcontainermanager.tasks.do_argo_stop.apply_async", autospec=True)
     def test_stop_workflow(self, mocked_task):
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+        task_uuid = uuid.UUID("6764743a-3d63-4444-8e7b-bc938bff7792")
 
-        self.workflow.desired_state = 'failed'
-        self.workflow.cluster_state = 'running'
+        self.workflow.desired_state = "failed"
+        self.workflow.cluster_state = "running"
 
         result = Mock()
         result.id = task_uuid
@@ -994,16 +1055,15 @@ class WorkflowTestCase(TestCase):
         # call method, check if do_docker_stop is called once, uuid updates
         self.workflow.stop_workflow()
         mocked_task.assert_called_once_with(
-            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
+            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME
+        )
 
-
-    @patch('delft3dcontainermanager.tasks.get_kube_log.apply_async',
-           autospec=True)
+    @patch("delft3dcontainermanager.tasks.get_kube_log.apply_async", autospec=True)
     def test_update_log(self, mocked_task):
-        task_uuid = uuid.UUID('6764743a-3d63-4444-8e7b-bc938bff7792')
+        task_uuid = uuid.UUID("6764743a-3d63-4444-8e7b-bc938bff7792")
 
-        self.workflow.desired_state = 'running'
-        self.workflow.cluster_state = 'running'
+        self.workflow.desired_state = "running"
+        self.workflow.cluster_state = "running"
 
         result = Mock()
         result.id = task_uuid
@@ -1012,7 +1072,8 @@ class WorkflowTestCase(TestCase):
         # call method, update_log is called once, uuid updates
         self.workflow.update_log()
         mocked_task.assert_called_once_with(
-            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME)
+            args=(self.workflow.name,), expires=settings.TASK_EXPIRE_TIME
+        )
         self.assertEqual(self.workflow.task_uuid, task_uuid)
 
         # 'finish' task, call method, update_log is called again
@@ -1021,7 +1082,7 @@ class WorkflowTestCase(TestCase):
         self.assertEqual(mocked_task.call_count, 2)
 
         # 'exit' workflow, call method, update_log is not called again
-        self.workflow.cluster_state = 'exited'
+        self.workflow.cluster_state = "exited"
         self.workflow.update_log()
         self.assertEqual(mocked_task.call_count, 2)
 
@@ -1031,7 +1092,7 @@ class WorkflowTestCase(TestCase):
         info = {"image": "test"}
 
         # Keep the workflow entrypoint for reset
-        self.workflow.entrypoint = 'delft3dgt-main'
+        self.workflow.entrypoint = "delft3dgt-main"
 
         # a scene should only start when it's idle: check for each phase
         for phase in self.scene_1.phases:
@@ -1048,8 +1109,9 @@ class WorkflowTestCase(TestCase):
             # check that phase is unshifted unless Finished: then it becomes New
             self.assertEqual(
                 self.scene_1.phase,
-                self.scene_1.phases.sim_start if (
-                    phase[0] >= Scene.phases.fin) else phase[0]
+                self.scene_1.phases.sim_start
+                if (phase[0] >= Scene.phases.fin)
+                else phase[0],
             )
 
             # check properties are untouched unless reset from finished state
@@ -1071,7 +1133,7 @@ class WorkflowTestCase(TestCase):
         self.assertTrue(result)
 
     def test_redo_scene(self):
-        entrypoint = 'update-processing'
+        entrypoint = "update-processing"
         # self.entrypoint = 'main'
         date_started = now()
         progress = 10
@@ -1081,7 +1143,7 @@ class WorkflowTestCase(TestCase):
         # loop through all phases to test
         for phase in self.scene_1.phases:
             # Need to reset entrypoint and version with each phase, is not reset by function
-            self.workflow.entrypoint = 'delft3dgt-main'
+            self.workflow.entrypoint = "delft3dgt-main"
             self.workflow.version = self.version
 
             #  shift scene to phase
@@ -1096,25 +1158,25 @@ class WorkflowTestCase(TestCase):
             # check that phase is unshifted unless in Finished phases: then it becomes New
             self.assertEqual(
                 self.scene_1.phase,
-                self.scene_1.phases.sim_start if (
-                        phase[0] >= Scene.phases.fin) else phase[0]
+                self.scene_1.phases.sim_start
+                if (phase[0] >= Scene.phases.fin)
+                else phase[0],
             )
 
             # check that entry point is the same and redo steps done
             # check properties are untouched unless reset from finished state
             if phase[0] >= Scene.phases.fin:
-                self.assertEqual(self.workflow.entrypoint, 'update-processing')
+                self.assertEqual(self.workflow.entrypoint, "update-processing")
                 self.assertEqual(self.scene_1.phase, self.scene_1.phases.sim_start)
                 self.assertEqual(self.scene_1.info, {})
 
             else:
-                self.assertEqual(self.workflow.entrypoint, 'delft3dgt-main')
+                self.assertEqual(self.workflow.entrypoint, "delft3dgt-main")
                 self.assertEqual(self.scene_1.phase, phase[0])
                 self.assertEqual(self.scene_1.info, {"image": "test"})
 
 
 class SearchFormTestCase(TestCase):
-
     def setUp(self):
 
         self.sections_a = """
@@ -1240,14 +1302,17 @@ class SearchFormTestCase(TestCase):
         ]
         """
 
-        self.templates_res = json.loads("""
+        self.templates_res = json.loads(
+            """
             [
                 {"name":"Template 1", "id":1},
                 {"name":"Template 2", "id":2}
             ]
-        """)
+        """
+        )
 
-        self.sections_res = json.loads("""
+        self.sections_res = json.loads(
+            """
         [
             {
                 "name": "section1",
@@ -1309,7 +1374,8 @@ class SearchFormTestCase(TestCase):
                 ]
             }
         ]
-        """)
+        """
+        )
 
     # TODO: implement proper means to generate search form json
 

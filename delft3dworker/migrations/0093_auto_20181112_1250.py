@@ -10,44 +10,42 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('auth', '0008_alter_user_username_max_length'),
-        ('delft3dworker', '0092_auto_20180530_1506'),
+        ("auth", "0008_alter_user_username_max_length"),
+        ("delft3dworker", "0092_auto_20180530_1506"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='GroupUsageSummary',
-            fields=[
-            ],
+            name="GroupUsageSummary",
+            fields=[],
             options={
-                'verbose_name': 'Group Usage Summary',
-                'proxy': True,
-                'verbose_name_plural': 'Group Usage Summary',
-                'indexes': [],
+                "verbose_name": "Group Usage Summary",
+                "proxy": True,
+                "verbose_name_plural": "Group Usage Summary",
+                "indexes": [],
             },
-            bases=('auth.group',),
+            bases=("auth.group",),
             managers=[
-                ('objects', django.contrib.auth.models.GroupManager()),
+                ("objects", django.contrib.auth.models.GroupManager()),
             ],
         ),
         migrations.CreateModel(
-            name='UserUsageSummary',
-            fields=[
-            ],
+            name="UserUsageSummary",
+            fields=[],
             options={
-                'verbose_name': 'User Usage Summary',
-                'proxy': True,
-                'verbose_name_plural': 'User Usage Summary',
-                'indexes': [],
+                "verbose_name": "User Usage Summary",
+                "proxy": True,
+                "verbose_name_plural": "User Usage Summary",
+                "indexes": [],
             },
-            bases=('auth.user',),
+            bases=("auth.user",),
             managers=[
-                ('objects', django.contrib.auth.models.UserManager()),
+                ("objects", django.contrib.auth.models.UserManager()),
             ],
         ),
         migrations.AddField(
-            model_name='workflow',
-            name='stoptime',
+            model_name="workflow",
+            name="stoptime",
             field=models.DateTimeField(blank=True, null=True),
         ),
     ]

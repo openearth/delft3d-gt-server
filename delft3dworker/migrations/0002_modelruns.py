@@ -8,19 +8,27 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0001_initial'),
+        ("delft3dworker", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ModelRuns',
+            name="ModelRuns",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=256)),
-                ('uuid', models.CharField(max_length=256)),
-                ('status', models.CharField(max_length=256)),
-                ('progress', models.IntegerField()),
-                ('timeleft', models.IntegerField()),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=256)),
+                ("uuid", models.CharField(max_length=256)),
+                ("status", models.CharField(max_length=256)),
+                ("progress", models.IntegerField()),
+                ("timeleft", models.IntegerField()),
             ],
         ),
     ]

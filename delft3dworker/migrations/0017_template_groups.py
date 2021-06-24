@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import migrations, models
 import jsonfield.fields
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0016_auto_20160318_1719'),
+        ("delft3dworker", "0016_auto_20160318_1719"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='template',
-            name='groups',
+            model_name="template",
+            name="groups",
             field=jsonfield.fields.JSONField(default=dict, blank=True),
         ),
     ]

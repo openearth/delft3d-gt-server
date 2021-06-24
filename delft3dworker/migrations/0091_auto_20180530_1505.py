@@ -8,15 +8,15 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('delft3dworker', '0090_auto_20180530_0832'),
+        ("delft3dworker", "0090_auto_20180530_0832"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='scene',
-            name='version',
+            model_name="scene",
+            name="version",
         ),
         migrations.DeleteModel(
-            name='Version_SVN',
+            name="Version_SVN",
         ),
     ]

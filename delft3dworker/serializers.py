@@ -1,13 +1,7 @@
+from django.contrib.auth.models import Group, User
 from rest_framework import serializers
 
-from delft3dworker.models import Version_Docker
-from delft3dworker.models import Scenario
-from delft3dworker.models import Scene
-from delft3dworker.models import SearchForm
-from delft3dworker.models import Template
-
-from django.contrib.auth.models import Group
-from django.contrib.auth.models import User
+from delft3dworker.models import Scenario, Scene, SearchForm, Template, Version_Docker
 
 
 class VersionSerializer(serializers.ModelSerializer):
@@ -20,7 +14,7 @@ class VersionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Version_Docker
-        fields = '__all__'
+        fields = "__all__"
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -34,12 +28,12 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'email',
-            'groups',
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "groups",
         )
 
 
@@ -54,8 +48,8 @@ class GroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
         fields = (
-            'id',
-            'name',
+            "id",
+            "name",
         )
 
 
@@ -68,39 +62,41 @@ class SceneFullSerializer(serializers.ModelSerializer):
     """
 
     owner = UserSerializer(read_only=True)
-    state = serializers.CharField(source='get_phase_display', read_only=True)
+    state = serializers.CharField(source="get_phase_display", read_only=True)
     template = serializers.SerializerMethodField()
-    outdated = serializers.BooleanField(source='workflow.is_outdated', read_only=True)
+    outdated = serializers.BooleanField(source="workflow.is_outdated", read_only=True)
     entrypoints = serializers.SerializerMethodField(read_only=True)
-    outdated_changelog = serializers.CharField(source='workflow.outdated_changelog', read_only=True)
+    outdated_changelog = serializers.CharField(
+        source="workflow.outdated_changelog", read_only=True
+    )
 
     class Meta:
         model = Scene
         fields = (
-            'date_created',
-            'date_started',
-            'fileurl',
-            'id',
-            'info',
-            'name',
-            'owner',
-            'parameters',
-            'phase',
-            'progress',
-            'scenario',
-            'shared',
-            'state',
-            'suid',
-            'task_id',
-            'workingdir',
-            'template',
-            'outdated',
-            'entrypoints',
-            'outdated_changelog'
+            "date_created",
+            "date_started",
+            "fileurl",
+            "id",
+            "info",
+            "name",
+            "owner",
+            "parameters",
+            "phase",
+            "progress",
+            "scenario",
+            "shared",
+            "state",
+            "suid",
+            "task_id",
+            "workingdir",
+            "template",
+            "outdated",
+            "entrypoints",
+            "outdated_changelog",
         )
 
     def get_entrypoints(self, obj):
-        if hasattr(obj, 'workflow'):
+        if hasattr(obj, "workflow"):
             return obj.workflow.outdated_entrypoints()
         else:
             return None
@@ -122,20 +118,20 @@ class SceneSparseSerializer(serializers.ModelSerializer):
     source: http://www.django-rest-framework.org/api-guide/serializers/
     """
 
-    state = serializers.CharField(source='get_phase_display', read_only=True)
+    state = serializers.CharField(source="get_phase_display", read_only=True)
     template_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Scene
         fields = (
-            'suid',
-            'id',
-            'name',
-            'owner',
-            'progress',
-            'shared',
-            'state',
-            'template_name',
+            "suid",
+            "id",
+            "name",
+            "owner",
+            "progress",
+            "shared",
+            "state",
+            "template_name",
         )
 
     def get_template_name(self, obj):
@@ -146,6 +142,7 @@ class SceneSparseSerializer(serializers.ModelSerializer):
         else:
             return None
 
+
 class ScenarioSerializer(serializers.ModelSerializer):
     """
     A default REST Framework ModelSerializer for the Scenario model
@@ -153,23 +150,23 @@ class ScenarioSerializer(serializers.ModelSerializer):
     """
 
     # here we will write custom serialization and validation methods
-    state = serializers.CharField(
-        source='_update_state_and_save', read_only=True)
+    state = serializers.CharField(source="_update_state_and_save", read_only=True)
 
     owner_url = serializers.HyperlinkedRelatedField(
-        read_only=True, view_name='user-detail', source='owner')
+        read_only=True, view_name="user-detail", source="owner"
+    )
 
     class Meta:
         model = Scenario
         fields = (
-            'id',
-            'name',
-            'owner_url',
-            'template',
-            'parameters',
-            'state',
-            'progress',
-            'scene_set',
+            "id",
+            "name",
+            "owner_url",
+            "template",
+            "parameters",
+            "state",
+            "progress",
+            "scene_set",
         )
 
 
@@ -184,10 +181,10 @@ class SearchFormSerializer(serializers.ModelSerializer):
     class Meta:
         model = SearchForm
         fields = (
-            'id',
-            'name',
-            'sections',
-            'templates',
+            "id",
+            "name",
+            "sections",
+            "templates",
         )
 
 
@@ -202,8 +199,8 @@ class TemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Template
         fields = (
-            'id',
-            'name',
-            'meta',
-            'sections',
+            "id",
+            "name",
+            "meta",
+            "sections",
         )

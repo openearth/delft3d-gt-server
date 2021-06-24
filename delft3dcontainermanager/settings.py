@@ -16,29 +16,30 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 # SECURITY WARNING: don't run with debug turned on in production!
 import sys
 from os import environ
+
 from kubernetes import config
 
 DEBUG = False
-SECRET_KEY = 'notneeded'
+SECRET_KEY = "notneeded"
 
 # Application definition
 
 INSTALLED_APPS = [
-    'delft3dcontainermanager',
-    'ddtrace.contrib.django',
+    "delft3dcontainermanager",
+    "ddtrace.contrib.django",
 ]
 
 DATADOG_TRACE = {
-    'DEFAULT_SERVICE': 'delft3dcontainermanager',
-    'DEFAULT_DATABASE_PREFIX': 'delft3dcontainermanager',
+    "DEFAULT_SERVICE": "delft3dcontainermanager",
+    "DEFAULT_DATABASE_PREFIX": "delft3dcontainermanager",
 }
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.9/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -55,12 +56,12 @@ USE_TZ = True
 # of complexity.
 CELERY_DISABLE_RATE_LIMITS = True
 
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TRACK_STARTED = True  # All pending tasks can be revoked
 CELERY_TASK_PUBLISH_RETRY = False  # No retry on connection error
-CELERY_MESSAGE_COMPRESSION = 'gzip'  # Can help on docker inspect messages
+CELERY_MESSAGE_COMPRESSION = "gzip"  # Can help on docker inspect messages
 
 # Custom task expire time
 TASK_EXPIRE_TIME = 5 * 60  # After 5 minutes, tasks are forgotten
@@ -75,33 +76,31 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 # import provisioned settings
 try:
     from .provisionedsettings import *
+
     environ["PATH"] += ":{}".format(AWS_IAM_PATH)
 except ImportError:
     print("Failed to import provisioned settings!")
-    SECRET_KEY = 'test'
+    SECRET_KEY = "test"
 
-if 'test' in sys.argv:
+if "test" in sys.argv:
     from .celery import Celery
 
     CELERY_ONCE = {
-      'backend': 'celery_once.backends.Redis',
-      'settings': {
-        'url': 'redis://127.0.0.1/0',
-        'default_timeout': 60 * 60
-      }
+        "backend": "celery_once.backends.Redis",
+        "settings": {"url": "redis://127.0.0.1/0", "default_timeout": 60 * 60},
     }
 
     # Debug on running tests
     DEBUG = True
 
     # make sure celery delayed tasks are executed immediately
-    CELERY_RESULT_BACKEND = 'cache'
-    CELERY_CACHE_BACKEND = 'memory'
+    CELERY_RESULT_BACKEND = "cache"
+    CELERY_CACHE_BACKEND = "memory"
     TASK_EXPIRE_TIME = 24 * 60 * 60  # Expire after a day
     CELERY_ALWAYS_EAGER = True
     CELERY_EAGER_PROPAGATES_EXCEPTIONS = True  # Issue #75
 
-    app = Celery('delft3dgt')
+    app = Celery("delft3dgt")
     app.conf.CELERY_ALWAYS_EAGER = True
     app.conf.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
     app.conf.ONCE = CELERY_ONCE
