@@ -4,7 +4,6 @@ from django.contrib.auth.models import Permission, User
 from django.test import TestCase
 from django.test.client import Client
 from guardian.shortcuts import assign_perm
-
 from delft3dworker.models import Scene
 
 
@@ -17,8 +16,7 @@ class ProctectedServicesTestCase(TestCase):
         self.user_foo = User.objects.create_user(username="foo", password="secret")
 
         # create user with restricted permissions
-        self.user_bar = User.objects.create_user(
-            username='bar', password="secret")
+        self.user_bar = User.objects.create_user(username="bar", password="secret")
 
         # create Scene instance and assign permissions for user_foo
         self.scene = Scene.objects.create(
@@ -43,7 +41,8 @@ class ProctectedServicesTestCase(TestCase):
         )
 
         # Add permissions to bar user
-        assign_perm('restricted_view_scene', self.user_bar, self.scene2)
+        assign_perm("restricted_view_scene", self.user_bar, self.scene2)
+
 
     def test_files(self):
         # login as foo

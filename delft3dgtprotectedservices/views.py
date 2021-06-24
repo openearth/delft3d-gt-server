@@ -27,20 +27,24 @@ def files(request, simulation_uuid, loc):
 
     loc_path, loc_extension = os.path.splitext(loc)
 
-    # return 403 if not allowed
-    if not request.user.has_perm("restricted_view_scene", scene):
-        return HttpResponse(status=403)
-
-    if not request.user.has_perm("view_scene", scene) and loc_extension != '.png':
-        return HttpResponse(status=403)
-
     # redirect to nginx protected files
     response = HttpResponse()
     response["X-Accel-Redirect"] = "/protected_files/{0}/{1}".format(
         simulation_uuid, loc
     )
 
-    return response
+
+    # Restricted user is allowed to view png images
+    if request.user.has_perm("restricted_view_scene", scene) and loc_extension == '.png':
+        return response
+
+    # User with view permissions is allowed to view all files
+    if request.user.has_perm("view_scene", scene):
+        return response
+
+    # Else return 403
+    else:
+        return HttpResponse(status=403)
 
 
 @login_required
