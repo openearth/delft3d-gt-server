@@ -29,17 +29,10 @@ class ProctectedServicesTestCase(TestCase):
             phase=Scene.phases.fin,
         )
 
-        self.user_foo.user_permissions.add(
-            Permission.objects.get(codename="view_scene")
-        )
-        assign_perm("view_scene", self.user_foo, self.scene)
-
-        self.user_foo.user_permissions.add(
-            Permission.objects.get(codename="restricted_view_scene")
-        )
+        # Add permissions to foo user
         assign_perm("restricted_view_scene", self.user_foo, self.scene)
-
-
+        assign_perm("view_scene", self.user_foo, self.scene)
+        
         # create Scene instance and assign permission for user bar
         self.scene2 = Scene.objects.create(
             suid="8bfdf64a-dc3f-4f48-9bf6-507c2b4e4bd9",
@@ -49,8 +42,7 @@ class ProctectedServicesTestCase(TestCase):
             phase=Scene.phases.fin
         )
 
-        self.user_bar.user_permissions.add(
-            Permission.objects.get(codename='restricted_view_scene'))
+        # Add permissions to bar user
         assign_perm('restricted_view_scene', self.user_bar, self.scene2)
 
     def test_files(self):
