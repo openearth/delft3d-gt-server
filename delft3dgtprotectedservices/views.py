@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import base64
+import os
 from uuid import UUID
 
 from django.contrib.auth import authenticate, login
@@ -24,8 +25,13 @@ def files(request, simulation_uuid, loc):
     # get scene or 404
     scene = get_object_or_404(Scene, suid=uuid)
 
+    loc_path, loc_extension = os.path.splitext(loc)
+
     # return 403 if not allowed
-    if not request.user.has_perm("view_scene", scene):
+    if not request.user.has_perm("restricted_view_scene", scene):
+        return HttpResponse(status=403)
+
+    if not request.user.has_perm("view_scene", scene) and loc_extension != '.png':
         return HttpResponse(status=403)
 
     # redirect to nginx protected files
