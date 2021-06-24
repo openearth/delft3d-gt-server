@@ -18,6 +18,10 @@ class ProctectedServicesTestCase(TestCase):
         self.user_foo = User.objects.create_user(
             username='foo', password="secret")
 
+        # create user with restricted permissions
+        self.user_bar = User.objects.create_user(
+            username='bar', password="secret")
+
         # create Scene instance and assign permissions for user_foo
         self.scene = Scene.objects.create(
             suid="1be8dcc1-cf00-418c-9920-efa07b4fbeca",
@@ -31,6 +35,19 @@ class ProctectedServicesTestCase(TestCase):
             Permission.objects.get(codename='view_scene'))
         assign_perm('view_scene', self.user_foo, self.scene)
 
+        # create Scene instance and assign permission for user bar
+        self.scene2 = Scene.objects.create(
+            suid="8bfdf64a-dc3f-4f48-9bf6-507c2b4e4bd9",
+            name="Test workflow 2",
+            owner=self.user_bar,
+            shared="w",
+            phase=Scene.phases.fin
+        )
+
+        self.user_bar.user_permissions.add(
+            Permission.objects.get(codename='restricted_view_scene'))
+        assign_perm('restricted_view_scene', self.user_bar, self.scene2)
+
     def test_files(self):
         # login as foo
         self.client.login(username='foo', password='secret')
@@ -42,6 +59,22 @@ class ProctectedServicesTestCase(TestCase):
         # /files/* should redirect to /protected_files/*
         self.assertEqual(response["X-Accel-Redirect"], "/protected_files/{0}/{1}".format(simulation_uuid, loc))
         self.assertEqual(response.status_code, 200)
+
+    def test_files_restricted_view(self):
+        # login as bar
+        self.client.login(username='bar', password='secret')
+
+        loc1 = 'test'
+        loc2 = 'test/image.png'
+
+        simulation_uuid = '8bfdf64a-dc3f-4f48-9bf6-507c2b4e4bd9'
+        response1 = self.client.get("/files/{0}/{1}".format(
+        simulation_uuid, loc1))
+        response2 = self.client.get("/files/{0}/{1}".format(
+        simulation_uuid, loc2))
+
+        self.assertEqual(response1.status_code, 403)
+        self.assertEqual(response2.status_code, 200)
 
     def test_thredds(self):
         # login as foo
