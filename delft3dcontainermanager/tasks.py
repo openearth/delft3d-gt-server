@@ -108,6 +108,6 @@ def do_argo_remove(self, workflow_id):
     client_api = config.new_client_from_config()
     crd = client.CustomObjectsApi(client_api)
     status = crd.delete_namespaced_custom_object(
-        "argoproj.io", "v1alpha1", "default", "workflows", workflow_id, {})
+        "argoproj.io", "v1alpha1", "default", "workflows", workflow_id)
 
     return {"do_argo_remove": status}
