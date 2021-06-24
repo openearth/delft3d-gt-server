@@ -13,9 +13,7 @@ class Migration(migrations.Migration):
         migrations.AlterModelOptions(
             name="scene",
             options={
-                "permissions": [
-                    ("restricted_view_scene", "Can view scene without actions.")
-                ]
+                "permissions": [("extended_view_scene", "Can view scene with actions.")]
             },
         ),
     ]

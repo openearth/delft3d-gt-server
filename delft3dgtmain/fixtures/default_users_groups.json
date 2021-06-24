@@ -10,7 +10,23 @@
   {
     "fields": {
       "name": "access:world_restricted",
-      "permissions": []
+      "permissions": [
+        [
+          "view_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "view_scene",
+          "delft3dworker",
+          "scene"
+        ],
+        [
+          "view_template",
+          "delft3dworker",
+          "template"
+        ]
+      ]
     },
     "model": "auth.group",
     "pk": 43

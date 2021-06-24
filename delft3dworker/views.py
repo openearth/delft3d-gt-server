@@ -82,7 +82,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
         django_filters.rest_framework.DjangoFilterBackend,
         filters.SearchFilter,
         filters.OrderingFilter,
-        guardian_filter.DjangoObjectPermissionsFilter,
+        # guardian_filter.ObjectPermissionsFilter,
     )
     permission_classes = (
         permissions.IsAuthenticated,
@@ -124,6 +124,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
             assign_perm("change_scenario", self.request.user, instance)
             assign_perm("delete_scenario", self.request.user, instance)
             assign_perm("view_scenario", self.request.user, instance)
+            assign_perm("restricted_view_scenario", self.request.user, instance)
 
             instance.save()
 
@@ -170,7 +171,7 @@ class SceneViewSet(viewsets.ModelViewSet):
         django_filters.rest_framework.DjangoFilterBackend,
         filters.SearchFilter,
         filters.OrderingFilter,
-        guardian_filter.DjangoObjectPermissionsFilter,
+        # guardian_filter.DjangoObjectPermissionsFilter,
     )
     # Default order by name, so runs don't jump around
     ordering = ("id",)
