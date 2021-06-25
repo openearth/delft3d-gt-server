@@ -165,6 +165,7 @@ class SceneTestCase(TestCase):
         self.user_c = User.objects.create_user(username="C")
 
         company_w = Group.objects.create(name="access:world")
+        company_wr = Group.objects.create(name="access:world_restricted")
         for user in [self.user_a, self.user_b, self.user_c]:
             company_w.user_set.add(user)
             for perm in ["view_scene", "add_scene", "change_scene", "delete_scene"]:

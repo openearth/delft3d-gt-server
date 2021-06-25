@@ -33,13 +33,12 @@ def files(request, simulation_uuid, loc):
         simulation_uuid, loc
     )
 
-
-    # Restricted user is allowed to view png images
-    if request.user.has_perm("restricted_view_scene", scene) and loc_extension == '.png':
+    # All users are allowed to view png images
+    if request.user.has_perm("view_scene", scene) and loc_extension == ".png":
         return response
 
-    # User with view permissions is allowed to view all files
-    if request.user.has_perm("view_scene", scene):
+    # User with extended view permissions is allowed to view all files
+    if request.user.has_perm("extended_view_scene", scene):
         return response
 
     # Else return 403
@@ -85,16 +84,17 @@ def thredds(request, folder, simulation_uuid, loc):
                         request.user = user
 
     # return 403 if not allowed
-    if not request.user.has_perm("view_scene", scene):
+    if request.user.has_perm("extended_view_scene", scene):
+
+        # redirect to nginx thredds
+        response = HttpResponse()
+        response["X-Accel-Redirect"] = (
+            "/protected_thredds/{0}/files/{1}/{2}?{3}"
+        ).format(folder, simulation_uuid, loc, request.META.get("QUERY_STRING", ""))
+        return response
+
+    else:
         return HttpResponse(status=403)
-
-    # redirect to nginx thredds
-    response = HttpResponse()
-    response["X-Accel-Redirect"] = ("/protected_thredds/{0}/files/{1}/{2}?{3}").format(
-        folder, simulation_uuid, loc, request.META.get("QUERY_STRING", "")
-    )
-
-    return response
 
 
 def thredds_static(request, loc):

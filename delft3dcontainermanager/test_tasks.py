@@ -165,5 +165,5 @@ class TaskTest(TestCase):
         wf_id = "id"
         do_argo_remove.delay(wf_id)
         mockClient.CustomObjectsApi().delete_namespaced_custom_object.assert_called_with(
-            "argoproj.io", "v1alpha1", "default", "workflows", wf_id, {}
+            "argoproj.io", "v1alpha1", "default", "workflows", wf_id
         )

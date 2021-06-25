@@ -17,7 +17,10 @@ class MyDeltaresOnlyOIDC(OIDCAuthenticationBackend):
         user.save()
 
         # Give user restricted view rights by default
-        world_restricted = Group.objects.get(name="access:world_restricted")
-        world_restricted.user_set.add(user)
+        world_restricted = Group.objects.filter(name="access:world_restricted").first()
+        if world_restricted is not None:
+            world_restricted.user_set.add(user)
+        else:
+            logging.warning("No restricted world group available!")
 
         return user

@@ -28,21 +28,20 @@ class ProctectedServicesTestCase(TestCase):
         )
 
         # Add permissions to foo user
-        assign_perm("restricted_view_scene", self.user_foo, self.scene)
+        assign_perm("extended_view_scene", self.user_foo, self.scene)
         assign_perm("view_scene", self.user_foo, self.scene)
-        
+
         # create Scene instance and assign permission for user bar
         self.scene2 = Scene.objects.create(
             suid="8bfdf64a-dc3f-4f48-9bf6-507c2b4e4bd9",
             name="Test workflow 2",
             owner=self.user_bar,
             shared="w",
-            phase=Scene.phases.fin
+            phase=Scene.phases.fin,
         )
 
         # Add permissions to bar user
-        assign_perm("restricted_view_scene", self.user_bar, self.scene2)
-
+        assign_perm("view_scene", self.user_bar, self.scene2)
 
     def test_files(self):
         # login as foo
@@ -61,17 +60,15 @@ class ProctectedServicesTestCase(TestCase):
 
     def test_files_restricted_view(self):
         # login as bar
-        self.client.login(username='bar', password='secret')
+        self.client.login(username="bar", password="secret")
 
         # In restricted view it is only allowed to view png images
-        loc1 = 'test'
-        loc2 = 'test/image.png'
+        loc1 = "test"
+        loc2 = "test/image.png"
 
-        simulation_uuid = '8bfdf64a-dc3f-4f48-9bf6-507c2b4e4bd9'
-        response1 = self.client.get("/files/{0}/{1}".format(
-        simulation_uuid, loc1))
-        response2 = self.client.get("/files/{0}/{1}".format(
-        simulation_uuid, loc2))
+        simulation_uuid = "8bfdf64a-dc3f-4f48-9bf6-507c2b4e4bd9"
+        response1 = self.client.get("/files/{0}/{1}".format(simulation_uuid, loc1))
+        response2 = self.client.get("/files/{0}/{1}".format(simulation_uuid, loc2))
 
         self.assertEqual(response1.status_code, 403)
         self.assertEqual(response2.status_code, 200)

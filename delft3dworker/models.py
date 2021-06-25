@@ -339,7 +339,7 @@ class Scene(models.Model):
 
     class Meta:
         permissions = [
-            ("extended_view_scene", "Can view scene without actions."),
+            ("extended_view_scene", "Can view scene with actions."),
         ]
 
     # UI CONTROL METHODS
@@ -486,8 +486,11 @@ class Scene(models.Model):
         assign_perm("view_scene", world, self)
         assign_perm("extended_view_scene", world, self)
 
-        restricted_world = Group.objects.get(name="access:world_restricted")
-        assign_perm("extended_view_scene", restricted_world, self)
+        restricted_world = Group.objects.filter(name="access:world_restricted").first()
+        if restricted_world is not None:
+            assign_perm("view_scene", restricted_world, self)
+        else:
+            logging.warning("No restricted world group available!")
 
         # update scene
         self.shared = "w"
