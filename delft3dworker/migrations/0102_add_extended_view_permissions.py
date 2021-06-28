@@ -1,4 +1,5 @@
 from django.db import migrations
+from django.contrib.auth.models import Group
 from guardian.shortcuts import (
     assign_perm,
     get_groups_with_perms,
@@ -6,29 +7,13 @@ from guardian.shortcuts import (
     remove_perm,
 )
 
-restricted_world_permissions = [
-    "delft3dworker.view_scenario",
-    "delft3dworker.view_scene",
-    "delft3dworker.view_template",
-]
-
 
 def forwards_func(apps, schema_editor):
     Scene = apps.get_model("delft3dworker", "Scene")
-    Group = apps.get_model("auth", "Group")
-    Permission = apps.get_model("auth", "Permission")
+    # Group = apps.get_model("auth", "Group")
     db_alias = schema_editor.connection.alias
 
-    restricted_world = (
-        Group.objects.using(db_alias).filter(name="access:world_restricted").first()
-    )
-    if not restricted_world:
-        restricted_world = Group.objects.using(db_alias).create(
-            name="access:world_restricted"
-        )
-        for permission_code in restricted_world_permissions:
-            perm = Permission.objects.using(db_alias).get(codename=permission_code)
-            restricted_world.permissions.add(perm)
+    restricted_world = Group.objects.using(db_alias).get(name="access:world_restricted")
 
     for scene in Scene.objects.using(db_alias).all():
 
@@ -40,6 +25,7 @@ def forwards_func(apps, schema_editor):
             with_group_users=False,
             only_with_perms_in=("view_scene",),
         ).items():
+            print(user)
             assign_perm("extended_view_scene", user, scene)
 
         # if a group has a view permission on a scene,
@@ -48,21 +34,19 @@ def forwards_func(apps, schema_editor):
             scene, attach_perms=True
         ).items():
             if "view_scene" in permissions:
+                print(type(group), group)
                 assign_perm("extended_view_scene", group, scene)
 
             # if the world group has a view permission
             # we also add view to the restricted world group
-            if (
-                restricted_world is not None
-                and "view_scene" in permissions
-                and group.name == "access:world"
-            ):
+            if "view_scene" in permissions and group.name == "access:world":
+                print(type(group), group)
+                print(type(restricted_world), restricted_world)
                 assign_perm("view_scene", restricted_world, scene)
 
 
 def reverse_func(apps, schema_editor):
     Scene = apps.get_model("delft3dworker", "Scene")
-    Group = apps.get_model("auth", "Group")
     db_alias = schema_editor.connection.alias
 
     for scene in Scene.objects.using(db_alias).all():
@@ -83,13 +67,11 @@ def reverse_func(apps, schema_editor):
             if "view_scene" in permissions and group.name == "access:world_restricted":
                 remove_perm("view_scene", group, scene)
 
-    Group.objects.using(db_alias).filter(name="access:world_restricted").delete()
-
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("delft3dworker", "0100_alter_scene_options"),
+        ("delft3dworker", "0101_add_restricted_group"),
     ]
 
     operations = [
