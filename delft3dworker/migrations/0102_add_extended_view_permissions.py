@@ -10,7 +10,6 @@ from guardian.shortcuts import (
 
 def forwards_func(apps, schema_editor):
     Scene = apps.get_model("delft3dworker", "Scene")
-    # Group = apps.get_model("auth", "Group")
     db_alias = schema_editor.connection.alias
 
     restricted_world = Group.objects.using(db_alias).get(name="access:world_restricted")
@@ -25,7 +24,6 @@ def forwards_func(apps, schema_editor):
             with_group_users=False,
             only_with_perms_in=("view_scene",),
         ).items():
-            print(user)
             assign_perm("extended_view_scene", user, scene)
 
         # if a group has a view permission on a scene,
@@ -34,14 +32,11 @@ def forwards_func(apps, schema_editor):
             scene, attach_perms=True
         ).items():
             if "view_scene" in permissions:
-                print(type(group), group)
                 assign_perm("extended_view_scene", group, scene)
 
             # if the world group has a view permission
             # we also add view to the restricted world group
             if "view_scene" in permissions and group.name == "access:world":
-                print(type(group), group)
-                print(type(restricted_world), restricted_world)
                 assign_perm("view_scene", restricted_world, scene)
 
 
