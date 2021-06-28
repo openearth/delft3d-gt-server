@@ -6,10 +6,17 @@ from guardian.shortcuts import (
     remove_perm,
 )
 
+restricted_world_permissions = [
+    "delft3dworker.view_scenario",
+    "delft3dworker.view_scene",
+    "delft3dworker.view_template",
+]
+
 
 def forwards_func(apps, schema_editor):
     Scene = apps.get_model("delft3dworker", "Scene")
     Group = apps.get_model("auth", "Group")
+    Permission = apps.get_model("auth", "Permission")
     db_alias = schema_editor.connection.alias
 
     restricted_world = (
@@ -19,6 +26,9 @@ def forwards_func(apps, schema_editor):
         restricted_world = Group.objects.using(db_alias).create(
             name="access:world_restricted"
         )
+        for permission_code in restricted_world_permissions:
+            perm = Permission.objects.using(db_alias).get(codename=permission_code)
+            restricted_world.permissions.add(perm)
 
     for scene in Scene.objects.using(db_alias).all():
 
