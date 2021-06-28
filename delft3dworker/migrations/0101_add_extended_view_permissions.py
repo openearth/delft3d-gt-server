@@ -15,6 +15,10 @@ def forwards_func(apps, schema_editor):
     restricted_world = (
         Group.objects.using(db_alias).filter(name="access:world_restricted").first()
     )
+    if not restricted_world:
+        restricted_world = Group.objects.using(db_alias).create(
+            name="access:world_restricted"
+        )
 
     for scene in Scene.objects.using(db_alias).all():
 
@@ -48,6 +52,7 @@ def forwards_func(apps, schema_editor):
 
 def reverse_func(apps, schema_editor):
     Scene = apps.get_model("delft3dworker", "Scene")
+    Group = apps.get_model("auth", "Group")
     db_alias = schema_editor.connection.alias
 
     for scene in Scene.objects.using(db_alias).all():
@@ -67,6 +72,8 @@ def reverse_func(apps, schema_editor):
 
             if "view_scene" in permissions and group.name == "access:world_restricted":
                 remove_perm("view_scene", group, scene)
+
+    Group.objects.using(db_alias).filter(name="access:world_restricted").delete()
 
 
 class Migration(migrations.Migration):
