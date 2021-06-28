@@ -171,10 +171,17 @@ class SceneTestCase(APITestCase):
         self.user_foo = User.objects.create_user(username="foo", password="secret")
         self.user_bar = User.objects.create_user(username="bar", password="secret")
         for user in [self.user_foo, self.user_bar]:
-            for perm in ["view_scene", "add_scene", "change_scene", "delete_scene"]:
+            for perm in [
+                "extended_view_scene",
+                "view_scene",
+                "add_scene",
+                "change_scene",
+                "delete_scene",
+            ]:
                 user.user_permissions.add(Permission.objects.get(codename=perm))
 
         groups_world = Group.objects.create(name="access:world")
+        groups_world_restricted = Group.objects.create(name="access:world_restricted")
         groups_world.user_set.add(self.user_foo)
         groups_world.user_set.add(self.user_bar)
 
@@ -197,7 +204,13 @@ class SceneTestCase(APITestCase):
         self.workflow_1 = Workflow.objects.create(scene=self.scene_1, name="workflow 1")
         self.workflow_2 = Workflow.objects.create(scene=self.scene_2, name="workflow 2")
 
-        for perm in ["view_scene", "add_scene", "change_scene", "delete_scene"]:
+        for perm in [
+            "extended_view_scene",
+            "view_scene",
+            "add_scene",
+            "change_scene",
+            "delete_scene",
+        ]:
             assign_perm(perm, self.user_foo, self.scene_1)
             assign_perm(perm, self.user_foo, self.scene_2)
 

@@ -9,6 +9,30 @@
   },
   {
     "fields": {
+      "name": "access:world_restricted",
+      "permissions": [
+        [
+          "view_scenario",
+          "delft3dworker",
+          "scenario"
+        ],
+        [
+          "view_scene",
+          "delft3dworker",
+          "scene"
+        ],
+        [
+          "view_template",
+          "delft3dworker",
+          "template"
+        ]
+      ]
+    },
+    "model": "auth.group",
+    "pk": 43
+  },
+  {
+    "fields": {
       "name": "access:org:Pho_Company",
       "permissions": [
         [
@@ -133,7 +157,8 @@
         ]
       ],
       "user_permissions": [],
-      "password": "pbkdf2_sha256$20000$kZFpcrsFBITM$xNaUkbk4sqHbYyAMkCBBdybjhTWkX2BoLT2MBqGSZps=",      "email": "pho@bar.com",
+      "password": "pbkdf2_sha256$20000$kZFpcrsFBITM$xNaUkbk4sqHbYyAMkCBBdybjhTWkX2BoLT2MBqGSZps=",
+      "email": "pho@bar.com",
       "date_joined": "2016-01-01T12:00:00Z"
     },
     "model": "auth.user",

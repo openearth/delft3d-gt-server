@@ -23,6 +23,7 @@ router.register(
 # url patterns
 
 urlpatterns = (
+    url(r"^oidc/", include("mozilla_django_oidc.urls")),
     # REST Framework
     url(r"^api/v1/", include(router.urls)),
     url(r"^api-auth/", include("rest_framework.urls", namespace="rest_framework")),

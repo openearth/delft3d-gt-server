@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import base64
+import os
 from uuid import UUID
 
 from django.contrib.auth import authenticate, login
@@ -24,9 +25,7 @@ def files(request, simulation_uuid, loc):
     # get scene or 404
     scene = get_object_or_404(Scene, suid=uuid)
 
-    # return 403 if not allowed
-    if not request.user.has_perm("view_scene", scene):
-        return HttpResponse(status=403)
+    loc_path, loc_extension = os.path.splitext(loc)
 
     # redirect to nginx protected files
     response = HttpResponse()
@@ -34,7 +33,17 @@ def files(request, simulation_uuid, loc):
         simulation_uuid, loc
     )
 
-    return response
+    # All users are allowed to view png images
+    if request.user.has_perm("view_scene", scene) and loc_extension == ".png":
+        return response
+
+    # User with extended view permissions is allowed to view all files
+    if request.user.has_perm("extended_view_scene", scene):
+        return response
+
+    # Else return 403
+    else:
+        return HttpResponse(status=403)
 
 
 @login_required
@@ -75,16 +84,17 @@ def thredds(request, folder, simulation_uuid, loc):
                         request.user = user
 
     # return 403 if not allowed
-    if not request.user.has_perm("view_scene", scene):
+    if request.user.has_perm("extended_view_scene", scene):
+
+        # redirect to nginx thredds
+        response = HttpResponse()
+        response["X-Accel-Redirect"] = (
+            "/protected_thredds/{0}/files/{1}/{2}?{3}"
+        ).format(folder, simulation_uuid, loc, request.META.get("QUERY_STRING", ""))
+        return response
+
+    else:
         return HttpResponse(status=403)
-
-    # redirect to nginx thredds
-    response = HttpResponse()
-    response["X-Accel-Redirect"] = ("/protected_thredds/{0}/files/{1}/{2}?{3}").format(
-        folder, simulation_uuid, loc, request.META.get("QUERY_STRING", "")
-    )
-
-    return response
 
 
 def thredds_static(request, loc):

@@ -23,7 +23,7 @@ from rest_framework.response import Response
 from rest_framework_guardian import filters as guardian_filter
 
 from delft3dworker.models import Scenario, Scene, SearchForm, Template, Version_Docker
-from delft3dworker.permissions import RedoScenePermission, ViewObjectPermissions
+from delft3dworker.permissions import ExtendedScenePermission, ViewObjectPermissions
 from delft3dworker.serializers import (
     GroupSerializer,
     ScenarioSerializer,
@@ -82,7 +82,7 @@ class ScenarioViewSet(viewsets.ModelViewSet):
         django_filters.rest_framework.DjangoFilterBackend,
         filters.SearchFilter,
         filters.OrderingFilter,
-        guardian_filter.DjangoObjectPermissionsFilter,
+        guardian_filter.ObjectPermissionsFilter,
     )
     permission_classes = (
         permissions.IsAuthenticated,
@@ -401,7 +401,7 @@ class SceneViewSet(viewsets.ModelViewSet):
     @action(
         methods=["put"],
         detail=True,
-        permission_classes=[permissions.IsAuthenticated, RedoScenePermission],
+        permission_classes=[permissions.IsAuthenticated, ExtendedScenePermission],
     )
     def redo(self, request, pk=None):
         # Update and redo the mode, based on a specific entrypoint
@@ -484,7 +484,11 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return Response({"status": "Published scenes to world"})
 
-    @action(methods=["get"], detail=True)
+    @action(
+        methods=["get"],
+        detail=True,
+        permission_classes=[permissions.IsAuthenticated, ExtendedScenePermission],
+    )
     def export(self, request, pk=None):
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
@@ -525,7 +529,11 @@ class SceneViewSet(viewsets.ModelViewSet):
 
         return resp
 
-    @action(methods=["get"], detail=False)
+    @action(
+        methods=["get"],
+        detail=False,
+        permission_classes=[permissions.IsAuthenticated, ExtendedScenePermission],
+    )
     def export_all(self, request):
         # Alternatives to this implementation are:
         # - django-zip-view (sets mimetype and content-disposition)
@@ -542,8 +550,17 @@ class SceneViewSet(viewsets.ModelViewSet):
             )
 
         queryset = get_objects_for_user(
-            self.request.user, "delft3dworker.view_scene", accept_global_perms=False
+            self.request.user,
+            "delft3dworker.extended_view_scene",
+            accept_global_perms=False,
         ).filter(suid__in=request.query_params.getlist("suid", []))
+        if len(queryset) == 0:
+            return Response(
+                {
+                    "status": "Either no scenes were requested or you don't have permission to view any."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # The zip compressor
         # Open BytesIO to grab in-memory ZIP contents
@@ -624,7 +641,12 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = get_object_or_404(User, id=self.request.user.id)
-        wanted = [group.name for group in user.groups.exclude(name="access:world")]
+        wanted = [
+            group.name
+            for group in user.groups.exclude(name="access:world").exclude(
+                name="access:world_restricted"
+            )
+        ]
         queryset = User.objects.filter(groups__name__in=wanted)
         return queryset
 

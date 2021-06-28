@@ -9,8 +9,8 @@ import os
 import shutil
 import uuid
 from os.path import join
-
 import yaml
+
 from celery.result import AsyncResult
 from django.conf import settings  # noqa
 from django.contrib.auth.models import Group, User
@@ -26,7 +26,6 @@ from guardian.shortcuts import (
     remove_perm,
 )
 from model_utils import Choices
-
 from delft3dcontainermanager.tasks import (
     do_argo_create,
     do_argo_remove,
@@ -178,6 +177,7 @@ class Scenario(models.Model):
                 assign_perm("change_scene", self.owner, scene)
                 assign_perm("delete_scene", self.owner, scene)
                 assign_perm("view_scene", self.owner, scene)
+                assign_perm("extended_view_scene", self.owner, scene)
 
         self.save()
 
@@ -337,6 +337,11 @@ class Scene(models.Model):
 
     phase = models.PositiveSmallIntegerField(default=phases.new, choices=phases)
 
+    class Meta:
+        permissions = [
+            ("extended_view_scene", "Can view scene with actions."),
+        ]
+
     # UI CONTROL METHODS
 
     def reset(self):
@@ -458,6 +463,7 @@ class Scene(models.Model):
         ]
         for group in groups:
             assign_perm("view_scene", group, self)
+            assign_perm("extended_view_scene", group, self)
 
         # update scene
         self.shared = "c"
@@ -474,8 +480,17 @@ class Scene(models.Model):
         # Set permissions for groups
         for group in get_groups_with_perms(self):
             remove_perm("view_scene", group, self)
+            remove_perm("extended_view_scene", group, self)
+
         world = Group.objects.get(name="access:world")
         assign_perm("view_scene", world, self)
+        assign_perm("extended_view_scene", world, self)
+
+        restricted_world = Group.objects.filter(name="access:world_restricted").first()
+        if restricted_world is not None:
+            assign_perm("view_scene", restricted_world, self)
+        else:
+            logging.warning("No restricted world group available!")
 
         # update scene
         self.shared = "w"
