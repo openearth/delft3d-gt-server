@@ -1,4 +1,5 @@
 from django.db import migrations
+from django.contrib.auth.models import Group
 from guardian.shortcuts import (
     assign_perm,
     get_groups_with_perms,
@@ -9,12 +10,9 @@ from guardian.shortcuts import (
 
 def forwards_func(apps, schema_editor):
     Scene = apps.get_model("delft3dworker", "Scene")
-    Group = apps.get_model("auth", "Group")
     db_alias = schema_editor.connection.alias
 
-    restricted_world = (
-        Group.objects.using(db_alias).filter(name="access:world_restricted").first()
-    )
+    restricted_world = Group.objects.using(db_alias).get(name="access:world_restricted")
 
     for scene in Scene.objects.using(db_alias).all():
 
@@ -38,11 +36,7 @@ def forwards_func(apps, schema_editor):
 
             # if the world group has a view permission
             # we also add view to the restricted world group
-            if (
-                restricted_world is not None
-                and "view_scene" in permissions
-                and group.name == "access:world"
-            ):
+            if "view_scene" in permissions and group.name == "access:world":
                 assign_perm("view_scene", restricted_world, scene)
 
 
@@ -72,7 +66,7 @@ def reverse_func(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("delft3dworker", "0100_alter_scene_options"),
+        ("delft3dworker", "0101_add_restricted_group"),
     ]
 
     operations = [
