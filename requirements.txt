@@ -13,5 +13,4 @@ djangorestframework==3.12.*
 djangorestframework-guardian==0.3.*
 flower==0.9.*
 mozilla-django-oidc==1.2.4
-psycopg2==2.9.*
 psycopg2-binary==2.9.*
