@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import sys
 from datetime import timedelta
+from ddtrace import config
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,7 +42,6 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
     "rest_framework",
     "django_filters",
-    "crispy_forms",
     "guardian",
     "constance",
     "constance.backends.database",
@@ -53,10 +53,9 @@ INSTALLED_APPS = [
     "delft3dgtprotectedservices",
 ]
 
-DATADOG_TRACE = {
-    "DEFAULT_SERVICE": "delft3dgtmain",
-    "DEFAULT_DATABASE_PREFIX": "delft3dgtmain",
-}
+
+config.django["service_name"] = "delft3dgtmain"
+config.django["database_service_name_prefix"] = "delft3dgtmain"
 
 CONSTANCE_CONFIG = {
     "MAX_SIMULATIONS": (2, "Max simulations that can run in Amazon."),

@@ -35,8 +35,6 @@ Now you can do:
 pip install -r requirements.txt
 ./manage.py collectstatic
 ./manage.py migrate
-./manage.py migrate guardian
-./manage.py migrate
 ./manage.py loaddata delft3dgtmain/fixtures/default_users_groups.json
 ./manage.py loaddata delft3dworker/fixtures/default_template.json
 ```
