@@ -1,17 +1,14 @@
 # contains celery, celery_once, django, docker-py and redis
 -r worker_requirements.txt
 
-configparser==5.0.*
-django-constance[database]==2.6.*
-django-filter==2.4.*
-django-admin-rangefilter==0.8.*
-django-crispy-forms==1.12.*
-django-jsonfield==1.4.*
-django-guardian==2.4.*
-django-model-utils==4.1.*
-djangorestframework==3.12.*
-djangorestframework-guardian==0.3.*
-flower==0.9.*
-mozilla-django-oidc==1.2.4
-psycopg2==2.9.*
+django-constance[database]==2.9.*
+django-filter==22.1
+django-admin-rangefilter==0.9.*
+django-jsonfield==1.4.*  # only for migrations
+django-guardian==2.4.*  # 1 year ago, no Django 4 support
+django-model-utils==4.2.*
+djangorestframework==3.14.*
+djangorestframework-guardian==0.3.*  # 3 years ago
+flower==0.9.*  # because of celery 4.4
+mozilla-django-oidc==2.0.*
 psycopg2-binary==2.9.*
