@@ -2,5 +2,5 @@ celery==4.4.*  # stuck because of once
 celery-once==3.0.*  # 3 years ago
 ddtrace==1.5.*
 Django==3.2.*  # LTS
-kubernetes==20.13.*  # can go to 24.2
+kubernetes==23.*  # match cluster 1.23
 redis[hiredis]==4.3.*
