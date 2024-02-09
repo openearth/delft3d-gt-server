@@ -1,5 +1,5 @@
-from django.db import migrations
 from django.contrib.auth.models import Group
+from django.db import migrations
 from guardian.shortcuts import (
     assign_perm,
     get_groups_with_perms,
@@ -15,7 +15,6 @@ def forwards_func(apps, schema_editor):
     restricted_world = Group.objects.using(db_alias).get(name="access:world_restricted")
 
     for scene in Scene.objects.using(db_alias).all():
-
         # if a user has view permission on a scene,
         # the user also has a extended_view
         for user, _ in get_users_with_perms(
@@ -64,7 +63,6 @@ def reverse_func(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("delft3dworker", "0101_add_restricted_group"),
     ]

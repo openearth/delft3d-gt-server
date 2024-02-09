@@ -6,7 +6,6 @@ from uuid import UUID
 
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 
@@ -15,7 +14,6 @@ from delft3dworker.models import Scene
 
 @login_required
 def files(request, simulation_uuid, loc):
-
     # try UUID or 404
     try:
         uuid = UUID(simulation_uuid)
@@ -48,7 +46,6 @@ def files(request, simulation_uuid, loc):
 
 @login_required
 def thredds_catalog(request):
-
     if not request.user.is_superuser:
         return HttpResponse(status=403)
 
@@ -60,7 +57,6 @@ def thredds_catalog(request):
 
 
 def thredds(request, folder, simulation_uuid, loc):
-
     # try UUID or 404
     try:
         uuid = UUID(simulation_uuid)
@@ -85,7 +81,6 @@ def thredds(request, folder, simulation_uuid, loc):
 
     # return 403 if not allowed
     if request.user.has_perm("extended_view_scene", scene):
-
         # redirect to nginx thredds
         response = HttpResponse()
         response["X-Accel-Redirect"] = (
@@ -98,7 +93,6 @@ def thredds(request, folder, simulation_uuid, loc):
 
 
 def thredds_static(request, loc):
-
     # Check for basic auth info and log user in
     if "authorization" in request.headers:
         auth = request.headers["authorization"].split()

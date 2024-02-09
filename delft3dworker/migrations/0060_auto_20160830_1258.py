@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("delft3dworker", "0059_merge"),
     ]
@@ -17,7 +16,9 @@ class Migration(migrations.Migration):
             model_name="container",
             name="task_starttime",
             field=models.DateTimeField(
-                default=datetime.datetime(2016, 8, 30, 12, 58, 18, 702032, tzinfo=datetime.timezone.utc),
+                default=datetime.datetime(
+                    2016, 8, 30, 12, 58, 18, 702032, tzinfo=datetime.timezone.utc
+                ),
                 blank=True,
             ),
         ),

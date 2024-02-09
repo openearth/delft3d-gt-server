@@ -1,13 +1,10 @@
 from __future__ import absolute_import
 
-import logging
 from json import dumps
-from shutil import rmtree
 
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from celery_once import QueueOnce
-from django.conf import settings
 from django.core.management import call_command
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException

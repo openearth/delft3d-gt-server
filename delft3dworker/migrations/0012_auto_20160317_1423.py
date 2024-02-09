@@ -2,11 +2,10 @@
 from __future__ import unicode_literals
 
 import jsonfield.fields
-from django.db import migrations, models
+from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("delft3dworker", "0011_auto_20160317_1116"),
     ]

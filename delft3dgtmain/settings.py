@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import sys
 from datetime import timedelta
+
 from ddtrace import config
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -198,7 +199,7 @@ REST_FRAMEWORK = {
 
 # import provisioned settings
 try:
-    from .provisionedsettings import *
+    from .provisionedsettings import *  # noqa
 except ImportError:
     print("Failed to import provisioned settings!")
     SECRET_KEY = "test"

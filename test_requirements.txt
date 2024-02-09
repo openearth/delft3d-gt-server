@@ -4,3 +4,6 @@
 fakeredis==2.21.*
 coverage
 mock
+ruff==0.2.*
+
+

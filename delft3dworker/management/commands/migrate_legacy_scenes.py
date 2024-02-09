@@ -25,13 +25,11 @@ class Command(BaseCommand):
     help = "Scan for old Scenes and update them to the new ET architecture."
 
     def handle(self, *args, **options):
-
         # STEP I : Find scenes without a workflow
         legacy_scenes = Scene.objects.filter(workflow=None)
 
         # STEP II : Call local scan
         for scene in legacy_scenes:
-
             if scene.scenario.first() is None:
                 logging.warning("Scene {} has no scenario!".format(scene.id))
                 continue

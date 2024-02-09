@@ -9,7 +9,6 @@ import delft3dworker.utils
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("delft3dworker", "0086_auto_20170425_0852"),
     ]

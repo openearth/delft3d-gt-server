@@ -38,7 +38,6 @@ def reverse_func(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("delft3dworker", "0100_alter_scene_options"),
     ]

@@ -1,8 +1,6 @@
 from __future__ import absolute_import
 
 from django.conf import settings  # noqa
-from django.urls import path
-from django.urls import re_path  # noqa
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import (
     LoginView,
@@ -12,15 +10,15 @@ from django.contrib.auth.views import (
     PasswordResetDoneView,
     PasswordResetView,
 )
+from django.urls import re_path  # noqa
+from django.urls import path
 from django.views.static import serve
 
 urlpatterns = (
     # Login
     path("login/", LoginView.as_view(template_name="login.html"), name="login"),
     # Logout
-    path(
-        "logout/", LogoutView.as_view(template_name="login.html"), name="logout"
-    ),
+    path("logout/", LogoutView.as_view(template_name="login.html"), name="logout"),
     # Password Reset
     path(
         "forgot/",

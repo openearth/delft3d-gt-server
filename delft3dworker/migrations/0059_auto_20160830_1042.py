@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("delft3dworker", "0058_container_task_starttime"),
     ]
@@ -17,7 +16,9 @@ class Migration(migrations.Migration):
             model_name="container",
             name="container_starttime",
             field=models.DateTimeField(
-                default=datetime.datetime(2016, 8, 30, 10, 42, 12, 820124, tzinfo=datetime.timezone.utc),
+                default=datetime.datetime(
+                    2016, 8, 30, 10, 42, 12, 820124, tzinfo=datetime.timezone.utc
+                ),
                 blank=True,
             ),
         ),
@@ -25,7 +26,9 @@ class Migration(migrations.Migration):
             model_name="container",
             name="container_stoptime",
             field=models.DateTimeField(
-                default=datetime.datetime(2016, 8, 30, 10, 42, 12, 820153, tzinfo=datetime.timezone.utc),
+                default=datetime.datetime(
+                    2016, 8, 30, 10, 42, 12, 820153, tzinfo=datetime.timezone.utc
+                ),
                 blank=True,
             ),
         ),
@@ -33,7 +36,9 @@ class Migration(migrations.Migration):
             model_name="container",
             name="task_starttime",
             field=models.DateTimeField(
-                default=datetime.datetime(2016, 8, 30, 10, 42, 12, 820170, tzinfo=datetime.timezone.utc),
+                default=datetime.datetime(
+                    2016, 8, 30, 10, 42, 12, 820170, tzinfo=datetime.timezone.utc
+                ),
                 blank=True,
             ),
         ),

@@ -6,7 +6,7 @@ from io import StringIO
 from django.core.management import call_command
 from django.test import TestCase
 from fakeredis import FakeStrictRedis
-from mock import PropertyMock, call, patch
+from mock import call, patch
 
 from delft3dworker.models import Scenario, Scene, Template, Workflow
 
@@ -97,7 +97,7 @@ class ManagementTest(TestCase):
                     {
                         "metadata": {
                             "name": "test-template-abcdefg",
-                            "labels": {u"workflows.argoproj.io/phase": "Running"},
+                            "labels": {"workflows.argoproj.io/phase": "Running"},
                         }
                     }
                 ),

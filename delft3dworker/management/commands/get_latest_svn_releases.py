@@ -14,7 +14,6 @@ class Command(BaseCommand):
     VERSION_SVN models based on the available tags."""
 
     def handle(self, *args, **options):
-
         # Handle svn credentials
         user = os.environ.get("SVN_USER")
         password = os.environ.get("SVN_PASS")
