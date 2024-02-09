@@ -71,8 +71,8 @@ def thredds(request, folder, simulation_uuid, loc):
     scene = get_object_or_404(Scene, suid=uuid)
 
     # Check for basic auth info and log user in
-    if "HTTP_AUTHORIZATION" in request.META:
-        auth = request.META["HTTP_AUTHORIZATION"].split()
+    if "authorization" in request.headers:
+        auth = request.headers["authorization"].split()
         if len(auth) == 2:
             if auth[0].lower() == "basic":
                 decoded_auth = base64.b64decode(auth[1])
@@ -100,8 +100,8 @@ def thredds(request, folder, simulation_uuid, loc):
 def thredds_static(request, loc):
 
     # Check for basic auth info and log user in
-    if "HTTP_AUTHORIZATION" in request.META:
-        auth = request.META["HTTP_AUTHORIZATION"].split()
+    if "authorization" in request.headers:
+        auth = request.headers["authorization"].split()
         if len(auth) == 2:
             if auth[0].lower() == "basic":
                 uname, passwd = base64.b64decode(auth[1]).split(":")

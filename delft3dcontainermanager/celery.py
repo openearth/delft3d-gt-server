@@ -1,10 +1,5 @@
-from __future__ import absolute_import, print_function
-
 import os
 
-from ddtrace import patch_all
-
-patch_all()
 from celery import Celery
 from django.conf import settings  # noqa
 

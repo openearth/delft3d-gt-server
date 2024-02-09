@@ -123,7 +123,6 @@ TIME_ZONE = "UTC"
 
 USE_I18N = True
 
-USE_L10N = True
 
 USE_TZ = True
 
@@ -222,7 +221,6 @@ TEMPLATES = [
 
 # TESTING
 if "test" in sys.argv:
-
     import logging
 
     from .celery import Celery
@@ -232,7 +230,7 @@ if "test" in sys.argv:
     if "TRAVIS" in os.environ:
         DATABASES = {
             "default": {
-                "ENGINE": "django.db.backends.postgresql_psycopg2",
+                "ENGINE": "django.db.backends.postgresql",
                 "NAME": "travis_ci_test",
                 "USER": "postgres",
                 "HOST": "localhost",

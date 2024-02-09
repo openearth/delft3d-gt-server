@@ -12,7 +12,6 @@ from django.core.management import call_command
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from requests.exceptions import HTTPError
-from six.moves import configparser
 
 logger = get_task_logger(__name__)
 
@@ -131,6 +130,6 @@ def do_argo_remove(self, workflow_id):
     crd = client.CustomObjectsApi(client_api)
     status = crd.delete_namespaced_custom_object(
         "argoproj.io", "v1alpha1", "default", "workflows", workflow_id
-        )
+    )
 
     return {"do_argo_remove": status}
