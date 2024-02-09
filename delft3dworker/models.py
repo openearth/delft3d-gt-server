@@ -17,6 +17,8 @@ from django.contrib.auth.models import Group, User
 from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models import JSONField
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.text import slugify
 from django.utils.timezone import now
 from guardian.shortcuts import (
@@ -90,26 +92,6 @@ class Version_Docker(models.Model):
 
     def __str__(self):
         return "Release {} at revision {}".format(self.release, self.revision)
-
-
-def parse_argo_workflow(instance, filename):
-    # If new worklow is uploaded, define a version
-
-    # Load yaml and derive defaults
-    template = yaml.load(instance.yaml_template.read(), Loader=yaml.FullLoader)
-    defaults = derive_defaults_from_argo(template)
-
-    # Create version based on defaults
-    version = Version_Docker(
-        release="Default for {}".format(filename),
-        versions=defaults,
-        changelog="default release based on template",
-        template=instance,
-    )
-    version.save()
-
-    # Otherwise just return the filepath
-    return join("workflow_templates", filename)
 
 
 class Scenario(models.Model):
@@ -724,7 +706,7 @@ class Template(models.Model):
     sections = JSONFieldTransition(blank=True, default=dict)
     visualisation = JSONFieldTransition(blank=True, default=dict)
     export_options = JSONFieldTransition(blank=True, default=dict)
-    yaml_template = models.FileField(upload_to=parse_argo_workflow, default="")
+    yaml_template = models.FileField(upload_to="workflow_templates", default="")
 
     # The following method is disabled as it adds to much garbage
     # to the MAIN search template
@@ -748,6 +730,24 @@ class Template(models.Model):
             self.shortname = self.name.replace(" ", "-").lower()
 
         super(Template, self).save(*args, **kwargs)
+
+
+@receiver(post_save, sender=Template)
+def parse_argo_workflow(sender, instance, created, **kwargs):
+    # If new worklow is uploaded, define a version
+
+    # Load yaml and derive defaults
+    template = yaml.load(instance.yaml_template.read(), Loader=yaml.FullLoader)
+    defaults = derive_defaults_from_argo(template)
+
+    # Create version based on defaults
+    version = Version_Docker(
+        release="Default for {}".format(instance.name),
+        versions=defaults,
+        changelog="default release based on template",
+        template=instance,
+    )
+    version.save()
 
 
 class Workflow(models.Model):
