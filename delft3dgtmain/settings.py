@@ -228,7 +228,7 @@ if "test" in sys.argv:
 
     logging.disable(logging.CRITICAL)
 
-    if "TRAVIS" in os.environ:
+    if "CI" in os.environ:
         DATABASES = {
             "default": {
                 "ENGINE": "django.db.backends.postgresql",
