@@ -228,7 +228,19 @@ if "test" in sys.argv:
 
     logging.disable(logging.CRITICAL)
 
-    DATABASES["default"].update({"NAME": "djangodb_test"})
+    if "CI" in os.environ:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql_psycopg2",
+                "NAME": "djangodb_test",
+                "USER": "postgres",
+                "PASSWORD": "postgres",
+                "HOST": "localhost",
+                "PORT": "5432",
+            }
+        }
+    else:
+        DATABASES["default"].update({"NAME": "djangodb_test"})
 
     PASSWORD_HASHERS = [
         "django.contrib.auth.hashers.MD5PasswordHasher",
