@@ -671,7 +671,7 @@ class SceneSearchTestCase(TestCase):
         # Partial matches from beginning of line
         search_query_partial_a = {"search": "Te"}
         search_query_partial_b = {"search": "Tes"}
-        search_query_partial_c = {"search": "SUCC"}
+        search_query_partial_c = {"search": "T"}
 
         self.assertEqual(len(self._request(search_query_partial_a)), 2)
         self.assertEqual(len(self._request(search_query_partial_b)), 2)

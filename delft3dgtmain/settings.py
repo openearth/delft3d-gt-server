@@ -228,18 +228,7 @@ if "test" in sys.argv:
 
     logging.disable(logging.CRITICAL)
 
-    if "CI" in os.environ:
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.postgresql",
-                "NAME": "travis_ci_test",
-                "USER": "postgres",
-                "HOST": "localhost",
-                "PORT": "5432",
-            }
-        }
-    else:
-        DATABASES["default"].update({"NAME": "djangodb_test"})
+    DATABASES["default"].update({"NAME": "djangodb_test"})
 
     PASSWORD_HASHERS = [
         "django.contrib.auth.hashers.MD5PasswordHasher",
