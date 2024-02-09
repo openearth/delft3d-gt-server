@@ -129,7 +129,6 @@ USE_TZ = True
 
 # Login
 LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/"
 
 # Max form size for large scenarios with logs
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB
@@ -228,19 +227,16 @@ if "test" in sys.argv:
 
     logging.disable(logging.CRITICAL)
 
-    if "CI" in os.environ:
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.postgresql_psycopg2",
-                "NAME": "djangodb_test",
-                "USER": "postgres",
-                "PASSWORD": "postgres",
-                "HOST": "localhost",
-                "PORT": "5432",
-            }
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql_psycopg2",
+            "NAME": "djangodb_test",
+            "USER": "postgres",
+            "PASSWORD": "postgres",
+            "HOST": "localhost",
+            "PORT": "5432",
         }
-    else:
-        DATABASES["default"].update({"NAME": "djangodb_test"})
+    }
 
     PASSWORD_HASHERS = [
         "django.contrib.auth.hashers.MD5PasswordHasher",
@@ -300,3 +296,14 @@ if "test" in sys.argv:
 
     # Docker URL this setting is from the delf3dcontainermanger app
     DOCKER_URL = "unix:///var/run/docker.sock"
+
+    # OIDC
+    OIDC_RP_CLIENT_ID = ""
+    OIDC_RP_CLIENT_SECRET = ""
+    OIDC_RP_SIGN_ALGO = ""
+    OIDC_OP_AUTHORIZATION_ENDPOINT = ""
+    OIDC_OP_TOKEN_ENDPOINT = ""
+    OIDC_OP_USER_ENDPOINT = ""
+    OIDC_OP_JWKS_ENDPOINT = ""
+    LOGIN_REDIRECT_URL = "/"
+    LOGOUT_REDIRECT_URL = "/"
