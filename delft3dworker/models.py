@@ -733,21 +733,25 @@ class Template(models.Model):
 
 
 @receiver(post_save, sender=Template)
-def parse_argo_workflow(sender, instance, created, **kwargs):
+def parse_argo_workflow(sender, instance, created, raw, using, update_fields, **kwargs):
     # If new worklow is uploaded, define a version
+    if raw is True:
+        return
 
     # Load yaml and derive defaults
     template = yaml.load(instance.yaml_template.read(), Loader=yaml.FullLoader)
     defaults = derive_defaults_from_argo(template)
 
-    # Create version based on defaults
-    version = Version_Docker(
-        release="Default for {}".format(instance.name),
-        versions=defaults,
-        changelog="default release based on template",
-        template=instance,
-    )
-    version.save()
+    # Create version based on defaults if different from current
+    current = instance.versions.first()
+    if current is None or (current is not None and current.versions != defaults):
+        version = Version_Docker(
+            release="Default for {}".format(instance.name),
+            versions=defaults,
+            changelog="default release based on template",
+            template=instance,
+        )
+        version.save()
 
 
 class Workflow(models.Model):
