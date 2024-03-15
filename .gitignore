@@ -72,3 +72,6 @@ target/
 
 # Idea editors
 .idea
+static/
+workflows/
+workflow_templates/

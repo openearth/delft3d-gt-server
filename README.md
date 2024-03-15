@@ -10,7 +10,7 @@ Delft3D Geological Tool web application server
 ## Install
 Make sure to have postgres 12 container up and running:
 ```bash
-docker run -e "POSTGRES_DB=djangodb" -e "POSTGRES_HOST_AUTH_METHOD=trust" -e "POSTGRES_USER=django" postgres:12
+docker run -e "POSTGRES_DB=djangodb_test" -e "POSTGRES_HOST_AUTH_METHOD=trust" -e "POSTGRES_USER=postgres" -p5432:5432 postgres:12
 ```
 
 Install delft3d-gt-ui next to this repo and do

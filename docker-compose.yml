@@ -1,0 +1,51 @@
+version: "3.9"
+services:
+  django:
+    build: .
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      bash -c "python manage.py migrate && python manage.py loaddata delft3dgtmain/fixtures/default_users_groups.json && python manage.py loaddata delft3dworker/fixtures/default_template.json && python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+  celery:
+    build: .
+    volumes:
+      - .:/app
+    command: celery multi start 2 -A delft3dcontainermanager -Q:1 {{ node1 }} -Q:2 {{ node2 }} -c2 -l INFO -Ofair
+    depends_on:
+      - redis
+      - db
+  celerybeat:
+    build: .
+    volumes:
+      - .:/app
+    command: celery worker --app=delft3dgtmain -Q beat --beat -l INFO
+    depends_on:
+      - redis
+      - db
+  flower:
+    build: .
+    volumes:
+      - .:/app
+    command: celery --app=delft3dcontainermanager flower
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+  db:
+    image: postgres:12
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 1s
+      timeout: 5s
+      retries: 5

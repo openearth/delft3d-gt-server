@@ -1,401 +1,1982 @@
 [
-  {
-    "fields": {
-      "templates": [
-        {
-          "name": "River dominated delta",
-          "id": 53
-        }
-      ],
-      "sections": [
-        {
-          "variables": [
-            {
-              "units": "days",
-              "type": "numeric",
-              "id": "simstoptime",
-              "name": "Stop time",
-              "validators": {
-                "max": 200,
-                "min": 1
-              }
-            },
-            {
-              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
-              "validators": {
-                "max": 2,
-                "min": 0.5
-              },
-              "units": "days",
-              "type": "numeric",
-              "id": "outputinterval",
-              "name": "Output timestep"
-            }
-          ],
-          "name": "Simulation settings"
-        },
-        {
-          "variables": [
-            {
-              "name": "Basin slope",
-              "validators": {
-                "max": 0.3,
-                "min": 0.01
-              },
-              "factor": true,
-              "units": "deg",
-              "type": "numeric",
-              "id": "basinslope"
-            },
-            {
-              "name": "River width",
-              "validators": {
-                "max": 1000,
-                "min": 100
-              },
-              "factor": true,
-              "units": "m",
-              "type": "numeric",
-              "id": "riverwidth"
-            }
-          ],
-          "name": "Geometry"
-        },
-        {
-          "variables": [
-            {
-              "name": "River discharge",
-              "validators": {
-                "max": 2000,
-                "min": 0
-              },
-              "factor": true,
-              "units": "m³/s",
-              "type": "numeric",
-              "id": "riverdischarge"
-            },
-            {
-              "name": "Tidal amplitude",
-              "validators": {
-                "max": 2,
-                "min": 0
-              },
-              "factor": true,
-              "units": "m",
-              "type": "numeric",
-              "id": "tidalamplitude"
-            },
-            {
-              "name": "Wave height",
-              "validators": {
-                "max": 2,
-                "min": 0
-              },
-              "factor": true,
-              "units": "m",
-              "type": "numeric",
-              "id": "waveheight",
-              "description": "Please note: for model stability, a wave height larger than 1 meter will double(!) the required simulation time."
-            },
-            {
-              "name": "Base level change",
-              "validators": {
-                "max": 10.0,
-                "min": -10.0
-              },
-              "factor": true,
-              "units": "%",
-              "type": "numeric",
-              "id": "baselevel",
-              "description": "This is a percentage of the level change produced by the basin slope.<br><br>Click on the button below to see a table with the absolute values."
-            }
-          ],
-          "name": "Forcing"
-        },
-        {
-          "variables": [
-            {
-              "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
-              "id": "composition",
-              "validators": {},
-              "type": "select",
-              "options": [
+    {
+        "fields": {
+            "templates": [
                 {
-                  "text": "coarse sand",
-                  "value": "coarse-sand"
-                },
-                {
-                  "text": "medium sand",
-                  "value": "medium-sand"
-                },
-                {
-                  "text": "fine sand",
-                  "value": "fine-sand"
-                },
-                {
-                  "text": "very fine sand",
-                  "value": "veryfine-sand"
-                },
-                {
-                  "text": "coarse silt",
-                  "value": "coarse-silt"
+                    "name": "River dominated delta (deprecated)",
+                    "id": 53
                 }
-              ],
-              "name": "Sediment classes"
-            }
-          ],
-          "name": "Sediment composition",
-          "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
-        }
-      ],
-      "name": "MAIN"
-    },
-    "model": "delft3dworker.searchform",
-    "pk": 1
-  },
-  {
-    "fields": {
-      "meta": {
-        "description": "A template for a river dominated basin fill scenario.",
-        "creator": "Liang.Li@tudelft.nl"
-      },
-      "sections": [
-        {
-          "variables": [
-            {
-              "default": "River dominated basin fill",
-              "type": "text",
-              "id": "name",
-              "name": "Name",
-              "validators": {
-                "required": true
-              }
-            }
-          ],
-          "name": "Scenario"
-        },
-        {
-          "variables": [
-            {
-              "name": "Stop time",
-              "default": 160,
-              "validators": {
-                "max": 160,
-                "required": true,
-                "min": 2
-              },
-              "units": "days",
-              "type": "numeric",
-              "id": "simstoptime"
-            },
-            {
-              "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
-              "default": 1,
-              "validators": {
-                "max": 2,
-                "required": true,
-                "min": 0.5
-              },
-              "units": "days",
-              "type": "numeric",
-              "id": "outputinterval",
-              "name": "Output timestep"
-            }
-          ],
-          "name": "Simulation settings"
-        },
-        {
-          "variables": [
-            {
-              "name": "Basin slope",
-              "default": 0.1,
-              "validators": {
-                "max": 0.3,
-                "required": true,
-                "min": 0.01
-              },
-              "factor": true,
-              "units": "deg",
-              "type": "numeric",
-              "id": "basinslope"
-            },
-            {
-              "name": "River width",
-              "default": 500,
-              "validators": {
-                "max": 1000,
-                "required": true,
-                "min": 100
-              },
-              "factor": true,
-              "units": "m",
-              "type": "numeric",
-              "id": "riverwidth"
-            }
-          ],
-          "name": "Geometry"
-        },
-        {
-          "variables": [
-            {
-              "name": "River discharge",
-              "default": 1000,
-              "validators": {
-                "max": 2000,
-                "required": true,
-                "min": 0
-              },
-              "factor": true,
-              "units": "m\u00b3/s",
-              "type": "numeric",
-              "id": "riverdischarge"
-            },
-            {
-              "name": "Tidal amplitude",
-              "default": 1,
-              "validators": {
-                "max": 3,
-                "required": true,
-                "min": 0
-              },
-              "factor": true,
-              "units": "m",
-              "type": "numeric",
-              "id": "tidalamplitude"
-            },
-            {
-              "name": "Wave height",
-              "default": 0.0,
-              "validators": {
-                "max": 2,
-                "required": true,
-                "min": 0
-              },
-              "factor": true,
-              "units": "m",
-              "type": "numeric",
-              "id": "waveheight",
-              "description": "Please note: for model stability, a wave height larger than 1 meter will double(!) the required simulation time."
-            },
-            {
-              "name": "Base level change",
-              "default": 0,
-              "validators": {
-                "max": 80.0,
-                "required": true,
-                "min": -80.0
-              },
-              "factor": true,
-              "units": "%",
-              "type": "numeric",
-              "id": "baselevel",
-              "description": "This is a percentage of the level change produced by the basin slope.<br><br>Click on the button below to see a table with the absolute values."
-            }
-          ],
-          "name": "Forcing"
-        },
-        {
-          "variables": [
-            {
-              "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
-              "default": "fine-sand",
-              "id": "composition",
-              "validators": {
-                "required": true
-              },
-              "type": "select",
-              "options": [
+            ],
+            "sections": [
                 {
-                  "text": "coarse sand",
-                  "value": "coarse-sand"
+                    "variables": [
+                        {
+                            "units": "days",
+                            "type": "numeric",
+                            "id": "simstoptime",
+                            "name": "Stop time",
+                            "validators": {
+                                "max": 200,
+                                "min": 1
+                            }
+                        },
+                        {
+                            "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+                            "validators": {
+                                "max": 2,
+                                "min": 0.5
+                            },
+                            "units": "days",
+                            "type": "numeric",
+                            "id": "outputinterval",
+                            "name": "Output timestep"
+                        }
+                    ],
+                    "name": "Simulation settings"
                 },
                 {
-                  "text": "medium sand",
-                  "value": "medium-sand"
+                    "variables": [
+                        {
+                            "name": "Basin slope",
+                            "validators": {
+                                "max": 0.3,
+                                "min": 0.01
+                            },
+                            "factor": true,
+                            "units": "deg",
+                            "type": "numeric",
+                            "id": "basinslope"
+                        },
+                        {
+                            "name": "River width",
+                            "validators": {
+                                "max": 1000,
+                                "min": 100
+                            },
+                            "factor": true,
+                            "units": "m",
+                            "type": "numeric",
+                            "id": "riverwidth"
+                        }
+                    ],
+                    "name": "Geometry"
                 },
                 {
-                  "text": "fine sand",
-                  "value": "fine-sand"
+                    "variables": [
+                        {
+                            "name": "River discharge",
+                            "validators": {
+                                "max": 2000,
+                                "min": 0
+                            },
+                            "factor": true,
+                            "units": "m³/s",
+                            "type": "numeric",
+                            "id": "riverdischarge"
+                        },
+                        {
+                            "name": "Tidal amplitude",
+                            "validators": {
+                                "max": 2,
+                                "min": 0
+                            },
+                            "factor": true,
+                            "units": "m",
+                            "type": "numeric",
+                            "id": "tidalamplitude"
+                        },
+                        {
+                            "name": "Wave height",
+                            "validators": {
+                                "max": 2,
+                                "min": 0
+                            },
+                            "factor": true,
+                            "units": "m",
+                            "type": "numeric",
+                            "id": "waveheight",
+                            "description": "Please note: for model stability, a wave height larger than 1 meter will double(!) the required simulation time."
+                        },
+                        {
+                            "name": "Base level change",
+                            "validators": {
+                                "max": 10.0,
+                                "min": -10.0
+                            },
+                            "factor": true,
+                            "units": "%",
+                            "type": "numeric",
+                            "id": "baselevel",
+                            "description": "This is a percentage of the level change produced by the basin slope.<br><br>Click on the button below to see a table with the absolute values."
+                        }
+                    ],
+                    "name": "Forcing"
                 },
                 {
-                  "text": "very fine sand",
-                  "value": "veryfine-sand"
-                },
-                {
-                  "text": "coarse silt",
-                  "value": "coarse-silt"
+                    "variables": [
+                        {
+                            "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
+                            "id": "composition",
+                            "validators": {},
+                            "type": "select",
+                            "options": [
+                                {
+                                    "text": "coarse sand",
+                                    "value": "coarse-sand"
+                                },
+                                {
+                                    "text": "medium sand",
+                                    "value": "medium-sand"
+                                },
+                                {
+                                    "text": "fine sand",
+                                    "value": "fine-sand"
+                                },
+                                {
+                                    "text": "very fine sand",
+                                    "value": "veryfine-sand"
+                                },
+                                {
+                                    "text": "coarse silt",
+                                    "value": "coarse-silt"
+                                }
+                            ],
+                            "name": "Sediment classes"
+                        }
+                    ],
+                    "name": "Sediment composition",
+                    "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
                 }
-              ],
-              "name": "Sediment classes"
-            }
-          ],
-          "name": "Sediment composition",
-          "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
-        }
-      ],
-      "name": "River dominated delta",
-      "shortname": "gt",
-      "yaml_template": "workflow_templates/delft3dgt-main.yaml",
-      "info": {
-        "delta_fringe_images": {
-            "filetype": "images",
-            "extensions": [".png", ".jpg", ".gif"],
-            "files": [],
-            "location": "process/"
+            ],
+            "name": "MAIN"
         },
-        "channel_network_images": {
-            "filetype": "images",
-            "extensions": [".png", ".jpg", ".gif"],
-            "files": [],
-            "location": "process/"
-        },
-        "sediment_fraction_images": {
-            "filetype": "images",
-            "extensions": [".png", ".jpg", ".gif"],
-            "files": [],
-            "location": "process/"
-        },
-        "subenvironment_images": {
-            "filetype": "images",
-            "extensions": [".png", ".jpg", ".gif"],
-            "files": [],
-            "location": "postprocess/"
-        },
-        "logfile": {
-            "filetype": "log",
-            "extensions": [".log"],
-            "files": [],
-            "location": "simulation/"
-        },
-        "postprocess_output": {
-            "filetype": "json",
-            "extensions": [".json"],
-            "files": {},
-            "location": "postprocess/"
-        }
-      },
-      "export_options": {
-          "export_d3dinput": {
-              "extensions": [".bcc", ".bch", ".bct", ".bnd", ".dep", ".enc",
-                             ".fil", ".grd", ".ini", ".mdf", ".mdw", ".mor",
-                             ".obs", ".sed", ".sh", ".url", ".xml", ".tr1",
-                             ".tr2", ".tr3", ".tr4", ".tr5"],
-              "location": "simulation"
-          },
-          "export_images": {
-              "extensions": [".png", ".jpg", ".gif"]
-          },
-          "export_movie": {
-              "extensions": [".mp4"]
-          },
-          "export_thirdparty": {
-              "extensions": [".gz"],
-              "location": "export"
-          }
-      }
+        "model": "delft3dworker.searchform",
+        "pk": 1
     },
-    "model": "delft3dworker.template",
-    "pk": 53
-  }
+    {
+        "fields": {
+            "meta": {
+                "description": "A template for a river dominated basin fill scenario. Note this template is deprecated. Use the new template instead.",
+                "creator": "Liang.Li@tudelft.nl"
+            },
+            "sections": [
+                {
+                    "variables": [
+                        {
+                            "default": "River dominated basin fill (deprecated)",
+                            "type": "text",
+                            "id": "name",
+                            "name": "Name",
+                            "validators": {
+                                "required": true
+                            }
+                        }
+                    ],
+                    "name": "Scenario"
+                },
+                {
+                    "variables": [
+                        {
+                            "name": "Stop time",
+                            "default": 160,
+                            "validators": {
+                                "max": 160,
+                                "required": true,
+                                "min": 2
+                            },
+                            "units": "days",
+                            "type": "numeric",
+                            "id": "simstoptime"
+                        },
+                        {
+                            "description": "Output can be stored at certain intervals. The output that is written includes the map files (2D, 3D grids), point output and profile output.",
+                            "default": 1,
+                            "validators": {
+                                "max": 2,
+                                "required": true,
+                                "min": 0.5
+                            },
+                            "units": "days",
+                            "type": "numeric",
+                            "id": "outputinterval",
+                            "name": "Output timestep"
+                        }
+                    ],
+                    "name": "Simulation settings"
+                },
+                {
+                    "variables": [
+                        {
+                            "name": "Basin slope",
+                            "default": 0.1,
+                            "validators": {
+                                "max": 0.3,
+                                "required": true,
+                                "min": 0.01
+                            },
+                            "factor": true,
+                            "units": "deg",
+                            "type": "numeric",
+                            "id": "basinslope"
+                        },
+                        {
+                            "name": "River width",
+                            "default": 500,
+                            "validators": {
+                                "max": 1000,
+                                "required": true,
+                                "min": 100
+                            },
+                            "factor": true,
+                            "units": "m",
+                            "type": "numeric",
+                            "id": "riverwidth"
+                        }
+                    ],
+                    "name": "Geometry"
+                },
+                {
+                    "variables": [
+                        {
+                            "name": "River discharge",
+                            "default": 1000,
+                            "validators": {
+                                "max": 2000,
+                                "required": true,
+                                "min": 0
+                            },
+                            "factor": true,
+                            "units": "m\u00b3/s",
+                            "type": "numeric",
+                            "id": "riverdischarge"
+                        },
+                        {
+                            "name": "Tidal amplitude",
+                            "default": 1,
+                            "validators": {
+                                "max": 3,
+                                "required": true,
+                                "min": 0
+                            },
+                            "factor": true,
+                            "units": "m",
+                            "type": "numeric",
+                            "id": "tidalamplitude"
+                        },
+                        {
+                            "name": "Wave height",
+                            "default": 0.0,
+                            "validators": {
+                                "max": 2,
+                                "required": true,
+                                "min": 0
+                            },
+                            "factor": true,
+                            "units": "m",
+                            "type": "numeric",
+                            "id": "waveheight",
+                            "description": "Please note: for model stability, a wave height larger than 1 meter will double(!) the required simulation time."
+                        },
+                        {
+                            "name": "Base level change",
+                            "default": 0,
+                            "validators": {
+                                "max": 80.0,
+                                "required": true,
+                                "min": -80.0
+                            },
+                            "factor": true,
+                            "units": "%",
+                            "type": "numeric",
+                            "id": "baselevel",
+                            "description": "This is a percentage of the level change produced by the basin slope.<br><br>Click on the button below to see a table with the absolute values."
+                        }
+                    ],
+                    "name": "Forcing"
+                },
+                {
+                    "variables": [
+                        {
+                            "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
+                            "default": "fine-sand",
+                            "id": "composition",
+                            "validators": {
+                                "required": true
+                            },
+                            "type": "select",
+                            "options": [
+                                {
+                                    "text": "coarse sand",
+                                    "value": "coarse-sand"
+                                },
+                                {
+                                    "text": "medium sand",
+                                    "value": "medium-sand"
+                                },
+                                {
+                                    "text": "fine sand",
+                                    "value": "fine-sand"
+                                },
+                                {
+                                    "text": "very fine sand",
+                                    "value": "veryfine-sand"
+                                },
+                                {
+                                    "text": "coarse silt",
+                                    "value": "coarse-silt"
+                                }
+                            ],
+                            "name": "Sediment classes"
+                        }
+                    ],
+                    "name": "Sediment composition",
+                    "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+                }
+            ],
+            "name": "River dominated delta (deprecated)",
+            "shortname": "gt",
+            "yaml_template": "workflow_templates/delft3dgt-main.yaml",
+            "info": {
+                "delta_fringe_images": {
+                    "filetype": "images",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ],
+                    "files": [],
+                    "location": "process/"
+                },
+                "channel_network_images": {
+                    "filetype": "images",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ],
+                    "files": [],
+                    "location": "process/"
+                },
+                "sediment_fraction_images": {
+                    "filetype": "images",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ],
+                    "files": [],
+                    "location": "process/"
+                },
+                "subenvironment_images": {
+                    "filetype": "images",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ],
+                    "files": [],
+                    "location": "postprocess/"
+                },
+                "logfile": {
+                    "filetype": "log",
+                    "extensions": [
+                        ".log"
+                    ],
+                    "files": [],
+                    "location": "simulation/"
+                },
+                "postprocess_output": {
+                    "filetype": "json",
+                    "extensions": [
+                        ".json"
+                    ],
+                    "files": {},
+                    "location": "postprocess/"
+                }
+            },
+            "export_options": {
+                "export_d3dinput": {
+                    "extensions": [
+                        ".bcc",
+                        ".bch",
+                        ".bct",
+                        ".bnd",
+                        ".dep",
+                        ".enc",
+                        ".fil",
+                        ".grd",
+                        ".ini",
+                        ".mdf",
+                        ".mdw",
+                        ".mor",
+                        ".obs",
+                        ".sed",
+                        ".sh",
+                        ".url",
+                        ".xml",
+                        ".tr1",
+                        ".tr2",
+                        ".tr3",
+                        ".tr4",
+                        ".tr5"
+                    ],
+                    "location": "simulation"
+                },
+                "export_images": {
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "export_movie": {
+                    "extensions": [
+                        ".mp4"
+                    ]
+                },
+                "export_thirdparty": {
+                    "extensions": [
+                        ".gz"
+                    ],
+                    "location": "export"
+                }
+            }
+        },
+        "model": "delft3dworker.template",
+        "pk": 53
+    },
+    {
+        "model": "delft3dworker.template",
+        "pk": 57,
+        "fields": {
+            "name": "River dominated delta",
+            "shortname": "river",
+            "meta": {
+                "description": "Template for a generic river dominated delta system. Has a straight coastline and a slightly v-shaped initial river valley that is 5 km long. Uses the Engelund-Hansen (1967) sediment transport formulation for non-cohesive sediment and the formulation by Partheniades (1965) for cohesive sediment."
+            },
+            "info": {
+                "logfile": {
+                    "files": [],
+                    "filetype": "log",
+                    "location": "simulation/",
+                    "extensions": [
+                        ".log"
+                    ]
+                },
+                "postprocess_output": {
+                    "files": {},
+                    "filetype": "json",
+                    "location": "postprocess/",
+                    "extensions": [
+                        ".json"
+                    ]
+                },
+                "delta_fringe_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "subenvironment_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "postprocess/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "channel_network_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "sediment_fraction_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                }
+            },
+            "sections": [
+                {
+                    "name": "Scenario",
+                    "variables": [
+                        {
+                            "id": "name",
+                            "name": "Name",
+                            "type": "text",
+                            "default": "River dominated basin fill",
+                            "validators": {
+                                "required": true
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Simulation settings",
+                    "variables": [
+                        {
+                            "id": "simstoptime",
+                            "name": "Simulation time",
+                            "type": "numeric",
+                            "units": "days",
+                            "default": 160,
+                            "validators": {
+                                "max": 320.5,
+                                "min": 80,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the total hydronamic simulation time of a model run."
+                        },
+                        {
+                            "id": "outputinterval",
+                            "name": "Output interval",
+                            "type": "numeric",
+                            "units": "days",
+                            "default": 1,
+                            "validators": {
+                                "required": true,
+                                "allowedValues": [
+                                    0,
+                                    1
+                                ]
+                            },
+                            "description": "This is the output interval used for the map output (2D and 3D), observation point output and the profile output."
+                        }
+                    ]
+                },
+                {
+                    "name": "Geometry",
+                    "variables": [
+                        {
+                            "id": "basinslope",
+                            "name": "Basin slope",
+                            "type": "numeric",
+                            "units": "deg",
+                            "factor": true,
+                            "default": 0.1,
+                            "validators": {
+                                "max": 0.3,
+                                "min": 0.01,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the bed level slope between the coastline and the offshore model boundary."
+                        },
+                        {
+                            "id": "channelwidth",
+                            "name": "Channel width",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 500,
+                            "validators": {
+                                "required": true,
+                                "allowedValues": [
+                                    500,
+                                    1000,
+                                    1500
+                                ]
+                            },
+                            "description": "This is the width of the river channel excluding the floodplains (not availalbe for the Roda and Sobrarbe templates)."
+                        },
+                        {
+                            "id": "riverlength",
+                            "name": "River length",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 100,
+                            "validators": {
+                                "max": 1000,
+                                "min": 100,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the number of cells between the landward model boundary and the coastline. This parameter is only for the use of the preprocessing scripts but is not editable."
+                        }
+                    ]
+                },
+                {
+                    "name": "Forcing",
+                    "variables": [
+                        {
+                            "id": "riverdischargeinit",
+                            "name": "Initial river discharge per channel",
+                            "type": "numeric",
+                            "units": "m³/s",
+                            "factor": true,
+                            "default": 1000,
+                            "validators": {
+                                "max": 2000,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the initial river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+                        },
+                        {
+                            "id": "riverdischargefin",
+                            "name": "Final river discharge per channel",
+                            "type": "numeric",
+                            "units": "m³/s",
+                            "factor": true,
+                            "default": 1000,
+                            "validators": {
+                                "max": 2000,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the final river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+                        },
+                        {
+                            "id": "tidalamplitude",
+                            "name": "Tidal amplitude",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 3,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the tidal amplitude at the offshore model boundary."
+                        },
+                        {
+                            "id": "waveheightini",
+                            "name": "Initial significant wave height",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 2,
+                                "min": 0.11,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the initial significant wave height applied to the model. If this value coincides with the value chosen for the final significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "waveheightfin",
+                            "name": "Final significant wave height",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 2,
+                                "min": 0.11,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "wavedirection",
+                            "name": "Mean wave direction [-45°, +45° relative to North]",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 45,
+                                "min": -45,
+                                "required": true,
+                                "showInName": false
+                            },
+                            "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "subsidenceland",
+                            "name": "Subsidencse between landward model boundary and coastline",
+                            "type": "numeric",
+                            "units": "%",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 15,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the amount by which the bed level at the landward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+                        },
+                        {
+                            "id": "subsidencesea",
+                            "name": "Subsidencse at seaward model boundary",
+                            "type": "numeric",
+                            "units": "%",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 15,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the landward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+                        }
+                    ]
+                },
+                {
+                    "name": "Sediment composition",
+                    "variables": [
+                        {
+                            "id": "composition",
+                            "name": "Sediment classes",
+                            "type": "select",
+                            "default": "fine-sand",
+                            "options": [
+                                {
+                                    "text": "coarse sand",
+                                    "value": "coarse-sand"
+                                },
+                                {
+                                    "text": "medium sand",
+                                    "value": "medium-sand"
+                                },
+                                {
+                                    "text": "fine sand",
+                                    "value": "fine-sand"
+                                },
+                                {
+                                    "text": "very fine sand",
+                                    "value": "veryfine-sand"
+                                },
+                                {
+                                    "text": "coarse silt",
+                                    "value": "coarse-silt"
+                                }
+                            ],
+                            "validators": {
+                                "required": true
+                            },
+                            "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+                        }
+                    ],
+                    "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+                }
+            ],
+            "visualisation": {},
+            "export_options": {
+                "export_movie": {
+                    "extensions": [
+                        ".mp4"
+                    ]
+                },
+                "export_images": {
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "export_d3dinput": {
+                    "location": "simulation",
+                    "extensions": [
+                        ".bcc",
+                        ".bch",
+                        ".bct",
+                        ".bnd",
+                        ".dep",
+                        ".enc",
+                        ".fil",
+                        ".grd",
+                        ".ini",
+                        ".mdf",
+                        ".mdw",
+                        ".mor",
+                        ".obs",
+                        ".sed",
+                        ".sh",
+                        ".url",
+                        ".xml",
+                        ".tr1",
+                        ".tr2",
+                        ".tr3",
+                        ".tr4",
+                        ".tr5"
+                    ]
+                },
+                "export_thirdparty": {
+                    "location": "export",
+                    "extensions": [
+                        ".gz"
+                    ]
+                }
+            },
+            "yaml_template": "workflow_templates/delft3dgt-main.yaml"
+        }
+    },
+    {
+        "model": "delft3dworker.template",
+        "pk": 54,
+        "fields": {
+            "name": "Sobrarbre",
+            "shortname": "sobrarbre",
+            "meta": {
+                "description": "Template for the Sobrarbe formation and comparable deltaic systems. Has a straight coastline and a 1 km long river valley. The river valley is subdivided into four channels that are separated from each other by cone-shaped non-erodible obstacles, reflecting a wide braided floodplain entering a sedimentary basin. Uses the van Rijn (1993) sediment transport formulation for non-cohesive sediment and the formulation by Partheniades (1965) for cohesive sediment.."
+            },
+            "info": {
+                "logfile": {
+                    "files": [],
+                    "filetype": "log",
+                    "location": "simulation/",
+                    "extensions": [
+                        ".log"
+                    ]
+                },
+                "postprocess_output": {
+                    "files": {},
+                    "filetype": "json",
+                    "location": "postprocess/",
+                    "extensions": [
+                        ".json"
+                    ]
+                },
+                "delta_fringe_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "subenvironment_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "postprocess/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "channel_network_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "sediment_fraction_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                }
+            },
+            "sections": [
+                {
+                    "name": "Scenario",
+                    "variables": [
+                        {
+                            "id": "name",
+                            "name": "Name",
+                            "type": "text",
+                            "default": "River dominated basin fill",
+                            "validators": {
+                                "required": true
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Simulation settings",
+                    "variables": [
+                        {
+                            "id": "simstoptime",
+                            "name": "Simulation time",
+                            "type": "numeric",
+                            "units": "days",
+                            "default": 160,
+                            "validators": {
+                                "max": 320.5,
+                                "min": 80,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the total hydronamic simulation time of a model run."
+                        },
+                        {
+                            "id": "outputinterval",
+                            "name": "Output interval",
+                            "type": "numeric",
+                            "units": "days",
+                            "default": 1,
+                            "validators": {
+                                "required": true,
+                                "allowedValues": [
+                                    0,
+                                    1
+                                ]
+                            },
+                            "description": "This is the output interval used for the map output (2D and 3D), observation point output and the profile output."
+                        }
+                    ]
+                },
+                {
+                    "name": "Geometry",
+                    "variables": [
+                        {
+                            "id": "basinslope",
+                            "name": "Basin slope",
+                            "type": "numeric",
+                            "units": "deg",
+                            "factor": true,
+                            "default": 0.1,
+                            "validators": {
+                                "max": 0.3,
+                                "min": 0.01,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the bed level slope between the coastline and the offshore model boundary."
+                        },
+                        {
+                            "id": "channelwidth",
+                            "name": "Channel width",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 500,
+                            "disabled": true,
+                            "validators": {
+                                "required": true,
+                                "allowedValues": [
+                                    500,
+                                    1000,
+                                    1500
+                                ]
+                            },
+                            "description": "This is the width of the river channel excluding the floodplains (not availalbe for the Roda and Sobrarbe templates)."
+                        },
+                        {
+                            "id": "riverlength",
+                            "name": "River length",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 100,
+                            "validators": {
+                                "max": 1000,
+                                "min": 100,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the number of cells between the landward model boundary and the coastline. This parameter is only for the use of the preprocessing scripts but is not editable."
+                        }
+                    ]
+                },
+                {
+                    "name": "Forcing",
+                    "variables": [
+                        {
+                            "id": "riverdischargeinit",
+                            "name": "Initial river discharge per channel",
+                            "type": "numeric",
+                            "units": "m³/s",
+                            "factor": true,
+                            "default": 1000,
+                            "validators": {
+                                "max": 2000,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the initial river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+                        },
+                        {
+                            "id": "riverdischargefin",
+                            "name": "Final river discharge per channel",
+                            "type": "numeric",
+                            "units": "m³/s",
+                            "factor": true,
+                            "default": 1000,
+                            "validators": {
+                                "max": 2000,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the final river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+                        },
+                        {
+                            "id": "tidalamplitude",
+                            "name": "Tidal amplitude",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 3,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the tidal amplitude at the offshore model boundary."
+                        },
+                        {
+                            "id": "waveheightini",
+                            "name": "Initial significant wave height",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 2,
+                                "min": 0.11,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the initial significant wave height applied to the model. If this value coincides with the value chosen for the final significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "waveheightfin",
+                            "name": "Final significant wave height",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 2,
+                                "min": 0.11,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "wavedirection",
+                            "name": "Mean wave direction [-45°, +45° relative to North]",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 45,
+                                "min": -45,
+                                "required": true,
+                                "showInName": false
+                            },
+                            "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "subsidenceland",
+                            "name": "Subsidencse between landward model boundary and coastline",
+                            "type": "numeric",
+                            "units": "%",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 15,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the amount by which the bed level at the landward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+                        },
+                        {
+                            "id": "subsidencesea",
+                            "name": "Subsidencse at seaward model boundary",
+                            "type": "numeric",
+                            "units": "%",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 15,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the landward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+                        }
+                    ]
+                },
+                {
+                    "name": "Sediment composition",
+                    "variables": [
+                        {
+                            "id": "composition",
+                            "name": "Sediment classes",
+                            "type": "select",
+                            "default": "fine-sand",
+                            "options": [
+                                {
+                                    "text": "coarse sand",
+                                    "value": "coarse-sand"
+                                },
+                                {
+                                    "text": "medium sand",
+                                    "value": "medium-sand"
+                                },
+                                {
+                                    "text": "fine sand",
+                                    "value": "fine-sand"
+                                },
+                                {
+                                    "text": "very fine sand",
+                                    "value": "veryfine-sand"
+                                },
+                                {
+                                    "text": "coarse silt",
+                                    "value": "coarse-silt"
+                                }
+                            ],
+                            "validators": {
+                                "required": true
+                            },
+                            "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+                        }
+                    ],
+                    "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+                }
+            ],
+            "visualisation": {},
+            "export_options": {
+                "export_movie": {
+                    "extensions": [
+                        ".mp4"
+                    ]
+                },
+                "export_images": {
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "export_d3dinput": {
+                    "location": "simulation",
+                    "extensions": [
+                        ".bcc",
+                        ".bch",
+                        ".bct",
+                        ".bnd",
+                        ".dep",
+                        ".enc",
+                        ".fil",
+                        ".grd",
+                        ".ini",
+                        ".mdf",
+                        ".mdw",
+                        ".mor",
+                        ".obs",
+                        ".sed",
+                        ".sh",
+                        ".url",
+                        ".xml",
+                        ".tr1",
+                        ".tr2",
+                        ".tr3",
+                        ".tr4",
+                        ".tr5"
+                    ]
+                },
+                "export_thirdparty": {
+                    "location": "export",
+                    "extensions": [
+                        ".gz"
+                    ]
+                }
+            },
+            "yaml_template": "workflow_templates/delft3dgt-main-2022_cMwYC1t.yaml"
+        }
+    },
+    {
+        "model": "delft3dworker.template",
+        "pk": 55,
+        "fields": {
+            "name": "Roda",
+            "shortname": "roda",
+            "meta": {
+                "description": "Template for the Roda formation and comparable deltaic systems. Has a straight but funnel-shaped coastline and a rectangular shaped initial river valley that is 5 km long and 500 m wide. Uses the van Rijn (1993) sediment transport formulation for non-cohesive sediment and the formulation by Partheniades (1965) for cohesive sediment."
+            },
+            "info": {
+                "logfile": {
+                    "files": [],
+                    "filetype": "log",
+                    "location": "simulation/",
+                    "extensions": [
+                        ".log"
+                    ]
+                },
+                "postprocess_output": {
+                    "files": {},
+                    "filetype": "json",
+                    "location": "postprocess/",
+                    "extensions": [
+                        ".json"
+                    ]
+                },
+                "delta_fringe_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "subenvironment_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "postprocess/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "channel_network_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "sediment_fraction_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                }
+            },
+            "sections": [
+                {
+                    "name": "Scenario",
+                    "variables": [
+                        {
+                            "id": "name",
+                            "name": "Name",
+                            "type": "text",
+                            "default": "River dominated basin fill",
+                            "validators": {
+                                "required": true
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Simulation settings",
+                    "variables": [
+                        {
+                            "id": "simstoptime",
+                            "name": "Simulation time",
+                            "type": "numeric",
+                            "units": "days",
+                            "default": 160,
+                            "validators": {
+                                "max": 320.5,
+                                "min": 80,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the total hydronamic simulation time of a model run."
+                        },
+                        {
+                            "id": "outputinterval",
+                            "name": "Output interval",
+                            "type": "numeric",
+                            "units": "days",
+                            "default": 1,
+                            "validators": {
+                                "required": true,
+                                "allowedValues": [
+                                    0,
+                                    1
+                                ]
+                            },
+                            "description": "This is the output interval used for the map output (2D and 3D), observation point output and the profile output."
+                        }
+                    ]
+                },
+                {
+                    "name": "Geometry",
+                    "variables": [
+                        {
+                            "id": "basinslope",
+                            "name": "Basin slope",
+                            "type": "numeric",
+                            "units": "deg",
+                            "factor": true,
+                            "default": 0.1,
+                            "validators": {
+                                "max": 0.3,
+                                "min": 0.01,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the bed level slope between the coastline and the offshore model boundary."
+                        },
+                        {
+                            "id": "channelwidth",
+                            "name": "Channel width",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 500,
+                            "disabled": true,
+                            "validators": {
+                                "required": true,
+                                "allowedValues": [
+                                    500,
+                                    1000,
+                                    1500
+                                ]
+                            },
+                            "description": "This is the width of the river channel excluding the floodplains (not availalbe for the Roda and Sobrarbe templates)."
+                        },
+                        {
+                            "id": "riverlength",
+                            "name": "River length",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 100,
+                            "validators": {
+                                "max": 1000,
+                                "min": 100,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the number of cells between the landward model boundary and the coastline. This parameter is only for the use of the preprocessing scripts but is not editable."
+                        }
+                    ]
+                },
+                {
+                    "name": "Forcing",
+                    "variables": [
+                        {
+                            "id": "riverdischargeinit",
+                            "name": "Initial river discharge per channel",
+                            "type": "numeric",
+                            "units": "m³/s",
+                            "factor": true,
+                            "default": 1000,
+                            "validators": {
+                                "max": 2000,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the initial river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+                        },
+                        {
+                            "id": "riverdischargefin",
+                            "name": "Final river discharge per channel",
+                            "type": "numeric",
+                            "units": "m³/s",
+                            "factor": true,
+                            "default": 1000,
+                            "validators": {
+                                "max": 2000,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the final river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+                        },
+                        {
+                            "id": "tidalamplitude",
+                            "name": "Tidal amplitude",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 3,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the tidal amplitude at the offshore model boundary."
+                        },
+                        {
+                            "id": "waveheightini",
+                            "name": "Initial significant wave height",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 2,
+                                "min": 0.11,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the initial significant wave height applied to the model. If this value coincides with the value chosen for the final significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "waveheightfin",
+                            "name": "Final significant wave height",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 2,
+                                "min": 0.11,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "wavedirection",
+                            "name": "Mean wave direction [-45°, +45° relative to North]",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 45,
+                                "min": -45,
+                                "required": true,
+                                "showInName": false
+                            },
+                            "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "subsidenceland",
+                            "name": "Subsidencse between landward model boundary and coastline",
+                            "type": "numeric",
+                            "units": "%",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 15,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the amount by which the bed level at the landward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+                        },
+                        {
+                            "id": "subsidencesea",
+                            "name": "Subsidencse at seaward model boundary",
+                            "type": "numeric",
+                            "units": "%",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 15,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the landward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+                        }
+                    ]
+                },
+                {
+                    "name": "Sediment composition",
+                    "variables": [
+                        {
+                            "id": "composition",
+                            "name": "Sediment classes",
+                            "type": "select",
+                            "default": "fine-sand",
+                            "options": [
+                                {
+                                    "text": "coarse sand",
+                                    "value": "coarse-sand"
+                                },
+                                {
+                                    "text": "medium sand",
+                                    "value": "medium-sand"
+                                },
+                                {
+                                    "text": "fine sand",
+                                    "value": "fine-sand"
+                                },
+                                {
+                                    "text": "very fine sand",
+                                    "value": "veryfine-sand"
+                                },
+                                {
+                                    "text": "coarse silt",
+                                    "value": "coarse-silt"
+                                }
+                            ],
+                            "validators": {
+                                "required": true
+                            },
+                            "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+                        }
+                    ],
+                    "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+                }
+            ],
+            "visualisation": {},
+            "export_options": {
+                "export_movie": {
+                    "extensions": [
+                        ".mp4"
+                    ]
+                },
+                "export_images": {
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "export_d3dinput": {
+                    "location": "simulation",
+                    "extensions": [
+                        ".bcc",
+                        ".bch",
+                        ".bct",
+                        ".bnd",
+                        ".dep",
+                        ".enc",
+                        ".fil",
+                        ".grd",
+                        ".ini",
+                        ".mdf",
+                        ".mdw",
+                        ".mor",
+                        ".obs",
+                        ".sed",
+                        ".sh",
+                        ".url",
+                        ".xml",
+                        ".tr1",
+                        ".tr2",
+                        ".tr3",
+                        ".tr4",
+                        ".tr5"
+                    ]
+                },
+                "export_thirdparty": {
+                    "location": "export",
+                    "extensions": [
+                        ".gz"
+                    ]
+                }
+            },
+            "yaml_template": "workflow_templates/delft3dgt-main-2022_CSKjxsE.yaml"
+        }
+    },
+    {
+        "model": "delft3dworker.template",
+        "pk": 56,
+        "fields": {
+            "name": "GuleHorn/Neslen",
+            "shortname": "gulehorn",
+            "meta": {
+                "description": "Template for the Gule Horn and Neslen formations and comparable deltaic systems. Has a straight coastline and a rectangular shaped initial river valley that is 5 km long. Uses the Engelund-Hansen (1967) sediment transport formulation for non-cohesive sediment and the formulation by Partheniades (1965) for cohesive sediment."
+            },
+            "info": {
+                "logfile": {
+                    "files": [],
+                    "filetype": "log",
+                    "location": "simulation/",
+                    "extensions": [
+                        ".log"
+                    ]
+                },
+                "postprocess_output": {
+                    "files": {},
+                    "filetype": "json",
+                    "location": "postprocess/",
+                    "extensions": [
+                        ".json"
+                    ]
+                },
+                "delta_fringe_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "subenvironment_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "postprocess/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "channel_network_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "sediment_fraction_images": {
+                    "files": [],
+                    "filetype": "images",
+                    "location": "process/",
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                }
+            },
+            "sections": [
+                {
+                    "name": "Scenario",
+                    "variables": [
+                        {
+                            "id": "name",
+                            "name": "Name",
+                            "type": "text",
+                            "default": "River dominated basin fill",
+                            "validators": {
+                                "required": true
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Simulation settings",
+                    "variables": [
+                        {
+                            "id": "simstoptime",
+                            "name": "Simulation time",
+                            "type": "numeric",
+                            "units": "days",
+                            "default": 160,
+                            "validators": {
+                                "max": 320.5,
+                                "min": 80,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the total hydronamic simulation time of a model run."
+                        },
+                        {
+                            "id": "outputinterval",
+                            "name": "Output interval",
+                            "type": "numeric",
+                            "units": "days",
+                            "default": 1,
+                            "validators": {
+                                "required": true,
+                                "allowedValues": [
+                                    0,
+                                    1
+                                ]
+                            },
+                            "description": "This is the output interval used for the map output (2D and 3D), observation point output and the profile output."
+                        }
+                    ]
+                },
+                {
+                    "name": "Geometry",
+                    "variables": [
+                        {
+                            "id": "basinslope",
+                            "name": "Basin slope",
+                            "type": "numeric",
+                            "units": "deg",
+                            "factor": true,
+                            "default": 0.1,
+                            "validators": {
+                                "max": 0.3,
+                                "min": 0.01,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the bed level slope between the coastline and the offshore model boundary."
+                        },
+                        {
+                            "id": "channelwidth",
+                            "name": "Channel width",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 500,
+                            "validators": {
+                                "required": true,
+                                "allowedValues": [
+                                    500,
+                                    1000,
+                                    1500
+                                ]
+                            },
+                            "description": "This is the width of the river channel excluding the floodplains (not availalbe for the Roda and Sobrarbe templates)."
+                        },
+                        {
+                            "id": "riverlength",
+                            "name": "River length",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 100,
+                            "validators": {
+                                "max": 1000,
+                                "min": 100,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the number of cells between the landward model boundary and the coastline. This parameter is only for the use of the preprocessing scripts but is not editable."
+                        }
+                    ]
+                },
+                {
+                    "name": "Forcing",
+                    "variables": [
+                        {
+                            "id": "riverdischargeinit",
+                            "name": "Initial river discharge per channel",
+                            "type": "numeric",
+                            "units": "m³/s",
+                            "factor": true,
+                            "default": 1000,
+                            "validators": {
+                                "max": 2000,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the initial river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+                        },
+                        {
+                            "id": "riverdischargefin",
+                            "name": "Final river discharge per channel",
+                            "type": "numeric",
+                            "units": "m³/s",
+                            "factor": true,
+                            "default": 1000,
+                            "validators": {
+                                "max": 2000,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the final river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+                        },
+                        {
+                            "id": "tidalamplitude",
+                            "name": "Tidal amplitude",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 3,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the tidal amplitude at the offshore model boundary."
+                        },
+                        {
+                            "id": "waveheightini",
+                            "name": "Initial significant wave height",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 2,
+                                "min": 0.11,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the initial significant wave height applied to the model. If this value coincides with the value chosen for the final significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "waveheightfin",
+                            "name": "Final significant wave height",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 2,
+                                "min": 0.11,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "wavedirection",
+                            "name": "Mean wave direction [-45°, +45° relative to North]",
+                            "type": "numeric",
+                            "units": "m",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 45,
+                                "min": -45,
+                                "required": true,
+                                "showInName": false
+                            },
+                            "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+                        },
+                        {
+                            "id": "subsidenceland",
+                            "name": "Subsidencse between landward model boundary and coastline",
+                            "type": "numeric",
+                            "units": "%",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 15,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the amount by which the bed level at the landward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+                        },
+                        {
+                            "id": "subsidencesea",
+                            "name": "Subsidencse at seaward model boundary",
+                            "type": "numeric",
+                            "units": "%",
+                            "factor": true,
+                            "default": 1,
+                            "validators": {
+                                "max": 15,
+                                "min": 0,
+                                "required": true,
+                                "showInName": true
+                            },
+                            "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the landward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+                        }
+                    ]
+                },
+                {
+                    "name": "Sediment composition",
+                    "variables": [
+                        {
+                            "id": "composition",
+                            "name": "Sediment classes",
+                            "type": "select",
+                            "default": "fine-sand",
+                            "options": [
+                                {
+                                    "text": "coarse sand",
+                                    "value": "coarse-sand"
+                                },
+                                {
+                                    "text": "medium sand",
+                                    "value": "medium-sand"
+                                },
+                                {
+                                    "text": "fine sand",
+                                    "value": "fine-sand"
+                                },
+                                {
+                                    "text": "very fine sand",
+                                    "value": "veryfine-sand"
+                                },
+                                {
+                                    "text": "coarse silt",
+                                    "value": "coarse-silt"
+                                }
+                            ],
+                            "validators": {
+                                "required": true
+                            },
+                            "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+                        }
+                    ],
+                    "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+                }
+            ],
+            "visualisation": {},
+            "export_options": {
+                "export_movie": {
+                    "extensions": [
+                        ".mp4"
+                    ]
+                },
+                "export_images": {
+                    "extensions": [
+                        ".png",
+                        ".jpg",
+                        ".gif"
+                    ]
+                },
+                "export_d3dinput": {
+                    "location": "simulation",
+                    "extensions": [
+                        ".bcc",
+                        ".bch",
+                        ".bct",
+                        ".bnd",
+                        ".dep",
+                        ".enc",
+                        ".fil",
+                        ".grd",
+                        ".ini",
+                        ".mdf",
+                        ".mdw",
+                        ".mor",
+                        ".obs",
+                        ".sed",
+                        ".sh",
+                        ".url",
+                        ".xml",
+                        ".tr1",
+                        ".tr2",
+                        ".tr3",
+                        ".tr4",
+                        ".tr5"
+                    ]
+                },
+                "export_thirdparty": {
+                    "location": "export",
+                    "extensions": [
+                        ".gz"
+                    ]
+                }
+            },
+            "yaml_template": "workflow_templates/delft3dgt-main-2022_I4sFhRx.yaml"
+        }
+    }
 ]
-

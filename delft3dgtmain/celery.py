@@ -2,11 +2,11 @@ from __future__ import absolute_import
 
 import os
 
+from celery import Celery
 from ddtrace import patch_all
+from django.conf import settings  # noqa
 
 patch_all()
-from celery import Celery
-from django.conf import settings  # noqa
 
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "delft3dgtmain.settings")

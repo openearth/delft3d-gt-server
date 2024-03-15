@@ -2,12 +2,10 @@ import datetime
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import Permission
-from django.test import Client, RequestFactory, TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
-from django.utils import timezone
-from mock import Mock
 
-from delft3dworker.admin import GroupUsageSummaryAdmin, SceneAdmin
+from delft3dworker.admin import GroupUsageSummaryAdmin
 from delft3dworker.models import Group, Scene, User, Workflow
 
 # class AdminTest(TestCase):
@@ -33,6 +31,7 @@ from delft3dworker.models import Group, Scene, User, Workflow
 #             request = Mock()
 #             queryset = Scene.objects.all()
 #             self.scene_admin.resync(request, queryset)
+
 
 #             # scene_a should still be new
 #             # scene_b should be in sync_create
@@ -68,19 +67,29 @@ class GroupUsageSummaryAdminTest(TestCase):
         self.workflow_a = Workflow.objects.create(
             name="WorkflowA",
             scene=self.scene_a,
-            starttime=datetime.datetime(2010, 10, 10, 10, 10, 00, tzinfo=timezone.utc),
-            stoptime=datetime.datetime(2010, 10, 10, 10, 20, 00, tzinfo=timezone.utc),
+            starttime=datetime.datetime(
+                2010, 10, 10, 10, 10, 00, tzinfo=datetime.timezone.utc
+            ),
+            stoptime=datetime.datetime(
+                2010, 10, 10, 10, 20, 00, tzinfo=datetime.timezone.utc
+            ),
         )
         self.workflow_b = Workflow.objects.create(
             name="WorkflowB",
             scene=self.scene_b,
-            starttime=datetime.datetime(2010, 10, 10, 10, 20, 00, tzinfo=timezone.utc),
-            stoptime=datetime.datetime(2010, 10, 10, 10, 40, 00, tzinfo=timezone.utc),
+            starttime=datetime.datetime(
+                2010, 10, 10, 10, 20, 00, tzinfo=datetime.timezone.utc
+            ),
+            stoptime=datetime.datetime(
+                2010, 10, 10, 10, 40, 00, tzinfo=datetime.timezone.utc
+            ),
         )
         self.workflow_c = Workflow.objects.create(
             name="WorkflowC",
             scene=self.scene_c,
-            starttime=datetime.datetime(2010, 10, 10, 10, 30, 00, tzinfo=timezone.utc),
+            starttime=datetime.datetime(
+                2010, 10, 10, 10, 30, 00, tzinfo=datetime.timezone.utc
+            ),
         )
         self.group_usage_summary_admin = GroupUsageSummaryAdmin(Group, AdminSite())
 

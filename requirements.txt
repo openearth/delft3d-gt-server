@@ -2,13 +2,13 @@
 -r worker_requirements.txt
 
 django-constance[database]==2.9.*
-django-filter==22.1
+django-filter==23.5
 django-admin-rangefilter==0.9.*
 django-jsonfield==1.4.*  # only for migrations
-django-guardian==2.4.*  # 1 year ago, no Django 4 support
-django-model-utils==4.2.*
+django-guardian==2.4.*
+django-model-utils==4.3.*
 djangorestframework==3.14.*
-djangorestframework-guardian==0.3.*  # 3 years ago
-flower==0.9.*  # because of celery 4.4
-mozilla-django-oidc==2.0.*
+djangorestframework-guardian2==0.5.*  # 3 years ago
+flower  # because of celery 4.4
+mozilla-django-oidc==4.0.*
 psycopg2-binary==2.9.*

@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import re
-import sys
 from datetime import datetime, time
 
 from django.utils import timezone
@@ -75,7 +74,6 @@ def delft3d_logparser(line):
     """
 
     try:
-
         percentage_re = re.compile(
             r"""
         ^(?P<message>.*?        # capture whole string as message
@@ -104,10 +102,7 @@ def delft3d_logparser(line):
             match = {"message": None, "level": "INFO", "state": None, "progress": None}
         return match
 
-    except:
-
-        e = sys.exc_info()[1]  # get error msg
-
+    except Exception as e:
         return {
             "message": "error '%s' on line '%s'" % (e.message, line),
             "level": "ERROR",
@@ -125,7 +120,6 @@ def python_logparser(line):
     """
 
     try:
-
         python_re = re.compile(
             r"""
         ^(?P<message>
@@ -161,10 +155,7 @@ def python_logparser(line):
             match = {"message": line, "level": "INFO", "state": None, "progress": None}
         return match
 
-    except:
-
-        e = sys.exc_info()[1]  # get error msg
-
+    except Exception as e:
         return {
             "message": "error '%s' on line '%s'" % (e.message, line),
             "level": "ERROR",
@@ -188,7 +179,6 @@ def scan_output_files(workingdir, info_dict):
     processed_files = 0
     required_keys = ["location", "extensions", "files"]
     for key, value in info_dict.items():
-
         # Check whether info dict is nested
         if not isinstance(value, dict):
             continue

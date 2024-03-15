@@ -9,14 +9,16 @@ import os
 import shutil
 import uuid
 from os.path import join
-import yaml
 
+import yaml
 from celery.result import AsyncResult
 from django.conf import settings  # noqa
 from django.contrib.auth.models import Group, User
 from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models import JSONField
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.text import slugify
 from django.utils.timezone import now
 from guardian.shortcuts import (
@@ -26,11 +28,11 @@ from guardian.shortcuts import (
     remove_perm,
 )
 from model_utils import Choices
+
 from delft3dcontainermanager.tasks import (
     do_argo_create,
     do_argo_remove,
     do_argo_stop,
-    get_argo_workflows,
     get_kube_log,
 )
 from delft3dworker.utils import (
@@ -43,6 +45,7 @@ from delft3dworker.utils import (
 )
 
 # ################################### VERSION_DOCKER, SCENARIO, SCENE
+
 
 # For backwards compatibility in migrations
 def default_svn_version():
@@ -89,26 +92,6 @@ class Version_Docker(models.Model):
 
     def __str__(self):
         return "Release {} at revision {}".format(self.release, self.revision)
-
-
-def parse_argo_workflow(instance, filename):
-    # If new worklow is uploaded, define a version
-
-    # Load yaml and derive defaults
-    template = yaml.load(instance.yaml_template.read(), Loader=yaml.FullLoader)
-    defaults = derive_defaults_from_argo(template)
-
-    # Create version based on defaults
-    version = Version_Docker(
-        release="Default for {}".format(filename),
-        versions=defaults,
-        changelog="default release based on template",
-        template=instance,
-    )
-    version.save()
-
-    # Otherwise just return the filepath
-    return join("workflow_templates", filename)
 
 
 class Scenario(models.Model):
@@ -224,7 +207,6 @@ class Scenario(models.Model):
 
     # TODO Workflow update this
     def _update_state_and_save(self):
-
         count = self.scene_set.all().count()
         self.state = "inactive"
 
@@ -242,7 +224,7 @@ class Scenario(models.Model):
         return self.state
 
     def _parse_setting(self, key, setting):
-        if not ("values" in setting):
+        if "values" not in setting:
             return
 
         values = setting["values"]
@@ -416,7 +398,6 @@ class Scene(models.Model):
                     if root.endswith(option.get("location", "")) and ext in option.get(
                         "extensions", []
                     ):
-
                         files_added = True
                         abs_path = os.path.join(root, f)
                         rel_path = os.path.join(
@@ -430,7 +411,6 @@ class Scene(models.Model):
     # CRUD METHODS
 
     def save(self, *args, **kwargs):
-
         # On first save
         if self.pk is None:
             self.workingdir = os.path.join(settings.WORKER_FILEDIR, str(self.suid), "")
@@ -499,10 +479,8 @@ class Scene(models.Model):
     # HEARTBEAT UPDATE AND SAVE
 
     def update_and_phase_shift(self):
-
         # Create Workflow model and shift to idle
         if self.phase == self.phases.new:
-
             if not hasattr(self, "workflow"):
                 workflow = Workflow.objects.create(
                     scene=self,
@@ -519,7 +497,6 @@ class Scene(models.Model):
 
         # User started a scene. Create Workflow and shift if it's running.
         elif self.phase == self.phases.sim_start:
-
             self.workflow.set_desired_state("running")
             if self.workflow.cluster_state == "running":
                 self.shift_to_phase(self.phases.sim_run)
@@ -583,12 +560,11 @@ class Scene(models.Model):
         if os.path.exists(self.workingdir):
             try:
                 shutil.rmtree(self.workingdir)
-            except:
+            except Exception as e:
                 # Files written by root can't be deleted by django
-                logging.error("Failed to delete working directory")
+                logging.error(f"Failed to delete working directory: {e}")
 
     def _update_state_and_save(self):
-
         # TODO: write _update_state_and_save method
         return self.state
 
@@ -638,10 +614,8 @@ class SearchForm(models.Model):
         )
 
     def _update_sections(self, tmpl_sections):
-
         # for each section
         for tmpl_section in tmpl_sections:
-
             # find matching (i.e. name && type equal) sections
             # in this search form
             matching_sections = [
@@ -652,7 +626,6 @@ class SearchForm(models.Model):
 
             # add or update
             if not matching_sections:
-
                 # remove non-required fields from variables
                 for variable in tmpl_section["variables"]:
                     try:
@@ -667,12 +640,10 @@ class SearchForm(models.Model):
                 self.sections.append(tmpl_section)
 
             else:
-
                 srch_section = matching_sections[0]
 
                 # for each variable
                 for tmpl_variable in tmpl_section["variables"]:
-
                     # find matching (i.e. name equal) sections
                     # in this search form
                     matching_variables = [
@@ -683,7 +654,6 @@ class SearchForm(models.Model):
 
                     # add or update
                     if not matching_variables:
-
                         # remove non-required fields from variables
                         try:
                             del tmpl_variable["default"]
@@ -696,7 +666,6 @@ class SearchForm(models.Model):
                         srch_section["variables"].append(tmpl_variable)
 
                     else:
-
                         srch_variable = matching_variables[0]
 
                         # only update min and max validators if numeric
@@ -704,7 +673,6 @@ class SearchForm(models.Model):
                             srch_variable["type"] == "numeric"
                             and tmpl_variable["type"] == "numeric"
                         ):
-
                             tmpl_validators = tmpl_variable["validators"]
                             srch_validators = srch_variable["validators"]
 
@@ -738,7 +706,7 @@ class Template(models.Model):
     sections = JSONFieldTransition(blank=True, default=dict)
     visualisation = JSONFieldTransition(blank=True, default=dict)
     export_options = JSONFieldTransition(blank=True, default=dict)
-    yaml_template = models.FileField(upload_to=parse_argo_workflow, default="")
+    yaml_template = models.FileField(upload_to="workflow_templates", default="")
 
     # The following method is disabled as it adds to much garbage
     # to the MAIN search template
@@ -757,12 +725,33 @@ class Template(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-
         # On first save set a shortname
         if self.pk is None:
             self.shortname = self.name.replace(" ", "-").lower()
 
         super(Template, self).save(*args, **kwargs)
+
+
+@receiver(post_save, sender=Template)
+def parse_argo_workflow(sender, instance, created, raw, using, update_fields, **kwargs):
+    # If new worklow is uploaded, define a version
+    if raw is True:
+        return
+
+    # Load yaml and derive defaults
+    template = yaml.load(instance.yaml_template.read(), Loader=yaml.FullLoader)
+    defaults = derive_defaults_from_argo(template)
+
+    # Create version based on defaults if different from current
+    current = instance.versions.first()
+    if current is None or (current is not None and current.versions != defaults):
+        version = Version_Docker(
+            release="Default for {}".format(instance.name),
+            versions=defaults,
+            changelog="default release based on template",
+            template=instance,
+        )
+        version.save()
 
 
 class Workflow(models.Model):
@@ -846,7 +835,6 @@ class Workflow(models.Model):
         result = AsyncResult(id=str(self.task_uuid))
         time_passed = now() - self.task_starttime
         if result.ready():
-
             if result.successful():
                 # Log parsing
                 if "get_kube_log" in result.result:
@@ -984,9 +972,7 @@ class Workflow(models.Model):
         )
 
     def stop_workflow(self):
-        result = do_argo_stop.apply_async(
-            args=(self.name,), expires=settings.TASK_EXPIRE_TIME
-        )
+        do_argo_stop.apply_async(args=(self.name,), expires=settings.TASK_EXPIRE_TIME)
         # calculate runtime
         self.stoptime = now()
         self.action_log += "{} | Stopped \n".format(self.stoptime)

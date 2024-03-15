@@ -1,4 +1,4 @@
-from django.conf.urls import handler404, handler500, include, url  # noqa
+from django.urls import include, path
 from rest_framework import routers
 
 from delft3dworker import views
@@ -23,8 +23,8 @@ router.register(
 # url patterns
 
 urlpatterns = (
-    url(r"^oidc/", include("mozilla_django_oidc.urls")),
+    path("oidc/", include("mozilla_django_oidc.urls")),
     # REST Framework
-    url(r"^api/v1/", include(router.urls)),
-    url(r"^api-auth/", include("rest_framework.urls", namespace="rest_framework")),
+    path("api/v1/", include(router.urls)),
+    path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
 )

@@ -14,17 +14,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
 from django.conf import settings
-from django.conf.urls import include, url
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.urls import include, path, re_path
 
 urlpatterns = [
     # Django Admin
-    url(r"^admin/", admin.site.urls),
+    re_path(r"^admin/", admin.site.urls),
     # Delft3D-GT Worker API
-    url(r"^", include("delft3dworker.urls")),
+    path("", include("delft3dworker.urls")),
     # Delft3D-GT Protected Services
-    url(r"^", include("delft3dgtprotectedservices.urls")),
+    path("", include("delft3dgtprotectedservices.urls")),
     # Delft3D-GT Frontend
-    url(r"^", include("delft3dgtfrontend.urls")),
+    path("", include("delft3dgtfrontend.urls")),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

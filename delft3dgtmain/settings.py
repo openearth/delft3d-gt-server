@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import sys
 from datetime import timedelta
+
 from ddtrace import config
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -123,13 +124,11 @@ TIME_ZONE = "UTC"
 
 USE_I18N = True
 
-USE_L10N = True
 
 USE_TZ = True
 
 # Login
 LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/"
 
 # Max form size for large scenarios with logs
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB
@@ -199,7 +198,7 @@ REST_FRAMEWORK = {
 
 # import provisioned settings
 try:
-    from .provisionedsettings import *
+    from .provisionedsettings import *  # noqa
 except ImportError:
     print("Failed to import provisioned settings!")
     SECRET_KEY = "test"
@@ -222,25 +221,22 @@ TEMPLATES = [
 
 # TESTING
 if "test" in sys.argv:
-
     import logging
 
     from .celery import Celery
 
     logging.disable(logging.CRITICAL)
 
-    if "TRAVIS" in os.environ:
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.postgresql_psycopg2",
-                "NAME": "travis_ci_test",
-                "USER": "postgres",
-                "HOST": "localhost",
-                "PORT": "5432",
-            }
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql_psycopg2",
+            "NAME": "djangodb_test",
+            "USER": "postgres",
+            "PASSWORD": "postgres",
+            "HOST": "localhost",
+            "PORT": "5432",
         }
-    else:
-        DATABASES["default"].update({"NAME": "djangodb_test"})
+    }
 
     PASSWORD_HASHERS = [
         "django.contrib.auth.hashers.MD5PasswordHasher",
@@ -300,3 +296,14 @@ if "test" in sys.argv:
 
     # Docker URL this setting is from the delf3dcontainermanger app
     DOCKER_URL = "unix:///var/run/docker.sock"
+
+    # OIDC
+    OIDC_RP_CLIENT_ID = ""
+    OIDC_RP_CLIENT_SECRET = ""
+    OIDC_RP_SIGN_ALGO = ""
+    OIDC_OP_AUTHORIZATION_ENDPOINT = ""
+    OIDC_OP_TOKEN_ENDPOINT = ""
+    OIDC_OP_USER_ENDPOINT = ""
+    OIDC_OP_JWKS_ENDPOINT = ""
+    LOGIN_REDIRECT_URL = "/"
+    LOGOUT_REDIRECT_URL = "/"

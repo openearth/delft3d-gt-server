@@ -1,18 +1,15 @@
 from os import remove, rename, stat, walk
-from os.path import basename, join, split
+from os.path import basename, join
 from subprocess import call
 
 from django.conf import settings  # noqa
-from django.core.management.base import BaseCommand, CommandError
-
-from delft3dworker.models import Scene
+from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
     help = "Compresses netcdf output of finished Delft3D models"
 
     def handle(self, *args, **options):
-
         netcdf = "trim-a.nc"
         netcdf_compressed = "trim-a-compressed.nc"
 

@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from datetime import date, datetime, time
+from datetime import date, datetime
 
 from django.test import TestCase
 from django.utils import timezone
