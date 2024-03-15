@@ -447,10 +447,10 @@
     },
     {
         "model": "delft3dworker.template",
-        "pk": 53,
+        "pk": 57,
         "fields": {
             "name": "River dominated delta",
-            "shortname": "gt",
+            "shortname": "river",
             "meta": {
                 "description": "Template for a generic river dominated delta system. Has a straight coastline and a slightly v-shaped initial river valley that is 5 km long. Uses the Engelund-Hansen (1967) sediment transport formulation for non-cohesive sediment and the formulation by Partheniades (1965) for cohesive sediment."
             },
@@ -1601,7 +1601,7 @@
         "pk": 56,
         "fields": {
             "name": "Gule Horn/Neslen",
-            "shortname": "gule-horn/neslen",
+            "shortname": "gulehorn",
             "meta": {
                 "description": "Template for the Gule Horn and Neslen formations and comparable deltaic systems. Has a straight coastline and a rectangular shaped initial river valley that is 5 km long. Uses the Engelund-Hansen (1967) sediment transport formulation for non-cohesive sediment and the formulation by Partheniades (1965) for cohesive sediment."
             },
