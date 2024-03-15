@@ -1600,7 +1600,7 @@
         "model": "delft3dworker.template",
         "pk": 56,
         "fields": {
-            "name": "Gule Horn/Neslen",
+            "name": "GuleHorn/Neslen",
             "shortname": "gulehorn",
             "meta": {
                 "description": "Template for the Gule Horn and Neslen formations and comparable deltaic systems. Has a straight coastline and a rectangular shaped initial river valley that is 5 km long. Uses the Engelund-Hansen (1967) sediment transport formulation for non-cohesive sediment and the formulation by Partheniades (1965) for cohesive sediment."
