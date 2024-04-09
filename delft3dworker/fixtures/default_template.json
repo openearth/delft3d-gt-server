@@ -364,7 +364,7 @@
             ".gif"
           ],
           "name": "Delta fringe",
-          "text": " This graph shows the position of the delta plain fringe superimposed on the graph of the water depth. This is an indicator for the large-scale plan-view morphology of a delta, which is a function of the dominant forcing processes (waves, rivers, tides) and grain size of transported sediments.\nA good characterization of the plan-view morphology of the delta allows better predictions on grain size distribution and heterogeneity in the delta geo-body. The delta fringe is calculated based on a cutoff value of water depth and on local slope."
+          "text": "This graph shows the position of the delta plain fringe superimposed on the graph of the water depth. This is an indicator for the large-scale plan-view morphology of a delta, which is a function of the dominant forcing processes (waves, rivers, tides) and grain size of transported sediments.\nA good characterization of the plan-view morphology of the delta allows better predictions on grain size distribution and heterogeneity in the delta geo-body. The delta fringe is calculated based on a cutoff value of water depth and on local slope."
         },
         "subenvironment_images": {
           "files": [],
@@ -377,7 +377,7 @@
             ".gif"
           ],
           "name": "Sub-environment",
-          "text": "Delta top: Deposits above delta brink point.\nDelta front: Deposits below delta brink point and above wave base.\nProdelta: Deposits below wave base.\nBackground"
+          "text": "Delta top: Deposits above delta brink point.\nDelta front: Deposits below delta brink point and above wave base.\nProdelta: Deposits below wave base.\nLow activity: Deposition smaller than 5mm."
         },
         "channel_network_images": {
           "files": [],
@@ -882,8 +882,8 @@
     "model": "delft3dworker.template",
     "pk": 54,
     "fields": {
-      "name": "Sobrarbre",
-      "shortname": "sobrarbre",
+      "name": "Sobrarbe",
+      "shortname": "sobrarbe",
       "meta": {
         "description": "Template for the Sobrarbe formation and comparable deltaic systems. Has a straight coastline and a 1 km long river valley. The river valley is subdivided into four channels that are separated from each other by cone-shaped non-erodible obstacles, reflecting a wide braided floodplain entering a sedimentary basin. Uses the van Rijn (1993) sediment transport formulation for non-cohesive sediment and the formulation by Partheniades (1965) for cohesive sediment.."
       },
