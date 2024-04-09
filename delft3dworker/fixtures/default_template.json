@@ -337,63 +337,70 @@
             "shortname": "gt",
             "yaml_template": "workflow_templates/delft3dgt-main.yaml",
             "info": {
-                "delta_fringe_images": {
-                    "filetype": "images",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ],
-                    "files": [],
-                    "location": "process/"
-                },
-                "channel_network_images": {
-                    "filetype": "images",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ],
-                    "files": [],
-                    "location": "process/"
-                },
-                "sediment_fraction_images": {
-                    "filetype": "images",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ],
-                    "files": [],
-                    "location": "process/"
-                },
-                "subenvironment_images": {
-                    "filetype": "images",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ],
-                    "files": [],
-                    "location": "postprocess/"
-                },
                 "logfile": {
-                    "filetype": "log",
-                    "extensions": [
-                        ".log"
-                    ],
-                    "files": [],
-                    "location": "simulation/"
+                  "files": [],
+                  "filetype": "log",
+                  "location": "simulation/",
+                  "extensions": [".log"]
                 },
                 "postprocess_output": {
-                    "filetype": "json",
-                    "extensions": [
-                        ".json"
-                    ],
-                    "files": {},
-                    "location": "postprocess/"
+                  "files": {},
+                  "filetype": "json",
+                  "location": "postprocess/",
+                  "extensions": [".json"]
+                },
+                "bathymetry_and_architecture_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Bathymetry & architecture",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and architectural elements (DT = Delta top; AC = Active channel; MB = Mouth bar; DF = Delta front; PD = Prodelta; right)"
+                },
+                "bathymetry_and_deposition_rate_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Bathymetry & deposition rate",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and deposition rate (in m/day)"
+                },
+                "cross_section_architecture_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section architecture",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and architectural elements (DT = Delta top; AC = Active channel; MB = Mouth bar; DF = Delta front; PD = Prodelta; right) along a central cross-section through the delta"
+                },
+                "cross_section_grain_sizes_images": {
+                  "pattern":"xsect_diameter",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section grain sizes",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and grain size distribution (D50 in mm; right) along a central cross-section through the delta"
+                },
+                "cross_section_deposition_age_images": {
+                  "pattern":"xsect_depositionage",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section deposition age",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and deposition age (in hydrodynamic simulation days; right) along a central cross-section through the delta"
+                },
+                "histograms_images": {
+                  "pattern":"archel_summary",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Histograms",
+                  "text": "Volume distribution and average grain size (D50 in mm) distribution per preserved architectural element"
                 }
-            },
+              },
             "export_options": {
                 "export_d3dinput": {
                     "extensions": [
@@ -456,62 +463,69 @@
             },
             "info": {
                 "logfile": {
-                    "files": [],
-                    "filetype": "log",
-                    "location": "simulation/",
-                    "extensions": [
-                        ".log"
-                    ]
+                  "files": [],
+                  "filetype": "log",
+                  "location": "simulation/",
+                  "extensions": [".log"]
                 },
                 "postprocess_output": {
-                    "files": {},
-                    "filetype": "json",
-                    "location": "postprocess/",
-                    "extensions": [
-                        ".json"
-                    ]
+                  "files": {},
+                  "filetype": "json",
+                  "location": "postprocess/",
+                  "extensions": [".json"]
                 },
-                "delta_fringe_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "bathymetry_and_architecture_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Bathymetry & architecture",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and architectural elements (DT = Delta top; AC = Active channel; MB = Mouth bar; DF = Delta front; PD = Prodelta; right)"
                 },
-                "subenvironment_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "postprocess/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "bathymetry_and_deposition_rate_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Bathymetry & deposition rate",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and deposition rate (in m/day)"
                 },
-                "channel_network_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "cross_section_architecture_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section architecture",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and architectural elements (DT = Delta top; AC = Active channel; MB = Mouth bar; DF = Delta front; PD = Prodelta; right) along a central cross-section through the delta"
                 },
-                "sediment_fraction_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "cross_section_grain_sizes_images": {
+                  "pattern":"xsect_diameter",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section grain sizes",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and grain size distribution (D50 in mm; right) along a central cross-section through the delta"
+                },
+                "cross_section_deposition_age_images": {
+                  "pattern":"xsect_depositionage",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section deposition age",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and deposition age (in hydrodynamic simulation days; right) along a central cross-section through the delta"
+                },
+                "histograms_images": {
+                  "pattern":"archel_summary",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Histograms",
+                  "text": "Volume distribution and average grain size (D50 in mm) distribution per preserved architectural element"
                 }
-            },
+              },
             "sections": [
                 {
                     "name": "Scenario",
@@ -839,62 +853,69 @@
             },
             "info": {
                 "logfile": {
-                    "files": [],
-                    "filetype": "log",
-                    "location": "simulation/",
-                    "extensions": [
-                        ".log"
-                    ]
+                  "files": [],
+                  "filetype": "log",
+                  "location": "simulation/",
+                  "extensions": [".log"]
                 },
                 "postprocess_output": {
-                    "files": {},
-                    "filetype": "json",
-                    "location": "postprocess/",
-                    "extensions": [
-                        ".json"
-                    ]
+                  "files": {},
+                  "filetype": "json",
+                  "location": "postprocess/",
+                  "extensions": [".json"]
                 },
-                "delta_fringe_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "bathymetry_and_architecture_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Bathymetry & architecture",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and architectural elements (DT = Delta top; AC = Active channel; MB = Mouth bar; DF = Delta front; PD = Prodelta; right)"
                 },
-                "subenvironment_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "postprocess/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "bathymetry_and_deposition_rate_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Bathymetry & deposition rate",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and deposition rate (in m/day)"
                 },
-                "channel_network_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "cross_section_architecture_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section architecture",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and architectural elements (DT = Delta top; AC = Active channel; MB = Mouth bar; DF = Delta front; PD = Prodelta; right) along a central cross-section through the delta"
                 },
-                "sediment_fraction_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "cross_section_grain_sizes_images": {
+                  "pattern":"xsect_diameter",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section grain sizes",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and grain size distribution (D50 in mm; right) along a central cross-section through the delta"
+                },
+                "cross_section_deposition_age_images": {
+                  "pattern":"xsect_depositionage",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section deposition age",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and deposition age (in hydrodynamic simulation days; right) along a central cross-section through the delta"
+                },
+                "histograms_images": {
+                  "pattern":"archel_summary",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Histograms",
+                  "text": "Volume distribution and average grain size (D50 in mm) distribution per preserved architectural element"
                 }
-            },
+              },
             "sections": [
                 {
                     "name": "Scenario",
@@ -1223,62 +1244,69 @@
             },
             "info": {
                 "logfile": {
-                    "files": [],
-                    "filetype": "log",
-                    "location": "simulation/",
-                    "extensions": [
-                        ".log"
-                    ]
+                  "files": [],
+                  "filetype": "log",
+                  "location": "simulation/",
+                  "extensions": [".log"]
                 },
                 "postprocess_output": {
-                    "files": {},
-                    "filetype": "json",
-                    "location": "postprocess/",
-                    "extensions": [
-                        ".json"
-                    ]
+                  "files": {},
+                  "filetype": "json",
+                  "location": "postprocess/",
+                  "extensions": [".json"]
                 },
-                "delta_fringe_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "bathymetry_and_architecture_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Bathymetry & architecture",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and architectural elements (DT = Delta top; AC = Active channel; MB = Mouth bar; DF = Delta front; PD = Prodelta; right)"
                 },
-                "subenvironment_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "postprocess/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "bathymetry_and_deposition_rate_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Bathymetry & deposition rate",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and deposition rate (in m/day)"
                 },
-                "channel_network_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "cross_section_architecture_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section architecture",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and architectural elements (DT = Delta top; AC = Active channel; MB = Mouth bar; DF = Delta front; PD = Prodelta; right) along a central cross-section through the delta"
                 },
-                "sediment_fraction_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "cross_section_grain_sizes_images": {
+                  "pattern":"xsect_diameter",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section grain sizes",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and grain size distribution (D50 in mm; right) along a central cross-section through the delta"
+                },
+                "cross_section_deposition_age_images": {
+                  "pattern":"xsect_depositionage",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section deposition age",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and deposition age (in hydrodynamic simulation days; right) along a central cross-section through the delta"
+                },
+                "histograms_images": {
+                  "pattern":"archel_summary",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Histograms",
+                  "text": "Volume distribution and average grain size (D50 in mm) distribution per preserved architectural element"
                 }
-            },
+              },
             "sections": [
                 {
                     "name": "Scenario",
@@ -1607,62 +1635,69 @@
             },
             "info": {
                 "logfile": {
-                    "files": [],
-                    "filetype": "log",
-                    "location": "simulation/",
-                    "extensions": [
-                        ".log"
-                    ]
+                  "files": [],
+                  "filetype": "log",
+                  "location": "simulation/",
+                  "extensions": [".log"]
                 },
                 "postprocess_output": {
-                    "files": {},
-                    "filetype": "json",
-                    "location": "postprocess/",
-                    "extensions": [
-                        ".json"
-                    ]
+                  "files": {},
+                  "filetype": "json",
+                  "location": "postprocess/",
+                  "extensions": [".json"]
                 },
-                "delta_fringe_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "bathymetry_and_architecture_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Bathymetry & architecture",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and architectural elements (DT = Delta top; AC = Active channel; MB = Mouth bar; DF = Delta front; PD = Prodelta; right)"
                 },
-                "subenvironment_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "postprocess/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "bathymetry_and_deposition_rate_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Bathymetry & deposition rate",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and deposition rate (in m/day)"
                 },
-                "channel_network_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "cross_section_architecture_images": {
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section architecture",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and architectural elements (DT = Delta top; AC = Active channel; MB = Mouth bar; DF = Delta front; PD = Prodelta; right) along a central cross-section through the delta"
                 },
-                "sediment_fraction_images": {
-                    "files": [],
-                    "filetype": "images",
-                    "location": "process/",
-                    "extensions": [
-                        ".png",
-                        ".jpg",
-                        ".gif"
-                    ]
+                "cross_section_grain_sizes_images": {
+                  "pattern":"xsect_diameter",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section grain sizes",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and grain size distribution (D50 in mm; right) along a central cross-section through the delta"
+                },
+                "cross_section_deposition_age_images": {
+                  "pattern":"xsect_depositionage",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Cross section deposition age",
+                  "text": "Bathymetry (in m relative to mean sea level; left) and deposition age (in hydrodynamic simulation days; right) along a central cross-section through the delta"
+                },
+                "histograms_images": {
+                  "pattern":"archel_summary",
+                  "files": [],
+                  "filetype": "images",
+                  "location": "process/",
+                  "extensions": [".png", ".jpg", ".gif"],
+                  "name": "Histograms",
+                  "text": "Volume distribution and average grain size (D50 in mm) distribution per preserved architectural element"
                 }
-            },
+              },
             "sections": [
                 {
                     "name": "Scenario",
