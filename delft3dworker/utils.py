@@ -206,7 +206,7 @@ def scan_output_files(workingdir, info_dict):
                 # If images, search by key
                 # TODO Use regex expressions in the future
                 if "_images" in key:
-                    type_of_image = key.split("_images")[0]
+                    type_of_image = value.get("pattern", "nomatch")
                     if type_of_image in name:
                         info_dict[key]["files"].append(fn)
 
