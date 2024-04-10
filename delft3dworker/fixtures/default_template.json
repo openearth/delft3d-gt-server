@@ -603,7 +603,7 @@
               "validators": {
                 "required": true,
                 "allowedValues": [
-                  0,
+                  0.5,
                   1
                 ]
               },
@@ -743,7 +743,7 @@
             },
             {
               "id": "wavedirection",
-              "name": "Mean wave direction [-45°, +45° relative to North]",
+              "name": "Mean wave direction [-45° to +45° relative to North]",
               "type": "numeric",
               "units": "m",
               "factor": true,
@@ -758,9 +758,9 @@
             },
             {
               "id": "subsidenceland",
-              "name": "Subsidencse between landward model boundary and coastline",
+              "name": "Subsidence  between landward model boundary and coastline",
               "type": "numeric",
-              "units": "%",
+              "units": "m",
               "factor": true,
               "default": 1,
               "validators": {
@@ -773,9 +773,9 @@
             },
             {
               "id": "subsidencesea",
-              "name": "Subsidencse at seaward model boundary",
+              "name": "Subsidence at seaward model boundary",
               "type": "numeric",
-              "units": "%",
+              "units": "m",
               "factor": true,
               "default": 1,
               "validators": {
@@ -1024,7 +1024,7 @@
               "validators": {
                 "required": true,
                 "allowedValues": [
-                  0,
+                  0.5,
                   1
                 ]
               },
@@ -1165,7 +1165,7 @@
             },
             {
               "id": "wavedirection",
-              "name": "Mean wave direction [-45°, +45° relative to North]",
+              "name": "Mean wave direction [-45° to +45° relative to North]",
               "type": "numeric",
               "units": "m",
               "factor": true,
@@ -1180,9 +1180,9 @@
             },
             {
               "id": "subsidenceland",
-              "name": "Subsidencse between landward model boundary and coastline",
+              "name": "Subsidence between landward model boundary and coastline",
               "type": "numeric",
-              "units": "%",
+              "units": "m",
               "factor": true,
               "default": 1,
               "validators": {
@@ -1195,9 +1195,9 @@
             },
             {
               "id": "subsidencesea",
-              "name": "Subsidencse at seaward model boundary",
+              "name": "Subsidence at seaward model boundary",
               "type": "numeric",
-              "units": "%",
+              "units": "m",
               "factor": true,
               "default": 1,
               "validators": {
@@ -1446,7 +1446,7 @@
               "validators": {
                 "required": true,
                 "allowedValues": [
-                  0,
+                  0.5,
                   1
                 ]
               },
@@ -1587,7 +1587,7 @@
             },
             {
               "id": "wavedirection",
-              "name": "Mean wave direction [-45°, +45° relative to North]",
+              "name": "Mean wave direction [-45° to +45° relative to North]",
               "type": "numeric",
               "units": "m",
               "factor": true,
@@ -1602,9 +1602,9 @@
             },
             {
               "id": "subsidenceland",
-              "name": "Subsidencse between landward model boundary and coastline",
+              "name": "Subsidence between landward model boundary and coastline",
               "type": "numeric",
-              "units": "%",
+              "units": "m",
               "factor": true,
               "default": 1,
               "validators": {
@@ -1617,9 +1617,9 @@
             },
             {
               "id": "subsidencesea",
-              "name": "Subsidencse at seaward model boundary",
+              "name": "Subsidence at seaward model boundary",
               "type": "numeric",
-              "units": "%",
+              "units": "m",
               "factor": true,
               "default": 1,
               "validators": {
@@ -1868,7 +1868,7 @@
               "validators": {
                 "required": true,
                 "allowedValues": [
-                  0,
+                  0.5,
                   1
                 ]
               },
@@ -2008,7 +2008,7 @@
             },
             {
               "id": "wavedirection",
-              "name": "Mean wave direction [-45°, +45° relative to North]",
+              "name": "Mean wave direction [-45° to +45° relative to North]",
               "type": "numeric",
               "units": "m",
               "factor": true,
@@ -2023,9 +2023,9 @@
             },
             {
               "id": "subsidenceland",
-              "name": "Subsidencse between landward model boundary and coastline",
+              "name": "Subsidence  between landward model boundary and coastline",
               "type": "numeric",
-              "units": "%",
+              "units": "m",
               "factor": true,
               "default": 1,
               "validators": {
@@ -2038,9 +2038,9 @@
             },
             {
               "id": "subsidencesea",
-              "name": "Subsidencse at seaward model boundary",
+              "name": "Subsidence  at seaward model boundary",
               "type": "numeric",
-              "units": "%",
+              "units": "m",
               "factor": true,
               "default": 1,
               "validators": {
