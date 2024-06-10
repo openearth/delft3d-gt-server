@@ -335,7 +335,7 @@
       ],
       "name": "River dominated delta (deprecated)",
       "shortname": "gt",
-      "yaml_template": "workflow_templates/delft3dgt-main.yaml",
+      "yaml_template": "workflow_templates/delft3dgt-main-2022.yaml",
       "info": {
         "logfile": {
           "files": [],
@@ -880,7 +880,7 @@
           ]
         }
       },
-      "yaml_template": "workflow_templates/delft3dgt-main.yaml"
+      "yaml_template": "workflow_templates/delft3dgt-main-2024.yaml"
     }
   },
   {
@@ -996,7 +996,7 @@
               "id": "name",
               "name": "Name",
               "type": "text",
-              "default": "River dominated basin fill",
+              "default": "Sobrarbe",
               "validators": {
                 "required": true
               }
@@ -1194,7 +1194,6 @@
                 "max": 15,
                 "min": 0,
                 "required": true
-                
               },
               "description": "This is the amount by which the bed level at the landward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
             },
@@ -1210,7 +1209,6 @@
                 "max": 15,
                 "min": 0,
                 "required": true
-                
               },
               "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the landward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
             }
@@ -1306,7 +1304,7 @@
           ]
         }
       },
-      "yaml_template": "workflow_templates/delft3dgt-main-2022_cMwYC1t.yaml"
+      "yaml_template": "workflow_templates/delft3dgt-main-2024.yaml"
     }
   },
   {
@@ -1422,8 +1420,10 @@
               "id": "name",
               "name": "Name",
               "type": "text",
-              "default": "River dominated basin fill",
-              "validators": { "required": true }
+              "default": "Roda",
+              "validators": {
+                "required": true
+              }
             }
           ]
         },
@@ -1450,7 +1450,13 @@
               "type": "numeric",
               "units": "days",
               "default": 1,
-              "validators": { "required": true, "allowedValues": [0.5, 1] },
+              "validators": {
+                "required": true,
+                "allowedValues": [
+                  0.5,
+                  1
+                ]
+              },
               "description": "This is the output interval used for the map output (2D and 3D), observation point output and the profile output."
             }
           ]
@@ -1481,7 +1487,14 @@
               "factor": true,
               "default": 500,
               "disabled": true,
-              "validators": { "required": true, "allowedValues": [500, 1000, 1500] },
+              "validators": {
+                "required": true,
+                "allowedValues": [
+                  500,
+                  1000,
+                  1500
+                ]
+              },
               "description": "This is the width of the river channel excluding the floodplains (not availalbe for the Roda and Sobrarbe templates)."
             },
             {
@@ -1634,13 +1647,30 @@
               "type": "select",
               "default": "fine-sand",
               "options": [
-                { "text": "coarse sand", "value": "coarse-sand" },
-                { "text": "medium sand", "value": "medium-sand" },
-                { "text": "fine sand", "value": "fine-sand" },
-                { "text": "very fine sand", "value": "veryfine-sand" },
-                { "text": "coarse silt", "value": "coarse-silt" }
+                {
+                  "text": "coarse sand",
+                  "value": "coarse-sand"
+                },
+                {
+                  "text": "medium sand",
+                  "value": "medium-sand"
+                },
+                {
+                  "text": "fine sand",
+                  "value": "fine-sand"
+                },
+                {
+                  "text": "very fine sand",
+                  "value": "veryfine-sand"
+                },
+                {
+                  "text": "coarse silt",
+                  "value": "coarse-silt"
+                }
               ],
-              "validators": { "required": true },
+              "validators": {
+                "required": true
+              },
               "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
             }
           ],
@@ -1698,7 +1728,7 @@
           ]
         }
       },
-      "yaml_template": "workflow_templates/delft3dgt-main-2022_CSKjxsE.yaml"
+      "yaml_template": "workflow_templates/delft3dgt-main-2024.yaml"
     }
   },
   {
@@ -1814,7 +1844,7 @@
               "id": "name",
               "name": "Name",
               "type": "text",
-              "default": "River dominated basin fill",
+              "default": "GuleHorn/Neslen",
               "validators": {
                 "required": true
               }
@@ -1835,7 +1865,6 @@
                 "max": 320.5,
                 "min": 80,
                 "required": true
-              
               },
               "description": "This is the total hydronamic simulation time of a model run."
             },
@@ -1871,7 +1900,6 @@
                 "max": 0.3,
                 "min": 0.01,
                 "required": true
-               
               },
               "description": "This is the bed level slope between the coastline and the offshore model boundary."
             },
@@ -1904,7 +1932,6 @@
                 "max": 1000,
                 "min": 100,
                 "required": true
-               
               },
               "description": "This is the number of cells between the landward model boundary and the coastline. This parameter is only for the use of the preprocessing scripts but is not editable."
             }
@@ -1925,7 +1952,6 @@
                 "max": 2000,
                 "min": 0,
                 "required": true
-               
               },
               "description": "This is the initial river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
             },
@@ -1941,7 +1967,6 @@
                 "max": 2000,
                 "min": 0,
                 "required": true
-               
               },
               "description": "This is the final river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
             },
@@ -1957,7 +1982,6 @@
                 "max": 3,
                 "min": 0,
                 "required": true
-             
               },
               "description": "This is the tidal amplitude at the offshore model boundary."
             },
@@ -1973,7 +1997,6 @@
                 "max": 2,
                 "min": 0.11,
                 "required": true
-               
               },
               "description": "This is the initial significant wave height applied to the model. If this value coincides with the value chosen for the final significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
             },
@@ -1989,7 +2012,6 @@
                 "max": 2,
                 "min": 0.11,
                 "required": true
-               
               },
               "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
             },
@@ -2019,7 +2041,6 @@
                 "max": 15,
                 "min": 0,
                 "required": true
-                
               },
               "description": "This is the amount by which the bed level at the landward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
             },
@@ -2035,7 +2056,6 @@
                 "max": 15,
                 "min": 0,
                 "required": true
-                
               },
               "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the landward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
             }
@@ -2131,7 +2151,7 @@
           ]
         }
       },
-      "yaml_template": "workflow_templates/delft3dgt-main-2022_I4sFhRx.yaml"
+      "yaml_template": "workflow_templates/delft3dgt-main-2024.yaml"
     }
   }
 ]
