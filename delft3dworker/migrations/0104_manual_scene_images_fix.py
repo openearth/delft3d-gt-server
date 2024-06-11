@@ -1,3 +1,6 @@
+from django.db import migrations
+
+
 def forwards_func(apps, schema_editor):
     Scene = apps.get_model("delft3dworker", "Scene")
     db_alias = schema_editor.connection.alias
