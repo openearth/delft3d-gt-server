@@ -37,7 +37,7 @@ def reverse_func(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("delft3dworker", "0103_alter_template_yaml_template.py"),
+        ("delft3dworker", "0103_alter_template_yaml_template"),
     ]
 
     operations = [
