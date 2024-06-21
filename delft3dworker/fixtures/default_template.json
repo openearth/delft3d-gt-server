@@ -208,14 +208,14 @@
           "variables": [
             {
               "name": "Basin slope",
-              "default": 0.1,
+              "default": 0.04,
               "validators": {
                 "max": 0.3,
                 "required": true,
                 "min": 0.01
               },
               "factor": true,
-              "units": "deg",
+              "units": "°",
               "type": "numeric",
               "id": "basinslope"
             },
@@ -239,7 +239,7 @@
           "variables": [
             {
               "name": "River discharge",
-              "default": 1000,
+              "default": 2000,
               "validators": {
                 "max": 2000,
                 "required": true,
@@ -252,7 +252,7 @@
             },
             {
               "name": "Tidal amplitude",
-              "default": 1,
+              "default": 2,
               "validators": {
                 "max": 3,
                 "required": true,
@@ -265,7 +265,7 @@
             },
             {
               "name": "Wave height",
-              "default": 0.0,
+              "default": 0.5,
               "validators": {
                 "max": 2,
                 "required": true,
@@ -298,7 +298,7 @@
           "variables": [
             {
               "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess.",
-              "default": "fine-sand",
+              "default": "coarse-sand",
               "id": "composition",
               "validators": {
                 "required": true
@@ -588,14 +588,14 @@
               "name": "Simulation time",
               "type": "numeric",
               "units": "days",
-              "default": 160,
+              "default": 320.5,
               "showValidatorInName": true,
               "validators": {
                 "max": 320.5,
                 "min": 80,
                 "required": true
               },
-              "description": "This is the total hydronamic simulation time of a model run."
+              "description": "This is the total hydrodynamic simulation time of a model run."
             },
             {
               "id": "outputinterval",
@@ -621,9 +621,9 @@
               "id": "basinslope",
               "name": "Basin slope",
               "type": "numeric",
-              "units": "deg",
+              "units": "°",
               "factor": true,
-              "default": 0.1,
+              "default": 0.04,
               "showValidatorInName": true,
               "validators": {
                 "max": 0.3,
@@ -653,14 +653,15 @@
               "id": "riverlength",
               "name": "River length",
               "type": "numeric",
-              "units": "m",
+              "units": "cells",
               "factor": true,
               "default": 100,
-              "showValidatorInName": true,
+              "disabled": true,
               "validators": {
-                "max": 1000,
-                "min": 100,
-                "required": true
+                "required": true,
+                "allowedValues": [
+                  100
+                ]
               },
               "description": "This is the number of cells between the landward model boundary and the coastline. This parameter is only for the use of the preprocessing scripts but is not editable."
             }
@@ -675,14 +676,14 @@
               "type": "numeric",
               "units": "m³/s",
               "factor": true,
-              "default": 1000,
+              "default": 2000,
               "showValidatorInName": true,
               "validators": {
                 "max": 2000,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the initial river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+              "description": "This is the initial river discharge per channel (one channel in the case of River dominated delta, Gule Horn/Neslen and Roda; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
             },
             {
               "id": "riverdischargefin",
@@ -690,14 +691,14 @@
               "type": "numeric",
               "units": "m³/s",
               "factor": true,
-              "default": 1000,
+              "default": 2000,
               "showValidatorInName": true,
               "validators": {
                 "max": 2000,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the final river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+              "description": "This is the final river discharge per channel (one channel in the case of River dominated delta, Gule Horn/Neslen and Roda; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
             },
             {
               "id": "tidalamplitude",
@@ -705,7 +706,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 2,
               "showValidatorInName": true,
               "validators": {
                 "max": 3,
@@ -720,7 +721,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 0.5,
               "showValidatorInName": true,
               "validators": {
                 "max": 2,
@@ -735,7 +736,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 0.5,
               "showValidatorInName": true,
               "validators": {
                 "max": 2,
@@ -746,32 +747,33 @@
             },
             {
               "id": "wavedirection",
-              "name": "Mean wave direction [-45° to +45° relative to North]",
+              "name": "Mean wave direction relative to North",
               "type": "numeric",
-              "units": "m",
+              "units": "°",
               "factor": true,
-              "default": 1,
+              "default": 0,
+              "showValidatorInName": true,
               "validators": {
                 "max": 45,
                 "min": -45,
                 "required": true
               },
-              "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+              "description": "This is the mean wave direction according to the nautical convention (0 degrees = waves from the North/orthogonal to the coast)."
             },
             {
               "id": "subsidenceland",
-              "name": "Subsidence  between landward model boundary and coastline",
+              "name": "Subsidence between landward model boundary and coastline",
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 10,
               "showValidatorInName": true,
               "validators": {
                 "max": 15,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the amount by which the bed level at the landward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+              "description": "This is the amount by which the bed level between the landward model boundary and the coastline will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between both values."
             },
             {
               "id": "subsidencesea",
@@ -779,14 +781,14 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 10,
               "showValidatorInName": true,
               "validators": {
                 "max": 15,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the landward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+              "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the area between the landward model boundary and the coastline, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between both values."
             }
           ]
         },
@@ -797,7 +799,7 @@
               "id": "composition",
               "name": "Sediment classes",
               "type": "select",
-              "default": "fine-sand",
+              "default": "coarse-sand",
               "options": [
                 {
                   "text": "coarse sand",
@@ -823,7 +825,7 @@
               "validators": {
                 "required": true
               },
-              "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+              "description": "This is the grain size distribution (vol-%) of the fluvial sediment input and the initial bed composition. Coarse sand: 10% vc, 10% c, 15% m, 35% f, 20% vf, 10% mud; Medium sand: 5% vc, 5% c, 10% m, 35% f, 35% vf, 10% mud; Fine sand: 2% vc, 3% c, 5% m, 30% f, 45% vf, 15% mud; Very fine sand: 2% vc, 3% c, 5% m, 25% f, 35% vf, 30% mud; Coarse silt: 5% c, 5% m, 25% f, 35% vf, 15% mud A, 15% mud B."
             }
           ],
           "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
@@ -1011,14 +1013,14 @@
               "name": "Simulation time",
               "type": "numeric",
               "units": "days",
-              "default": 160,
+              "default": 320.5,
               "showValidatorInName": true,
               "validators": {
                 "max": 320.5,
                 "min": 80,
                 "required": true
               },
-              "description": "This is the total hydronamic simulation time of a model run."
+              "description": "This is the total hydrodynamic simulation time of a model run."
             },
             {
               "id": "outputinterval",
@@ -1044,9 +1046,9 @@
               "id": "basinslope",
               "name": "Basin slope",
               "type": "numeric",
-              "units": "deg",
+              "units": "°",
               "factor": true,
-              "default": 0.1,
+              "default": 0.04,
               "showValidatorInName": true,
               "validators": {
                 "max": 0.3,
@@ -1061,14 +1063,12 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 500,
+              "default": 1000,
               "disabled": true,
               "validators": {
                 "required": true,
                 "allowedValues": [
-                  500,
-                  1000,
-                  1500
+                  1000
                 ]
               },
               "description": "This is the width of the river channel excluding the floodplains (not availalbe for the Roda and Sobrarbe templates)."
@@ -1077,14 +1077,15 @@
               "id": "riverlength",
               "name": "River length",
               "type": "numeric",
-              "units": "m",
+              "units": "cells",
               "factor": true,
-              "default": 100,
-              "showValidatorInName": true,
+              "default": 20,
+              "disabled": true,
               "validators": {
-                "max": 1000,
-                "min": 100,
-                "required": true
+                "required": true,
+                "allowedValues": [
+                  20
+                ]
               },
               "description": "This is the number of cells between the landward model boundary and the coastline. This parameter is only for the use of the preprocessing scripts but is not editable."
             }
@@ -1099,14 +1100,14 @@
               "type": "numeric",
               "units": "m³/s",
               "factor": true,
-              "default": 1000,
+              "default": 375,
               "showValidatorInName": true,
               "validators": {
                 "max": 2000,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the initial river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+              "description": "This is the initial river discharge per channel (one channel in the case of River dominated delta, Gule Horn/Neslen and Roda; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
             },
             {
               "id": "riverdischargefin",
@@ -1114,14 +1115,14 @@
               "type": "numeric",
               "units": "m³/s",
               "factor": true,
-              "default": 1000,
+              "default": 375,
               "showValidatorInName": true,
               "validators": {
                 "max": 2000,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the final river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+              "description": "This is the final river discharge per channel (one channel in the case of River dominated delta, Gule Horn/Neslen and Roda; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
             },
             {
               "id": "tidalamplitude",
@@ -1144,7 +1145,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 0.5,
               "showValidatorInName": true,
               "validators": {
                 "max": 2,
@@ -1159,7 +1160,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 0.5,
               "showValidatorInName": true,
               "validators": {
                 "max": 2,
@@ -1170,17 +1171,18 @@
             },
             {
               "id": "wavedirection",
-              "name": "Mean wave direction [-45° to +45° relative to North]",
+              "name": "Mean wave direction relative to North",
               "type": "numeric",
-              "units": "m",
+              "units": "°",
               "factor": true,
-              "default": 1,
+              "default": 0,
+              "showValidatorInName": true,
               "validators": {
                 "max": 45,
                 "min": -45,
                 "required": true
               },
-              "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+              "description": "This is the mean wave direction according to the nautical convention (0 degrees = waves from the North/orthogonal to the coast)."
             },
             {
               "id": "subsidenceland",
@@ -1188,14 +1190,14 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 5,
               "showValidatorInName": true,
               "validators": {
                 "max": 15,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the amount by which the bed level at the landward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+              "description": "This is the amount by which the bed level between the landward model boundary and the coastline will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between both values."
             },
             {
               "id": "subsidencesea",
@@ -1203,14 +1205,14 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 5,
               "showValidatorInName": true,
               "validators": {
                 "max": 15,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the landward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+              "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the area between the landward model boundary and the coastline, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between both values."
             }
           ]
         },
@@ -1221,7 +1223,7 @@
               "id": "composition",
               "name": "Sediment classes",
               "type": "select",
-              "default": "fine-sand",
+              "default": "coarse-sand",
               "options": [
                 {
                   "text": "coarse sand",
@@ -1247,7 +1249,7 @@
               "validators": {
                 "required": true
               },
-              "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+              "description": "This is the grain size distribution (vol-%) of the fluvial sediment input and the initial bed composition. Coarse sand: 10% vc, 10% c, 15% m, 35% f, 20% vf, 10% mud; Medium sand: 5% vc, 5% c, 10% m, 35% f, 35% vf, 10% mud; Fine sand: 2% vc, 3% c, 5% m, 30% f, 45% vf, 15% mud; Very fine sand: 2% vc, 3% c, 5% m, 25% f, 35% vf, 30% mud; Coarse silt: 5% c, 5% m, 25% f, 35% vf, 15% mud A, 15% mud B."
             }
           ],
           "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
@@ -1435,14 +1437,14 @@
               "name": "Simulation time",
               "type": "numeric",
               "units": "days",
-              "default": 160,
+              "default": 320.5,
               "showValidatorInName": true,
               "validators": {
                 "max": 320.5,
                 "min": 80,
                 "required": true
               },
-              "description": "This is the total hydronamic simulation time of a model run."
+              "description": "This is the total hydrodynamic simulation time of a model run."
             },
             {
               "id": "outputinterval",
@@ -1468,7 +1470,7 @@
               "id": "basinslope",
               "name": "Basin slope",
               "type": "numeric",
-              "units": "deg",
+              "units": "°",
               "factor": true,
               "default": 0.1,
               "showValidatorInName": true,
@@ -1490,9 +1492,7 @@
               "validators": {
                 "required": true,
                 "allowedValues": [
-                  500,
-                  1000,
-                  1500
+                  500
                 ]
               },
               "description": "This is the width of the river channel excluding the floodplains (not availalbe for the Roda and Sobrarbe templates)."
@@ -1501,14 +1501,15 @@
               "id": "riverlength",
               "name": "River length",
               "type": "numeric",
-              "units": "m",
+              "units": "cells",
               "factor": true,
               "default": 100,
-              "showValidatorInName": true,
+              "disabled": true,
               "validators": {
-                "max": 1000,
-                "min": 100,
-                "required": true
+                "required": true,
+                "allowedValues": [
+                  100
+                ]
               },
               "description": "This is the number of cells between the landward model boundary and the coastline. This parameter is only for the use of the preprocessing scripts but is not editable."
             }
@@ -1523,14 +1524,14 @@
               "type": "numeric",
               "units": "m³/s",
               "factor": true,
-              "default": 1000,
+              "default": 1100,
               "showValidatorInName": true,
               "validators": {
                 "max": 2000,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the initial river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+              "description": "This is the initial river discharge per channel (one channel in the case of River dominated delta, Gule Horn/Neslen and Roda; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
             },
             {
               "id": "riverdischargefin",
@@ -1538,14 +1539,14 @@
               "type": "numeric",
               "units": "m³/s",
               "factor": true,
-              "default": 1000,
+              "default": 250,
               "showValidatorInName": true,
               "validators": {
                 "max": 2000,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the final river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+              "description": "This is the final river discharge per channel (one channel in the case of River dominated delta, Gule Horn/Neslen and Roda; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
             },
             {
               "id": "tidalamplitude",
@@ -1553,7 +1554,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 2,
               "showValidatorInName": true,
               "validators": {
                 "max": 3,
@@ -1568,7 +1569,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 0.11,
               "showValidatorInName": true,
               "validators": {
                 "max": 2,
@@ -1583,7 +1584,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 0.3,
               "showValidatorInName": true,
               "validators": {
                 "max": 2,
@@ -1594,17 +1595,18 @@
             },
             {
               "id": "wavedirection",
-              "name": "Mean wave direction [-45° to +45° relative to North]",
+              "name": "Mean wave direction relative to North",
               "type": "numeric",
-              "units": "m",
+              "units": "°",
               "factor": true,
-              "default": 1,
+              "default": 0,
+              "showValidatorInName": true,
               "validators": {
                 "max": 45,
                 "min": -45,
                 "required": true
               },
-              "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+              "description": "This is the mean wave direction according to the nautical convention (0 degrees = waves from the North/orthogonal to the coast)."
             },
             {
               "id": "subsidenceland",
@@ -1612,14 +1614,14 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 0,
               "showValidatorInName": true,
               "validators": {
                 "max": 15,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the amount by which the bed level at the landward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+              "description": "This is the amount by which the bed level between the landward model boundary and the coastline will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between both values."
             },
             {
               "id": "subsidencesea",
@@ -1627,14 +1629,14 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 12,
               "showValidatorInName": true,
               "validators": {
                 "max": 15,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the landward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+              "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the area between the landward model boundary and the coastline, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between both values."
             }
           ]
         },
@@ -1645,7 +1647,7 @@
               "id": "composition",
               "name": "Sediment classes",
               "type": "select",
-              "default": "fine-sand",
+              "default": "coarse-sand",
               "options": [
                 {
                   "text": "coarse sand",
@@ -1671,7 +1673,7 @@
               "validators": {
                 "required": true
               },
-              "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+              "description": "This is the grain size distribution (vol-%) of the fluvial sediment input and the initial bed composition. Coarse sand: 10% vc, 10% c, 15% m, 35% f, 20% vf, 10% mud; Medium sand: 5% vc, 5% c, 10% m, 35% f, 35% vf, 10% mud; Fine sand: 2% vc, 3% c, 5% m, 30% f, 45% vf, 15% mud; Very fine sand: 2% vc, 3% c, 5% m, 25% f, 35% vf, 30% mud; Coarse silt: 5% c, 5% m, 25% f, 35% vf, 15% mud A, 15% mud B."
             }
           ],
           "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
@@ -1859,14 +1861,14 @@
               "name": "Simulation time",
               "type": "numeric",
               "units": "days",
-              "default": 160,
+              "default": 320.5,
               "showValidatorInName": true,
               "validators": {
                 "max": 320.5,
                 "min": 80,
                 "required": true
               },
-              "description": "This is the total hydronamic simulation time of a model run."
+              "description": "This is the total hydrodynamic simulation time of a model run."
             },
             {
               "id": "outputinterval",
@@ -1892,9 +1894,9 @@
               "id": "basinslope",
               "name": "Basin slope",
               "type": "numeric",
-              "units": "deg",
+              "units": "°",
               "factor": true,
-              "default": 0.1,
+              "default": 0.04,
               "showValidatorInName": true,
               "validators": {
                 "max": 0.3,
@@ -1924,14 +1926,15 @@
               "id": "riverlength",
               "name": "River length",
               "type": "numeric",
-              "units": "m",
+              "units": "cells",
               "factor": true,
               "default": 100,
-              "showValidatorInName": true,
+              "disabled": true,
               "validators": {
-                "max": 1000,
-                "min": 100,
-                "required": true
+                "required": true,
+                "allowedValues": [
+                  100
+                ]
               },
               "description": "This is the number of cells between the landward model boundary and the coastline. This parameter is only for the use of the preprocessing scripts but is not editable."
             }
@@ -1946,14 +1949,14 @@
               "type": "numeric",
               "units": "m³/s",
               "factor": true,
-              "default": 1000,
+              "default": 2000,
               "showValidatorInName": true,
               "validators": {
                 "max": 2000,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the initial river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+              "description": "This is the initial river discharge per channel (one channel in the case of River dominated delta, Gule Horn/Neslen and Roda; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the final river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
             },
             {
               "id": "riverdischargefin",
@@ -1961,14 +1964,14 @@
               "type": "numeric",
               "units": "m³/s",
               "factor": true,
-              "default": 1000,
+              "default": 2000,
               "showValidatorInName": true,
               "validators": {
                 "max": 2000,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the final river discharge per channel (one channel in the case of Gule Horn, Neslen, Roda X; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
+              "description": "This is the final river discharge per channel (one channel in the case of River dominated delta, Gule Horn/Neslen and Roda; four channels in the case of Sobrarbe). If this value coincides with the value chosen for the initial river discharge, a constant discharge is applied during the entire simulation. If the values differ, a time varying river discharge is applied based on a linear interpolation between the values for the initial and the final river discharges."
             },
             {
               "id": "tidalamplitude",
@@ -1976,7 +1979,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 2,
               "showValidatorInName": true,
               "validators": {
                 "max": 3,
@@ -1991,7 +1994,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 0.5,
               "showValidatorInName": true,
               "validators": {
                 "max": 2,
@@ -2006,7 +2009,7 @@
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 0.5,
               "showValidatorInName": true,
               "validators": {
                 "max": 2,
@@ -2017,47 +2020,48 @@
             },
             {
               "id": "wavedirection",
-              "name": "Mean wave direction [-45° to +45° relative to North]",
+              "name": "Mean wave direction relative to North",
               "type": "numeric",
-              "units": "m",
+              "units": "°",
               "factor": true,
-              "default": 1,
+              "default": 0,
+              "showValidatorInName": true,
               "validators": {
                 "max": 45,
                 "min": -45,
                 "required": true
               },
-              "description": "This is the final significant wave height applied to the model. If this value coincides with the value chosen for the initial significant wave height, a constant wave height is applied during the entire simulation. If the values differ, a time varying wave height is applied based on a linear interpolation between the values for the initial and the final wave heights."
+              "description": "This is the mean wave direction according to the nautical convention (0 degrees = waves from the North/orthogonal to the coast)."
             },
             {
               "id": "subsidenceland",
-              "name": "Subsidence  between landward model boundary and coastline",
+              "name": "Subsidence between landward model boundary and coastline",
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 10,
               "showValidatorInName": true,
               "validators": {
                 "max": 15,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the amount by which the bed level at the landward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+              "description": "This is the amount by which the bed level between the landward model boundary and the coastline will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the seaward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between both values."
             },
             {
               "id": "subsidencesea",
-              "name": "Subsidence  at seaward model boundary",
+              "name": "Subsidence at seaward model boundary",
               "type": "numeric",
               "units": "m",
               "factor": true,
-              "default": 1,
+              "default": 10,
               "showValidatorInName": true,
               "validators": {
                 "max": 15,
                 "min": 0,
                 "required": true
               },
-              "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the landward model boundary, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between the values for the landward and the seaward model boundaries."
+              "description": "This is the amount by which the bed level at the seaward model boundary will be subsided by the end of the simulation (constant subsidence rate between 0 m and the chosen value). If this value coincides with the value chosen for the area between the landward model boundary and the coastline, a uniform subsidence for the whole model domain is applied. If the values differ, a spatially varying subsidence is applied based on a linear interpolation between both values."
             }
           ]
         },
@@ -2068,7 +2072,7 @@
               "id": "composition",
               "name": "Sediment classes",
               "type": "select",
-              "default": "fine-sand",
+              "default": "coarse-sand",
               "options": [
                 {
                   "text": "coarse sand",
@@ -2094,7 +2098,7 @@
               "validators": {
                 "required": true
               },
-              "description": "Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
+              "description": "This is the grain size distribution (vol-%) of the fluvial sediment input and the initial bed composition. Coarse sand: 10% vc, 10% c, 15% m, 35% f, 20% vf, 10% mud; Medium sand: 5% vc, 5% c, 10% m, 35% f, 35% vf, 10% mud; Fine sand: 2% vc, 3% c, 5% m, 30% f, 45% vf, 15% mud; Very fine sand: 2% vc, 3% c, 5% m, 25% f, 35% vf, 30% mud; Coarse silt: 5% c, 5% m, 25% f, 35% vf, 15% mud A, 15% mud B."
             }
           ],
           "description": "Sediment can consist of a mixture of different classes. Read <a href='/static/images/sediment-types.png' target='_blank'>more</a> about the sediment composition clasess."
