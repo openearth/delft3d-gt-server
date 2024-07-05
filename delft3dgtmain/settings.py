@@ -229,7 +229,7 @@ if "test" in sys.argv:
 
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql_psycopg2",
+            "ENGINE": "django.db.backends.postgresql",
             "NAME": "djangodb_test",
             "USER": "postgres",
             "PASSWORD": "postgres",
