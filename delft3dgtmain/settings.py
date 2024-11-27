@@ -227,6 +227,8 @@ if "test" in sys.argv:
 
     logging.disable(logging.CRITICAL)
 
+    STATICFILES_DIRS = []
+
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
