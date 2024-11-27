@@ -4,4 +4,4 @@ ddtrace==2.6.*
 Django==4.2.*  # LTS
 kubernetes==23.*  # match cluster 1.23
 redis[hiredis]==5.0.*
-awscli==*
+awscli
