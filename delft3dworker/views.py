@@ -247,13 +247,11 @@ class SceneViewSet(viewsets.ModelViewSet):
             # will sometimes fail
             try:
                 for parameter in parameters:
-
                     p = parameter.split(",")
                     p = [val for val in p if val != ""]
 
                     # Key, min, max lookup
                     if len(p) == 3:
-
                         key, minvalue, maxvalue = p
                         logging.info(
                             "Lookup value [{} - {}] for parameter {}".format(
@@ -274,7 +272,6 @@ class SceneViewSet(viewsets.ModelViewSet):
                             # 1.9 So we loop manually (bad performance!)
                             wanted = []
                             for scene in queryset:
-
                                 # filter on input parameters
                                 value = scene.parameters.get(key, {}).get(
                                     "value", "None"
@@ -318,7 +315,6 @@ class SceneViewSet(viewsets.ModelViewSet):
                         queryset = queryset.filter(parameters__icontains=key)
 
                         for value in values:
-
                             # a blatant copy-paste of the above, because I
                             # cannot be bothered
 
@@ -333,7 +329,7 @@ class SceneViewSet(viewsets.ModelViewSet):
 
                         queryset = queryset.filter(pk__in=wanted)
 
-            except Exception as e:
+            except Exception:
                 logging.exception(
                     "Search with params {} and template {} failed".format(
                         parameters, template
@@ -446,7 +442,6 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @action(methods=["post"], detail=False)  # denied after publish to world
     def publish_company_all(self, request):
-
         try:
             queryset = Scene.objects.filter(owner=self.request.user).filter(
                 suid__in=request.data.getlist("suid", [])
@@ -472,7 +467,6 @@ class SceneViewSet(viewsets.ModelViewSet):
 
     @action(methods=["post"], detail=False)  # denied after publish to world
     def publish_world_all(self, request):
-
         try:
             queryset = Scene.objects.filter(owner=self.request.user).filter(
                 suid__in=request.data.getlist("suid", [])
@@ -652,7 +646,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False)
     def me(self, request):
-
         me = User.objects.filter(pk=request.user.pk)
 
         serializer = self.get_serializer(me, many=True)

@@ -1,12 +1,10 @@
 from __future__ import absolute_import
 
-import os
-import sys
 from time import time
 
 from django.test import TestCase
 from fakeredis import FakeStrictRedis
-from mock import MagicMock, Mock, patch
+from mock import Mock, patch
 
 from delft3dcontainermanager.tasks import (
     delft3dgt_kube_pulse,

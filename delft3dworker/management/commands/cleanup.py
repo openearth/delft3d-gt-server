@@ -1,9 +1,9 @@
-from os import listdir, walk
-from os.path import dirname, join, split
+from os import walk
+from os.path import join
 from shutil import rmtree
 
-from django.conf import settings  # noqa
-from django.core.management.base import BaseCommand, CommandError
+from django.conf import settings
+from django.core.management.base import BaseCommand
 
 from delft3dworker.models import Scene
 
@@ -33,8 +33,6 @@ class Command(BaseCommand):
         for directory in unlinked:
             try:
                 rmtree(directory)
-                self.stdout.write(
-                    "Successfully deleted unlinked folder {}".format(directory)
-                )
-            except:
-                self.stdout.write("Couldn't delete folder {}".format(directory))
+                self.stdout.write(f"Successfully deleted unlinked folder {directory}")
+            except Exception as e:
+                self.stdout.write(f"Couldn't delete folder {directory}: {e}")

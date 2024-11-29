@@ -19,7 +19,6 @@ class Command(BaseCommand):
     help = "scan local files for finished models and update models"
 
     def handle(self, *args, **options):
-
         # STEP I : Find finished models
         fin_scenes = Scene.objects.filter(phase=Scene.phases.fin)
 

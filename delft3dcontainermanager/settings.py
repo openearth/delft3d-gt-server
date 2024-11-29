@@ -17,8 +17,6 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import sys
 from os import environ
 
-from kubernetes import config
-
 DEBUG = False
 SECRET_KEY = "notneeded"
 
@@ -43,7 +41,6 @@ TIME_ZONE = "UTC"
 
 USE_I18N = True
 
-USE_L10N = True
 
 USE_TZ = True
 
@@ -75,7 +72,8 @@ CELERYD_PREFETCH_MULTIPLIER = 1
 
 # import provisioned settings
 try:
-    from .provisionedsettings import *
+    AWS_IAM_PATH = ""
+    from .provisionedsettings import *  # noqa
 
     environ["PATH"] += ":{}".format(AWS_IAM_PATH)
 except ImportError:

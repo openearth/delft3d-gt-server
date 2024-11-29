@@ -1,7 +1,6 @@
 import logging
 from time import sleep
 
-from celery.result import AsyncResult
 from django.core.management import BaseCommand
 
 from delft3dcontainermanager.tasks import do_docker_remove, get_docker_ps
@@ -21,7 +20,6 @@ class Command(BaseCommand):
     help = "sync containers with container and scene model"
 
     def handle(self, *args, **options):
-
         # STEP I : Loop over non empty celery_task_ids in containers
         # Sets task_uuid to None except for when a task is queued
         # Queued for log, no start? expire gebruiken
@@ -29,7 +27,6 @@ class Command(BaseCommand):
 
         # STEP II : Get latest container statuses
         if self._get_latest_docker_status():
-
             # STEP III : Update Scenes and their Phases
             # Controls container desired states
             self._update_scene_phases()
@@ -133,7 +130,5 @@ class Command(BaseCommand):
             scene.update_and_phase_shift()
 
     def _fix_container_state_mismatches_or_log(self):
-
         for container in Container.objects.all():
-
             container.fix_mismatch_or_log()

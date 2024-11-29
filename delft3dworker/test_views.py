@@ -23,7 +23,6 @@ class ApiAccessTestCase(TestCase):
     """
 
     def setUp(self):
-
         # set up request factory
         self.factory = APIRequestFactory()
 
@@ -181,7 +180,7 @@ class SceneTestCase(APITestCase):
                 user.user_permissions.add(Permission.objects.get(codename=perm))
 
         groups_world = Group.objects.create(name="access:world")
-        groups_world_restricted = Group.objects.create(name="access:world_restricted")
+        # groups_world_restricted = Group.objects.create(name="access:world_restricted")
         groups_world.user_set.add(self.user_foo)
         groups_world.user_set.add(self.user_bar)
 
@@ -598,7 +597,6 @@ class SceneSearchTestCase(TestCase):
     """
 
     def setUp(self):
-
         self.user_bar = User.objects.create_user(
             id=1, username="bar", password="secret"
         )
@@ -660,7 +658,6 @@ class SceneSearchTestCase(TestCase):
         self.user_bar = User.objects.get(pk=self.user_bar.pk)
 
     def test_search_props(self):
-
         # Exact matches
         search_query_exact_a = {"name": "Testscene 1"}
         search_query_exact_b = {"state": "FINISHED"}
@@ -671,18 +668,16 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_exact_c)), 1)
 
     def test_search_search(self):
-
         # Partial matches from beginning of line
         search_query_partial_a = {"search": "Te"}
         search_query_partial_b = {"search": "Tes"}
-        search_query_partial_c = {"search": "SUCC", "search": "Te", "search": "T"}
+        search_query_partial_c = {"search": "T"}
 
         self.assertEqual(len(self._request(search_query_partial_a)), 2)
         self.assertEqual(len(self._request(search_query_partial_b)), 2)
         self.assertEqual(len(self._request(search_query_partial_c)), 2)
 
     def test_search_params(self):
-
         # Parameter searches
         search_query_parameter_a = {"parameter": "a"}
         search_query_parameter_b = {"parameter": "b"}
@@ -714,7 +709,6 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_postproc_5)), 1)
 
     def test_search_user(self):
-
         # user searches
         search_query_users_1 = {"users": []}
         search_query_users_2 = {"users": [""]}
@@ -731,7 +725,6 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_users_6)), 2)
 
     def test_search_creation_date(self):
-
         # creation date before searches
         search_query_date_before_1 = {"created_before": "2000-01-01"}
         search_query_date_before_2 = {"created_before": "2500-01-01"}
@@ -755,7 +748,6 @@ class SceneSearchTestCase(TestCase):
         self.assertEqual(len(self._request(search_query_date_after_4)), 2)
 
     def test_search_start_date(self):
-
         # creation date before searches
         search_query_date_before_00 = {"started_before": "2000-01-01"}
         search_query_date_before_01 = {"started_before": "3000-01-01"}
@@ -1118,7 +1110,6 @@ class UserTestCase(TestCase):
     """
 
     def setUp(self):
-
         # create user in dB
         self.user_foo = User.objects.create_user(
             username="foo", first_name="Foo", last_name="Oof", email="foo@company.nl"

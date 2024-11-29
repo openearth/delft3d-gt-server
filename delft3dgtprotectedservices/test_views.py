@@ -1,9 +1,10 @@
 from __future__ import absolute_import
 
-from django.contrib.auth.models import Permission, User
+from django.contrib.auth.models import User
 from django.test import TestCase
 from django.test.client import Client
 from guardian.shortcuts import assign_perm
+
 from delft3dworker.models import Scene
 
 

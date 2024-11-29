@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.core.mail import send_mail
 from django.db.models import Count, DurationField, ExpressionWrapper, F, Sum
 from guardian.admin import GuardedModelAdmin
-from rangefilter.filter import DateRangeFilter, DateTimeRangeFilter
+from rangefilter.filter import DateRangeFilter
 
 from .models import (
     GroupUsageSummary,
@@ -118,7 +118,7 @@ class GroupUsageSummaryAdmin(admin.ModelAdmin):
             # Exclude Groups with world access as they will be counted twice in totals
 
             qs = qs.exclude(name="access:world").order_by("name")
-        except (AttributeError, KeyError) as e:
+        except (AttributeError, KeyError):
             return response
         # Summarize by group values
         values = ["name", "id"]
@@ -164,7 +164,7 @@ class UserUsageSummaryAdmin(admin.ModelAdmin):
             qs = response.context_data["cl"].queryset
             qs = qs.order_by("username")
 
-        except (AttributeError, KeyError) as e:
+        except (AttributeError, KeyError):
             return response
         # Summarize by user values
         values = ["username"]

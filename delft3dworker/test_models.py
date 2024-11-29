@@ -158,14 +158,13 @@ class ScenarioControlTestCase(TestCase):
 
 class SceneTestCase(TestCase):
     def setUp(self):
-
         # create users, groups and assign permissions
         self.user_a = User.objects.create_user(username="A")
         self.user_b = User.objects.create_user(username="B")
         self.user_c = User.objects.create_user(username="C")
 
         company_w = Group.objects.create(name="access:world")
-        company_wr = Group.objects.create(name="access:world_restricted")
+        # company_wr = Group.objects.create(name="access:world_restricted")
         for user in [self.user_a, self.user_b, self.user_c]:
             company_w.user_set.add(user)
             for perm in ["view_scene", "add_scene", "change_scene", "delete_scene"]:
@@ -417,7 +416,6 @@ class SceneTestCase(TestCase):
 
         # a scene should only start when it's idle: check for each phase
         for phase in self.scene_1.phases:
-
             #  shift scene to phase
             self.scene_1.shift_to_phase(phase[0])
 
@@ -434,23 +432,18 @@ class SceneTestCase(TestCase):
 
             # check date_started is untouched unless started from Idle state
             if phase[0] < self.scene_1.phases.idle:
-
                 self.assertEqual(self.scene_1.date_started, started_date)
 
             if phase[0] == self.scene_1.phases.idle:
-
                 self.assertTrue(self.scene_1.date_started <= now())
                 started_date = self.scene_1.date_started  # store started date
 
             else:
-
                 self.assertEqual(self.scene_1.date_started, started_date)
 
     def test_abort_scene(self):
-
         # abort is more complex
         for phase in self.scene_1.phases:
-
             #  shift scene to phase
             self.scene_1.shift_to_phase(phase[0])
 
@@ -469,7 +462,6 @@ class SceneTestCase(TestCase):
                 self.assertEqual(self.scene_1.phase, phase[0])
 
     def test_export_scene(self):
-
         # As taken from `views.py`
         stream = io.BytesIO()
         zf = zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED, True)
@@ -759,7 +751,6 @@ class ScenarioPhasesTestCase(TestCase):
 
 class WorkflowTestCase(TestCase):
     def setUp(self):
-
         self.run_argo_ps_dict = {
             "apiVersion": "argoproj.io/v1alpha1",
             "kind": "Workflow",
@@ -854,7 +845,6 @@ class WorkflowTestCase(TestCase):
     @patch("logging.warn", autospec=True)
     @patch("delft3dworker.models.AsyncResult", autospec=True)
     def test_update_task_result(self, MockedAsyncResult, mocked_warn_method):
-
         async_result = MockedAsyncResult.return_value
 
         # Set up: A previous task is not yet finished
@@ -885,8 +875,9 @@ class WorkflowTestCase(TestCase):
         self.workflow.task_starttime = now()
         async_result.ready.return_value = True
         async_result.result = (
-            "01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl"
-        ), "ERror MesSAge"
+            ("01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl"),
+            "ERror MesSAge",
+        )
         async_result.state = "FAILURE"
 
         # call method
@@ -900,8 +891,9 @@ class WorkflowTestCase(TestCase):
         async_result.ready.return_value = True
         async_result.successful.return_value = True
         async_result.result = (
-            "01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl"
-        ), "INFO:root:Time to finish 70.0, 10.0% completed,"
+            ("01234567890abcdefghijklmnopqrstuvwxyz01234567890abcdefghijkl"),
+            "INFO:root:Time to finish 70.0, 10.0% completed,",
+        )
         async_result.state = "SUCCESS"
 
         # call method
@@ -913,7 +905,6 @@ class WorkflowTestCase(TestCase):
 
     @patch("delft3dworker.models.AsyncResult", autospec=True)
     def test_update_progress(self, MockedAsyncResult):
-
         async_result = MockedAsyncResult.return_value
 
         # Set up: A previous task is not yet finished
@@ -921,7 +912,7 @@ class WorkflowTestCase(TestCase):
         self.workflow.task_starttime = now()
         async_result.ready.return_value = True
         async_result.state = "SUCCESS"
-        async_result.result = "dockerid", u"None"
+        async_result.result = "dockerid", "None"
         async_result.successful.return_value = True
 
         # call method
@@ -950,7 +941,6 @@ class WorkflowTestCase(TestCase):
 
     @patch("logging.error", autospec=True)
     def test_update_state_and_save(self, mocked_error_method):
-
         # This test will test the behavior of a workflow
         # when it receives snapshot
 
@@ -1097,7 +1087,6 @@ class WorkflowTestCase(TestCase):
 
         # a scene should only start when it's idle: check for each phase
         for phase in self.scene_1.phases:
-
             #  shift scene to phase
             self.scene_1.date_started = date_started
             self.scene_1.progress = progress
@@ -1179,7 +1168,6 @@ class WorkflowTestCase(TestCase):
 
 class SearchFormTestCase(TestCase):
     def setUp(self):
-
         self.sections_a = """
         [
             {

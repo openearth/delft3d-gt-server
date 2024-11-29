@@ -1,12 +1,12 @@
 from __future__ import print_function
 
 import datetime
-from os import listdir, walk
-from os.path import dirname, join, split
+from os import walk
+from os.path import join
 from shutil import rmtree
 
 from django.conf import settings  # noqa
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 
 from delft3dworker.models import Scene
 
@@ -19,9 +19,7 @@ class Command(BaseCommand):
     """
 
     def handle(self, *args, **options):
-
         with open("synchronize_data_sources.log", "a") as file:
-
             file.write(
                 "==================== Data Sync started -- {}\n".format(
                     str(datetime.datetime.now())
@@ -67,7 +65,6 @@ class Command(BaseCommand):
             # ######################################### get input on what to do next:
 
             if len(unlinked) > 0:
-
                 self.stdout.write("")
                 self.stdout.write(
                     "================================================================================"
@@ -87,13 +84,11 @@ class Command(BaseCommand):
                 self.stdout.write("")
 
                 resp = ""
-                while not resp in ["y", "n"]:
+                while resp not in ["y", "n"]:
                     self.stdout.write(
                         "## You can now enter a procedure which allows you to remove these directories."
                     )
-                    resp = (
-                        raw_input("## Do you want to proceed? [y/N]: ").lower() or "n"
-                    )
+                    resp = input("## Do you want to proceed? [y/N]: ").lower() or "n"
 
                 removedirs = True if resp == "y" else False
 
@@ -103,15 +98,13 @@ class Command(BaseCommand):
                 self.stdout.ending = ""
 
                 if removedirs:
-
                     rem = "s"
 
                     for directory in unlinked:
-
                         try:
                             if not rem == "a":
                                 rem = (
-                                    raw_input(
+                                    input(
                                         "{}: skip (default), delete, all? [S/d/a]: ".format(
                                             directory
                                         )
@@ -129,7 +122,7 @@ class Command(BaseCommand):
                             else:
                                 self.stdout.write("-- Skipping {}\n".format(directory))
 
-                        except KeyboardInterrupt as e:
+                        except KeyboardInterrupt:
                             self.stdout.write("\n")
                             exit(1)
 
@@ -145,14 +138,12 @@ class Command(BaseCommand):
                 self.stdout.ending = "\n"
 
             else:
-
                 self.stdout.write("")
                 self.stdout.write('No "orphaned" simulation results found on disk.')
 
             # ######################################### get input on what to do next:
 
             if len(unstored) > 0:
-
                 self.stdout.write("")
                 self.stdout.write(
                     "================================================================================"
@@ -176,13 +167,11 @@ class Command(BaseCommand):
                     )
 
                 resp = ""
-                while not resp in ["y", "n"]:
+                while resp not in ["y", "n"]:
                     self.stdout.write(
                         "\n## You can now enter a procedure which allows you to reset these simulations."
                     )
-                    resp = (
-                        raw_input("## Do you want to proceed? [y/N]: ").lower() or "n"
-                    )
+                    resp = input("## Do you want to proceed? [y/N]: ").lower() or "n"
 
                 resetsims = True if resp == "y" else False
 
@@ -192,16 +181,14 @@ class Command(BaseCommand):
                 self.stdout.ending = ""
 
                 if resetsims:
-
                     rem = "s"
 
                     for sim in unstored:
-
                         try:
                             scene = Scene.objects.get(workingdir=directory + "/")
 
                             rem = (
-                                raw_input(
+                                input(
                                     "{}: skip (default), reset, delete? [S/r/d]: ".format(
                                         scene
                                     )
@@ -210,7 +197,6 @@ class Command(BaseCommand):
                             )
 
                             if rem in ["r"]:
-
                                 if scene.phase == scene.phases.fin:
                                     self.stdout.write(
                                         '-- Resetting Scene "{}"... '.format(scene)
@@ -226,7 +212,6 @@ class Command(BaseCommand):
                                     )
 
                             elif rem in ["d"]:
-
                                 self.stdout.write(
                                     '-- Deleting Scene "{}"... '.format(scene)
                                 )
@@ -235,10 +220,9 @@ class Command(BaseCommand):
                                 self.stdout.write("done\n")
 
                             else:
-
                                 self.stdout.write('-- Skipping "{}"\n'.format(scene))
 
-                        except KeyboardInterrupt as e:
+                        except KeyboardInterrupt:
                             self.stdout.write("\n")
                             exit(1)
 
@@ -254,7 +238,6 @@ class Command(BaseCommand):
                     self.stdout.write("-- Skipping reset simulations procedure...\n")
 
             else:
-
                 self.stdout.write("")
                 self.stdout.write('No "orphaned" simulation entries found in database.')
 
@@ -267,7 +250,7 @@ class Command(BaseCommand):
             self.stdout.write(" SYNCHRONIZATION PROCEDURE DONE")
             self.stdout.write("")
             self.stdout.write(
-                " A log is written to file: synchronize_data_sources.log".format(file)
+                " A log is written to file: synchronize_data_sources.log".format()
             )
             self.stdout.write("")
             self.stdout.write(

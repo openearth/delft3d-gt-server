@@ -1,5 +1,9 @@
 # includes all non-test requirements
 -r requirements.txt
 
-fakeredis==1.9.*
-coverage==6.5.*
+fakeredis==2.21.*
+coverage
+mock
+ruff==0.2.*
+
+

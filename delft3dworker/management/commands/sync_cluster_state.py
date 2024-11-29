@@ -1,8 +1,6 @@
-import logging
 from json import loads
 from time import sleep
 
-from celery.result import AsyncResult
 from django.core.management import BaseCommand
 
 from delft3dcontainermanager.tasks import do_argo_remove, get_argo_workflows
@@ -22,7 +20,6 @@ class Command(BaseCommand):
     help = "Sync cluster workflows with workflow and scene models."
 
     def handle(self, *args, **options):
-
         # STEP I : Parse finished Celery tasks for Workflow models
         # Sets task_uuid to None except for when a task is queued
         self._update_workflow_tasks()
@@ -30,7 +27,6 @@ class Command(BaseCommand):
         # STEP II : Get current workflows on cluster and sync with
         # Djang workflows models
         if self._get_latest_workflows_status():
-
             # STEP III : Update Scenes and their Phases
             # Controls workflow desired states
             self._update_scene_phases()
